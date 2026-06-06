@@ -165,3 +165,30 @@ func TestFetchAccessAuditLogs_Unauthorized_SoftSkip(t *testing.T) {
 		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_SoftSkipStatuses is a regression test: the Zoom
+// activity report answers 401/403/404 when the account plan does not expose
+// it, and all three must soft-skip (matching every other connector). 404 was
+// previously not handled and surfaced as a retriable hard error.
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, code := range []int{
+		http.StatusUnauthorized,
+		http.StatusForbidden,
+		http.StatusNotFound,
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(code)
+		}))
+		c := New()
+		c.urlOverride = server.URL
+		c.httpClient = func() httpDoer { return server.Client() }
+		c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+		err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		server.Close()
+		if err != access.ErrAuditNotAvailable {
+			t.Errorf("status %d: err = %v; want ErrAuditNotAvailable", code, err)
+		}
+	}
+}

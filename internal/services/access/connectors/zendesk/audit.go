@@ -52,7 +52,13 @@ func (c *ZendeskAccessConnector) FetchAccessAuditLogs(
 		}
 		body, status, err := c.doWithStatus(req)
 		if err != nil {
-			if status == http.StatusForbidden {
+			// A plan tier that does not expose the audit-log endpoint
+			// answers with 401/403/404; soft-skip those so the worker
+			// stops treating an unavailable endpoint as a retriable hard
+			// error. This matches every other connector's audit handler.
+			// (Unlike delta sync, the audit soft-skip does not clear a
+			// persisted cursor, so including 401 here is safe.)
+			if status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound {
 				return access.ErrAuditNotAvailable
 			}
 			return err

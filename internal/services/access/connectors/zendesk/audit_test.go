@@ -96,3 +96,51 @@ func TestFetchAccessAuditLogs_Forbidden_SoftSkip(t *testing.T) {
 		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_SoftSkipStatuses is a regression test: an audit
+// endpoint that a plan tier does not expose answers with 401, 403, or 404,
+// and all three must soft-skip via ErrAuditNotAvailable (matching every other
+// connector). Previously only 403 was handled, so 401/404 surfaced as a
+// retriable hard error and the worker hammered the unavailable endpoint.
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, code := range []int{
+		http.StatusUnauthorized,
+		http.StatusForbidden,
+		http.StatusNotFound,
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(code)
+		}))
+		c := New()
+		c.urlOverride = server.URL
+		c.httpClient = func() httpDoer { return server.Client() }
+		err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		server.Close()
+		if err != access.ErrAuditNotAvailable {
+			t.Errorf("status %d: err = %v; want ErrAuditNotAvailable", code, err)
+		}
+	}
+}
+
+// TestFetchAccessAuditLogs_5xxPropagates confirms a transient 5xx is NOT
+// soft-skipped — it must surface so the worker retries.
+func TestFetchAccessAuditLogs_5xxPropagates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err == access.ErrAuditNotAvailable {
+		t.Fatal("5xx must not soft-skip")
+	}
+	if err == nil || !strings.Contains(err.Error(), "500") {
+		t.Fatalf("expected 500 to propagate, got %v", err)
+	}
+}
