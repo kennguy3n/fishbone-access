@@ -18,6 +18,11 @@ import (
 const (
 	ProviderName = "squarespace"
 	pageSize     = 100
+	// squarespaceIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	squarespaceIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("squarespace: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -206,7 +211,7 @@ func (c *SquarespaceAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	path := base + ("/1.0/commerce/profile/members")
-	for {
+	for pages := 0; pages < squarespaceIdentitiesMaxPages; pages++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -250,6 +255,7 @@ func (c *SquarespaceAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return fmt.Errorf("squarespace: sync identities: pagination exceeded %d pages", squarespaceIdentitiesMaxPages)
 }
 
 func (c *SquarespaceAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
