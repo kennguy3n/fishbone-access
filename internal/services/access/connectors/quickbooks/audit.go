@@ -149,6 +149,9 @@ func mapQuickBooksEntity(kind, id string, md quickbooksMetaData, raw map[string]
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, stamp)
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	return &access.AuditLogEntry{
 		EventID:          fmt.Sprintf("%s|%s|%s", kind, id, stamp),
 		EventType:        "entity_changed",

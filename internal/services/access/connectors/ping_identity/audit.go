@@ -141,6 +141,9 @@ func mapPingActivity(a *pingActivity) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, a.RecordedAt)
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(a)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)
