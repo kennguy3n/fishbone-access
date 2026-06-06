@@ -453,8 +453,10 @@ func (c *AzureAccessConnector) RevokeAccess(
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		// Covers 204 No Content (the normal ARM delete response).
 		return nil
-	case resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound:
+	case resp.StatusCode == http.StatusNotFound:
+		// Assignment already gone ⇒ idempotent success.
 		return nil
 	default:
 		rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))

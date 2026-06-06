@@ -107,10 +107,15 @@ func (c *BambooHRAccessConnector) FetchAccessAuditLogs(
 		}
 		batch = append(batch, entry)
 	}
-	if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-		return err
+	if len(batch) == 0 {
+		// Nothing mapped (empty delta, or every event had an
+		// unparseable lastChanged and was dropped). Skip the
+		// handler entirely — there's no progress to record and
+		// batchMax == since, so calling it would be a no-op. This
+		// mirrors the basecamp/bigcommerce audit paths.
+		return nil
 	}
-	return nil
+	return handler(batch, batchMax, access.DefaultAuditPartition)
 }
 
 type bambooChangedPage struct {
