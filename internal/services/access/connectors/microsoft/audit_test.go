@@ -300,3 +300,76 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 		t.Fatal("expected 401 to propagate as error")
 	}
 }
+
+// TestGraphMappers_TimestampParsing is a regression test for two related bugs in
+// mapGraphSignIn / mapGraphDirectoryAudit:
+//
+//  1. They parsed timestamps with time.RFC3339, which rejects the fractional
+//     seconds Microsoft Graph commonly returns (e.g. directoryAudit's
+//     activityDateTime "2024-01-01T10:00:00.1234567Z"). parseGraphTime must try
+//     RFC3339Nano first so those records are kept.
+//  2. On parse failure they emitted an entry with a zero Timestamp instead of
+//     dropping it, unlike every sibling connector. Both mappers must now return
+//     (nil, nil) when the timestamp is unparseable/empty.
+func TestGraphMappers_TimestampParsing(t *testing.T) {
+	// Fractional-second timestamps must parse (RFC3339Nano), not be dropped.
+	signInFrac, err := mapGraphSignIn(json.RawMessage(`{
+		"id": "si-frac",
+		"createdDateTime": "2024-01-01T10:00:00.1234567Z",
+		"userId": "u-1",
+		"status": {"errorCode": 0}
+	}`))
+	if err != nil {
+		t.Fatalf("mapGraphSignIn fractional: %v", err)
+	}
+	if signInFrac == nil {
+		t.Fatal("mapGraphSignIn dropped a record with fractional-second timestamp")
+	}
+	want := time.Date(2024, 1, 1, 10, 0, 0, 123456700, time.UTC)
+	if !signInFrac.Timestamp.Equal(want) {
+		t.Errorf("signIn timestamp = %v; want %v", signInFrac.Timestamp, want)
+	}
+
+	dirFrac, err := mapGraphDirectoryAudit(json.RawMessage(`{
+		"id": "da-frac",
+		"activityDateTime": "2024-01-01T12:00:00.7654321Z",
+		"category": "UserManagement",
+		"operationType": "Add",
+		"result": "success"
+	}`))
+	if err != nil {
+		t.Fatalf("mapGraphDirectoryAudit fractional: %v", err)
+	}
+	if dirFrac == nil {
+		t.Fatal("mapGraphDirectoryAudit dropped a record with fractional-second timestamp")
+	}
+
+	// Unparseable / empty timestamps must be dropped (nil entry), not emitted
+	// with a zero time.Time.
+	badSignIn, err := mapGraphSignIn(json.RawMessage(`{
+		"id": "si-bad",
+		"createdDateTime": "not-a-timestamp",
+		"userId": "u-2",
+		"status": {"errorCode": 0}
+	}`))
+	if err != nil {
+		t.Fatalf("mapGraphSignIn bad ts: %v", err)
+	}
+	if badSignIn != nil {
+		t.Errorf("mapGraphSignIn emitted entry for unparseable timestamp: %+v", badSignIn)
+	}
+
+	badDir, err := mapGraphDirectoryAudit(json.RawMessage(`{
+		"id": "da-bad",
+		"activityDateTime": "",
+		"category": "UserManagement",
+		"operationType": "Add",
+		"result": "success"
+	}`))
+	if err != nil {
+		t.Fatalf("mapGraphDirectoryAudit bad ts: %v", err)
+	}
+	if badDir != nil {
+		t.Errorf("mapGraphDirectoryAudit emitted entry for empty timestamp: %+v", badDir)
+	}
+}

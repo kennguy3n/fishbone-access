@@ -167,7 +167,10 @@ func mapGraphSignIn(raw json.RawMessage) (*access.AuditLogEntry, error) {
 	if r.ID == "" {
 		return nil, nil
 	}
-	ts, _ := time.Parse(time.RFC3339, r.CreatedDateTime)
+	ts := parseGraphTime(r.CreatedDateTime)
+	if ts.IsZero() {
+		return nil, nil
+	}
 	outcome := "success"
 	if r.Status.ErrorCode != 0 || strings.TrimSpace(r.Status.FailureReason) != "" {
 		outcome = "failure"
@@ -216,7 +219,10 @@ func mapGraphDirectoryAudit(raw json.RawMessage) (*access.AuditLogEntry, error) 
 	if r.ID == "" {
 		return nil, nil
 	}
-	ts, _ := time.Parse(time.RFC3339, r.ActivityDateTime)
+	ts := parseGraphTime(r.ActivityDateTime)
+	if ts.IsZero() {
+		return nil, nil
+	}
 	var targetID, targetType string
 	if len(r.TargetResources) > 0 {
 		targetID = r.TargetResources[0].ID
@@ -260,6 +266,25 @@ func normalizeDirectoryAuditOutcome(result string) string {
 	default:
 		return "failure"
 	}
+}
+
+// parseGraphTime parses Microsoft Graph audit timestamps. Graph commonly emits
+// fractional seconds (e.g. "2024-01-01T10:00:00.1234567Z" on directoryAudit
+// records), which time.RFC3339 rejects, so try RFC3339Nano first and fall back
+// to plain RFC3339. Mirrors parseMiroTime / parseMondayTime in the sibling
+// connectors. Returns the zero time on failure so callers drop the entry.
+func parseGraphTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t.UTC()
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC()
+	}
+	return time.Time{}
 }
 
 var _ access.AccessAuditor = (*M365AccessConnector)(nil)
