@@ -192,3 +192,32 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestParseMondayTime_NormalizesToUTC is a regression test ensuring the RFC3339
+// branches of parseMondayTime normalize to UTC like its numeric-epoch branches
+// (and like every sibling connector's parser). Previously the RFC3339 paths
+// returned the original offset, so a feed mixing RFC3339 strings and numeric
+// epochs produced a batchMax cursor with mixed zones.
+func TestParseMondayTime_NormalizesToUTC(t *testing.T) {
+	cases := []string{
+		"2024-01-01T11:00:00+08:00",     // RFC3339 with offset
+		"2024-01-01T11:00:00.500+08:00", // RFC3339Nano with offset
+	}
+	for _, in := range cases {
+		got := parseMondayTime(in)
+		if got.IsZero() {
+			t.Fatalf("parseMondayTime(%q) returned zero time", in)
+		}
+		if loc := got.Location(); loc != time.UTC {
+			t.Errorf("parseMondayTime(%q) location = %v; want UTC", in, loc)
+		}
+		want, _ := time.Parse(time.RFC3339Nano, in)
+		if !got.Equal(want) {
+			t.Errorf("parseMondayTime(%q) = %v; want instant %v", in, got, want)
+		}
+	}
+	// Numeric epoch path already normalizes; assert it stays UTC.
+	if got := parseMondayTime("1704106800"); got.Location() != time.UTC {
+		t.Errorf("parseMondayTime(epoch) location = %v; want UTC", got.Location())
+	}
+}

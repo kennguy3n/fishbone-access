@@ -153,17 +153,21 @@ func mapMiroAuditEvent(e *miroAuditEvent) *access.AuditLogEntry {
 }
 
 // parseMiroTime parses Miro's createdAt timestamps. The API emits
-// RFC3339 strings, optionally with millisecond precision.
+// RFC3339 strings, optionally with millisecond precision. Parsed values are
+// normalized to UTC to match every sibling connector's parser (parseGraphTime,
+// parseMondayTime, etc.) so the AuditLogEntry.Timestamp and the batchMax cursor
+// handed to the worker are consistently UTC even if Miro returns a non-"Z"
+// offset (e.g. "2024-01-01T11:00:00+08:00").
 func parseMiroTime(s string) time.Time {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return time.Time{}
 	}
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	return time.Time{}
 }

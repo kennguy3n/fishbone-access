@@ -176,10 +176,10 @@ func parseMondayTime(s string) time.Time {
 		return time.Time{}
 	}
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if n, err := strconv.ParseInt(s, 10, 64); err == nil && n > 0 {
 		// Treat very large numbers as ms; otherwise assume seconds.

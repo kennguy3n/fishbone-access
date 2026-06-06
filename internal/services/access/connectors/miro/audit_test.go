@@ -182,3 +182,27 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestParseMiroTime_NormalizesToUTC is a regression test ensuring parseMiroTime
+// returns UTC-normalized timestamps for non-"Z" RFC3339 offsets, matching every
+// sibling connector's parser. An un-normalized offset would otherwise flow into
+// AuditLogEntry.Timestamp and the batchMax cursor handed to the worker.
+func TestParseMiroTime_NormalizesToUTC(t *testing.T) {
+	cases := []string{
+		"2024-01-01T11:00:00+08:00",     // RFC3339 with offset
+		"2024-01-01T11:00:00.500+08:00", // RFC3339Nano with offset
+	}
+	for _, in := range cases {
+		got := parseMiroTime(in)
+		if got.IsZero() {
+			t.Fatalf("parseMiroTime(%q) returned zero time", in)
+		}
+		if loc := got.Location(); loc != time.UTC {
+			t.Errorf("parseMiroTime(%q) location = %v; want UTC", in, loc)
+		}
+		want, _ := time.Parse(time.RFC3339Nano, in)
+		if !got.Equal(want) {
+			t.Errorf("parseMiroTime(%q) = %v; want instant %v", in, got, want)
+		}
+	}
+}
