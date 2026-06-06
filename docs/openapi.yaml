@@ -1,0 +1,790 @@
+openapi: 3.0.3
+info:
+  title: ShieldNet Access — Lifecycle & Policy API
+  version: "1.0.0"
+  description: |
+    Session 1C surface of the ShieldNet Access control plane: access-request
+    lifecycle, policy draft/simulate/promote, access-review campaigns, JML/SCIM
+    automation, orphan reconciliation, grant expiry, and SSO enforcement status.
+
+    ## Authentication & tenancy
+    Every `/api/v1` route requires a Bearer access token issued by **iam-core**
+    (validated against `${IAM_CORE_ISSUER}/oauth2/jwks`). Tenancy is derived
+    **solely** from the token's `tenant_id` claim:
+
+      * A token with no `tenant_id` claim is rejected `403` (fail-closed).
+      * `X-Tenant-ID`, when supplied, is advisory and MUST equal the claim,
+        otherwise `403`. It is never a fallback when the claim is absent.
+
+    The resolved tenant is mapped to a workspace UUID and every query is scoped
+    by it; a tenant with no provisioned workspace receives `403`, never an
+    unscoped result. Mutating policy promotion additionally requires a
+    step-up-MFA-satisfied token (`403` otherwise).
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: access-requests
+  - name: grants
+  - name: policies
+  - name: access-reviews
+  - name: jml
+  - name: orphans
+  - name: sso
+paths:
+  /me:
+    get:
+      summary: Echo the resolved identity and tenant
+      responses:
+        "200": { description: Identity/tenant echo }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /access-requests:
+    post:
+      tags: [access-requests]
+      summary: Create an access request
+      description: |
+        Creates a request in `requested` state, then runs risk-based workflow
+        routing: `low` auto-approves, `medium` parks for manager approval,
+        `high`/sensitive parks for security review.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAccessRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request: { $ref: "#/components/schemas/AccessRequest" }
+                  workflow: { $ref: "#/components/schemas/WorkflowDecision" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    get:
+      tags: [access-requests]
+      summary: List access requests in the caller's workspace
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccessRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /access-requests/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IDPath"
+    get:
+      tags: [access-requests]
+      summary: Get an access request
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request: { $ref: "#/components/schemas/AccessRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /access-requests/{id}/history:
+    parameters:
+      - $ref: "#/components/parameters/IDPath"
+    get:
+      tags: [access-requests]
+      summary: Get the state-transition history of a request
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items: { $ref: "#/components/schemas/StateHistoryEntry" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /access-requests/{id}/approve:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [access-requests]
+      summary: Approve a request
+      requestBody: { $ref: "#/components/requestBodies/Decision" }
+      responses:
+        "200": { $ref: "#/components/responses/RequestEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /access-requests/{id}/deny:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [access-requests]
+      summary: Deny a request
+      requestBody: { $ref: "#/components/requestBodies/Decision" }
+      responses:
+        "200": { $ref: "#/components/responses/RequestEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /access-requests/{id}/cancel:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [access-requests]
+      summary: Cancel a request
+      requestBody: { $ref: "#/components/requestBodies/Decision" }
+      responses:
+        "200": { $ref: "#/components/responses/RequestEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /access-requests/{id}/provision:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [access-requests]
+      summary: Provision an approved request
+      description: Orchestrates ProvisionAccess against the connector with retry/backoff, creating an active grant.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grant: { $ref: "#/components/schemas/AccessGrant" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /grants/{id}/revoke:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [grants]
+      summary: Revoke a grant (idempotent)
+      requestBody: { $ref: "#/components/requestBodies/Decision" }
+      responses:
+        "200": { description: Revoked }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /grants/expiry-enforce:
+    post:
+      tags: [grants]
+      summary: Run the expiry sweep for the caller's workspace now
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result: { $ref: "#/components/schemas/EnforceResult" }
+
+  /policies:
+    post:
+      tags: [policies]
+      summary: Create a draft policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyInput" }
+      responses:
+        "201": { $ref: "#/components/responses/PolicyEnvelope" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      tags: [policies]
+      summary: List policies
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policies:
+                    type: array
+                    items: { $ref: "#/components/schemas/Policy" }
+
+  /policies/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [policies]
+      summary: Get a policy
+      responses:
+        "200": { $ref: "#/components/responses/PolicyEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [policies]
+      summary: Update a draft policy (drafts only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyInput" }
+      responses:
+        "200": { $ref: "#/components/responses/PolicyEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /policies/{id}/simulate:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [policies]
+      summary: Simulate a policy (ImpactResolver + ConflictDetector)
+      description: Read-only pre-check; never touches the data plane.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  simulation: { $ref: "#/components/schemas/SimulationResult" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /policies/{id}/promote:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [policies]
+      summary: Promote a draft to active (idempotent, step-up MFA required)
+      responses:
+        "200": { $ref: "#/components/responses/PolicyEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /policies/{id}/archive:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [policies]
+      summary: Archive a policy (idempotent)
+      responses:
+        "200": { $ref: "#/components/responses/PolicyEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /access-reviews:
+    post:
+      tags: [access-reviews]
+      summary: Start an access-review campaign
+      description: Snapshots every active grant in the workspace into review items.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  review: { $ref: "#/components/schemas/AccessReview" }
+                  item_count: { type: integer }
+
+  /access-reviews/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [access-reviews]
+      summary: Get a campaign report
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report: { $ref: "#/components/schemas/ReviewReport" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /access-reviews/{id}/items:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [access-reviews]
+      summary: List campaign items
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ReviewItem" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /access-reviews/{id}/items/{itemID}/decision:
+    parameters:
+      - $ref: "#/components/parameters/IDPath"
+      - name: itemID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [access-reviews]
+      summary: Record a per-item decision (certify | revoke | escalate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [certify, revoke, escalate]
+                reason: { type: string }
+      responses:
+        "200": { description: Recorded }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /access-reviews/{id}/complete:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [access-reviews]
+      summary: Complete a campaign and return the final report
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report: { $ref: "#/components/schemas/ReviewReport" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /scim/events:
+    post:
+      tags: [jml]
+      summary: Inbound SCIM event (Joiner/Mover/Leaver automation)
+      description: |
+        Classifies the event into a J/M/L lane. Leaver runs the six-layer kill
+        switch (grant revoke → team remove → iam-core disable → session revoke →
+        SCIM deprovision → identity disable); a failed layer is recorded and the
+        cascade continues.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SCIMEvent" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lane: { type: string, enum: [joiner, mover, leaver] }
+                  leaver:
+                    allOf: [ { $ref: "#/components/schemas/LeaverResult" } ]
+                    description: Six-layer kill-switch breakdown; present only for the leaver lane.
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500":
+          description: |
+            A leaver kill switch that completed but had one or more layers fail.
+            The body carries the per-layer breakdown so an operator can act on it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lane: { type: string, enum: [leaver] }
+                  error: { type: string }
+                  leaver: { $ref: "#/components/schemas/LeaverResult" }
+
+  /connectors/{connectorID}/orphan-scan:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    post:
+      tags: [orphans]
+      summary: Scan a connector for orphan accounts
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scan: { $ref: "#/components/schemas/ScanResult" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /orphan-accounts:
+    get:
+      tags: [orphans]
+      summary: List recorded orphan accounts
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orphans:
+                    type: array
+                    items: { $ref: "#/components/schemas/OrphanAccount" }
+
+  /orphan-accounts/{id}/disposition:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [orphans]
+      summary: Set an orphan's operator disposition (ignore | disable)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disposition]
+              properties:
+                disposition: { type: string, enum: [ignore, disable] }
+      responses:
+        "200": { description: Updated }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /connectors/{connectorID}/sso-status:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    get:
+      tags: [sso]
+      summary: Report whether SSO is enforced for a connector
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sso: { $ref: "#/components/schemas/SSOStatus" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IDPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ConnectorIDPath:
+      name: connectorID
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  requestBodies:
+    Decision:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason: { type: string }
+  responses:
+    RequestEnvelope:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              request: { $ref: "#/components/schemas/AccessRequest" }
+    PolicyEnvelope:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              policy: { $ref: "#/components/schemas/Policy" }
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: No tenant/workspace resolved, tenant mismatch, or step-up MFA required
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found in the caller's workspace
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Illegal state transition or closed resource
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: Connector not configured/resolvable
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    CreateAccessRequest:
+      type: object
+      required: [target_user_id, resource_ref]
+      properties:
+        target_user_id: { type: string }
+        connector_id: { type: string, format: uuid, nullable: true }
+        resource_ref: { type: string }
+        role: { type: string }
+        justification: { type: string }
+        risk_level: { type: string, enum: [low, medium, high] }
+        risk_factors:
+          type: array
+          items: { type: string }
+    AccessRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        requester_id: { type: string }
+        target_user_id: { type: string }
+        connector_id: { type: string, format: uuid, nullable: true }
+        resource_ref: { type: string }
+        role: { type: string }
+        justification: { type: string }
+        risk_level: { type: string }
+        state:
+          type: string
+          enum: [requested, approved, denied, cancelled, provisioning, provisioned, active, provision_failed, revoked, expired]
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    StateHistoryEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        from_state: { type: string }
+        to_state: { type: string }
+        actor: { type: string }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+    WorkflowDecision:
+      type: object
+      properties:
+        step_type: { type: string, enum: [auto_approve, manager_approval, security_review] }
+        reason: { type: string }
+        approved: { type: boolean }
+    AccessGrant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid, nullable: true }
+        iam_core_user_id: { type: string }
+        resource_ref: { type: string }
+        role: { type: string }
+        state: { type: string, enum: [active, revoked, expired] }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+    PolicyInput:
+      type: object
+      required: [name, definition]
+      properties:
+        name: { type: string }
+        definition:
+          type: object
+          description: Opaque policy definition document (validated for parseability).
+    Policy:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name: { type: string }
+        version: { type: integer }
+        state: { type: string, enum: [draft, active, archived] }
+        definition: { type: object }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    SimulationResult:
+      type: object
+      properties:
+        impact: { $ref: "#/components/schemas/ImpactReport" }
+        conflicts:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyConflict" }
+    ImpactReport:
+      type: object
+      properties:
+        action: { type: string }
+        subject_count: { type: integer }
+        resource_count: { type: integer }
+        pair_count: { type: integer }
+        new_grant_pairs: { type: integer }
+        redundant_pairs: { type: integer }
+        wildcard_resource: { type: boolean }
+        affected_grants: { type: integer }
+        affected_subjects:
+          type: array
+          items: { type: string }
+        affected_resources:
+          type: array
+          items: { type: string }
+    PolicyConflict:
+      type: object
+      properties:
+        kind: { type: string }
+        other_policy_id: { type: string, format: uuid }
+        other_policy_name: { type: string }
+        other_policy_state: { type: string }
+        subject: { type: string }
+        resource: { type: string }
+    AccessReview:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string, enum: [active, completed] }
+        created_at: { type: string, format: date-time }
+    ReviewItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        review_id: { type: string, format: uuid }
+        grant_id: { type: string, format: uuid }
+        decision: { type: string, enum: [pending, certify, revoke, escalate] }
+        decided_by: { type: string }
+        reason: { type: string }
+    ReviewReport:
+      type: object
+      properties:
+        review_id: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string }
+        total: { type: integer }
+        pending: { type: integer }
+        certified: { type: integer }
+        revoked: { type: integer }
+        escalated: { type: integer }
+    SCIMEvent:
+      type: object
+      required: [method, user_external_id]
+      properties:
+        method: { type: string, enum: [POST, PUT, PATCH, DELETE] }
+        user_external_id: { type: string }
+        active: { type: boolean, nullable: true }
+        email: { type: string }
+        display_name: { type: string }
+        groups_changed: { type: boolean }
+        resource_ref: { type: string }
+        role: { type: string }
+        connector_id: { type: string, format: uuid, nullable: true }
+    LeaverResult:
+      type: object
+      description: Aggregated outcome of the six-layer leaver kill switch.
+      properties:
+        user_external_id: { type: string }
+        errored:
+          type: boolean
+          description: True if any layer failed; every layer is still attempted.
+        layers:
+          type: array
+          items:
+            type: object
+            properties:
+              layer:
+                type: string
+                enum: [grant_revoke, team_remove, iam_core_disable, session_revoke, scim_deprovision, identity_disable]
+              status: { type: string, enum: [done, skipped, failed] }
+              detail: { type: string }
+    ScanResult:
+      type: object
+      properties:
+        connector_id: { type: string, format: uuid }
+        dry_run: { type: boolean }
+        upstream_count: { type: integer }
+        orphan_count: { type: integer }
+        persisted_count: { type: integer }
+        orphans:
+          type: array
+          items: { $ref: "#/components/schemas/OrphanCandidate" }
+    OrphanCandidate:
+      type: object
+      properties:
+        connector_id: { type: string, format: uuid }
+        external_user_id: { type: string }
+        display_name: { type: string }
+    OrphanAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        connector_id: { type: string, format: uuid }
+        external_user_id: { type: string }
+        display_name: { type: string }
+        disposition: { type: string, enum: [pending, ignore, disable] }
+        created_at: { type: string, format: date-time }
+    EnforceResult:
+      type: object
+      properties:
+        examined: { type: integer }
+        expired: { type: integer }
+        failed: { type: integer }
+    SSOStatus:
+      type: object
+      properties:
+        connector_id: { type: string, format: uuid }
+        supported: { type: boolean }
+        enforced: { type: boolean }
+        details: { type: string }
