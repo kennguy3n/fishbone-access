@@ -130,6 +130,17 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+func TestMapFreshdeskAuditEvent_SkipsZeroTimestamp(t *testing.T) {
+	e := &freshdeskAuditEvent{ID: json.Number("7"), Action: "login", CreatedAt: "not-a-timestamp"}
+	if got := mapFreshdeskAuditEvent(e); got != nil {
+		t.Fatalf("mapFreshdeskAuditEvent with unparseable timestamp = %+v; want nil", got)
+	}
+	e.CreatedAt = "2024-01-01T10:00:00Z"
+	if got := mapFreshdeskAuditEvent(e); got == nil {
+		t.Fatal("mapFreshdeskAuditEvent with valid timestamp = nil; want entry")
+	}
+}
+
 func TestParseFreshdeskTime_NormalizesToUTC(t *testing.T) {
 	for _, in := range []string{
 		"2024-01-01T12:00:00+02:00",     // RFC3339 with offset

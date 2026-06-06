@@ -133,6 +133,9 @@ func mapFigmaActivity(e *figmaActivityEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseFigmaTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

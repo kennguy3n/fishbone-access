@@ -144,6 +144,9 @@ func mapFreshdeskAuditEvent(e *freshdeskAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseFreshdeskTime(e.CreatedAt)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

@@ -139,6 +139,17 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+func TestMapFigmaActivity_SkipsZeroTimestamp(t *testing.T) {
+	e := &figmaActivityEvent{ID: "evt-1", EventType: "user.invited", Timestamp: "not-a-timestamp"}
+	if got := mapFigmaActivity(e); got != nil {
+		t.Fatalf("mapFigmaActivity with unparseable timestamp = %+v; want nil", got)
+	}
+	e.Timestamp = "2024-01-01T10:00:00Z"
+	if got := mapFigmaActivity(e); got == nil {
+		t.Fatal("mapFigmaActivity with valid timestamp = nil; want entry")
+	}
+}
+
 func TestParseFigmaTime_NormalizesToUTC(t *testing.T) {
 	for _, in := range []string{
 		"2024-01-01T12:00:00+02:00",        // RFC3339 with offset
