@@ -42,6 +42,13 @@ var ErrNotImplemented = fmt.Errorf("microsoft: capability not supported by this 
 const (
 	graphBaseURL = "https://graph.microsoft.com/v1.0"
 	loginBaseURL = "https://login.microsoftonline.com"
+
+	// maxResponseBytes bounds how much of a Graph response body we buffer
+	// into memory. Graph page sizes are naturally bounded (a $top=999 page of
+	// user IDs is ~20-50KB), but a hostile or misconfigured upstream proxy
+	// could in theory stream an unbounded body and OOM the worker. 8 MiB sits
+	// well above the natural per-page ceiling while keeping memory bounded.
+	maxResponseBytes = 8 << 20
 )
 
 // httpDoer abstracts *http.Client so unit tests can inject a stub without
@@ -250,12 +257,7 @@ func (c *M365AccessConnector) InitialDeltaCursor(
 			_ = resp.Body.Close()
 			return "", fmt.Errorf("microsoft: initial delta probe status %d: %s", resp.StatusCode, string(body))
 		}
-		// Defense in depth: $select=id&$top=999 returns ~20-50KB of
-		// user IDs per page, but a hostile or misconfigured proxy
-		// could in theory stream an unbounded body. Cap to 8 MiB —
-		// well above the natural per-page ceiling, low enough to
-		// keep memory bounded if the upstream goes pathological.
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
@@ -313,7 +315,7 @@ func (c *M365AccessConnector) SyncIdentitiesDelta(
 			return "", fmt.Errorf("microsoft: delta status %d: %s", resp.StatusCode, string(body))
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
@@ -735,7 +737,7 @@ func doJSON(client httpDoer, req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("microsoft: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 }
 
 // extractRolesFromJWT parses the "roles" claim from an Entra-issued JWT

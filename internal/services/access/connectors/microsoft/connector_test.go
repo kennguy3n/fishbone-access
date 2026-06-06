@@ -516,3 +516,81 @@ func TestInitialDeltaCursor_PropagatesNon200(t *testing.T) {
 		t.Errorf("err = %v; want message containing 500", err)
 	}
 }
+
+// countingBody is an io.ReadCloser that serves `remaining` filler bytes and
+// records, via the shared *read pointer, how many bytes were actually read.
+// The filler is left zeroed (Read never writes into p), which is enough to
+// measure how much of the body a caller buffers.
+type countingBody struct {
+	remaining int64
+	read      *int64
+}
+
+func (b *countingBody) Read(p []byte) (int, error) {
+	if b.remaining <= 0 {
+		return 0, io.EOF
+	}
+	n := int64(len(p))
+	if n > b.remaining {
+		n = b.remaining
+	}
+	b.remaining -= n
+	*b.read += n
+	return int(n), nil
+}
+
+func (b *countingBody) Close() error { return nil }
+
+// fixedBodyClient returns a 200 response whose body serves `serve` bytes while
+// recording how many were read, so a test can prove the connector caps reads
+// rather than buffering an unbounded upstream body.
+type fixedBodyClient struct {
+	serve int64
+	read  *int64
+}
+
+func (f fixedBodyClient) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       &countingBody{remaining: f.serve, read: f.read},
+		Header:     make(http.Header),
+	}, nil
+}
+
+// TestDoJSON_CapsResponseBodyRead is a regression test for the unbounded-read
+// fix: doJSON must bound how much of a response body it buffers
+// (maxResponseBytes). doJSON feeds CountIdentities, SyncIdentities, SyncGroups,
+// SyncGroupMembers, ListEntitlements and FetchAccessAuditLogs, so an unbounded
+// read would let a hostile or misconfigured upstream OOM the worker.
+func TestDoJSON_CapsResponseBodyRead(t *testing.T) {
+	var read int64
+	client := fixedBodyClient{serve: maxResponseBytes * 2, read: &read}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://graph.microsoft.com/v1.0/users", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	body, err := doJSON(client, req)
+	if err != nil {
+		t.Fatalf("doJSON: %v", err)
+	}
+	if int64(len(body)) != maxResponseBytes || read != maxResponseBytes {
+		t.Fatalf("doJSON read %d bytes (returned %d); want capped at maxResponseBytes=%d", read, len(body), maxResponseBytes)
+	}
+}
+
+// TestSyncIdentitiesDelta_CapsResponseBodyRead is the same regression for the
+// /users/delta path, which buffers the body inline rather than via doJSON. The
+// filler body is not valid JSON so the decode fails, but only after the read
+// has been bounded — which is what we assert.
+func TestSyncIdentitiesDelta_CapsResponseBodyRead(t *testing.T) {
+	var read int64
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) httpDoer {
+		return fixedBodyClient{serve: maxResponseBytes * 2, read: &read}
+	}
+	_, _ = c.SyncIdentitiesDelta(context.Background(), validConfig(), validSecrets(), "",
+		func([]*access.Identity, []string, string) error { return nil })
+	if read != maxResponseBytes {
+		t.Fatalf("delta read %d bytes; want capped at maxResponseBytes=%d", read, maxResponseBytes)
+	}
+}
