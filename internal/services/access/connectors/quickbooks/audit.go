@@ -101,6 +101,9 @@ func (c *QuickBooksAccessConnector) FetchAccessAuditLogs(
 			}
 		}
 	}
+	if len(batch) == 0 {
+		return nil
+	}
 	return handler(batch, batchMax, access.DefaultAuditPartition)
 }
 

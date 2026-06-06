@@ -172,6 +172,9 @@ func (c *PingIdentityAccessConnector) SyncIdentities(
 	}
 
 	for {
+		if !sameOrigin(c.apiOrigin(cfg), next) {
+			return fmt.Errorf("ping_identity: refusing cross-origin pagination URL %q", next)
+		}
 		req, err := newAuthedRequest(ctx, next, token)
 		if err != nil {
 			return err
@@ -317,6 +320,9 @@ func (c *PingIdentityAccessConnector) ListEntitlements(
 		url.PathEscape(cfg.EnvironmentID), url.PathEscape(userExternalID)))
 	var out []access.Entitlement
 	for {
+		if !sameOrigin(c.apiOrigin(cfg), next) {
+			return nil, fmt.Errorf("ping_identity: refusing cross-origin pagination URL %q", next)
+		}
 		req, err := newAuthedRequest(ctx, next, token)
 		if err != nil {
 			return nil, err
@@ -442,6 +448,32 @@ func (c *PingIdentityAccessConnector) apiURL(cfg Config, path string) string {
 	}
 	host, _ := regionAPIHost(cfg.Region)
 	return "https://" + host + path
+}
+
+// apiOrigin returns the scheme://host the connector is permitted to reach for
+// API calls (the test override, or the region API host). PingOne paginates by
+// returning absolute _links.next.href URLs; we anchor follow-up requests to
+// this origin so a spoofed or compromised response cannot redirect the bearer
+// token to an attacker-controlled host.
+func (c *PingIdentityAccessConnector) apiOrigin(cfg Config) string {
+	if c.urlOverride != "" {
+		return strings.TrimRight(c.urlOverride, "/")
+	}
+	host, _ := regionAPIHost(cfg.Region)
+	return "https://" + host
+}
+
+// sameOrigin reports whether rawURL targets the same scheme+host as base.
+func sameOrigin(base, rawURL string) bool {
+	b, err := url.Parse(base)
+	if err != nil || b.Host == "" {
+		return false
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(u.Scheme, b.Scheme) && strings.EqualFold(u.Host, b.Host)
 }
 
 func (c *PingIdentityAccessConnector) fetchAccessToken(ctx context.Context, cfg Config, secrets Secrets) (string, error) {

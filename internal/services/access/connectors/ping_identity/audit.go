@@ -58,6 +58,9 @@ func (c *PingIdentityAccessConnector) FetchAccessAuditLogs(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if !sameOrigin(c.apiOrigin(cfg), pageURL) {
+			return fmt.Errorf("ping_identity: refusing cross-origin pagination URL %q", pageURL)
+		}
 		req, err := newAuthedRequest(ctx, pageURL, token)
 		if err != nil {
 			return err
