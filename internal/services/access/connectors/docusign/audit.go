@@ -75,6 +75,13 @@ func (c *DocuSignAccessConnector) FetchAccessAuditLogs(
 		}
 		batch = append(batch, entry)
 	}
+	if len(batch) == 0 {
+		// Nothing new this sweep (empty response or every entry filtered
+		// by `since`). Returning without invoking the handler avoids
+		// persisting a zero/unchanged cursor and matches the other audit
+		// connectors in this family, which all guard `len(batch) == 0`.
+		return nil
+	}
 	return handler(batch, batchMax, access.DefaultAuditPartition)
 }
 

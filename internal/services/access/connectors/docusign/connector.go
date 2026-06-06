@@ -243,7 +243,28 @@ type docusignUser struct {
 	Email     string `json:"email"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
-	Status    bool   `json:"active"`
+	// DocuSign's eSignature REST API reports account membership state in
+	// the string field `userStatus` ("Active", "ActivationSent",
+	// "Closed", "Disabled", ...). There is no boolean `active` field, so
+	// the previous `bool json:"active"` always decoded to false and every
+	// user was reported inactive. Accept the real string field and fall
+	// back to a legacy boolean if a payload still carries one.
+	UserStatus string `json:"userStatus"`
+	Active     *bool  `json:"active"`
+}
+
+// isActive normalises DocuSign's user state to the access status model.
+// Only the "Active" userStatus counts as active; pending/closed/disabled
+// states are inactive. A legacy boolean `active` is honoured when present
+// and no userStatus is supplied.
+func (u docusignUser) isActive() bool {
+	if s := strings.TrimSpace(u.UserStatus); s != "" {
+		return strings.EqualFold(s, "active")
+	}
+	if u.Active != nil {
+		return *u.Active
+	}
+	return false
 }
 
 type docusignListResponse struct {
@@ -305,7 +326,7 @@ func (c *DocuSignAccessConnector) SyncIdentities(
 				display = u.Email
 			}
 			status := "active"
-			if !u.Status {
+			if !u.isActive() {
 				status = "inactive"
 			}
 			identities = append(identities, &access.Identity{
@@ -519,8 +540,14 @@ func (c *DocuSignAccessConnector) GetCredentialsMetadata(_ context.Context, conf
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
 	if len(t) <= 8 {
-		return t
+		// Too short to reveal a prefix/suffix without exposing the whole
+		// secret; emit a fixed mask so credential metadata never leaks
+		// plaintext (GetCredentialsMetadata must not expose the secret).
+		return "****"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

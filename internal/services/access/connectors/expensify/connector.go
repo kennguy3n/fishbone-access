@@ -292,8 +292,14 @@ func (c *ExpensifyAccessConnector) GetCredentialsMetadata(_ context.Context, con
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
 	if len(t) <= 8 {
-		return t
+		// Too short to reveal a prefix/suffix without exposing the whole
+		// secret; emit a fixed mask so credential metadata never leaks
+		// plaintext (GetCredentialsMetadata must not expose the secret).
+		return "****"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

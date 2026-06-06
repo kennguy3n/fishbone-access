@@ -217,7 +217,25 @@ type docusignClmUser struct {
 	Email     string `json:"email"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
-	Status    bool   `json:"active"`
+	// DocuSign CLM reports user state as a string `userStatus`
+	// ("Active"/"Inactive"/...); a hard-coded `bool json:"active"` would
+	// silently decode to false and mark every user inactive. Accept the
+	// string field and fall back to a legacy boolean when present.
+	UserStatus string `json:"userStatus"`
+	Active     *bool  `json:"active"`
+}
+
+// isActive normalises the CLM user state: only "Active" (case-insensitive)
+// counts as active; a legacy boolean `active` is honoured when no
+// userStatus string is supplied.
+func (u docusignClmUser) isActive() bool {
+	if s := strings.TrimSpace(u.UserStatus); s != "" {
+		return strings.EqualFold(s, "active")
+	}
+	if u.Active != nil {
+		return *u.Active
+	}
+	return false
 }
 
 type docusignClmListResponse struct {
@@ -276,7 +294,7 @@ func (c *DocuSignCLMAccessConnector) SyncIdentities(
 				display = u.Email
 			}
 			status := "active"
-			if !u.Status {
+			if !u.isActive() {
 				status = "inactive"
 			}
 			identities = append(identities, &access.Identity{
@@ -326,8 +344,14 @@ func (c *DocuSignCLMAccessConnector) GetCredentialsMetadata(_ context.Context, c
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
 	if len(t) <= 8 {
-		return t
+		// Too short to reveal a prefix/suffix without exposing the whole
+		// secret; emit a fixed mask so credential metadata never leaks
+		// plaintext (GetCredentialsMetadata must not expose the secret).
+		return "****"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }
