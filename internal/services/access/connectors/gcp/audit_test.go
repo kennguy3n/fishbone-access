@@ -111,3 +111,23 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestMapGCPLogEntry_ParsesNanoTimestampAndSkipsZero(t *testing.T) {
+	// Cloud Logging emits RFC3339 with nanosecond precision; it must parse
+	// to a non-zero UTC instant so the sync cursor advances each run.
+	entry := mapGCPLogEntry(&gcpLogEntry{InsertID: "e1", Timestamp: "2024-01-15T10:30:45.123456789Z"})
+	if entry == nil {
+		t.Fatal("entry = nil; want mapped entry")
+	}
+	if entry.Timestamp.IsZero() {
+		t.Error("timestamp is zero; RFC3339Nano was not parsed")
+	}
+	if entry.Timestamp.Location() != time.UTC {
+		t.Errorf("location = %v; want UTC", entry.Timestamp.Location())
+	}
+	// An unparseable timestamp must skip the entry rather than emit a
+	// zero-time record that would stall batchMax / the cursor.
+	if got := mapGCPLogEntry(&gcpLogEntry{InsertID: "e2", Timestamp: "not-a-time"}); got != nil {
+		t.Errorf("entry with bad timestamp = %+v; want nil", got)
+	}
+}

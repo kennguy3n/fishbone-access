@@ -160,7 +160,10 @@ func mapGCPLogEntry(e *gcpLogEntry) *access.AuditLogEntry {
 	if e == nil || e.InsertID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.Timestamp)
+	ts := parseGCPTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	outcome := "success"
 	if e.ProtoPayload.Status.Code != 0 {
 		outcome = "failure"
@@ -190,6 +193,24 @@ func mapGCPLogEntry(e *gcpLogEntry) *access.AuditLogEntry {
 		Outcome:          outcome,
 		RawData:          rawMap,
 	}
+}
+
+// parseGCPTime parses Cloud Logging entry timestamps. Cloud Logging emits
+// RFC3339 with nanosecond precision (e.g. 2024-01-15T10:30:45.123456789Z),
+// which time.RFC3339 rejects, so RFC3339Nano is tried first. Results are
+// normalized to UTC to match the other connectors' audit time parsers.
+func parseGCPTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return ts.UTC()
+	}
+	if ts, err := time.Parse(time.RFC3339, s); err == nil {
+		return ts.UTC()
+	}
+	return time.Time{}
 }
 
 var _ access.AccessAuditor = (*GCPAccessConnector)(nil)

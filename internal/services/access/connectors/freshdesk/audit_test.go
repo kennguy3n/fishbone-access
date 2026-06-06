@@ -129,3 +129,15 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+func TestParseFreshdeskTime_NormalizesToUTC(t *testing.T) {
+	for _, in := range []string{
+		"2024-01-01T12:00:00+02:00",     // RFC3339 with offset
+		"2024-01-01T12:00:00.250+02:00", // RFC3339Nano with offset
+	} {
+		got := parseFreshdeskTime(in)
+		if got.Location() != time.UTC {
+			t.Errorf("parseFreshdeskTime(%q).Location() = %v; want UTC", in, got.Location())
+		}
+	}
+}
