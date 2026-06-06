@@ -228,3 +228,22 @@ func TestListEntitlements_Empty(t *testing.T) {
 		t.Fatalf("got %d, want 0", len(got))
 	}
 }
+
+// A transient upstream failure (5xx) must surface as an error so the
+// caller can retry, rather than being silently swallowed as "no access".
+func TestListEntitlements_TransientErrorSurfaces(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected error on 500, got nil (entitlements=%#v)", got)
+	}
+	if got != nil {
+		t.Fatalf("expected nil entitlements on error, got %#v", got)
+	}
+}

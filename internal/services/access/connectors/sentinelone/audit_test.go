@@ -147,3 +147,15 @@ func TestMapSentineloneActivity_TimestampParsing(t *testing.T) {
 		})
 	}
 }
+
+// A non-empty but unparseable CreatedAt must not produce an entry with a
+// zero Timestamp; the mapper drops it like every other audit mapper.
+func TestMapSentineloneActivity_DropsUnparseableTimestamp(t *testing.T) {
+	for _, in := range []string{"not-a-date", "2024/01/01 10:00:00", "0"} {
+		if got := mapSentineloneActivity(&sentineloneActivity{
+			ID: "x", ActivityTypeName: "T", CreatedAt: in,
+		}); got != nil {
+			t.Errorf("CreatedAt=%q: got %+v; want nil", in, got)
+		}
+	}
+}
