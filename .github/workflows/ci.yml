@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: go (build / vet / test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify go.mod/go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Build binaries
+        run: |
+          go build -o /tmp/ztna-api ./cmd/ztna-api
+          go build -o /tmp/access-connector-worker ./cmd/access-connector-worker
+          go build -o /tmp/pam-gateway ./cmd/pam-gateway
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race + 180s timeout)
+        run: go test -race -timeout=180s ./...
+
+  golangci-lint:
+    name: golangci-lint (full tree)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Pin to the go directive in go.mod — golangci-lint v2.5.0 is built
+          # with Go 1.25 and panics if the toolchain on PATH is newer.
+          go-version-file: go.mod
+          cache: true
+
+      - name: golangci-lint
+        # v7 is the official action for golangci-lint v2.x configs.
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.5.0
+          args: --timeout=5m
