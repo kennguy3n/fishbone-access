@@ -41,7 +41,7 @@ func (c *KareoAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	base := c.baseURL() + "/api/v1/audit"
 
-	var collected []kareoAuditEvent
+	cursor := since
 	for page := 0; page < kareoAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -73,31 +73,33 @@ func (c *KareoAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("kareo: decode audit: %w", err)
 		}
-		collected = append(collected, envelope.Data...)
+		// Emit each page as it is fetched so the caller persists nextSince
+		// per page as a monotonic cursor (AccessAuditor contract). batchMax
+		// starts at the running cursor so it never moves backward, and a
+		// mid-stream handler failure only replays the un-acked tail.
+		batch := make([]*access.AuditLogEntry, 0, len(envelope.Data))
+		batchMax := cursor
+		for i := range envelope.Data {
+			entry := mapKareoAuditEvent(&envelope.Data[i])
+			if entry == nil {
+				continue
+			}
+			if entry.Timestamp.After(batchMax) {
+				batchMax = entry.Timestamp
+			}
+			batch = append(batch, entry)
+		}
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
+		}
 		if len(envelope.Data) < kareoAuditPageSize {
 			break
 		}
 	}
-
-	if len(collected) == 0 {
-		return nil
-	}
-	batch := make([]*access.AuditLogEntry, 0, len(collected))
-	batchMax := since
-	for i := range collected {
-		entry := mapKareoAuditEvent(&collected[i])
-		if entry == nil {
-			continue
-		}
-		if entry.Timestamp.After(batchMax) {
-			batchMax = entry.Timestamp
-		}
-		batch = append(batch, entry)
-	}
-	if len(batch) == 0 {
-		return nil
-	}
-	return handler(batch, batchMax, access.DefaultAuditPartition)
+	return nil
 }
 
 type kareoAuditEvent struct {

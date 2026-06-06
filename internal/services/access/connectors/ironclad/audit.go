@@ -41,7 +41,7 @@ func (c *IroncladAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	base := c.baseURL() + "/public/api/v1/audit-logs"
 
-	var collected []ironcladAuditEvent
+	cursor := since
 	for page := 1; page <= ironcladAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -73,31 +73,33 @@ func (c *IroncladAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("ironclad: decode audit logs: %w", err)
 		}
-		collected = append(collected, envelope.AuditLogs...)
+		// Emit each page as it is fetched so the caller persists nextSince
+		// per page as a monotonic cursor (AccessAuditor contract). batchMax
+		// starts at the running cursor so it never moves backward, and a
+		// mid-stream handler failure only replays the un-acked tail.
+		batch := make([]*access.AuditLogEntry, 0, len(envelope.AuditLogs))
+		batchMax := cursor
+		for i := range envelope.AuditLogs {
+			entry := mapIroncladAuditEvent(&envelope.AuditLogs[i])
+			if entry == nil {
+				continue
+			}
+			if entry.Timestamp.After(batchMax) {
+				batchMax = entry.Timestamp
+			}
+			batch = append(batch, entry)
+		}
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
+		}
 		if len(envelope.AuditLogs) < ironcladAuditPageSize {
 			break
 		}
 	}
-
-	if len(collected) == 0 {
-		return nil
-	}
-	batch := make([]*access.AuditLogEntry, 0, len(collected))
-	batchMax := since
-	for i := range collected {
-		entry := mapIroncladAuditEvent(&collected[i])
-		if entry == nil {
-			continue
-		}
-		if entry.Timestamp.After(batchMax) {
-			batchMax = entry.Timestamp
-		}
-		batch = append(batch, entry)
-	}
-	if len(batch) == 0 {
-		return nil
-	}
-	return handler(batch, batchMax, access.DefaultAuditPartition)
+	return nil
 }
 
 type ironcladAuditEvent struct {

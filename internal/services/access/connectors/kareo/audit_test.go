@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -112,5 +113,59 @@ func TestMapKareoAuditEvent_DropsEmptyID(t *testing.T) {
 	}
 	if valid.EventID != "evt-1" {
 		t.Fatalf("EventID = %q; want %q", valid.EventID, "evt-1")
+	}
+}
+
+// TestKareoFetchAccessAuditLogs_EmitsPerPage proves the connector invokes the
+// handler once per provider page (AccessAuditor contract) instead of buffering
+// every page into a single batch. See the ironclad sibling for rationale.
+func TestKareoFetchAccessAuditLogs_EmitsPerPage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("page") == "1" {
+			rows := make([]map[string]interface{}, kareoAuditPageSize)
+			for i := range rows {
+				rows[i] = map[string]interface{}{
+					"id":         fmt.Sprintf("evt-%d", i),
+					"event_type": "chart.view",
+					"timestamp":  time.Date(2024, 9, 1, 0, 0, i, 0, time.UTC).Format(time.RFC3339),
+				}
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": rows})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{{
+			"id":         "evt-last",
+			"event_type": "chart.view",
+			"timestamp":  "2024-09-02T10:00:00Z",
+		}}})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var calls, total int
+	var last time.Time
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(batch []*access.AuditLogEntry, n time.Time, _ string) error {
+			calls++
+			total += len(batch)
+			if n.Before(last) {
+				t.Errorf("nextSince regressed: %s < %s", n, last)
+			}
+			last = n
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls < 2 {
+		t.Fatalf("handler called %d time(s); want one call per page (>=2)", calls)
+	}
+	if total != kareoAuditPageSize+1 {
+		t.Fatalf("total entries = %d; want %d", total, kareoAuditPageSize+1)
+	}
+	if !last.Equal(time.Date(2024, 9, 2, 10, 0, 0, 0, time.UTC)) {
+		t.Errorf("final nextSince = %s; want 2024-09-02T10:00:00Z", last)
 	}
 }
