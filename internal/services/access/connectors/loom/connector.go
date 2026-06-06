@@ -19,6 +19,10 @@ import (
 const (
 	ProviderName = "loom"
 	pageSize     = 100
+	// loomMembersMaxPages bounds the /v1/members cursor walk so a server
+	// that never clears NextCursor cannot spin the sync forever. At
+	// pageSize=100 this covers 100k members, far beyond any real workspace.
+	loomMembersMaxPages = 1000
 )
 
 var ErrNotImplemented = fmt.Errorf("loom: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -200,7 +204,7 @@ func (c *LoomAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	base := c.baseURL()
-	for {
+	for page := 0; page < loomMembersMaxPages; page++ {
 		path := fmt.Sprintf("%s/v1/members?limit=%d", base, pageSize)
 		if cursor != "" {
 			path += "&cursor=" + url.QueryEscape(cursor)
@@ -247,6 +251,7 @@ func (c *LoomAccessConnector) SyncIdentities(
 		}
 		cursor = next
 	}
+	return fmt.Errorf("loom: sync identities: pagination exceeded %d pages", loomMembersMaxPages)
 }
 
 // GetSSOMetadata projects the connector's configured `sso_metadata_url` /

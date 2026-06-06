@@ -105,6 +105,33 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	_ = fmt.Sprintf
 }
 
+// TestSync_PaginationCapped asserts SyncIdentities terminates with an error
+// instead of looping forever when the server never clears next_cursor. Without
+// the loomMembersMaxPages bound this test would hang.
+func TestSync_PaginationCapped(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		body := map[string]interface{}{
+			"data":        []map[string]interface{}{{"id": fmt.Sprintf("m%d", calls), "email": "x@y.com"}},
+			"next_cursor": fmt.Sprintf("cursor-%d", calls),
+		}
+		b, _ := json.Marshal(body)
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func([]*access.Identity, string) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), "pagination exceeded") {
+		t.Fatalf("err = %v; want pagination-exceeded error", err)
+	}
+	if calls != loomMembersMaxPages {
+		t.Fatalf("calls = %d; want exactly %d (the cap)", calls, loomMembersMaxPages)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
