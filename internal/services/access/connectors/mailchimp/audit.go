@@ -178,8 +178,13 @@ func mapMailchimpChatter(e *mailchimpChatter) *access.AuditLogEntry {
 	// two entries that share the same type, timestamp, and target (e.g.
 	// multiple chatter items for one campaign in the same second) from
 	// collapsing onto the same EventID and being deduplicated downstream.
+	//
+	// Use the parsed timestamp (already canonicalized to UTC) rather than
+	// the raw update_time so the ID prefix is stable and never contains the
+	// space Mailchimp emits in its "2024-01-01 12:00:00" timestamps, which
+	// would otherwise leak into downstream systems that split on whitespace.
 	sum := sha256.Sum256(raw)
-	id := fmt.Sprintf("%s/%s/%s/%s", strings.TrimSpace(e.Type), e.UpdateTime, target, hex.EncodeToString(sum[:8]))
+	id := fmt.Sprintf("%s/%s/%s/%s", strings.TrimSpace(e.Type), ts.Format(time.RFC3339Nano), target, hex.EncodeToString(sum[:8]))
 	return &access.AuditLogEntry{
 		EventID:          id,
 		EventType:        strings.TrimSpace(e.Type),

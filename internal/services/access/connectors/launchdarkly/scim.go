@@ -14,30 +14,34 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
 const launchdarklySCIMDefaultBaseURL = "https://app.launchdarkly.com/trust/scim/v2"
 
-var (
-	scimClientOnce sync.Once
-	scimClient     *access.SCIMClient
-)
+// scimClient holds the process-wide SCIMClient behind an atomic pointer so
+// both the lazy initialization and SetSCIMClientForTest are goroutine-safe,
+// letting SCIM tests run with t.Parallel() without data races.
+var scimClient atomic.Pointer[access.SCIMClient]
 
 func scim() *access.SCIMClient {
-	scimClientOnce.Do(func() {
-		scimClient = access.NewSCIMClient()
-	})
-	return scimClient
+	if c := scimClient.Load(); c != nil {
+		return c
+	}
+	c := access.NewSCIMClient()
+	if scimClient.CompareAndSwap(nil, c) {
+		return c
+	}
+	return scimClient.Load()
 }
 
 // SetSCIMClientForTest swaps the package-level SCIMClient and returns
 // the previous one so tests can restore it on cleanup.
 func SetSCIMClientForTest(c *access.SCIMClient) *access.SCIMClient {
 	prev := scim()
-	scimClient = c
+	scimClient.Store(c)
 	return prev
 }
 

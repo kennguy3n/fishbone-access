@@ -261,3 +261,45 @@ func fillChatter(n int, base time.Time, target string) []map[string]interface{} 
 	}
 	return out
 }
+
+// TestMailchimpFetchAccessAuditLogs_EventIDNoWhitespace guards that the
+// derived EventID never contains the space Mailchimp emits in its
+// "2006-01-02 15:04:05" timestamp format. The ID prefix must use the
+// parsed/canonicalized timestamp so downstream systems that URL-encode or
+// split on whitespace receive a stable, space-free key.
+func TestMailchimpFetchAccessAuditLogs_EventIDNoWhitespace(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"chimp_chatter": []map[string]interface{}{
+				{
+					"type":        "campaigns:campaign-sent",
+					"title":       "Campaign sent",
+					"message":     "Weekly newsletter",
+					"update_time": "2024-01-01 11:00:00",
+					"campaign_id": "camp-9",
+				},
+			},
+			"total_items": 1,
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("len = %d", len(collected))
+	}
+	if id := collected[0].EventID; strings.ContainsAny(id, " \t\n") {
+		t.Errorf("EventID %q contains whitespace", id)
+	}
+}
