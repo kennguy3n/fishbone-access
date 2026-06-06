@@ -216,7 +216,13 @@ func (c *DeelAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	seen := make(map[string]struct{})
+	// seen tracks the status already reported for each worker across all
+	// pages. A worker can hold several contracts (e.g. one ended, one
+	// active); we must report them as active if any engagement is active,
+	// otherwise a still-active worker would be misreported as ended (a
+	// false loss of access) purely because the API returned the ended
+	// contract first.
+	seen := make(map[string]string)
 	for {
 		path := fmt.Sprintf("%s/rest/v2/contracts?page=%d&page_size=%d", base, page, pageSize)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
@@ -232,23 +238,36 @@ func (c *DeelAccessConnector) SyncIdentities(
 			return fmt.Errorf("deel: decode contracts: %w", err)
 		}
 		identities := make([]*access.Identity, 0, len(resp.Data))
+		idxInBatch := make(map[string]int, len(resp.Data))
 		for _, ct := range resp.Data {
 			extID := ct.Worker.ID
 			if extID == "" {
 				continue
 			}
-			if _, dup := seen[extID]; dup {
+			status := normalizeDeelStatus(ct.Status)
+			// Worker already emitted earlier in this same page: upgrade
+			// in place if this contract is active.
+			if i, ok := idxInBatch[extID]; ok {
+				if status == "active" && identities[i].Status != "active" {
+					identities[i].Status = "active"
+					seen[extID] = "active"
+				}
 				continue
 			}
-			seen[extID] = struct{}{}
+			// Worker emitted on a previous page: only re-emit (so the
+			// downstream upsert can correct the status) when this
+			// contract upgrades the worker to active.
+			if prev, ok := seen[extID]; ok {
+				if !(status == "active" && prev != "active") {
+					continue
+				}
+			}
 			display := strings.TrimSpace(ct.Worker.FirstName + " " + ct.Worker.LastName)
 			if display == "" {
 				display = ct.Worker.Email
 			}
-			status := "active"
-			if ct.Status != "" {
-				status = strings.ToLower(ct.Status)
-			}
+			idxInBatch[extID] = len(identities)
+			seen[extID] = status
 			identities = append(identities, &access.Identity{
 				ExternalID:  extID,
 				Type:        access.IdentityTypeUser,
@@ -294,6 +313,16 @@ func (c *DeelAccessConnector) GetCredentialsMetadata(_ context.Context, configRa
 		"auth_type":   "bearer",
 		"token_short": shortToken(secrets.Token),
 	}, nil
+}
+
+// normalizeDeelStatus lower-cases a contract status and treats a blank
+// status as "active" (Deel omits the field for ongoing engagements).
+func normalizeDeelStatus(raw string) string {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	if s == "" {
+		return "active"
+	}
+	return s
 }
 
 func shortToken(t string) string {

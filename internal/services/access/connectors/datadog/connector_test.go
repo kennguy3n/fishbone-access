@@ -328,3 +328,88 @@ func TestProvisionRevoke_TrimWhitespaceCredentials(t *testing.T) {
 		}
 	})
 }
+
+func newDatadogTestConnector(t *testing.T, status int, body string) *DatadogAccessConnector {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	return c
+}
+
+// TestProvisionAccess_StatusHandling pins the status classification for
+// ProvisionAccess. Before the fix only 200/409 counted as success, so a
+// 201 Created (a valid POST result) was reported as a hard failure, and
+// 5xx/429 were not distinguished from permanent 4xx — preventing the
+// worker from retrying transient errors with backoff.
+func TestProvisionAccess_StatusHandling(t *testing.T) {
+	grant := access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"}
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		wantErr     bool
+		wantTransit bool
+	}{
+		{"200 ok", http.StatusOK, `{}`, false, false},
+		{"201 created", http.StatusCreated, `{}`, false, false},
+		{"204 no content", http.StatusNoContent, ``, false, false},
+		{"409 already member", http.StatusConflict, `{}`, false, false},
+		{"400 already exists", http.StatusBadRequest, `{"errors":["user already exists"]}`, false, false},
+		{"403 forbidden permanent", http.StatusForbidden, `{}`, true, false},
+		{"500 transient", http.StatusInternalServerError, `{}`, true, true},
+		{"429 transient", http.StatusTooManyRequests, `{}`, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newDatadogTestConnector(t, tc.status, tc.body)
+			err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), grant)
+			if tc.wantErr != (err != nil) {
+				t.Fatalf("status %d: err = %v, wantErr = %v", tc.status, err, tc.wantErr)
+			}
+			if tc.wantErr && tc.wantTransit != strings.Contains(fmt.Sprint(err), "transient") {
+				t.Fatalf("status %d: err = %v, wantTransient = %v", tc.status, err, tc.wantTransit)
+			}
+		})
+	}
+}
+
+// TestRevokeAccess_StatusHandling pins the status classification for
+// RevokeAccess: the full 2xx range and 404 (already gone) are idempotent
+// successes, 5xx/429 are transient (retryable), and other 4xx are
+// permanent failures.
+func TestRevokeAccess_StatusHandling(t *testing.T) {
+	grant := access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"}
+	cases := []struct {
+		name        string
+		status      int
+		body        string
+		wantErr     bool
+		wantTransit bool
+	}{
+		{"200 ok", http.StatusOK, `{}`, false, false},
+		{"204 no content", http.StatusNoContent, ``, false, false},
+		{"404 already gone", http.StatusNotFound, `{}`, false, false},
+		{"410 does not exist", http.StatusGone, `{"errors":["does not exist"]}`, false, false},
+		{"403 forbidden permanent", http.StatusForbidden, `{}`, true, false},
+		{"502 transient", http.StatusBadGateway, `{}`, true, true},
+		{"429 transient", http.StatusTooManyRequests, `{}`, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newDatadogTestConnector(t, tc.status, tc.body)
+			err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), grant)
+			if tc.wantErr != (err != nil) {
+				t.Fatalf("status %d: err = %v, wantErr = %v", tc.status, err, tc.wantErr)
+			}
+			if tc.wantErr && tc.wantTransit != strings.Contains(fmt.Sprint(err), "transient") {
+				t.Fatalf("status %d: err = %v, wantTransient = %v", tc.status, err, tc.wantTransit)
+			}
+		})
+	}
+}

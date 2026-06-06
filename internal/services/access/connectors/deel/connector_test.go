@@ -102,6 +102,81 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+// TestSync_PrefersActiveContractStatus guards against the regression
+// where a worker holding several contracts inherited the status of
+// whichever contract the API returned first. A still-active worker who
+// also has an ended contract must be reported as active, otherwise the
+// sync records a false loss of access. This covers both the in-page
+// case (two contracts on the same page) and the cross-page case (the
+// active contract arrives on a later page after the ended one).
+func TestSync_PrefersActiveContractStatus(t *testing.T) {
+	t.Run("within a page", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body := map[string]interface{}{
+				"page": map[string]interface{}{"page": 1, "page_size": pageSize, "total_pages": 1},
+				"data": []map[string]interface{}{
+					{"id": "ct-ended", "status": "ended", "worker": map[string]interface{}{"id": "w1", "first_name": "Ann", "last_name": "Lee", "email": "ann@x.com"}},
+					{"id": "ct-active", "status": "active", "worker": map[string]interface{}{"id": "w1", "first_name": "Ann", "last_name": "Lee", "email": "ann@x.com"}},
+				},
+			}
+			b, _ := json.Marshal(body)
+			_, _ = w.Write(b)
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		var got []*access.Identity
+		if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+			got = append(got, b...)
+			return nil
+		}); err != nil {
+			t.Fatalf("Sync: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("len = %d, want 1 deduped identity", len(got))
+		}
+		if got[0].Status != "active" {
+			t.Fatalf("status = %q, want active (active contract must win over ended)", got[0].Status)
+		}
+	})
+
+	t.Run("across pages", func(t *testing.T) {
+		calls := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			body := map[string]interface{}{"page": map[string]interface{}{"page": calls, "page_size": pageSize, "total_pages": 2}}
+			if calls == 1 {
+				body["data"] = []map[string]interface{}{{"id": "ct-ended", "status": "ended", "worker": map[string]interface{}{"id": "w1", "first_name": "Ann", "last_name": "Lee", "email": "ann@x.com"}}}
+			} else {
+				body["data"] = []map[string]interface{}{{"id": "ct-active", "status": "active", "worker": map[string]interface{}{"id": "w1", "first_name": "Ann", "last_name": "Lee", "email": "ann@x.com"}}}
+			}
+			b, _ := json.Marshal(body)
+			_, _ = w.Write(b)
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		var got []*access.Identity
+		if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+			got = append(got, b...)
+			return nil
+		}); err != nil {
+			t.Fatalf("Sync: %v", err)
+		}
+		// The active contract on page 2 is re-emitted so the downstream
+		// upsert can correct the worker's status to active.
+		final := map[string]string{}
+		for _, id := range got {
+			final[id.ExternalID] = id.Status
+		}
+		if final["w1"] != "active" {
+			t.Fatalf("final status = %q, want active", final["w1"])
+		}
+	})
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

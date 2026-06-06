@@ -329,11 +329,17 @@ func (c *DatadogAccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 		return fmt.Errorf("datadog: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusConflict {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("datadog: provision status %d: %s", resp.StatusCode, string(respBody))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("datadog: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("datadog: provision status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *DatadogAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
@@ -358,11 +364,17 @@ func (c *DatadogAccessConnector) RevokeAccess(ctx context.Context, configRaw, se
 		return fmt.Errorf("datadog: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("datadog: revoke status %d: %s", resp.StatusCode, string(respBody))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("datadog: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("datadog: revoke status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *DatadogAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
