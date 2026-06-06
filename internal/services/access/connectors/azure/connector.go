@@ -371,20 +371,19 @@ func (c *AzureAccessConnector) armClient(ctx context.Context, cfg Config, secret
 // (scope, principalID, roleDefinitionID) tuple so that retries land on the
 // same role assignment and 409 / 404 can be treated as idempotent.
 func armRoleAssignmentName(scope, principalID, roleDefinitionID string) string {
-	// Length-prefix each component before joining so the encoding is
-	// injective: two different (scope, principalID, roleDefinitionID)
-	// tuples can never hash to the same name regardless of the bytes
-	// they contain. (Azure scopes/principal/role ids never contain the
-	// old "|" separator today, but length-prefixing removes the
-	// assumption entirely.)
-	var sb strings.Builder
-	for _, part := range []string{scope, principalID, roleDefinitionID} {
-		fmt.Fprintf(&sb, "%d:%s", len(part), part)
-	}
+	// Join with "|" to derive the name. The inputs are well-formed Azure
+	// identifiers — scope is an ARM resource path (/subscriptions/{guid}/...)
+	// and principalID/roleDefinitionID are GUIDs — none of which can contain
+	// a "|", so this delimiter is already injective for every real tuple.
+	// This format is part of the persisted contract: ProvisionAccess and
+	// RevokeAccess must derive the SAME name for assignments created by
+	// earlier releases, so the encoding must not change (a different name
+	// would make RevokeAccess DELETE a non-existent resource, get 404, and
+	// report idempotent success while leaving the real grant in place).
 	// gosec G401: deterministic identifier, not a hash for
 	// integrity/auth. SHA-1 chosen so the 20-byte output trims
 	// cleanly to a 16-byte GUID-shaped name.
-	sum := sha1.Sum([]byte(sb.String())) // #nosec G401
+	sum := sha1.Sum([]byte(scope + "|" + principalID + "|" + roleDefinitionID)) // #nosec G401
 	b := sum[:16]
 	// Format as a GUID; this is just a deterministic identifier so we do
 	// not tag it as a specific UUID variant.

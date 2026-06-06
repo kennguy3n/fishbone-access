@@ -488,3 +488,27 @@ func TestListEntitlements_4xxReturnsError(t *testing.T) {
 		t.Fatal("expected error on 401")
 	}
 }
+
+// TestArmRoleAssignmentName_StableEncoding pins the deterministic role-assignment
+// name to a golden value. The name is a persisted contract: ProvisionAccess
+// writes an Azure role assignment under this name and RevokeAccess must derive
+// the identical name to delete it. Changing the encoding would make RevokeAccess
+// issue DELETE against a non-existent name (404 -> idempotent "success") while
+// the real grant lingers. This golden value MUST NOT be updated to match a code
+// change — if this test fails, the encoding regressed and revocation of
+// previously-created assignments is broken.
+func TestArmRoleAssignmentName_StableEncoding(t *testing.T) {
+	const (
+		scope     = "/subscriptions/00000000-0000-0000-0000-000000000001"
+		principal = "11111111-1111-1111-1111-111111111111"
+		roleDefID = "22222222-2222-2222-2222-222222222222"
+		wantGUID  = "8b59bd6d-9357-5d05-d558-ea3de781e89f"
+	)
+	if got := armRoleAssignmentName(scope, principal, roleDefID); got != wantGUID {
+		t.Fatalf("armRoleAssignmentName encoding changed (breaks revocation of existing assignments): got %q, want %q", got, wantGUID)
+	}
+	// Determinism: same inputs -> same name across calls.
+	if a, b := armRoleAssignmentName(scope, principal, roleDefID), armRoleAssignmentName(scope, principal, roleDefID); a != b {
+		t.Fatalf("armRoleAssignmentName not deterministic: %q != %q", a, b)
+	}
+}
