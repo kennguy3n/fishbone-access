@@ -12,6 +12,7 @@ package ping_identity
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -50,9 +51,9 @@ func (c *PingIdentityAccessConnector) scimConfig(configRaw, secretsRaw map[strin
 	}
 
 	host, _ := regionAPIHost(cfg.Region)
-	scimBaseURL := "https://" + host + "/v1/environments/" + cfg.EnvironmentID
+	scimBaseURL := "https://" + host + "/v1/environments/" + url.PathEscape(cfg.EnvironmentID)
 	if c.urlOverride != "" {
-		scimBaseURL = strings.TrimRight(c.urlOverride, "/") + "/v1/environments/" + cfg.EnvironmentID
+		scimBaseURL = strings.TrimRight(c.urlOverride, "/") + "/v1/environments/" + url.PathEscape(cfg.EnvironmentID)
 	}
 
 	apiKey, _ := secretsRaw["api_key"].(string)
