@@ -76,6 +76,66 @@ func TestCheckPointFetchAccessAuditLogs_Maps(t *testing.T) {
 	}
 }
 
+// TestCheckPointFetchAccessAuditLogs_Pagination guards the new-query
+// semantics: show-logs must initiate a fresh query only on the first page
+// (new-query:true) and continue the same query on later pages
+// (new-query:false), advancing by offset. Sending new-query:true on every
+// page would restart the query and corrupt offset-based pagination.
+func TestCheckPointFetchAccessAuditLogs_Pagination(t *testing.T) {
+	var gotNewQuery []bool
+	var gotOffsets []float64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		nq, _ := reqBody["new-query"].(bool)
+		off, _ := reqBody["offset"].(float64)
+		gotNewQuery = append(gotNewQuery, nq)
+		gotOffsets = append(gotOffsets, off)
+
+		logs := make([]map[string]interface{}, 0, checkpointAuditPageSize)
+		// First page: a full page (forces a second request). Second page:
+		// a single row (< page size) so the loop terminates.
+		n := checkpointAuditPageSize
+		if int(off) >= checkpointAuditPageSize {
+			n = 1
+		}
+		for i := 0; i < n; i++ {
+			logs = append(logs, map[string]interface{}{
+				"id":            "ckp",
+				"operation":     "policy.install",
+				"time":          "2024-09-01T10:00:00Z",
+				"subject":       "policy/standard",
+				"administrator": "secops@example.com",
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"logs": logs})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(gotNewQuery) != 2 {
+		t.Fatalf("expected 2 requests, got %d (new-query=%v)", len(gotNewQuery), gotNewQuery)
+	}
+	if !gotNewQuery[0] {
+		t.Errorf("page 0 new-query = false, want true")
+	}
+	if gotNewQuery[1] {
+		t.Errorf("page 1 new-query = true, want false (must continue same query)")
+	}
+	if gotOffsets[0] != 0 || gotOffsets[1] != float64(checkpointAuditPageSize) {
+		t.Errorf("offsets = %v, want [0 %d]", gotOffsets, checkpointAuditPageSize)
+	}
+}
+
 func TestCheckPointFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

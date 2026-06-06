@@ -51,9 +51,13 @@ func (c *CheckPointAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		params := map[string]interface{}{
-			"offset":    page * checkpointAuditPageSize,
-			"limit":     checkpointAuditPageSize,
-			"new-query": true,
+			"offset": page * checkpointAuditPageSize,
+			"limit":  checkpointAuditPageSize,
+			// new-query starts a fresh server-side query; it must only be
+			// set on the first page. Sending it on every page restarts the
+			// query each time, so offsets walk a different result set and
+			// pagination yields duplicate/unstable rows.
+			"new-query": page == 0,
 		}
 		if !since.IsZero() {
 			params["since"] = since.UTC().Format(time.RFC3339)

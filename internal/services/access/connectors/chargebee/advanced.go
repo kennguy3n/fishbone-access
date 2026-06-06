@@ -185,14 +185,21 @@ func (c *ChargebeeAccessConnector) ListEntitlements(ctx context.Context, configR
 	if status < 200 || status >= 300 {
 		return nil, fmt.Errorf("chargebee: list entitlements status %d: %s", status, string(body))
 	}
-	var u struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Role  string `json:"role"`
+	// Chargebee wraps a single customer in a {"customer": {...}} envelope
+	// (the same shape SyncIdentities decodes via chargebeeWrappedCustomer).
+	// Parsing a flat object would leave id/email empty and silently report
+	// zero entitlements for every user.
+	var envelope struct {
+		Customer struct {
+			ID    string `json:"id"`
+			Email string `json:"email"`
+			Role  string `json:"role"`
+		} `json:"customer"`
 	}
-	if err := json.Unmarshal(body, &u); err != nil {
+	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, fmt.Errorf("chargebee: decode entitlements: %w", err)
 	}
+	u := envelope.Customer
 	if !strings.EqualFold(strings.TrimSpace(u.Email), user) && strings.TrimSpace(u.ID) != user {
 		return nil, nil
 	}

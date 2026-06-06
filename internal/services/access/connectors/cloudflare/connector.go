@@ -413,7 +413,7 @@ func (c *CloudflareAccessConnector) ProvisionAccess(
 		return fmt.Errorf("cloudflare: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		return nil
 	}
@@ -454,7 +454,7 @@ func (c *CloudflareAccessConnector) RevokeAccess(
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
 		return nil
 	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	return fmt.Errorf("cloudflare: revoke status %d: %s", resp.StatusCode, string(respBody))
 }
 

@@ -68,7 +68,10 @@ func TestChargebeeConnectorFlow_FullLifecycle(t *testing.T) {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]string{"id": email, "email": email, "role": state})
+			// Chargebee returns a single customer wrapped in a "customer" envelope.
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"customer": map[string]string{"id": email, "email": email, "role": state},
+			})
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusBadRequest)
