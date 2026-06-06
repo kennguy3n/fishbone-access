@@ -12,6 +12,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// auth0AuditMaxPages bounds a single FetchAccessAuditLogs run, matching the
+// defensive cap used by the other connectors. The checkpoint (nextSince) is
+// persisted per page, so hitting the cap simply defers the remaining events to
+// the next sync cycle rather than looping unboundedly on a misbehaving cursor.
+const auth0AuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Auth0 tenant log events into the access
 // audit pipeline. Implements access.AccessAuditor.
 //
@@ -41,7 +47,7 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	from := ""
-	for {
+	for pageNum := 0; pageNum < auth0AuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -91,6 +97,7 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 			return nil
 		}
 	}
+	return nil
 }
 
 type auth0AuditLogEvent struct {
@@ -112,6 +119,9 @@ func mapAuth0Log(e *auth0AuditLogEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339, e.Date)
+	if ts.IsZero() {
+		return nil
+	}
 	outcome := "success"
 	if t := strings.ToLower(strings.TrimSpace(e.Type)); strings.HasPrefix(t, "f") {
 		outcome = "failure"
