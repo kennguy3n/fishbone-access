@@ -85,18 +85,31 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 		return err
 	}
 
+	// Find the chain head by the monotonic per-workspace sequence rather than by
+	// (created_at, id). Several audit rows are appended inside a single
+	// transaction (e.g. Provision writes two state-transition events plus the
+	// grant-created event), and their created_at values are not guaranteed to
+	// increase in append order — the caller may pass a timestamp computed before
+	// the transaction while TransitionInTx computes its own later one, and tests
+	// use a fixed clock so every row shares one timestamp. Ordering by created_at
+	// could therefore select a row that is not the true tail, and the next append
+	// would chain off it, forking the chain and orphaning the real head. chain_seq
+	// is strictly increasing in append order, so it identifies the head exactly.
 	var prev models.AuditEvent
 	prevHash := ""
+	var prevSeq int64
 	err := tx.WithContext(ctx).
 		Where("workspace_id = ?", e.WorkspaceID).
-		Order("created_at desc, id desc").
+		Order("chain_seq desc").
 		Limit(1).
 		Take(&prev).Error
 	switch {
 	case err == nil:
 		prevHash = prev.ChainHash
+		prevSeq = prev.ChainSeq
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		prevHash = ""
+		prevSeq = 0
 	default:
 		return fmt.Errorf("lifecycle: read audit chain head: %w", err)
 	}
@@ -108,6 +121,7 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 
 	row := &models.AuditEvent{
 		WorkspaceID: e.WorkspaceID,
+		ChainSeq:    prevSeq + 1,
 		Actor:       e.Actor,
 		Action:      e.Action,
 		TargetRef:   e.TargetRef,

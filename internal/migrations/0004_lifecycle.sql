@@ -18,6 +18,17 @@ CREATE INDEX IF NOT EXISTS idx_access_requests_connector ON access_requests(conn
 -- access_grants: revocation timestamp (rows are preserved for audit).
 ALTER TABLE access_grants ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
 
+-- audit_events: strictly-increasing per-workspace sequence used to find the
+-- hash-chain head. The 0001 head lookup ordered by (created_at, id), but
+-- several audit rows are appended inside one transaction and need not have
+-- monotonically increasing created_at (TransitionInTx and its caller can pass
+-- different timestamps, and tests use a fixed clock), so created_at ordering
+-- could pick the wrong head and fork the chain. chain_seq is assigned as
+-- prev_head.chain_seq + 1 under the per-workspace advisory lock, so it always
+-- reflects true append order regardless of wall-clock values.
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS chain_seq BIGINT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_audit_events_chain_seq ON audit_events(workspace_id, chain_seq DESC);
+
 -- policies: cached simulation impact + promotion timestamp.
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS draft_impact JSONB;
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ;

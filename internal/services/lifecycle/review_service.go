@@ -172,10 +172,23 @@ func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewI
 		// torn-down grant marked "certified"). Re-submitting the SAME decision is
 		// allowed and idempotent, which is what lets a revoke whose connector
 		// teardown failed below be safely retried.
-		if (item.Decision == ReviewDecisionCertify || item.Decision == ReviewDecisionRevoke) && item.Decision != decision {
+		alreadyTerminal := item.Decision == ReviewDecisionCertify || item.Decision == ReviewDecisionRevoke
+		if alreadyTerminal && item.Decision != decision {
 			return fmt.Errorf("%w: item %s is %s", ErrReviewItemDecided, itemID, item.Decision)
 		}
 		grantID = item.GrantID
+
+		// Re-submitting the SAME terminal decision is a pure idempotent retry —
+		// it exists so a revoke whose connector teardown failed below can be
+		// re-driven. Nothing about the recorded decision changes, so skip the
+		// metadata update and the audit append: the tamper-evident trail records
+		// each terminal decision exactly once, and the item keeps its original
+		// decided_by/decided_at/reason rather than being overwritten by the
+		// retry. The connector teardown still re-runs after the transaction
+		// commits (see below).
+		if alreadyTerminal && item.Decision == decision {
+			return nil
+		}
 
 		if err := tx.Model(&models.AccessReviewItem{}).
 			Where("workspace_id = ? AND id = ?", workspaceID, itemID).

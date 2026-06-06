@@ -271,6 +271,10 @@ type fakeConnector struct {
 	failNProvision int  // fail this many times before succeeding
 	ssoEnforced    bool // returned by IsSSOEnforced
 	identities     []*access.Identity
+
+	entitlements     []access.Entitlement // returned by ListEntitlements
+	revokeFailFor    map[string]bool      // ResourceExternalID -> force RevokeAccess error
+	revokedResources []string             // ResourceExternalIDs RevokeAccess was called for
 }
 
 func (f *fakeConnector) Resolve(_ context.Context, _, _ uuid.UUID) (*ResolvedConnector, error) {
@@ -307,12 +311,16 @@ func (f *fakeConnector) ProvisionAccess(context.Context, map[string]any, map[str
 	}
 	return f.provisionErr
 }
-func (f *fakeConnector) RevokeAccess(context.Context, map[string]any, map[string]any, access.AccessGrant) error {
+func (f *fakeConnector) RevokeAccess(_ context.Context, _, _ map[string]any, grant access.AccessGrant) error {
 	f.revokeCnt++
+	f.revokedResources = append(f.revokedResources, grant.ResourceExternalID)
+	if f.revokeFailFor[grant.ResourceExternalID] {
+		return errFakeRevoke
+	}
 	return f.revokeErr
 }
 func (f *fakeConnector) ListEntitlements(context.Context, map[string]any, map[string]any, string) ([]access.Entitlement, error) {
-	return nil, nil
+	return f.entitlements, nil
 }
 func (f *fakeConnector) GetSSOMetadata(context.Context, map[string]any, map[string]any) (*access.SSOMetadata, error) {
 	return &access.SSOMetadata{Protocol: "oidc"}, nil
@@ -333,6 +341,7 @@ func (f *fakeConnector) IsSSOEnforced(context.Context, map[string]any, map[strin
 }
 
 var errFakeProvision = &fakeErr{"provision boom"}
+var errFakeRevoke = &fakeErr{"revoke boom"}
 
 type fakeErr struct{ s string }
 

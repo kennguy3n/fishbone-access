@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -399,11 +400,19 @@ func (s *JMLService) layerConnectorSweep(ctx context.Context, workspaceID uuid.U
 // by revoking every entitlement the provider still reports for them. This is
 // idempotent (RevokeAccess is idempotent) and catches provider-managed access
 // not represented as a ShieldNet grant.
+//
+// This is a security-critical kill-switch step, so it does NOT abort on the
+// first failed revocation: a transient failure on one entitlement must not
+// leave the remaining entitlements live. It attempts every entitlement and
+// aggregates the failures, so a single run achieves maximal revocation; any
+// returned error still marks the layer failed (and the kill switch errors), and
+// a re-run idempotently retries whatever is left.
 func (s *JMLService) scimDeprovision(ctx context.Context, resolved *ResolvedConnector, user string) error {
 	ents, err := resolved.Impl.ListEntitlements(ctx, resolved.Config, resolved.Secrets, user)
 	if err != nil {
 		return err
 	}
+	var errs []error
 	for _, ent := range ents {
 		grant := access.AccessGrant{
 			UserExternalID:     user,
@@ -411,8 +420,11 @@ func (s *JMLService) scimDeprovision(ctx context.Context, resolved *ResolvedConn
 			Role:               ent.Role,
 		}
 		if err := resolved.Impl.RevokeAccess(ctx, resolved.Config, resolved.Secrets, grant); err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("revoke %s/%s: %w", ent.ResourceExternalID, ent.Role, err))
 		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d/%d entitlement revocations failed: %w", len(errs), len(ents), errors.Join(errs...))
 	}
 	return nil
 }

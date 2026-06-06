@@ -1055,3 +1055,101 @@ type noopExpirer struct{}
 func (noopExpirer) ExpireGrant(context.Context, uuid.UUID, uuid.UUID, string) error {
 	return nil
 }
+
+// TestScimDeprovisionRevokesAllEntitlementsDespiteFailure proves the
+// security-critical SCIM deprovision step does not abort on the first failed
+// revocation: when one entitlement fails, the remaining ones are still revoked
+// (maximal revocation), and the call still returns an error so the kill-switch
+// layer is marked failed and a retry is driven.
+func TestScimDeprovisionRevokesAllEntitlementsDespiteFailure(t *testing.T) {
+	db := newTestDB(t)
+	jml := NewJMLService(db, nil, nil, nil, nil, nil)
+	fc := &fakeConnector{
+		entitlements: []access.Entitlement{
+			{ResourceExternalID: "res-a", Role: "reader"},
+			{ResourceExternalID: "res-b", Role: "writer"},
+			{ResourceExternalID: "res-c", Role: "admin"},
+		},
+		revokeFailFor: map[string]bool{"res-b": true},
+	}
+	resolved := &ResolvedConnector{Provider: "fake", Impl: fc}
+
+	err := jml.scimDeprovision(context.Background(), resolved, "ext-leaver")
+	if err == nil {
+		t.Fatal("expected an error because res-b revocation failed")
+	}
+
+	// Every entitlement must have been attempted, not just up to the failure.
+	want := map[string]bool{"res-a": true, "res-b": true, "res-c": true}
+	got := map[string]bool{}
+	for _, r := range fc.revokedResources {
+		got[r] = true
+	}
+	for r := range want {
+		if !got[r] {
+			t.Fatalf("entitlement %s was not attempted; revoked=%v", r, fc.revokedResources)
+		}
+	}
+	if len(fc.revokedResources) != 3 {
+		t.Fatalf("expected exactly 3 revoke attempts, got %d (%v)", len(fc.revokedResources), fc.revokedResources)
+	}
+}
+
+// TestAuditChainStaysLinearAcrossMultiEventTransactions proves the hash chain
+// is not forked by the multi-event Provision transaction. Provision appends
+// three audit events in one transaction (two state transitions + grant
+// created), and a later RevokeGrant appends more in a separate transaction. The
+// chain head is selected by chain_seq, not created_at, so the grant-created
+// event (whose created_at can be earlier than the transition events') is still
+// the true tail that the next append links to. A fixed clock forces every row
+// to share one created_at, which is exactly the condition that broke the old
+// (created_at, id) ordering.
+func TestAuditChainStaysLinearAcrossMultiEventTransactions(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	reqSvc.SetClock(func() time.Time { return fixed })
+	prov.SetClock(func() time.Time { return fixed })
+
+	ctx := context.Background()
+	g := mustProvision(t, reqSvc, prov, ws, connID, "ext-chain")
+	if err := prov.RevokeGrant(ctx, ws, g.ID, "auditor", "test revoke"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	var events []models.AuditEvent
+	if err := db.WithContext(ctx).
+		Where("workspace_id = ?", ws).
+		Order("chain_seq asc").
+		Find(&events).Error; err != nil {
+		t.Fatalf("load audit events: %v", err)
+	}
+	if len(events) < 2 {
+		t.Fatalf("expected several audit events, got %d", len(events))
+	}
+
+	seenPrev := map[string]uuid.UUID{}
+	prevHash := ""
+	for i := range events {
+		ev := events[i]
+		if ev.ChainSeq != int64(i+1) {
+			t.Fatalf("chain_seq not contiguous: event %d has seq %d", i, ev.ChainSeq)
+		}
+		if ev.PrevHash != prevHash {
+			t.Fatalf("chain broken at seq %d: prev_hash %q != expected %q", ev.ChainSeq, ev.PrevHash, prevHash)
+		}
+		if ev.PrevHash != "" {
+			if other, dup := seenPrev[ev.PrevHash]; dup {
+				t.Fatalf("chain forked: events %s and %s both chain off prev_hash %q", other, ev.ID, ev.PrevHash)
+			}
+			seenPrev[ev.PrevHash] = ev.ID
+		}
+		prevHash = ev.ChainHash
+	}
+}

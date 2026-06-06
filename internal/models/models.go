@@ -193,10 +193,15 @@ type AccessOrphanAccount struct {
 }
 
 // AuditEvent is a tamper-evident audit record. ChainHash links rows into a
-// per-workspace SHA-256 hash chain (PrevHash → ChainHash).
+// per-workspace SHA-256 hash chain (PrevHash → ChainHash). ChainSeq is a
+// strictly increasing per-workspace sequence used to identify the chain head
+// unambiguously, independent of wall-clock timestamps (multiple events can be
+// appended within a single transaction with the same or non-monotonic
+// created_at, so ordering by created_at is not append-order-correct).
 type AuditEvent struct {
 	Base
-	WorkspaceID uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	WorkspaceID uuid.UUID      `gorm:"type:uuid;index;not null;index:idx_audit_events_chain_seq,priority:1" json:"workspace_id"`
+	ChainSeq    int64          `gorm:"not null;default:0;index:idx_audit_events_chain_seq,priority:2,sort:desc" json:"chain_seq"`
 	Actor       string         `json:"actor"`
 	Action      string         `gorm:"not null" json:"action"`
 	TargetRef   string         `json:"target_ref,omitempty"`
