@@ -394,7 +394,7 @@ func (c *LastPassAccessConnector) postJSON(ctx context.Context, body map[string]
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("lastpass: status %d: %s", resp.StatusCode, string(respBody))
 	}
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, err
 	}
@@ -438,7 +438,7 @@ func (c *LastPassAccessConnector) postJSONAllowFail(ctx context.Context, body ma
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("lastpass: status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 func mapLastPassUsers(users []lastpassUser) []*access.Identity {

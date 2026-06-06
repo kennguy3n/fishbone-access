@@ -175,3 +175,30 @@ func TestFetchAccessAuditLogs_ArrayResponseDecodes(t *testing.T) {
 		t.Fatalf("collected = %+v", collected)
 	}
 }
+
+// TestFetchAccessAuditLogs_EmptyResponseSkipsHandler guards the cursor
+// contract: when the reporting API returns no events the handler must
+// not be called, otherwise it would persist nextSince=zero-time and
+// regress the audit cursor to epoch (re-ingesting old events).
+func TestFetchAccessAuditLogs_EmptyResponseSkipsHandler(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	called := false
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error {
+			called = true
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if called {
+		t.Fatal("handler called with empty batch; cursor could regress to epoch")
+	}
+}
