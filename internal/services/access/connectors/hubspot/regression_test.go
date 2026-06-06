@@ -40,6 +40,29 @@ func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 	}
 }
 
+// Regression: mapHubSpotAuditLog must normalize parsed timestamps to
+// UTC like every other connector in the batch. Before the fix a
+// non-UTC offset (e.g. +05:00) was carried into AuditLogEntry.Timestamp
+// and the persisted nextSince cursor, producing timezone-inconsistent
+// downstream data.
+func TestMapHubSpotAuditLog_NormalizesToUTC(t *testing.T) {
+	entry := mapHubSpotAuditLog(&hubspotAuditLog{
+		ID:         "evt-1",
+		OccurredAt: "2024-01-01T10:00:00+05:00",
+		Action:     "update",
+		ObjectType: "Contact",
+	})
+	if entry == nil {
+		t.Fatal("entry = nil; want non-nil")
+	}
+	if entry.Timestamp.Location() != time.UTC {
+		t.Errorf("Timestamp location = %v; want UTC", entry.Timestamp.Location())
+	}
+	if !entry.Timestamp.Equal(time.Date(2024, 1, 1, 5, 0, 0, 0, time.UTC)) {
+		t.Errorf("Timestamp = %s; want 2024-01-01T05:00:00Z", entry.Timestamp.Format(time.RFC3339))
+	}
+}
+
 // Regression: SyncIdentities cursor must be URL-encoded.  Before the
 // fix, a cursor containing "&" was spliced raw, producing a malformed
 // query string.

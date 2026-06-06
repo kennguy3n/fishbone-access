@@ -39,9 +39,9 @@ func (c *HelloSignAccessConnector) FetchAccessAuditLogs(
 		return err
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
+	cursor := since
 	base := c.baseURL() + "/v3/team/audit_logs"
 
-	var collected []hellosignAuditEvent
 	for page := 1; page <= hellosignAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -73,31 +73,30 @@ func (c *HelloSignAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("hellosign: decode audit logs: %w", err)
 		}
-		collected = append(collected, envelope.AuditLogs...)
+		// Emit one handler call per provider page so the caller can
+		// persist nextSince as a monotonic cursor and resume mid-stream
+		// after a partial failure (per access.AccessAuditor contract).
+		batch := make([]*access.AuditLogEntry, 0, len(envelope.AuditLogs))
+		batchMax := cursor
+		for i := range envelope.AuditLogs {
+			entry := mapHelloSignAuditEvent(&envelope.AuditLogs[i])
+			if entry == nil {
+				continue
+			}
+			if entry.Timestamp.After(batchMax) {
+				batchMax = entry.Timestamp
+			}
+			batch = append(batch, entry)
+		}
+		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+			return err
+		}
+		cursor = batchMax
 		if len(envelope.AuditLogs) < hellosignAuditPageSize {
-			break
+			return nil
 		}
 	}
-
-	if len(collected) == 0 {
-		return nil
-	}
-	batch := make([]*access.AuditLogEntry, 0, len(collected))
-	batchMax := since
-	for i := range collected {
-		entry := mapHelloSignAuditEvent(&collected[i])
-		if entry == nil {
-			continue
-		}
-		if entry.Timestamp.After(batchMax) {
-			batchMax = entry.Timestamp
-		}
-		batch = append(batch, entry)
-	}
-	if len(batch) == 0 {
-		return nil
-	}
-	return handler(batch, batchMax, access.DefaultAuditPartition)
+	return nil
 }
 
 type hellosignAuditEvent struct {

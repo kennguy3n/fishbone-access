@@ -126,6 +126,7 @@ func mapHubSpotAuditLog(e *hubspotAuditLog) *access.AuditLogEntry {
 	if ts.IsZero() {
 		return nil
 	}
+	ts = ts.UTC()
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)
