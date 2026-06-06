@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -189,27 +190,23 @@ func parseJFrogAuditTime(s string) time.Time {
 	return time.Time{}
 }
 
+// readJFrogBody reads the response body capped at 1 MiB and surfaces read
+// errors. A non-EOF failure (connection reset, context cancellation, TLS
+// error) must propagate: a silently truncated body that JSON-unmarshals into
+// a shorter-than-expected page would advance the cursor past events that were
+// never seen, causing silent audit data loss. Body close is deferred so the
+// keep-alive connection returns to the pool regardless of the read outcome.
 func readJFrogBody(resp *http.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("jfrog: empty response")
 	}
 	defer resp.Body.Close()
 	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, max))
+	if err != nil {
+		return body, fmt.Errorf("jfrog: read response body: %w", err)
 	}
-	return buf, nil
+	return body, nil
 }
 
 var _ access.AccessAuditor = (*JFrogAccessConnector)(nil)

@@ -148,3 +148,43 @@ func indexStr(i int) string {
 	}
 	return string(rune('0'+i/10)) + string(rune('0'+i%10))
 }
+
+// errReadCloser yields data and then fails the next Read with a non-EOF error,
+// simulating a connection reset / context cancellation mid-body.
+type errReadCloser struct {
+	data []byte
+	pos  int
+	err  error
+}
+
+func (r *errReadCloser) Read(p []byte) (int, error) {
+	if r.pos < len(r.data) {
+		n := copy(p, r.data[r.pos:])
+		r.pos += n
+		return n, nil
+	}
+	return 0, r.err
+}
+
+func (r *errReadCloser) Close() error { return nil }
+
+// TestReadJFrogBody_SurfacesReadError is a regression guard: readJFrogBody must
+// propagate non-EOF read failures rather than returning (truncatedBody, nil).
+// Swallowing the error let a partially-read page JSON-unmarshal into a shorter
+// slice, which advanced the audit cursor past events that were never seen
+// (silent audit data loss). The manual read loop returned nil unconditionally,
+// making the caller's `if readErr != nil` check dead code.
+func TestReadJFrogBody_SurfacesReadError(t *testing.T) {
+	wantErr := errors.New("connection reset by peer")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       &errReadCloser{data: []byte(`{"events":[{"id":"e1"}`), err: wantErr},
+	}
+	_, err := readJFrogBody(resp)
+	if err == nil {
+		t.Fatal("readJFrogBody returned nil error on a mid-body read failure; want the underlying error surfaced so a truncated page is not treated as complete")
+	}
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("readJFrogBody error = %v; want it to wrap %v", err, wantErr)
+	}
+}
