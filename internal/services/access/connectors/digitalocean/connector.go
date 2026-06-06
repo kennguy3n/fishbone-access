@@ -213,7 +213,12 @@ func (c *DigitalOceanAccessConnector) SyncIdentities(
 		path = nextPath(checkpoint)
 	}
 	first := true
-	for {
+	// Cap the page walk for the same reason ListEntitlements does: a
+	// provider that always returns links.pages.next must never spin the
+	// worker forever. This loop is resumable — the last non-empty next
+	// link is handed to the handler as the checkpoint before we stop, so
+	// hitting the cap simply defers the remainder to the next sync run.
+	for page := 0; page < maxEntitlementPages; page++ {
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -271,6 +276,7 @@ func (c *DigitalOceanAccessConnector) SyncIdentities(
 		}
 		path = nextPath(next)
 	}
+	return nil
 }
 
 func nextPath(next string) string {

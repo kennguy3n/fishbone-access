@@ -224,6 +224,38 @@ func TestListEntitlements_PaginatesRelativeNextLink(t *testing.T) {
 	}
 }
 
+// TestSyncIdentities_MaxPageCap proves the team-members page walk is
+// bounded. The server returns a perpetual links.pages.next (circular
+// cursor); without the maxEntitlementPages cap the loop would never
+// terminate. The escape hatch only fires past the cap, so asserting
+// exactly maxEntitlementPages requests guards the fix.
+func TestSyncIdentities_MaxPageCap(t *testing.T) {
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		next := ""
+		if hits < maxEntitlementPages+50 {
+			next = "https://api.digitalocean.com/v2/team/members?page=loop"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"members": []map[string]interface{}{},
+			"links":   map[string]interface{}{"pages": map[string]interface{}{"next": next}},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.SyncIdentities(context.Background(), doValidConfig(), doValidSecrets(), "",
+		func([]*access.Identity, string) error { return nil })
+	if err != nil {
+		t.Fatalf("SyncIdentities: %v", err)
+	}
+	if hits != maxEntitlementPages {
+		t.Fatalf("made %d requests, want exactly %d (page walk must be capped)", hits, maxEntitlementPages)
+	}
+}
+
 func TestDigitalOceanConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
