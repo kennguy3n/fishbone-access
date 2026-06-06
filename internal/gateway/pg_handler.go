@@ -130,7 +130,7 @@ func (p *PostgresProxy) Handle(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	p.splice(sessCtx, backend, hj, session, rec, cancel)
+	p.splice(sessCtx, conn, backend, hj, session, rec, cancel)
 }
 
 // readStartup reads the operator's startup phase, answering SSLRequest and
@@ -248,35 +248,62 @@ func (p *PostgresProxy) completeOperatorAuth(backend *pgproto3.Backend, hj *pgco
 	return nil
 }
 
-// splice runs the two protocol-bridging loops until either side closes.
-func (p *PostgresProxy) splice(ctx context.Context, backend *pgproto3.Backend, hj *pgconn.HijackedConn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
+// pgSpliceState carries the per-connection state shared between the two
+// bridging goroutines. txStatus mirrors the upstream's last ReadyForQuery
+// transaction indicator ('I' idle, 'T' in-transaction, 'E' failed) so that a
+// synthesised ReadyForQuery on a policy deny reports the operator's real
+// transaction state instead of a hardcoded guess.
+type pgSpliceState struct {
+	mu       sync.Mutex
+	txStatus byte
+}
+
+func (s *pgSpliceState) setTxStatus(b byte) {
+	s.mu.Lock()
+	s.txStatus = b
+	s.mu.Unlock()
+}
+
+func (s *pgSpliceState) currentTxStatus() byte {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.txStatus
+}
+
+// splice runs the two protocol-bridging loops until either side closes. On
+// context cancellation (e.g. admin takeover termination, or one loop exiting)
+// both the upstream and the operator connections are closed so that a goroutine
+// blocked in Receive on either side unblocks and the handler returns.
+func (p *PostgresProxy) splice(ctx context.Context, conn net.Conn, backend *pgproto3.Backend, hj *pgconn.HijackedConn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
 	frontend := hj.Frontend
+	state := &pgSpliceState{txStatus: 'I'}
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		p.forwardOperatorToUpstream(ctx, backend, frontend, session, rec)
+		p.forwardOperatorToUpstream(ctx, backend, frontend, session, rec, state)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		forwardUpstreamToOperator(backend, frontend, rec)
+		forwardUpstreamToOperator(backend, frontend, rec, state)
 	}()
 
 	go func() {
 		<-ctx.Done()
 		_ = hj.Conn.Close()
+		_ = conn.Close()
 	}()
 
 	wg.Wait()
 }
 
 // forwardOperatorToUpstream relays frontend messages, gating queries.
-func (p *PostgresProxy) forwardOperatorToUpstream(ctx context.Context, backend *pgproto3.Backend, frontend *pgproto3.Frontend, session *models.PAMSession, rec *IORecorder) {
+func (p *PostgresProxy) forwardOperatorToUpstream(ctx context.Context, backend *pgproto3.Backend, frontend *pgproto3.Frontend, session *models.PAMSession, rec *IORecorder, state *pgSpliceState) {
 	for {
 		msg, err := backend.Receive()
 		if err != nil {
@@ -284,11 +311,24 @@ func (p *PostgresProxy) forwardOperatorToUpstream(ctx context.Context, backend *
 		}
 		switch m := msg.(type) {
 		case *pgproto3.Query:
-			if !p.gate(ctx, backend, session, rec, m.String) {
+			// Simple query: the whole cycle is one message, so a deny is a
+			// self-contained ErrorResponse + ReadyForQuery.
+			if allowed, reason := p.evaluate(ctx, session, rec, m.String); !allowed {
+				p.denySimple(backend, rec, reason, state.currentTxStatus())
 				continue
 			}
 		case *pgproto3.Parse:
-			if !p.gate(ctx, backend, session, rec, m.Query) {
+			// Extended query: Parse/Bind/Describe/Execute/Sync are pipelined.
+			// PostgreSQL's own error handling sends ErrorResponse, then ignores
+			// every following message until the Sync synchronisation point, then
+			// sends ReadyForQuery. We mirror that exactly; otherwise the trailing
+			// Bind/Describe/Execute would fall through and be forwarded to an
+			// upstream that never received the prepared statement, desynchronising
+			// the operator's libpq protocol state machine.
+			if allowed, reason := p.evaluate(ctx, session, rec, m.Query); !allowed {
+				if !p.denyExtended(backend, rec, reason, state) {
+					return
+				}
 				continue
 			}
 		case *pgproto3.Terminate:
@@ -303,10 +343,9 @@ func (p *PostgresProxy) forwardOperatorToUpstream(ctx context.Context, backend *
 	}
 }
 
-// gate evaluates one SQL statement against policy, recording it. On deny it
-// synthesises an ErrorResponse + ReadyForQuery back to the operator (so libpq
-// stays in a healthy state) and returns false to signal "do not forward".
-func (p *PostgresProxy) gate(ctx context.Context, backend *pgproto3.Backend, session *models.PAMSession, rec *IORecorder, sql string) bool {
+// evaluate records one SQL statement and runs it through the command policy.
+// It returns whether the statement is allowed and, when denied, the reason.
+func (p *PostgresProxy) evaluate(ctx context.Context, session *models.PAMSession, rec *IORecorder, sql string) (bool, string) {
 	rec.Record(DirInput, []byte(sql+"\n"))
 	decision, err := p.sessions.LogCommand(ctx, session, sql)
 	if err != nil || !decision.Allowed() {
@@ -314,18 +353,59 @@ func (p *PostgresProxy) gate(ctx context.Context, backend *pgproto3.Backend, ses
 		if reason == "" {
 			reason = "denied by command policy"
 		}
-		rec.Annotate(fmt.Sprintf("[query denied: %s]", reason))
-		backend.Send(&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42501", Message: "pam-gateway: " + reason})
-		backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
-		_ = backend.Flush()
+		return false, reason
+	}
+	return true, ""
+}
+
+// denySimple answers a denied simple Query with ErrorResponse + ReadyForQuery,
+// reporting the operator's real transaction state so libpq stays in sync.
+func (p *PostgresProxy) denySimple(backend *pgproto3.Backend, rec *IORecorder, reason string, txStatus byte) {
+	rec.Annotate(fmt.Sprintf("[query denied: %s]", reason))
+	backend.Send(&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42501", Message: "pam-gateway: " + reason})
+	backend.Send(&pgproto3.ReadyForQuery{TxStatus: txStatus})
+	_ = backend.Flush()
+}
+
+// denyExtended answers a denied Parse the way PostgreSQL does: send
+// ErrorResponse immediately, discard the rest of the pipelined extended-query
+// messages up to and including Sync, then send a single ReadyForQuery. It
+// returns false if the operator connection failed or was terminated mid-drain.
+func (p *PostgresProxy) denyExtended(backend *pgproto3.Backend, rec *IORecorder, reason string, state *pgSpliceState) bool {
+	rec.Annotate(fmt.Sprintf("[query denied: %s]", reason))
+	backend.Send(&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42501", Message: "pam-gateway: " + reason})
+	if err := backend.Flush(); err != nil {
 		return false
 	}
-	return true
+	if !drainUntilSync(backend) {
+		return false
+	}
+	backend.Send(&pgproto3.ReadyForQuery{TxStatus: state.currentTxStatus()})
+	return backend.Flush() == nil
+}
+
+// drainUntilSync reads and discards frontend messages until a Sync is seen,
+// matching PostgreSQL's "skip until synchronisation point" error recovery.
+// It returns false if the stream ended or the client terminated before Sync.
+func drainUntilSync(backend *pgproto3.Backend) bool {
+	for {
+		msg, err := backend.Receive()
+		if err != nil {
+			return false
+		}
+		switch msg.(type) {
+		case *pgproto3.Sync:
+			return true
+		case *pgproto3.Terminate:
+			return false
+		}
+	}
 }
 
 // forwardUpstreamToOperator relays backend messages to the operator, recording
-// command tags and errors into the session transcript.
-func forwardUpstreamToOperator(backend *pgproto3.Backend, frontend *pgproto3.Frontend, rec *IORecorder) {
+// command tags and errors into the session transcript and tracking the
+// upstream transaction status from each ReadyForQuery.
+func forwardUpstreamToOperator(backend *pgproto3.Backend, frontend *pgproto3.Frontend, rec *IORecorder, state *pgSpliceState) {
 	for {
 		msg, err := frontend.Receive()
 		if err != nil {
@@ -336,6 +416,8 @@ func forwardUpstreamToOperator(backend *pgproto3.Backend, frontend *pgproto3.Fro
 			rec.Record(DirOutput, append([]byte("-- "), append(m.CommandTag, '\n')...))
 		case *pgproto3.ErrorResponse:
 			rec.Record(DirOutput, []byte(fmt.Sprintf("-- ERROR %s: %s\n", m.Code, m.Message)))
+		case *pgproto3.ReadyForQuery:
+			state.setTxStatus(m.TxStatus)
 		}
 		backend.Send(msg)
 		if err := backend.Flush(); err != nil {

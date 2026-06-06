@@ -144,6 +144,14 @@ func (e *CommandPolicyEvaluator) rulesFor(ctx context.Context, workspaceID uuid.
 		return nil, err
 	}
 	e.mu.Lock()
+	// Drop expired entries before inserting so the map is bounded by the number
+	// of workspaces actively evaluated within one TTL window, not by every
+	// workspace ever seen for the lifetime of the gateway process.
+	for id, c := range e.cache {
+		if !now.Before(c.expiresAt) {
+			delete(e.cache, id)
+		}
+	}
 	e.cache[workspaceID] = cachedRules{rules: rules, expiresAt: now.Add(e.ttl)}
 	e.mu.Unlock()
 	return rules, nil

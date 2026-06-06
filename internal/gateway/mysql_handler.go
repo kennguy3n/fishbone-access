@@ -283,11 +283,17 @@ func writePacket(w io.Writer, seq byte, payload []byte) error {
 	if len(payload) >= 1<<24 {
 		return fmt.Errorf("gateway: mysql packet too large (%d bytes)", len(payload))
 	}
-	hdr := []byte{byte(len(payload)), byte(len(payload) >> 8), byte(len(payload) >> 16), seq}
-	if _, err := w.Write(hdr); err != nil {
-		return err
-	}
-	_, err := w.Write(payload)
+	// Assemble header+payload into one buffer and emit it with a single Write
+	// so the 4-byte header can never be split from its payload on the wire (a
+	// future concurrent writer to the same conn would otherwise interleave bytes
+	// and corrupt the MySQL framing).
+	frame := make([]byte, 4+len(payload))
+	frame[0] = byte(len(payload))
+	frame[1] = byte(len(payload) >> 8)
+	frame[2] = byte(len(payload) >> 16)
+	frame[3] = seq
+	copy(frame[4:], payload)
+	_, err := w.Write(frame)
 	return err
 }
 

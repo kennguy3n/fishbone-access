@@ -126,12 +126,18 @@ func (b *Broker) MintConnectToken(ctx context.Context, in MintInput) (rawToken s
 		State:       models.PAMConnectTokenPending,
 		ExpiresAt:   now.Add(ttl),
 	}
-	if err := b.db.WithContext(ctx).Create(row).Error; err != nil {
-		return "", nil, fmt.Errorf("pam: mint connect token: %w", err)
-	}
-	if err := b.vault.audit(ctx, in.WorkspaceID, in.Actor, "pam.connect_token.minted", in.TargetID.String(), map[string]any{
-		"subject":    in.Subject,
-		"expires_at": row.ExpiresAt.UTC().Format(time.RFC3339),
+	// Create the token row and its chained audit record in one transaction so a
+	// minted token can never exist without an audit trail (and a failed audit
+	// append rolls the token back rather than leaving an orphaned pending row
+	// that only the lease sweep can clean up). Mirrors RedeemConnectToken.
+	if err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(row).Error; err != nil {
+			return fmt.Errorf("pam: mint connect token: %w", err)
+		}
+		return b.vault.auditTx(ctx, tx, in.WorkspaceID, in.Actor, "pam.connect_token.minted", in.TargetID.String(), map[string]any{
+			"subject":    in.Subject,
+			"expires_at": row.ExpiresAt.UTC().Format(time.RFC3339),
+		})
 	}); err != nil {
 		return "", nil, err
 	}

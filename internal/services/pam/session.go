@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
@@ -65,15 +66,26 @@ func (m *SessionManager) LogCommand(ctx context.Context, session *models.PAMSess
 	decision := Decision{Effect: models.PAMDecisionAllow}
 	if m.evaluator != nil {
 		// On an evaluator error the decision is already the fail-closed deny the
-		// evaluator returns, so the command is recorded as denied either way.
-		decision, _ = m.evaluator.Evaluate(ctx, session.WorkspaceID, session.Subject, command)
+		// evaluator returns, so the command is recorded as denied either way. We
+		// still surface the error at warn level: a deny caused by a policy-store
+		// outage (rather than a real matching deny rule) is an operational signal
+		// an operator needs to see, not silently swallow.
+		var evalErr error
+		decision, evalErr = m.evaluator.Evaluate(ctx, session.WorkspaceID, session.Subject, command)
+		if evalErr != nil {
+			logger.Warnf(ctx, "pam: command policy evaluation failed (fail-closed deny) for workspace %s subject %s: %v",
+				session.WorkspaceID, session.Subject, evalErr)
+		}
 	}
 
 	now := m.now()
 	err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var maxSeq int64
+		// Filter on workspace_id as well so the planner can use the leading
+		// column of idx_pam_cmds_session_seq (workspace_id, session_id, seq DESC);
+		// session_id alone is unique but does not let Postgres use the index prefix.
 		if err := tx.Model(&models.PAMSessionCommand{}).
-			Where("session_id = ?", session.ID).
+			Where("workspace_id = ? AND session_id = ?", session.WorkspaceID, session.ID).
 			Select("COALESCE(MAX(seq), 0)").
 			Scan(&maxSeq).Error; err != nil {
 			return fmt.Errorf("pam: read command seq: %w", err)

@@ -243,12 +243,23 @@ func sshCertValidity() time.Duration {
 	return durationEnv("PAM_SSH_CERT_TTL", 5*time.Minute)
 }
 
-// durationEnv parses a duration from the environment, falling back to def.
+// durationEnv parses a duration from the environment, falling back to def. A
+// set-but-unparseable or non-positive value is logged at warn level so a typo
+// like "5m0" (missing trailing 's') or "-1m" surfaces instead of silently
+// reverting to the default.
 func durationEnv(key string, def time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if d, err := time.ParseDuration(v); err == nil && d > 0 {
-			return d
-		}
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	switch {
+	case err != nil:
+		logger.Warnf(context.Background(), "pam-gateway: %s=%q is not a valid duration (%v); using default %s", key, v, err, def)
+	case d <= 0:
+		logger.Warnf(context.Background(), "pam-gateway: %s=%q must be positive; using default %s", key, v, def)
+	default:
+		return d
 	}
 	return def
 }
