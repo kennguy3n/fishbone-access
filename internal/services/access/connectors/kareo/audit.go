@@ -120,7 +120,7 @@ type kareoAuditPage struct {
 }
 
 func mapKareoAuditEvent(e *kareoAuditEvent) *access.AuditLogEntry {
-	if e == nil {
+	if e == nil || strings.TrimSpace(e.ID) == "" {
 		return nil
 	}
 	ts := parseKareoAuditTime(e.Timestamp)

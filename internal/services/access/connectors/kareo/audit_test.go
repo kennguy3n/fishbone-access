@@ -87,3 +87,30 @@ func TestKareoFetchAccessAuditLogs_TransientFailure(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// TestMapKareoAuditEvent_DropsEmptyID is a regression guard: events with an
+// empty or whitespace-only id must be dropped rather than emitted with an
+// empty EventID, which would break downstream dedup/indexing. This matches the
+// empty-ID guard the sibling mappers (ironclad/jasper/keeper/klaviyo) apply.
+func TestMapKareoAuditEvent_DropsEmptyID(t *testing.T) {
+	got := mapKareoAuditEvent(&kareoAuditEvent{
+		ID:        "  ",
+		EventType: "user.login",
+		Timestamp: "2024-01-02T03:04:05Z",
+	})
+	if got != nil {
+		t.Fatalf("mapKareoAuditEvent with empty id = %+v; want nil (empty EventID must not reach the audit pipeline)", got)
+	}
+
+	valid := mapKareoAuditEvent(&kareoAuditEvent{
+		ID:        "evt-1",
+		EventType: "user.login",
+		Timestamp: "2024-01-02T03:04:05Z",
+	})
+	if valid == nil {
+		t.Fatal("mapKareoAuditEvent with a valid id returned nil; want a mapped entry")
+	}
+	if valid.EventID != "evt-1" {
+		t.Fatalf("EventID = %q; want %q", valid.EventID, "evt-1")
+	}
+}
