@@ -177,6 +177,18 @@ func (s *JMLService) HandleJoiner(ctx context.Context, workspaceID uuid.UUID, e 
 		return nil, nil
 	}
 
+	// A baseline entitlement (ResourceRef+Role) is meaningless without a
+	// connector to provision it on. Fail fast and create nothing: otherwise we
+	// would create a request, auto-approve it (low risk), then have Provision
+	// reject it with ErrConnectorNotConfigured — leaving an approved-but-
+	// unprovisionable request behind. Worse, because the idempotency check below
+	// keys on a *live grant* (which never materializes), every SCIM redelivery of
+	// the same connector-less event would create another dangling approved
+	// request. Validating here keeps the failure actionable (422) and leak-free.
+	if e.ConnectorID == nil || *e.ConnectorID == uuid.Nil {
+		return nil, fmt.Errorf("%w: joiner baseline access (resource %q, role %q) requires a connector_id", ErrValidation, e.ResourceRef, e.Role)
+	}
+
 	// Idempotency: SCIM webhooks redeliver, so a joiner event may arrive more
 	// than once. If the user already holds a live grant for this resource+role,
 	// there is nothing to provision — creating another request would auto-approve

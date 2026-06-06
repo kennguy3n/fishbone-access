@@ -1420,6 +1420,43 @@ func TestHandleJoinerAutoProvisionsBaseline(t *testing.T) {
 	}
 }
 
+// TestHandleJoinerBaselineWithoutConnectorFailsFast proves a baseline joiner
+// (ResourceRef+Role present) that carries no connector_id is rejected with
+// ErrValidation before any request is created — so the SCIM caller gets an
+// actionable 422 and, critically, redelivery of the connector-less event can
+// never accrete dangling approved-but-unprovisionable requests.
+func TestHandleJoinerBaselineWithoutConnectorFailsFast(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	jml := NewJMLService(db, reqSvc, NewWorkflowService(reqSvc), prov, fc, &fakeDisabler{})
+	ctx := context.Background()
+
+	evt := SCIMEvent{Method: "POST", UserExternalID: "ext-joiner", ResourceRef: "app:db", Role: "reader"} // no ConnectorID
+	for i := 0; i < 3; i++ {
+		req, err := jml.HandleJoiner(ctx, ws, evt)
+		if !errors.Is(err, ErrValidation) {
+			t.Fatalf("attempt %d: expected ErrValidation for connector-less baseline joiner, got %v", i, err)
+		}
+		if req != nil {
+			t.Fatalf("attempt %d: no request should be created on validation failure, got %v", i, req)
+		}
+	}
+
+	// No requests and no grants may have been created across the redeliveries.
+	var reqCount, grantCount int64
+	db.Model(&models.AccessRequest{}).Where("workspace_id = ?", ws).Count(&reqCount)
+	db.Model(&models.AccessGrant{}).Where("workspace_id = ?", ws).Count(&grantCount)
+	if reqCount != 0 || grantCount != 0 {
+		t.Fatalf("connector-less joiner must create nothing, got %d requests and %d grants", reqCount, grantCount)
+	}
+	if fc.provisionCnt != 0 {
+		t.Fatalf("no connector provision should occur, got %d", fc.provisionCnt)
+	}
+}
+
 // TestOrphanDisableAggregatesRevocationFailures proves the "disable"
 // disposition attempts every entitlement and aggregates failures (maximal
 // revocation), instead of aborting on the first failed RevokeAccess. The
