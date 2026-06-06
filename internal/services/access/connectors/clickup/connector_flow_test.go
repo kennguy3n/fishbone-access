@@ -95,10 +95,11 @@ func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 // an idempotent no-op — a false "revoked").
 func TestProvisionRevoke_TrimsWhitespaceExternalID(t *testing.T) {
 	var gotUserID float64
-	var deletePath string
+	var postPath, deletePath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
+			postPath = r.URL.Path
 			var payload map[string]interface{}
 			_ = json.NewDecoder(r.Body).Decode(&payload)
 			if v, ok := payload["user_id"].(float64); ok {
@@ -121,6 +122,12 @@ func TestProvisionRevoke_TrimsWhitespaceExternalID(t *testing.T) {
 	}
 	if gotUserID != 42 {
 		t.Fatalf("POST user_id = %v, want 42 (whitespace must be trimmed before ParseInt)", gotUserID)
+	}
+	// Provision and Revoke must target the SAME list path; otherwise padded IDs
+	// provision to /list/%20list-1%20/member but revoke from /list/list-1/...,
+	// leaving the grant irrevocable.
+	if postPath != "/api/v2/list/list-1/member" {
+		t.Fatalf("POST path = %q, want /api/v2/list/list-1/member (list_id must be trimmed before PathEscape)", postPath)
 	}
 	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), grant); err != nil {
 		t.Fatalf("RevokeAccess: %v", err)

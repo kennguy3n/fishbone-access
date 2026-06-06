@@ -287,7 +287,7 @@ func (c *ClickUpAccessConnector) ProvisionAccess(
 	if err != nil {
 		return fmt.Errorf("clickup: marshal payload: %w", err)
 	}
-	fullURL := c.baseURL() + "/api/v2/list/" + url.PathEscape(grant.ResourceExternalID) + "/member"
+	fullURL := c.baseURL() + "/api/v2/list/" + url.PathEscape(strings.TrimSpace(grant.ResourceExternalID)) + "/member"
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, fullURL, body)
 	if err != nil {
 		return err
