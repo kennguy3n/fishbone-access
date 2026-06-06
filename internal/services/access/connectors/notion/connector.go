@@ -257,11 +257,16 @@ func (c *NotionAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 		return fmt.Errorf("notion: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if strings.Contains(string(respBody), "already") {
+	// Idempotency: a 409 Conflict (or a 400/422 whose body says the user is
+	// already shared) means the grant already exists, which the
+	// docs/architecture.md §2 contract requires we treat as success. Use the
+	// shared helper so the body match is case-insensitive and consistent with
+	// the other connectors in this batch.
+	if access.IsIdempotentProvisionStatus(resp.StatusCode, respBody) {
 		return nil
 	}
 	return fmt.Errorf("notion: provision status %d: %s", resp.StatusCode, string(respBody))

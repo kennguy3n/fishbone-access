@@ -145,6 +145,38 @@ func TestProvisionAccess_Idempotent(t *testing.T) {
 	}
 }
 
+// TestProvisionAccess_IdempotentConflictAndCase verifies the
+// docs/architecture.md §2 idempotency contract: a 409 Conflict MUST be treated
+// as success, and a capitalized "Already shared" body (returned with a 400)
+// MUST also be treated as success. The pre-fix code only accepted HTTP 200 and
+// did a case-sensitive substring match on lowercase "already", so both of
+// these provider responses were wrongly surfaced as errors.
+func TestProvisionAccess_IdempotentConflictAndCase(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"conflict_409", http.StatusConflict, `{"message":"Conflict"}`},
+		{"capitalized_already_400", http.StatusBadRequest, `{"message":"Already shared with this user"}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			t.Cleanup(srv.Close)
+			c := New()
+			c.urlOverride = srv.URL
+			c.httpClient = func() httpDoer { return srv.Client() }
+			if err := c.ProvisionAccess(context.Background(), nil, validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "page-1"}); err != nil {
+				t.Fatalf("ProvisionAccess(%s): expected idempotent success, got %v", tc.name, err)
+			}
+		})
+	}
+}
+
 func TestProvisionAccess_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
