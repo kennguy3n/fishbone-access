@@ -101,3 +101,16 @@ func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 		})
 	}
 }
+
+// An audit event with an empty/unparseable created_at must be dropped
+// rather than emitted with a zero Timestamp, matching the other mappers.
+func TestMapSnykAuditEvent_DropsZeroTimestamp(t *testing.T) {
+	for _, in := range []string{"", "not-a-date"} {
+		e := &snykAuditEvent{ID: "e-1"}
+		e.Attributes.CreatedAt = in
+		e.Attributes.Event = "org.user.add"
+		if got := mapSnykAuditEvent(e); got != nil {
+			t.Errorf("created_at=%q: got %+v; want nil", in, got)
+		}
+	}
+}

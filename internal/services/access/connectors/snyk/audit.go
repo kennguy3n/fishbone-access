@@ -155,6 +155,9 @@ func mapSnykAuditEvent(e *snykAuditEvent) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Attributes.CreatedAt)
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

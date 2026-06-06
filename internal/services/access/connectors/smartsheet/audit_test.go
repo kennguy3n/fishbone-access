@@ -122,3 +122,14 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// An event with an empty/unparseable eventTimestamp must be dropped
+// rather than emitted with a zero Timestamp (which corrupts cursor
+// tracking), matching every other audit mapper in this batch.
+func TestMapSmartsheetEvent_DropsZeroTimestamp(t *testing.T) {
+	for _, in := range []string{"", "not-a-date"} {
+		if got := mapSmartsheetEvent(&smartsheetEvent{EventID: "e-1", Action: "CREATE", EventTime: in}); got != nil {
+			t.Errorf("eventTimestamp=%q: got %+v; want nil", in, got)
+		}
+	}
+}

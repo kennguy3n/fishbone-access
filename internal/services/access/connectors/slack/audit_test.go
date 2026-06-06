@@ -95,3 +95,15 @@ func TestFetchAccessAuditLogs_NotEnterprise(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// An entry with date_create == 0 must be dropped rather than emitted
+// with a bogus 1970 Timestamp (which would reset the persisted cursor
+// to epoch on the next run).
+func TestMapSlackAuditEntry_DropsZeroDateCreate(t *testing.T) {
+	if got := mapSlackAuditEntry(&slackAuditEntry{ID: "x", Action: "user_login", DateCreate: 0}); got != nil {
+		t.Errorf("date_create=0: got %+v; want nil", got)
+	}
+	if got := mapSlackAuditEntry(&slackAuditEntry{ID: "y", Action: "user_login", DateCreate: 1700000000}); got == nil {
+		t.Fatal("valid date_create: got nil, want entry")
+	}
+}
