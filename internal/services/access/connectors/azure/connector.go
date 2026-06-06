@@ -196,7 +196,10 @@ func (b *bearerTransportClient) Do(req *http.Request) (*http.Response, error) {
 	return b.inner.Do(req)
 }
 
-func (c *AzureAccessConnector) doJSON(client httpDoer, ctx context.Context, method, path string) ([]byte, error) {
+// doJSON issues a GET/DELETE against the configured base URL and
+// returns the decoded body. ctx is the first parameter per Go
+// convention (context.Context leads the argument list).
+func (c *AzureAccessConnector) doJSON(ctx context.Context, client httpDoer, method, path string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, nil)
 	if err != nil {
 		return nil, err
@@ -221,7 +224,7 @@ func (c *AzureAccessConnector) Connect(ctx context.Context, configRaw, secretsRa
 		return err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	if _, err := c.doJSON(client, ctx, http.MethodGet, "/users?$top=1"); err != nil {
+	if _, err := c.doJSON(ctx, client, http.MethodGet, "/users?$top=1"); err != nil {
 		return fmt.Errorf("azure: connect probe: %w", err)
 	}
 	return nil
@@ -258,7 +261,7 @@ func (c *AzureAccessConnector) CountIdentities(ctx context.Context, configRaw, s
 		return 0, err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/users/$count")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/users/$count")
 	if err != nil {
 		return 0, err
 	}
@@ -286,7 +289,7 @@ func (c *AzureAccessConnector) SyncIdentities(
 		path = checkpoint
 	}
 	for {
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}
@@ -618,7 +621,7 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 	// quotes or other special characters cannot break out of the filter.
 	escapedClientID := strings.ReplaceAll(secrets.ClientID, "'", "''")
 	filter := url.QueryEscape("appId eq '" + escapedClientID + "'")
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/applications?$filter="+filter+"&$select=passwordCredentials")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/applications?$filter="+filter+"&$select=passwordCredentials")
 	if err != nil {
 		return out, nil
 	}

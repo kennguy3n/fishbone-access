@@ -60,7 +60,7 @@ func (c *AzureAccessConnector) CountGroups(ctx context.Context, configRaw, secre
 		return 0, err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/groups/$count")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/groups/$count")
 	if err != nil {
 		return 0, err
 	}
@@ -95,7 +95,7 @@ func (c *AzureAccessConnector) SyncGroups(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}

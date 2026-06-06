@@ -118,6 +118,11 @@ type bambooChangedPage struct {
 }
 
 type bambooChangedEmployee struct {
+	// EmployeeID is populated from the JSON object key in
+	// FetchAccessAuditLogs (change.EmployeeID = id), not from the
+	// value body — BambooHR's /employees/changed response keys each
+	// change by employee ID rather than carrying it as a field.
+	// Hence json:"-": it must never be (re)decoded from the value.
 	EmployeeID  string `json:"-"`
 	Action      string `json:"action"`
 	LastChanged string `json:"lastChanged"`
