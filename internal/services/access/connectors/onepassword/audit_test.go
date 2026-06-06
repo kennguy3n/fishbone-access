@@ -161,6 +161,50 @@ func TestFetchAccessAuditLogs_UsesEventsAPIBaseURL(t *testing.T) {
 	}
 }
 
+func TestFetchAccessAuditLogs_FirstRunBackfillsRetentionWindow(t *testing.T) {
+	// On the first run (zero since) the connector must request the full
+	// backfill window, not the previous 24h, otherwise older sign-in history
+	// is permanently lost. The 1Password Events API requires an explicit
+	// start_time (it can't be omitted like Okta), so we assert the window
+	// matches onepasswordAuditBackfill.
+	var gotStart string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if s, ok := body["start_time"].(string); ok {
+			gotStart = s
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(onepasswordSigninPage{HasMore: false})
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	before := time.Now()
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{}, // no cursor persisted -> zero since
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if gotStart == "" {
+		t.Fatal("server never received a start_time on the first-run reset request")
+	}
+	start, perr := time.Parse(time.RFC3339Nano, gotStart)
+	if perr != nil {
+		t.Fatalf("parse start_time %q: %v", gotStart, perr)
+	}
+	lookback := before.Sub(start)
+	// Allow a small slack for the time elapsed between computing the window
+	// and the assertion. Must be far larger than the old 24h default.
+	if lookback < onepasswordAuditBackfill-time.Minute || lookback > onepasswordAuditBackfill+time.Minute {
+		t.Errorf("first-run look-back = %s; want ~%s (90d backfill)", lookback, onepasswordAuditBackfill)
+	}
+}
+
 func TestMapOnePasswordSigninAttempt_SkipsEmptyUUID(t *testing.T) {
 	// Valid timestamp but empty UUID must be skipped: EventID would be empty
 	// and break the dedup pipeline.

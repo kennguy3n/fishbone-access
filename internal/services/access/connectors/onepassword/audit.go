@@ -13,6 +13,15 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// onepasswordAuditBackfill bounds the first-ever audit run (when no cursor
+// has been persisted yet). Unlike Okta — which can omit the time bound and
+// receive its full retention window — the 1Password Events API requires an
+// explicit start_time on the reset request, so we approximate "full
+// retention" with a 90-day look-back (matching Okta's ~90-day window) rather
+// than silently dropping anything older than 24h. Subsequent runs resume from
+// the persisted cursor, so this window only affects the initial backfill.
+const onepasswordAuditBackfill = 90 * 24 * time.Hour
+
 // FetchAccessAuditLogs streams 1Password sign-in attempt events into
 // the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -55,7 +64,7 @@ func (c *OnePasswordAccessConnector) FetchAccessAuditLogs(
 		} else {
 			start := since
 			if start.IsZero() {
-				start = time.Now().Add(-24 * time.Hour)
+				start = time.Now().Add(-onepasswordAuditBackfill)
 			}
 			payload = map[string]interface{}{
 				"limit":      1000,
