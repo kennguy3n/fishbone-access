@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -465,10 +466,10 @@ func server2URL(r *http.Request) string {
 
 func TestInitialDeltaCursor_CapturesGraphDeltaLink(t *testing.T) {
 	// Microsoft Graph baseline-cursor probe: the orchestrator
-	// calls /users/delta?$select=id&$top=999 once and captures the
-	// trailing @odata.deltaLink. This test asserts (a) the request
-	// is shaped correctly and (b) the captured deltaLink is the one
-	// the test server emitted.
+	// calls /users/delta once and captures the trailing
+	// @odata.deltaLink. This test asserts (a) the request is shaped
+	// correctly and (b) the captured deltaLink is the one the test
+	// server emitted.
 	var seenPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seenPath = r.URL.Path + "?" + r.URL.RawQuery
@@ -489,11 +490,86 @@ func TestInitialDeltaCursor_CapturesGraphDeltaLink(t *testing.T) {
 	if !strings.Contains(seenPath, "/users/delta") {
 		t.Errorf("probe path = %q; want /users/delta", seenPath)
 	}
-	if !strings.Contains(seenPath, "%24select=id") && !strings.Contains(seenPath, "$select=id") {
-		t.Errorf("probe path = %q; want $select=id (minimal-bandwidth probe)", seenPath)
-	}
 	if cursor != "https://graph.microsoft.com/v1.0/users/delta?$deltatoken=fresh-baseline" {
 		t.Errorf("captured deltaLink = %q; want fresh-baseline", cursor)
+	}
+}
+
+// TestInitialDeltaCursor_SelectsFullUserFields is a regression test for the
+// bug where the baseline probe requested $select=id only. Graph bakes the
+// initial $select into the @odata.deltaLink, so an id-only projection made
+// every later SyncIdentitiesDelta page return id-only records — emitting
+// identities with empty Email/DisplayName and a zero-valued (disabled)
+// status that overwrote correct data from the full sync. The probe must
+// request the same field set as the full /users sync.
+func TestInitialDeltaCursor_SelectsFullUserFields(t *testing.T) {
+	var rawQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"value":[],"@odata.deltaLink":"https://graph.microsoft.com/v1.0/users/delta?$deltatoken=fresh"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) httpDoer {
+		return &serverFirstFakeClient{base: server.URL, http: server.Client()}
+	}
+	if _, err := c.InitialDeltaCursor(context.Background(), validConfig(), validSecrets()); err != nil {
+		t.Fatalf("InitialDeltaCursor: %v", err)
+	}
+
+	decoded, err := url.QueryUnescape(rawQuery)
+	if err != nil {
+		t.Fatalf("unescape query %q: %v", rawQuery, err)
+	}
+	for _, field := range []string{"id", "userPrincipalName", "mail", "displayName", "accountEnabled"} {
+		if !strings.Contains(decoded, field) {
+			t.Errorf("probe $select = %q; missing required field %q (id-only deltaLink corrupts delta sync)", decoded, field)
+		}
+	}
+}
+
+// TestSyncIdentitiesDelta_PreservesFullFields proves the delta path maps the
+// full Graph projection (not id-only) into populated identities: a changed,
+// enabled user must surface its DisplayName/Email and an "active" status
+// rather than being clobbered to an empty, disabled identity.
+func TestSyncIdentitiesDelta_PreservesFullFields(t *testing.T) {
+	var rawQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"value":[{"id":"u1","userPrincipalName":"u1@contoso.com","mail":"user.one@contoso.com","displayName":"User One","accountEnabled":true}],"@odata.deltaLink":"https://graph.microsoft.com/v1.0/users/delta?$deltatoken=next"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) httpDoer {
+		return &serverFirstFakeClient{base: server.URL, http: server.Client()}
+	}
+
+	var got []*access.Identity
+	_, err := c.SyncIdentitiesDelta(context.Background(), validConfig(), validSecrets(), "",
+		func(batch []*access.Identity, _ []string, _ string) error {
+			got = append(got, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("SyncIdentitiesDelta: %v", err)
+	}
+	// The first (bootstrap) request must carry the full $select so the
+	// deltaLink Graph returns is not crippled to id-only.
+	decoded, _ := url.QueryUnescape(rawQuery)
+	for _, field := range []string{"mail", "displayName", "accountEnabled"} {
+		if !strings.Contains(decoded, field) {
+			t.Errorf("delta $select = %q; missing %q", decoded, field)
+		}
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d identities; want 1", len(got))
+	}
+	if got[0].DisplayName != "User One" || got[0].Email != "user.one@contoso.com" || got[0].Status != "active" {
+		t.Errorf("identity = %+v; want populated DisplayName/Email and active status", got[0])
 	}
 }
 

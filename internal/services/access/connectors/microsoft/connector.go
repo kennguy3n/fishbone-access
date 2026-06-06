@@ -49,6 +49,14 @@ const (
 	// could in theory stream an unbounded body and OOM the worker. 8 MiB sits
 	// well above the natural per-page ceiling while keeping memory bounded.
 	maxResponseBytes = 8 << 20
+
+	// userSelectFields is the $select projection used for both the full
+	// /users sync and the /users/delta path. It MUST stay identical between
+	// the two: Microsoft Graph bakes the initial request's $select into the
+	// @odata.deltaLink it returns, so the delta path inherits whatever the
+	// baseline query selected. Selecting a narrower set on the delta side
+	// would make every subsequent delta page omit the unselected fields.
+	userSelectFields = "id,userPrincipalName,mail,displayName,accountEnabled"
 )
 
 // httpDoer abstracts *http.Client so unit tests can inject a stub without
@@ -218,14 +226,20 @@ func (c *M365AccessConnector) SyncIdentities(
 	return nil
 }
 
-// InitialDeltaCursor walks /users/delta with $select=id&$top=999 just
-// long enough to capture the trailing @odata.deltaLink. Microsoft
-// Graph does not expose a "now" token for /users/delta — the only
-// supported way to get a baseline deltaLink is to enumerate at least
-// once. We minimise bandwidth by selecting only the id field; the
-// page payloads are discarded. This is an O(users / 999) sequence
-// of small GETs, performed once per full-sync run, so the next sync
-// can enter the delta path without re-enumerating identities.
+// InitialDeltaCursor walks /users/delta just long enough to capture the
+// trailing @odata.deltaLink. Microsoft Graph does not expose a "now" token
+// for /users/delta — the only supported way to get a baseline deltaLink is
+// to enumerate at least once. The page payloads themselves are discarded
+// here; this is an O(users / 999) sequence of small GETs performed once per
+// full-sync run, so the next sync can enter the delta path without
+// re-enumerating identities.
+//
+// The probe MUST request the same $select projection as the full sync
+// (userSelectFields). Graph encodes the initial $select into the deltaLink
+// it returns, so a narrower projection (e.g. only id) would make every later
+// SyncIdentitiesDelta page omit mail/displayName/accountEnabled — emitting
+// identities with empty fields and a zero-valued (disabled) status that
+// overwrites correct data from the prior full sync.
 //
 // 410 Gone here is unexpected (no inbound token can be expired) and
 // would only fire if Graph is hostile; surface it as a plain error
@@ -241,7 +255,7 @@ func (c *M365AccessConnector) InitialDeltaCursor(
 	}
 	client := c.graphClient(ctx, cfg, secrets)
 
-	next := graphBaseURL + "/users/delta?$select=id&$top=999"
+	next := buildUsersDeltaURL()
 	var deltaLink string
 	for next != "" {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, next, nil)
@@ -289,7 +303,7 @@ func (c *M365AccessConnector) SyncIdentitiesDelta(
 	}
 	client := c.graphClient(ctx, cfg, secrets)
 
-	startURL := graphBaseURL + "/users/delta"
+	startURL := buildUsersDeltaURL()
 	if deltaLink != "" {
 		startURL = deltaLink
 	}
@@ -840,7 +854,20 @@ func firstNonEmpty(values ...string) string {
 func buildUsersURL() string {
 	u, _ := url.Parse(graphBaseURL + "/users")
 	q := u.Query()
-	q.Set("$select", "id,userPrincipalName,mail,displayName,accountEnabled")
+	q.Set("$select", userSelectFields)
+	q.Set("$top", "999")
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+// buildUsersDeltaURL builds the /users/delta baseline query. It deliberately
+// requests the same $select projection as buildUsersURL: Graph bakes this
+// $select into the @odata.deltaLink it returns, so the delta path must select
+// the full field set up front or later delta pages return id-only records.
+func buildUsersDeltaURL() string {
+	u, _ := url.Parse(graphBaseURL + "/users/delta")
+	q := u.Query()
+	q.Set("$select", userSelectFields)
 	q.Set("$top", "999")
 	u.RawQuery = q.Encode()
 	return u.String()

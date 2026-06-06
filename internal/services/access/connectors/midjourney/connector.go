@@ -143,11 +143,12 @@ func (c *MidjourneyAccessConnector) decodeBoth(configRaw, secretsRaw map[string]
 }
 
 func (c *MidjourneyAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
-	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	// Midjourney has no org-scoped config, so the probe needs only secrets;
+	// decodeBoth still runs config validation before we discard cfg.
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	_ = cfg
 	probe := c.baseURL() + "/api/v1/members?page=1&per_page=1"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {

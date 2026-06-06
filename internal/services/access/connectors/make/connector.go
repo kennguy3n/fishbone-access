@@ -83,12 +83,16 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 }
 
 func (c Config) validate() error {
-	// A region is just a zone subdomain (e.g. "eu1"); a value containing a
-	// scheme, slash, or dot is almost certainly a full URL placed in the wrong
-	// field, so point the operator at base_url instead of silently building a
-	// malformed host like "https://eu1.make.com.make.com".
-	if r := c.Region; r != "" && strings.ContainsAny(r, "/.:") {
-		return errors.New(`make: region must be a zone subdomain like "eu1" (use base_url for a full URL)`)
+	// A region is just a zone subdomain (e.g. "eu1"). Restrict it to an
+	// alphanumeric+hyphen allowlist so it can only ever be interpolated as a
+	// single DNS label in https://{region}.make.com — this rejects both full
+	// URLs (scheme/slash/dot) placed in the wrong field and any other
+	// injection (whitespace, ";", etc.) that would build a malformed host.
+	// Operators needing a non-zone host should use base_url instead.
+	for _, r := range c.Region {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '-') {
+			return errors.New(`make: region must be a zone subdomain like "eu1" (alphanumeric with hyphens; use base_url for a full URL)`)
+		}
 	}
 	return nil
 }

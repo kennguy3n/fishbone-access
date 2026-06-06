@@ -156,12 +156,25 @@ func TestBaseURL_RegionAndOverride(t *testing.T) {
 }
 
 // TestValidate_RejectsRegionThatLooksLikeURL guards the operator against putting
-// a full URL in the region field (which would build a malformed host).
+// a full URL — or any non-zone-label injection — in the region field, which
+// would build a malformed host. The region is restricted to an
+// alphanumeric+hyphen allowlist so only a single DNS label can be interpolated
+// into https://{region}.make.com.
 func TestValidate_RejectsRegionThatLooksLikeURL(t *testing.T) {
-	for _, bad := range []string{"https://us1.make.com", "us1.make.com", "us1/extra"} {
+	for _, bad := range []string{
+		"https://us1.make.com", "us1.make.com", "us1/extra",
+		"eu1;DROP TABLE", "eu1 us1", "eu1_internal", "eu1@evil",
+	} {
 		cfg := map[string]interface{}{"region": bad}
 		if err := New().Validate(context.Background(), cfg, validSecrets()); err == nil {
 			t.Errorf("Validate(region=%q) = nil; want error", bad)
+		}
+	}
+	// Valid zone labels must still pass.
+	for _, ok := range []string{"eu1", "eu2", "us1", "us2", ""} {
+		cfg := map[string]interface{}{"region": ok}
+		if err := New().Validate(context.Background(), cfg, validSecrets()); err != nil {
+			t.Errorf("Validate(region=%q) = %v; want nil", ok, err)
 		}
 	}
 }
