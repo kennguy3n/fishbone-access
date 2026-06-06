@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -26,6 +27,26 @@ import (
 // Bearer auth via MyCaseAccessConnector.newRequest. Idempotency is delegated to
 // access.IsIdempotentProvisionStatus / access.IsIdempotentRevokeStatus
 // per docs/architecture.md §2.
+
+// jsonIDToString canonicalizes a JSON id field (which may decode as a string,
+// number, or null) to its string form. It returns "" for null/absent values so
+// callers can skip them. Using fmt.Sprintf("%v", ...) directly would render a
+// nil interface as the literal "<nil>" (polluting entitlements with a bogus
+// ResourceExternalID) and large numeric ids in scientific notation.
+func jsonIDToString(v interface{}) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(t)
+	case json.Number:
+		return strings.TrimSpace(t.String())
+	case float64:
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	default:
+		return strings.TrimSpace(fmt.Sprintf("%v", t))
+	}
+}
 
 func mycaseValidateGrant(g access.AccessGrant) error {
 	if strings.TrimSpace(g.UserExternalID) == "" {
@@ -158,7 +179,7 @@ func (c *MyCaseAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	}
 	out := make([]access.Entitlement, 0, len(envelope.Data))
 	for _, r := range envelope.Data {
-		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
+		id := jsonIDToString(r.ID)
 		if id == "" {
 			continue
 		}

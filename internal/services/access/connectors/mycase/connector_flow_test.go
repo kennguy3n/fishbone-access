@@ -112,3 +112,24 @@ func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestListEntitlements_SkipsNullID(t *testing.T) {
+	// A JSON null id must be skipped, not rendered as the literal "<nil>".
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[{"id":null,"name":"Ghost"},{"id":"role-7","name":"Real"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "user-1")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(ents) != 1 {
+		t.Fatalf("ents = %#v; want exactly 1 (null id skipped)", ents)
+	}
+	if ents[0].ResourceExternalID != "role-7" {
+		t.Fatalf("ResourceExternalID = %q; want role-7", ents[0].ResourceExternalID)
+	}
+}

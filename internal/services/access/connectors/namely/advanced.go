@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -25,6 +26,26 @@ import (
 //   - grant.ResourceExternalID -> Namely group id
 //
 // Bearer auth via NamelyAccessConnector.newRequest.
+
+// jsonIDToString canonicalizes a JSON id field (which may decode as a string,
+// number, or null) to its string form. It returns "" for null/absent values so
+// callers can skip them. Using fmt.Sprintf("%v", ...) directly would render a
+// nil interface as the literal "<nil>" (polluting entitlements with a bogus
+// ResourceExternalID) and large numeric ids in scientific notation.
+func jsonIDToString(v interface{}) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(t)
+	case json.Number:
+		return strings.TrimSpace(t.String())
+	case float64:
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	default:
+		return strings.TrimSpace(fmt.Sprintf("%v", t))
+	}
+}
 
 func namelyValidateGrant(g access.AccessGrant) error {
 	if strings.TrimSpace(g.UserExternalID) == "" {
@@ -150,7 +171,7 @@ func (c *NamelyAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	}
 	out := make([]access.Entitlement, 0, len(envelope.Groups))
 	for _, g := range envelope.Groups {
-		id := strings.TrimSpace(fmt.Sprintf("%v", g.ID))
+		id := jsonIDToString(g.ID)
 		if id == "" {
 			continue
 		}
