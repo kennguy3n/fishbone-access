@@ -78,7 +78,13 @@ func (c *DatadogAccessConnector) SyncIdentitiesDelta(
 
 	requestURL := base + "/api/v2/audit/events?" + q.Encode()
 	newestSeen := since
-	for requestURL != "" {
+	// Bound the cursor walk with the same cap FetchAccessAuditLogs uses.
+	// ctx.Err() alone is insufficient defense: deadlines are often
+	// generous (minutes) and a circular links.next would otherwise spin
+	// the worker against the provider, burning rate-limit budget. The
+	// newest-seen timestamp is returned as the cursor, so stopping at the
+	// cap simply resumes the remainder on the next poll.
+	for pageNum := 0; pageNum < datadogAuditMaxPages && requestURL != ""; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}

@@ -182,6 +182,37 @@ func TestDatadog_SyncIdentitiesDelta_ConsistentWindow(t *testing.T) {
 	}
 }
 
+// TestDatadog_SyncIdentitiesDelta_MaxPageCap proves the delta cursor
+// walk is bounded. The server returns a perpetual links.next (circular
+// cursor); without the datadogAuditMaxPages cap the loop would never
+// terminate. The +50 escape hatch only fires if the cap failed, so the
+// assertion that exactly datadogAuditMaxPages requests were made guards
+// the fix.
+func TestDatadog_SyncIdentitiesDelta_MaxPageCap(t *testing.T) {
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		next := ""
+		if hits < datadogAuditMaxPages+50 {
+			next = "https://api.datadoghq.com/api/v2/audit/events?page%5Bcursor%5D=loop"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data":  []map[string]interface{}{},
+			"links": map[string]interface{}{"next": next},
+		})
+	}))
+	defer srv.Close()
+	c := New()
+	c.urlOverride = srv.URL
+	if _, err := c.SyncIdentitiesDelta(context.Background(), datadogDeltaConfig(), datadogDeltaSecrets(), "",
+		func([]*access.Identity, []string, string) error { return nil }); err != nil {
+		t.Fatalf("SyncIdentitiesDelta: %v", err)
+	}
+	if hits != datadogAuditMaxPages {
+		t.Fatalf("made %d requests, want exactly %d (delta cursor loop must be capped)", hits, datadogAuditMaxPages)
+	}
+}
+
 func TestDatadog_SatisfiesIdentityDeltaSyncerInterface(_ *testing.T) {
 	var _ access.IdentityDeltaSyncer = (*DatadogAccessConnector)(nil)
 }
