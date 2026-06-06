@@ -723,9 +723,9 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 		// instant with the trailing Z (e.g. 2027-06-15T00:00:00Z), so a
 		// lexicographic min over the consistent format yields the
 		// earliest expiry without parsing.
-		for _, c := range creds {
-			if c.EndDateTime != "" && (earliest == "" || c.EndDateTime < earliest) {
-				earliest = c.EndDateTime
+		for _, cred := range creds {
+			if cred.EndDateTime != "" && (earliest == "" || cred.EndDateTime < earliest) {
+				earliest = cred.EndDateTime
 			}
 		}
 		if earliest != "" {
