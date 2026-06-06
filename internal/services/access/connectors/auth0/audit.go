@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -65,9 +66,18 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		resp, err := c.doRaw(req)
 		if err != nil {
 			return err
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("auth0: logs: status %d: %s", resp.StatusCode, string(body))
 		}
 		var page []auth0AuditLogEvent
 		if err := json.Unmarshal(body, &page); err != nil {
