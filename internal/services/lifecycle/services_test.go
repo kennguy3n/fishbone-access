@@ -240,6 +240,12 @@ func TestRevokeGrantIdempotent(t *testing.T) {
 	if got.State != StateRevoked {
 		t.Fatalf("expected request revoked, got %s", got.State)
 	}
+	// A revoked grant carries revoked_at (distinct from the expired path).
+	var greload models.AccessGrant
+	db.Where("id = ?", grant.ID).Take(&greload)
+	if greload.State != GrantStateRevoked || greload.RevokedAt == nil {
+		t.Fatalf("revoked grant must have state=revoked and revoked_at set, got state=%s revoked_at=%v", greload.State, greload.RevokedAt)
+	}
 }
 
 func TestPolicyDraftSimulatePromoteIdempotent(t *testing.T) {
@@ -958,6 +964,26 @@ func TestExpiryEnforcer(t *testing.T) {
 	db.Where("id = ?", g.ID).Take(&greload)
 	if greload.State != GrantStateExpired {
 		t.Fatalf("expected grant expired, got %s", greload.State)
+	}
+	// An expired grant must NOT carry revoked_at: it expired, it was not
+	// revoked. Stamping revoked_at would conflate the two terminal states in
+	// the API and break callers distinguishing automatic expiry from revoke.
+	if greload.RevokedAt != nil {
+		t.Fatalf("expired grant must not have revoked_at set, got %v", greload.RevokedAt)
+	}
+
+	// Revoking an already-expired grant is a no-op: it is already terminal and
+	// torn down at the provider, so it must not call the connector again nor
+	// flip the recorded state from expired to revoked.
+	if err := prov.RevokeGrant(ctx, ws, g.ID, "admin", "after expiry"); err != nil {
+		t.Fatalf("RevokeGrant on expired grant: %v", err)
+	}
+	if fc.revokeCnt != 1 {
+		t.Fatalf("expected exactly 1 connector revoke (from expiry), got %d", fc.revokeCnt)
+	}
+	db.Where("id = ?", g.ID).Take(&greload)
+	if greload.State != GrantStateExpired || greload.RevokedAt != nil {
+		t.Fatalf("expired grant must stay expired with no revoked_at, got state=%s revoked_at=%v", greload.State, greload.RevokedAt)
 	}
 }
 

@@ -174,7 +174,7 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 		// provisions of the same request so only one reaches the Create.
 		var existing models.AccessGrant
 		findErr := tx.WithContext(ctx).
-			Where("workspace_id = ? AND request_id = ? AND revoked_at IS NULL", workspaceID, requestID).
+			Where("workspace_id = ? AND request_id = ? AND state = ? AND revoked_at IS NULL", workspaceID, requestID, GrantStateActive).
 			Take(&existing).Error
 		switch {
 		case findErr == nil:
@@ -262,8 +262,12 @@ func (s *AccessProvisioningService) RevokeGrant(ctx context.Context, workspaceID
 	if err != nil {
 		return fmt.Errorf("lifecycle: load grant for revoke: %w", err)
 	}
-	if g.RevokedAt != nil || g.State == GrantStateRevoked {
-		return nil // idempotent no-op
+	if g.State != GrantStateActive {
+		// Only a live (active) grant can be revoked. An already-revoked grant
+		// makes the leaver kill switch's re-run a clean no-op; an expired grant is
+		// likewise already torn down at the provider, so revoke is a no-op rather
+		// than flipping expired→revoked and losing the expiry record.
+		return nil
 	}
 
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, g.ConnectorID)
@@ -299,8 +303,8 @@ func (s *AccessProvisioningService) ExpireGrant(ctx context.Context, workspaceID
 	if err != nil {
 		return fmt.Errorf("lifecycle: load grant for expiry: %w", err)
 	}
-	if g.RevokedAt != nil || g.State != GrantStateActive {
-		return nil // idempotent no-op
+	if g.State != GrantStateActive {
+		return nil // idempotent no-op: only a live grant can expire
 	}
 
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, g.ConnectorID)
@@ -332,9 +336,21 @@ func (s *AccessProvisioningService) markGrantRevoked(ctx context.Context, worksp
 func (s *AccessProvisioningService) markGrantTerminal(ctx context.Context, workspaceID uuid.UUID, g *models.AccessGrant, grantState string, reqState RequestState, actor, reason string) error {
 	now := s.now()
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// revoked_at marks a *revocation*, not termination in general. An expired
+		// grant is terminal too, but stamping revoked_at on it would conflate the
+		// two states in the API (a grant reporting state="expired" with a
+		// revoked_at timestamp is a contradiction) and would let consumers no
+		// longer tell automatic expiry from manual revoke. The grant's state +
+		// updated_at + expires_at already record the expiry; every "live grant"
+		// query pairs revoked_at IS NULL with state = 'active', so leaving
+		// revoked_at NULL for the expired path is safe.
+		updates := map[string]any{"state": grantState, "updated_at": now}
+		if grantState == GrantStateRevoked {
+			updates["revoked_at"] = now
+		}
 		if err := tx.Model(&models.AccessGrant{}).
 			Where("workspace_id = ? AND id = ?", workspaceID, g.ID).
-			Updates(map[string]any{"state": grantState, "revoked_at": now, "updated_at": now}).Error; err != nil {
+			Updates(updates).Error; err != nil {
 			return fmt.Errorf("lifecycle: update grant %s: %w", grantState, err)
 		}
 		// Best-effort request transition: only active requests move on.
