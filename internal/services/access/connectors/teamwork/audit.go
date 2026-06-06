@@ -70,16 +70,20 @@ func (c *TeamworkAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("teamwork: decode audit log: %w", err)
 		}
-		olderThanCursor := false
 		for i := range envelope.AuditTrail {
 			ts := parseTeamworkAuditTime(envelope.AuditTrail[i].EventDate)
 			if !since.IsZero() && !ts.IsZero() && !ts.After(since) {
-				olderThanCursor = true
+				// Older than the watermark: skip this event but keep paging.
+				// The v3 audit endpoint exposes no server-side time filter and
+				// does not guarantee a sort order, so encountering an older
+				// event must NOT terminate the sweep — newer events may still
+				// sit on later pages. Termination is bounded by the final short
+				// page or teamworkAuditMaxPages.
 				continue
 			}
 			collected = append(collected, envelope.AuditTrail[i])
 		}
-		if olderThanCursor || len(envelope.AuditTrail) < teamworkAuditPageSize {
+		if len(envelope.AuditTrail) < teamworkAuditPageSize {
 			break
 		}
 	}
