@@ -170,6 +170,9 @@ func (c *OktaAccessConnector) SyncIdentities(
 	}
 
 	for next := startURL; next != ""; {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		reqURL := next
 		if c.urlOverride != "" {
 			reqURL = c.rewriteForTest(reqURL)
@@ -236,6 +239,9 @@ func (c *OktaAccessConnector) SyncIdentitiesDelta(
 
 	var finalDeltaLink string
 	for next := startURL; next != ""; {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		reqURL := next
 		if c.urlOverride != "" {
 			reqURL = c.rewriteForTest(reqURL)

@@ -160,3 +160,5 @@ func parsePaychexAuditTime(s string) time.Time {
 	}
 	return time.Time{}
 }
+
+var _ access.AccessAuditor = (*PaychexAccessConnector)(nil)

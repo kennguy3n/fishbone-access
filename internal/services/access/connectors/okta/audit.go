@@ -40,7 +40,13 @@ func (c *OktaAccessConnector) FetchAccessAuditLogs(
 	// events from the start of its retention window (~90 days).
 	query := "sortOrder=ASCENDING&limit=200"
 	if !since.IsZero() {
-		query += "&since=" + url.QueryEscape(since.UTC().Format(time.RFC3339))
+		// Serialize with RFC3339Nano so the sub-second precision of the
+		// persisted batchMax cursor survives the round-trip. Using plain
+		// RFC3339 would truncate fractional seconds and re-fetch every
+		// event in the truncated window on each run (harmless thanks to
+		// EventID dedup, but wasteful), since Okta emits RFC3339Nano
+		// timestamps that mapOktaAuditEvent parses at full precision.
+		query += "&since=" + url.QueryEscape(since.UTC().Format(time.RFC3339Nano))
 	}
 	startURL := c.absURL(cfg, "/api/v1/logs?"+query)
 
