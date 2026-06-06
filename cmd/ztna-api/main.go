@@ -27,6 +27,8 @@ import (
 	"syscall"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
@@ -57,15 +59,24 @@ func run() error {
 
 	ready := &atomic.Bool{}
 
+	var deps handlers.Deps
 	if cfg.DatabaseConfigured() {
-		if err := setupDatabase(ctx, cfg); err != nil {
+		gdb, err := setupDatabase(ctx, cfg)
+		if err != nil {
 			return fmt.Errorf("database setup: %w", err)
 		}
+		deps.DB = gdb
+		// Own the pool: close it on the way out so we don't leak idle Postgres
+		// connections (the pool outlives setupDatabase because the 1B-1E
+		// handlers query through it).
+		defer func() {
+			if sqlDB, err := gdb.DB(); err == nil {
+				_ = sqlDB.Close()
+			}
+		}()
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")
 	}
-
-	var deps handlers.Deps
 	if cfg.IAMCore.Configured() {
 		v, err := iamcore.NewValidator(ctx, cfg.IAMCore)
 		if err != nil {
@@ -122,22 +133,25 @@ func run() error {
 	return nil
 }
 
-// setupDatabase opens Postgres, applies SQL migrations, and verifies
-// connectivity. Auto-migrate is intentionally NOT used in production — the
+// setupDatabase opens Postgres, applies SQL migrations, and returns the pool so
+// the caller can wire it into the handlers and own its lifecycle (close on
+// shutdown). Auto-migrate is intentionally NOT used in production — the
 // reviewable SQL migrations are authoritative.
-func setupDatabase(ctx context.Context, cfg config.Config) error {
+func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 	gdb, err := database.Open(cfg.DatabaseURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sqlDB, err := gdb.DB()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	applied, err := migrations.Run(ctx, sqlDB)
 	if err != nil {
-		return err
+		// Don't leak the pool if migrations fail.
+		_ = sqlDB.Close()
+		return nil, err
 	}
 	logger.Infof(ctx, "ztna-api: applied %d migration(s)", len(applied))
-	return nil
+	return gdb, nil
 }

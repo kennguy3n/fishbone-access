@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/config"
 )
@@ -85,6 +88,53 @@ func TestCreateUserMintsAndCachesToken(t *testing.T) {
 	}
 	if fake.tokenIssued != 1 {
 		t.Errorf("tokenIssued = %d, want 1 (token should be cached)", fake.tokenIssued)
+	}
+}
+
+// TestConcurrentCallersCollapseTokenMint verifies the singleflight behaviour:
+// when many management calls race with an empty token cache, exactly ONE token
+// is minted (the concurrent callers share the single in-flight fetch) instead
+// of each call stampeding the token endpoint. The token handler sleeps to widen
+// the race window so a regression (e.g. dropping singleflight) reliably mints
+// more than one token. Run with -race to also catch unsynchronised access to
+// the cached token.
+func TestConcurrentCallersCollapseTokenMint(t *testing.T) {
+	var minted atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, _ *http.Request) {
+		minted.Add(1)
+		time.Sleep(50 * time.Millisecond) // widen the window for collapse
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "tok-xyz", "expires_in": 3600})
+	})
+	mux.HandleFunc("/api/v1/management/users", func(w http.ResponseWriter, r *http.Request) {
+		var u User
+		_ = json.NewDecoder(r.Body).Decode(&u)
+		u.ID = "iam-user-1"
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(u)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	c := NewManagementClient(config.IAMCoreConfig{
+		Issuer: srv.URL, ClientID: "id", ClientSecret: "sec", Audience: "mgmt",
+	}, srv.Client())
+
+	const n = 20
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			if _, err := c.CreateUser(context.Background(), User{Email: "x@example.com"}); err != nil {
+				t.Errorf("CreateUser: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := minted.Load(); got != 1 {
+		t.Fatalf("token minted %d times, want 1 (singleflight should collapse concurrent refreshes)", got)
 	}
 }
 

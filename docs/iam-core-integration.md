@@ -71,8 +71,15 @@ API is defined in `iam-core-api/api/**/*.proto`. Verified endpoints:
   fake JWKS, sign test tokens). Integration tests hit a real iam-core.
 
 ### 2. Tenant resolution / isolation
-- Resolve tenant from `X-Tenant-ID` header OR `tenant_id` JWT claim (claim wins
-  when both present and must match; mismatch → 403).
+- The `tenant_id` JWT claim is the **sole authoritative** source of the caller's
+  tenant. Resolution is fail-closed: a token with no `tenant_id` claim → 403 (do
+  NOT fall back to a client-supplied header; that would let any authenticated
+  principal act as any tenant). The `X-Tenant-ID` header is advisory only —
+  when present it must equal the claim, otherwise 403 (mismatch).
+- Cross-tenant / platform-operator flows are a **separate, explicitly authorized
+  path** (a dedicated management route that checks a platform scope/role and
+  then reads `X-Tenant-ID`), never an implicit header fallback in the shared
+  tenant-resolution middleware.
 - **fishbone-access:** map iam-core `tenant_id` → `workspace` isolation (every
   query scoped by workspace_id).
 - **visible-fishbone:** map iam-core `tenant_id` → existing SNG tenant model

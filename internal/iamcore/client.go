@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/kennguy3n/fishbone-access/internal/config"
 )
 
@@ -28,9 +30,14 @@ type ManagementClient struct {
 	clientSec string
 	audience  string
 
-	mu       sync.Mutex
+	// mu guards the cached token. It is held only for the (lock-free) in-memory
+	// read/write of token/tokenExp, never across the HTTP round-trip — the
+	// network call happens inside sf.Do so concurrent callers that need a fresh
+	// token share a single in-flight mint instead of serializing on the mutex.
+	mu       sync.RWMutex
 	token    string
 	tokenExp time.Time
+	sf       singleflight.Group
 }
 
 // NewManagementClient builds a client from configuration. It performs no I/O.
@@ -68,15 +75,49 @@ type Connection struct {
 	Enabled  bool           `json:"enabled,omitempty"`
 }
 
-// token returns a valid client_credentials access token, minting a fresh one
-// when the cache is empty or within 30s of expiry.
+// accessToken returns a valid client_credentials access token, minting a fresh
+// one when the cache is empty or within 30s of expiry.
+//
+// The hot path (a still-valid cached token) takes only a read lock and never
+// touches the network, so management calls don't serialize on each other. When
+// a refresh is needed the HTTP round-trip runs inside a singleflight group keyed
+// on "token": concurrent callers collapse into one mint and share its result
+// instead of stampeding the token endpoint or blocking on a write lock held
+// across the network.
 func (c *ManagementClient) accessToken(ctx context.Context) (string, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.token != "" && time.Until(c.tokenExp) > 30*time.Second {
-		return c.token, nil
+	if tok, ok := c.cachedToken(); ok {
+		return tok, nil
 	}
 
+	v, err, _ := c.sf.Do("token", func() (any, error) {
+		// Re-check under the singleflight: a concurrent caller may have already
+		// refreshed while we waited to become the leader.
+		if tok, ok := c.cachedToken(); ok {
+			return tok, nil
+		}
+		return c.mintToken(ctx)
+	})
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}
+
+// cachedToken returns the cached token if it is present and not within 30s of
+// expiry.
+func (c *ManagementClient) cachedToken() (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.token != "" && time.Until(c.tokenExp) > 30*time.Second {
+		return c.token, true
+	}
+	return "", false
+}
+
+// mintToken performs the client_credentials grant and stores the result. It is
+// only ever called from inside the singleflight, so at most one mint is in
+// flight at a time.
+func (c *ManagementClient) mintToken(ctx context.Context) (string, error) {
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {c.clientID},
@@ -109,13 +150,15 @@ func (c *ManagementClient) accessToken(ctx context.Context) (string, error) {
 	if tr.AccessToken == "" {
 		return "", fmt.Errorf("iamcore: empty access_token in token response")
 	}
-	c.token = tr.AccessToken
 	ttl := tr.ExpiresIn
 	if ttl <= 0 {
 		ttl = 300
 	}
+	c.mu.Lock()
+	c.token = tr.AccessToken
 	c.tokenExp = time.Now().Add(time.Duration(ttl) * time.Second)
-	return c.token, nil
+	c.mu.Unlock()
+	return tr.AccessToken, nil
 }
 
 func (c *ManagementClient) do(ctx context.Context, method, path string, body, out any) error {

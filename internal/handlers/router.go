@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -23,6 +24,12 @@ import (
 type Deps struct {
 	Validator middleware.TokenValidator
 	Ready     *atomic.Bool
+	// DB is the shared control-plane connection pool. It is nil in degraded
+	// (no-database) dev boots. Session 1A only runs migrations through it; the
+	// 1B-1E handlers attached to the /api/v1 group query through this same
+	// pool, which is owned and closed by the ztna-api main (so it is not a
+	// leaked, never-closed pool).
+	DB *gorm.DB
 }
 
 // NewRouter builds the Gin engine.
