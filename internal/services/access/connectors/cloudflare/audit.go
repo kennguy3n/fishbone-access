@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,9 +52,22 @@ func (c *CloudflareAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		httpResp, err := c.client().Do(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("cloudflare: audit logs: %w", err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(httpResp.Body, 1<<20))
+		_ = httpResp.Body.Close()
+		// Tokens without audit-log scope (or accounts on plans that do not
+		// surface the feed) return 401 / 403 / 404; soft-skip those via
+		// access.ErrAuditNotAvailable per docs/architecture.md §2 instead of
+		// surfacing a hard error, matching every other audit connector.
+		switch httpResp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
+			return fmt.Errorf("cloudflare: audit logs: status %d: %s", httpResp.StatusCode, string(body))
 		}
 		var resp cfAuditLogPage
 		if err := json.Unmarshal(body, &resp); err != nil {

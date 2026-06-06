@@ -3,6 +3,7 @@ package cloudflare
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -131,10 +132,36 @@ func TestFetchAccessAuditLogs_ZeroSinceOmitsFilter(t *testing.T) {
 	}
 }
 
-func TestFetchAccessAuditLogs_Failure(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"success":false,"errors":[{"code":10000}]}`))
+// TestFetchAccessAuditLogs_NotAvailable guards the soft-skip contract:
+// tokens/accounts without audit-log access return 401/403/404 and must
+// surface access.ErrAuditNotAvailable so the worker skips the tenant
+// instead of treating it as a hard failure. Without the status check the
+// generic do() helper returns an opaque error and the tenant errors
+// forever.
+func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
+	for _, code := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(code)
+			_, _ = w.Write([]byte(`{"success":false,"errors":[{"code":10000}]}`))
+		}))
+		c := New()
+		c.urlOverride = server.URL
+		c.httpClient = func() httpDoer { return server.Client() }
+		err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		if !errors.Is(err, access.ErrAuditNotAvailable) {
+			t.Errorf("status %d: err = %v, want ErrAuditNotAvailable", code, err)
+		}
+		server.Close()
+	}
+}
+
+// TestFetchAccessAuditLogs_TransientFailure verifies a genuine server
+// error (5xx) is still surfaced as a hard error and is NOT soft-skipped.
+func TestFetchAccessAuditLogs_TransientFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(server.Close)
 	c := New()
@@ -145,6 +172,9 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	if errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Errorf("5xx must be a hard error, got ErrAuditNotAvailable")
 	}
 }
 
