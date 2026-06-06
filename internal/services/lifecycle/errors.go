@@ -35,10 +35,6 @@ var (
 	// in the caller's workspace.
 	ErrOrphanNotFound = errors.New("lifecycle: orphan account not found")
 
-	// ErrAlreadyRevoked is returned by the provisioning service when Revoke is
-	// called on a grant whose RevokedAt is already set.
-	ErrAlreadyRevoked = errors.New("lifecycle: access grant already revoked")
-
 	// ErrConnectorNotConfigured is returned when a request/grant references a
 	// connector that is not registered in the access factory, or when the
 	// request carries no connector id at all.
@@ -47,4 +43,9 @@ var (
 	// ErrPolicyNotPromotable is returned when Promote is called on a policy in
 	// a state that cannot be promoted (e.g. archived).
 	ErrPolicyNotPromotable = errors.New("lifecycle: policy cannot be promoted")
+
+	// ErrPolicyNotEditable is returned when UpdateDraft is called on a policy
+	// that is not a draft (an active or archived policy must be superseded by a
+	// new draft, not edited in place).
+	ErrPolicyNotEditable = errors.New("lifecycle: policy is not editable")
 )

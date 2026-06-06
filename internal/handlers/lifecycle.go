@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -691,16 +692,20 @@ func bind(c *gin.Context, dst any) bool {
 }
 
 // bindOptional decodes a body that may be empty (e.g. an action with only an
-// optional reason). An empty body is fine; a malformed non-empty body is 400.
+// optional reason). It attempts to bind and treats an empty body (io.EOF) as
+// success, so it works regardless of how the client framed the request: an
+// absent body, an explicit Content-Length: 0, OR a chunked Transfer-Encoding
+// body (where ContentLength is -1 but real JSON may still be present — a
+// Content-Length check would silently drop it). A non-empty but malformed body
+// is the only thing that 400s.
 func bindOptional(c *gin.Context, dst any) bool {
-	// ContentLength is 0 for an explicitly empty body and -1 when the client
-	// sent no Content-Length header at all (e.g. a bodyless POST or chunked
-	// encoding). Both mean "no body to bind", so treat <= 0 as empty; otherwise
-	// ShouldBindJSON would read EOF and 400 a legitimate bodyless request.
-	if c.Request == nil || c.Request.Body == nil || c.Request.ContentLength <= 0 {
+	if c.Request == nil || c.Request.Body == nil {
 		return true
 	}
 	if err := c.ShouldBindJSON(dst); err != nil {
+		if errors.Is(err, io.EOF) {
+			return true // empty body — nothing to bind, which is allowed here
+		}
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return false
 	}
@@ -721,8 +726,8 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrInvalidStateTransition),
 		errors.Is(err, lifecycle.ErrReviewClosed),
-		errors.Is(err, lifecycle.ErrAlreadyRevoked),
-		errors.Is(err, lifecycle.ErrPolicyNotPromotable):
+		errors.Is(err, lifecycle.ErrPolicyNotPromotable),
+		errors.Is(err, lifecycle.ErrPolicyNotEditable):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrConnectorNotConfigured):
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})

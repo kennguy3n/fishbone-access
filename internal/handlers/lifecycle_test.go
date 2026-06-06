@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -201,5 +202,41 @@ func TestOptionalBodyEndpointAcceptsNoContentLength(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("cancel with no Content-Length = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestOptionalBodyChunkedBodyIsBound proves bindOptional reads a body sent with
+// ContentLength == -1 (chunked Transfer-Encoding) instead of silently dropping
+// it. A Content-Length check would skip binding and never see the payload; the
+// bind-and-treat-EOF-as-empty approach reads it, so a malformed chunked body is
+// correctly rejected with 400 (proving the body reached the decoder).
+func TestOptionalBodyChunkedBodyIsBound(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+
+	w := do(t, r, http.MethodPost, "/api/v1/access-requests", "tok-a", map[string]any{
+		"target_user_id": "ext-user",
+		"resource_ref":   "app:db",
+		"role":           "reader",
+		"risk_level":     "high",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var created struct {
+		Request models.AccessRequest `json:"request"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	id := created.Request.ID.String()
+
+	// Malformed JSON sent with ContentLength == -1 (as a chunked client would).
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/access-requests/"+id+"/cancel", strings.NewReader("{ not json"))
+	req.ContentLength = -1
+	req.Header.Set("Authorization", "Bearer tok-a")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("cancel with malformed chunked body = %d, want 400 (body must be read, not dropped), body=%s", rec.Code, rec.Body.String())
 	}
 }

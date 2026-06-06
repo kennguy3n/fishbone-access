@@ -129,7 +129,7 @@ func (s *PolicyService) ListPolicies(ctx context.Context, workspaceID uuid.UUID)
 
 // UpdateDraft replaces a draft policy's definition (and optionally its name).
 // Only drafts are editable; an active or archived policy must be superseded by
-// a new draft, so editing one returns ErrPolicyNotPromotable.
+// a new draft, so editing one returns ErrPolicyNotEditable.
 func (s *PolicyService) UpdateDraft(ctx context.Context, workspaceID, policyID uuid.UUID, name string, def json.RawMessage, actor string) (*models.Policy, error) {
 	if _, err := ParsePolicyDefinition(def); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (s *PolicyService) UpdateDraft(ctx context.Context, workspaceID, policyID u
 			return err
 		}
 		if loaded.State != PolicyStateDraft {
-			return fmt.Errorf("%w: only draft policies can be edited (state=%s)", ErrPolicyNotPromotable, loaded.State)
+			return fmt.Errorf("%w: only draft policies can be edited (state=%s)", ErrPolicyNotEditable, loaded.State)
 		}
 		updates := map[string]any{
 			"definition":   datatypes.JSON(def),
@@ -295,9 +295,12 @@ func (s *PolicyService) Archive(ctx context.Context, workspaceID, policyID uuid.
 }
 
 // loadPolicyTx loads a policy for update inside a transaction, workspace-scoped.
+// It takes a row-level write lock (FOR UPDATE on Postgres) so concurrent
+// Promote/Archive/UpdateDraft transactions serialize on the row rather than
+// both reading the same state and each emitting a duplicate audit event.
 func loadPolicyTx(ctx context.Context, tx *gorm.DB, workspaceID, policyID uuid.UUID) (*models.Policy, error) {
 	var pol models.Policy
-	err := tx.WithContext(ctx).
+	err := forUpdate(tx.WithContext(ctx)).
 		Where("workspace_id = ? AND id = ?", workspaceID, policyID).
 		Take(&pol).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

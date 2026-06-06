@@ -160,6 +160,27 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 	row.UpdatedAt = now
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Idempotency guard for crash/retry: ProvisionAccess ran before this
+		// transaction, so a prior attempt that succeeded at the provider but
+		// crashed (or a concurrent provision) may already have materialized the
+		// grant. There is one live grant per request by construction, so if one
+		// already exists, reuse it instead of inserting a duplicate row. The
+		// FOR UPDATE row lock TransitionInTx takes below serializes concurrent
+		// provisions of the same request so only one reaches the Create.
+		var existing models.AccessGrant
+		findErr := tx.WithContext(ctx).
+			Where("workspace_id = ? AND request_id = ? AND revoked_at IS NULL", workspaceID, requestID).
+			Take(&existing).Error
+		switch {
+		case findErr == nil:
+			row = &existing
+			return nil
+		case errors.Is(findErr, gorm.ErrRecordNotFound):
+			// No live grant yet — fall through to materialize one.
+		default:
+			return fmt.Errorf("lifecycle: check existing grant: %w", findErr)
+		}
+
 		if _, err := s.requests.TransitionInTx(ctx, tx, workspaceID, requestID, StateProvisioned, actor, "connector provisioned"); err != nil {
 			return err
 		}

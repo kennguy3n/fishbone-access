@@ -12,9 +12,23 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
+
+// forUpdate returns tx with a row-level write lock (SELECT ... FOR UPDATE) on
+// Postgres so two concurrent transactions that load-then-transition the same
+// row serialize instead of both reading the same state, both passing the FSM
+// gate, and each writing a duplicate history/audit row. It is a no-op on
+// dialects without FOR UPDATE (the SQLite test path serializes writers with a
+// single global write lock, so no such race exists there).
+func forUpdate(tx *gorm.DB) *gorm.DB {
+	if tx.Dialector != nil && tx.Name() == "postgres" {
+		return tx.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	return tx
+}
 
 // auditChainLockNamespace salts the per-workspace advisory-lock key so it can
 // never collide with the migration runner's advisory lock (which uses a

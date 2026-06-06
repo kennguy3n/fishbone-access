@@ -209,7 +209,11 @@ func (s *AccessRequestService) transitionRequest(ctx context.Context, workspaceI
 // workspace filter so a transition can never touch another tenant's row.
 func (s *AccessRequestService) TransitionInTx(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID, to RequestState, actor, reason string) (*models.AccessRequest, error) {
 	var req models.AccessRequest
-	err := tx.WithContext(ctx).
+	// FOR UPDATE (on Postgres) so two concurrent transitions on the same
+	// request serialize: the second waits, re-reads the post-commit state, and
+	// is correctly rejected by the FSM gate instead of both passing it and
+	// writing duplicate history/audit rows.
+	err := forUpdate(tx.WithContext(ctx)).
 		Where("workspace_id = ? AND id = ?", workspaceID, requestID).
 		Take(&req).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -124,6 +124,53 @@ func TestProvisionFailsThenRetryPath(t *testing.T) {
 	}
 }
 
+// TestProvisionIsIdempotentWhenGrantAlreadyExists proves the crash/retry guard:
+// if a live grant already exists for a request (e.g. a prior attempt that
+// committed, or a concurrent provision), a subsequent Provision reuses it
+// instead of inserting a duplicate access_grants row.
+func TestProvisionIsIdempotentWhenGrantAlreadyExists(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	ctx := context.Background()
+
+	reqID := approveAndConnector(t, reqSvc, ws, connID)
+	first, err := prov.Provision(ctx, ws, reqID, "system")
+	if err != nil {
+		t.Fatalf("first Provision: %v", err)
+	}
+
+	// Simulate crash-recovery: force the request back to provisioning while the
+	// grant from the first attempt is still live. A second Provision must NOT
+	// create a second grant.
+	if err := db.Model(&models.AccessRequest{}).
+		Where("workspace_id = ? AND id = ?", ws, reqID).
+		Update("state", string(StateProvisioning)).Error; err != nil {
+		t.Fatalf("force provisioning: %v", err)
+	}
+
+	second, err := prov.Provision(ctx, ws, reqID, "system")
+	if err != nil {
+		t.Fatalf("second Provision: %v", err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("expected reused grant %s, got new grant %s", first.ID, second.ID)
+	}
+	var count int64
+	if err := db.Model(&models.AccessGrant{}).
+		Where("workspace_id = ? AND request_id = ?", ws, reqID).
+		Count(&count).Error; err != nil {
+		t.Fatalf("count grants: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly 1 grant for request, got %d (duplicate grant created)", count)
+	}
+}
+
 func TestRevokeGrantIdempotent(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -197,6 +244,34 @@ func TestPolicyDraftSimulatePromoteIdempotent(t *testing.T) {
 	}
 	if !p3.PromotedAt.Equal(firstPromoted) {
 		t.Fatalf("idempotent promote restamped PromotedAt: %v != %v", p3.PromotedAt, firstPromoted)
+	}
+}
+
+// TestUpdateDraftOnNonDraftReturnsNotEditable proves editing a promoted policy
+// returns the dedicated ErrPolicyNotEditable sentinel (not ErrPolicyNotPromotable),
+// so the client gets an accurate "not editable" message rather than a confusing
+// "cannot be promoted" one.
+func TestUpdateDraftOnNonDraftReturnsNotEditable(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "reader"})
+	pol, err := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p1", Definition: def, Actor: "admin"})
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin"); err != nil {
+		t.Fatalf("Promote: %v", err)
+	}
+
+	_, err = svc.UpdateDraft(ctx, ws, pol.ID, "p1", def, "admin")
+	if !errors.Is(err, ErrPolicyNotEditable) {
+		t.Fatalf("expected ErrPolicyNotEditable editing a promoted policy, got %v", err)
+	}
+	if errors.Is(err, ErrPolicyNotPromotable) {
+		t.Fatalf("editing error must not be the promotion sentinel: %v", err)
 	}
 }
 
