@@ -45,12 +45,12 @@ func (c *MakeAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 	return resp.StatusCode, body, nil
 }
 
-func (c *MakeAccessConnector) usersURL() string {
-	return c.baseURL() + "/api/v2/users"
+func (c *MakeAccessConnector) usersURL(cfg Config) string {
+	return c.baseURL(cfg) + "/api/v2/users"
 }
 
-func (c *MakeAccessConnector) userURL(userID string) string {
-	return c.baseURL() + "/api/v2/users/" + url.PathEscape(strings.TrimSpace(userID))
+func (c *MakeAccessConnector) userURL(cfg Config, userID string) string {
+	return c.baseURL(cfg) + "/api/v2/users/" + url.PathEscape(strings.TrimSpace(userID))
 }
 
 func (c *MakeAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
@@ -74,7 +74,7 @@ func (c *MakeAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 	if err := makeValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (c *MakeAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 		"email": strings.TrimSpace(grant.UserExternalID),
 		"role":  strings.TrimSpace(grant.ResourceExternalID),
 	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.usersURL(), payload)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.usersURL(cfg), payload)
 	if err != nil {
 		return err
 	}
@@ -106,11 +106,11 @@ func (c *MakeAccessConnector) RevokeAccess(ctx context.Context, configRaw, secre
 	if err := makeValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.userURL(grant.UserExternalID), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.userURL(cfg, grant.UserExternalID), nil)
 	if err != nil {
 		return err
 	}
@@ -135,11 +135,11 @@ func (c *MakeAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	if user == "" {
 		return nil, errors.New("make: user external id is required")
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.userURL(user), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.userURL(cfg, user), nil)
 	if err != nil {
 		return nil, err
 	}

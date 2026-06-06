@@ -125,3 +125,43 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 		t.Errorf("redaction failed: %q", got)
 	}
 }
+
+// TestBaseURL_RegionAndOverride is a regression test for the configurable Make
+// region/base URL. The endpoint was previously hardcoded to eu1.make.com, which
+// locked out operators on us1/eu2/etc. baseURL must honor base_url, then region,
+// then fall back to the eu1 default.
+func TestBaseURL_RegionAndOverride(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  map[string]interface{}
+		want string
+	}{
+		{"default eu1", map[string]interface{}{}, "https://eu1.make.com"},
+		{"region us1", map[string]interface{}{"region": "us1"}, "https://us1.make.com"},
+		{"region eu2", map[string]interface{}{"region": " eu2 "}, "https://eu2.make.com"},
+		{"base_url override", map[string]interface{}{"base_url": "https://make.example.com/"}, "https://make.example.com"},
+		{"base_url wins over region", map[string]interface{}{"base_url": "https://make.example.com", "region": "us1"}, "https://make.example.com"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := DecodeConfig(tc.raw)
+			if err != nil {
+				t.Fatalf("DecodeConfig: %v", err)
+			}
+			if got := (&MakeAccessConnector{}).baseURL(cfg); got != tc.want {
+				t.Errorf("baseURL = %q; want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestValidate_RejectsRegionThatLooksLikeURL guards the operator against putting
+// a full URL in the region field (which would build a malformed host).
+func TestValidate_RejectsRegionThatLooksLikeURL(t *testing.T) {
+	for _, bad := range []string{"https://us1.make.com", "us1.make.com", "us1/extra"} {
+		cfg := map[string]interface{}{"region": bad}
+		if err := New().Validate(context.Background(), cfg, validSecrets()); err == nil {
+			t.Errorf("Validate(region=%q) = nil; want error", bad)
+		}
+	}
+}

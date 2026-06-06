@@ -20,6 +20,11 @@ import (
 const (
 	ProviderName = "make"
 	pageSize     = 100
+
+	// defaultRegion is the Make zone used when neither base_url nor region is
+	// configured. eu1 was the connector's original hardcoded endpoint, so it
+	// remains the default for backwards compatibility.
+	defaultRegion = "eu1"
 )
 
 var ErrNotImplemented = fmt.Errorf("make: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -28,7 +33,17 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Config struct{}
+type Config struct {
+	// BaseURL optionally overrides the full API base (scheme + host), for
+	// white-label or self-hosted Make deployments. When set it takes
+	// precedence over Region.
+	BaseURL string `json:"base_url"`
+	// Region selects the Make zone subdomain (e.g. "eu1", "eu2", "us1",
+	// "us2"). When BaseURL is empty the base resolves to
+	// https://{Region}.make.com. Defaults to defaultRegion when both are
+	// empty.
+	Region string `json:"region"`
+}
 
 type Secrets struct {
 	Token string `json:"token"`
@@ -46,7 +61,14 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	if raw == nil {
 		return Config{}, errors.New("make: config is nil")
 	}
-	return Config{}, nil
+	var cfg Config
+	if v, ok := raw["base_url"].(string); ok {
+		cfg.BaseURL = strings.TrimSpace(v)
+	}
+	if v, ok := raw["region"].(string); ok {
+		cfg.Region = strings.TrimSpace(v)
+	}
+	return cfg, nil
 }
 
 func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
@@ -60,7 +82,16 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
-func (c Config) validate() error { return nil }
+func (c Config) validate() error {
+	// A region is just a zone subdomain (e.g. "eu1"); a value containing a
+	// scheme, slash, or dot is almost certainly a full URL placed in the wrong
+	// field, so point the operator at base_url instead of silently building a
+	// malformed host like "https://eu1.make.com.make.com".
+	if r := c.Region; r != "" && strings.ContainsAny(r, "/.:") {
+		return errors.New(`make: region must be a zone subdomain like "eu1" (use base_url for a full URL)`)
+	}
+	return nil
+}
 func (s Secrets) validate() error {
 	if strings.TrimSpace(s.Token) == "" {
 		return errors.New("make: token is required")
@@ -83,11 +114,18 @@ func (c *MakeAccessConnector) Validate(_ context.Context, configRaw, secretsRaw 
 	return s.validate()
 }
 
-func (c *MakeAccessConnector) baseURL() string {
+func (c *MakeAccessConnector) baseURL(cfg Config) string {
 	if c.urlOverride != "" {
 		return strings.TrimRight(c.urlOverride, "/")
 	}
-	return "https://eu1.make.com"
+	if cfg.BaseURL != "" {
+		return strings.TrimRight(cfg.BaseURL, "/")
+	}
+	region := cfg.Region
+	if region == "" {
+		region = defaultRegion
+	}
+	return "https://" + region + ".make.com"
 }
 
 func (c *MakeAccessConnector) client() httpDoer {
@@ -140,11 +178,11 @@ func (c *MakeAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interf
 }
 
 func (c *MakeAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	probe := c.baseURL() + "/api/v2/users?pg%5Boffset%5D=0&pg%5Blimit%5D=1"
+	probe := c.baseURL(cfg) + "/api/v2/users?pg%5Boffset%5D=0&pg%5Blimit%5D=1"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -191,7 +229,7 @@ func (c *MakeAccessConnector) SyncIdentities(
 	checkpoint string,
 	handler func(batch []*access.Identity, nextCheckpoint string) error,
 ) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -202,7 +240,7 @@ func (c *MakeAccessConnector) SyncIdentities(
 			offset = 0
 		}
 	}
-	base := c.baseURL()
+	base := c.baseURL(cfg)
 	for {
 		q := url.Values{
 			"pg[offset]": []string{fmt.Sprintf("%d", offset)},
