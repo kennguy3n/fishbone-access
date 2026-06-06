@@ -124,3 +124,31 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 		t.Errorf("redaction failed: %q", got)
 	}
 }
+
+// TestListEntitlements_DeduplicatesRoles guards against the regression
+// where a role id present in both the `roles` array and the singular
+// `role_id` field produced two identical entitlements. Each distinct
+// role must appear exactly once.
+func TestListEntitlements_DeduplicatesRoles(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"u-1","role_id":"admin","roles":["admin","viewer"]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d entitlements, want 2 (deduped): %#v", len(got), got)
+	}
+	seen := map[string]int{}
+	for _, e := range got {
+		seen[e.Role]++
+	}
+	if seen["admin"] != 1 || seen["viewer"] != 1 {
+		t.Fatalf("role counts = %v, want admin:1 viewer:1", seen)
+	}
+}

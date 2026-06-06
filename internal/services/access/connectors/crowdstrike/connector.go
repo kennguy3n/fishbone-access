@@ -181,6 +181,22 @@ func (c *CrowdStrikeAccessConnector) fetchToken(ctx context.Context, cfg Config,
 	return tr.AccessToken, nil
 }
 
+// httpError is the typed error returned by authedDo for any non-2xx
+// upstream response. It carries the HTTP status and (limited) response
+// body so callers can branch on the status code via errors.As instead
+// of matching against the formatted error string. Error() preserves the
+// original `status %d: %s` shape so existing callers that only check
+// err != nil keep working.
+type httpError struct {
+	Method     string
+	StatusCode int
+	Body       string
+}
+
+func (e *httpError) Error() string {
+	return fmt.Sprintf("crowdstrike: %s: status %d: %s", e.Method, e.StatusCode, e.Body)
+}
+
 func (c *CrowdStrikeAccessConnector) authedDo(ctx context.Context, token, method, fullURL string, body io.Reader, contentType string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
@@ -198,7 +214,7 @@ func (c *CrowdStrikeAccessConnector) authedDo(ctx context.Context, token, method
 	defer resp.Body.Close()
 	rb, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("crowdstrike: %s: status %d: %s", method, resp.StatusCode, string(rb))
+		return nil, &httpError{Method: method, StatusCode: resp.StatusCode, Body: string(rb)}
 	}
 	return rb, nil
 }
@@ -365,14 +381,17 @@ func (c *CrowdStrikeAccessConnector) ProvisionAccess(ctx context.Context, config
 		return fmt.Errorf("crowdstrike: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if strings.Contains(string(respBody), "already") {
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("crowdstrike: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("crowdstrike: provision status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return fmt.Errorf("crowdstrike: provision status %d: %s", resp.StatusCode, string(respBody))
 }
 
 func (c *CrowdStrikeAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
@@ -400,14 +419,17 @@ func (c *CrowdStrikeAccessConnector) RevokeAccess(ctx context.Context, configRaw
 		return fmt.Errorf("crowdstrike: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if strings.Contains(string(respBody), "already") {
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("crowdstrike: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("crowdstrike: revoke status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return fmt.Errorf("crowdstrike: revoke status %d: %s", resp.StatusCode, string(respBody))
 }
 
 func (c *CrowdStrikeAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {

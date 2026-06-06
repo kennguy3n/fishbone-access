@@ -89,3 +89,32 @@ func TestFetchAccessAuditLogs_Forbidden_SoftSkip(t *testing.T) {
 		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_SoftSkipStatuses guards against the
+// regression where audit-not-available detection matched the literal
+// string "status 403" in the formatted error. The soft-skip set is
+// 401/403/404 (docs/architecture.md §2); a 401 (expired token) or 404
+// must also map to ErrAuditNotAvailable rather than a hard error, and
+// the check must be on the typed httpError status, not the error text.
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/oauth2/token" {
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{"access_token": "tok", "expires_in": 3600})
+				return
+			}
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"errors":[{"message":"nope"}]}`))
+		}))
+		c := New()
+		c.urlOverride = server.URL
+		c.httpClient = func() httpDoer { return server.Client() }
+		err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		server.Close()
+		if err != access.ErrAuditNotAvailable {
+			t.Fatalf("status %d: err = %v; want ErrAuditNotAvailable", status, err)
+		}
+	}
+}

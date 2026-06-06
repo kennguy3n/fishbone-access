@@ -164,11 +164,16 @@ func (c *CopperAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if strings.TrimSpace(user1.RoleID) != "" {
 		roles = append(roles, user1.RoleID)
 	}
+	seen := make(map[string]struct{}, len(roles))
 	for _, r := range roles {
 		r = strings.TrimSpace(r)
 		if r == "" {
 			continue
 		}
+		if _, dup := seen[r]; dup {
+			continue
+		}
+		seen[r] = struct{}{}
 		out = append(out, access.Entitlement{
 			ResourceExternalID: r,
 			Role:               r,

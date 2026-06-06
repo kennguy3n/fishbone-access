@@ -322,8 +322,8 @@ func (c *DatadogAccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("DD-API-KEY", secrets.APIKey)
-	req.Header.Set("DD-APPLICATION-KEY", secrets.ApplicationKey)
+	req.Header.Set("DD-API-KEY", strings.TrimSpace(secrets.APIKey))
+	req.Header.Set("DD-APPLICATION-KEY", strings.TrimSpace(secrets.ApplicationKey))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("datadog: provision: %w", err)
@@ -351,8 +351,8 @@ func (c *DatadogAccessConnector) RevokeAccess(ctx context.Context, configRaw, se
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("DD-API-KEY", secrets.APIKey)
-	req.Header.Set("DD-APPLICATION-KEY", secrets.ApplicationKey)
+	req.Header.Set("DD-API-KEY", strings.TrimSpace(secrets.APIKey))
+	req.Header.Set("DD-APPLICATION-KEY", strings.TrimSpace(secrets.ApplicationKey))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("datadog: revoke: %w", err)

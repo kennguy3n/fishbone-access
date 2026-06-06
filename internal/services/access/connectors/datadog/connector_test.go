@@ -277,3 +277,54 @@ func TestListEntitlements_MalformedBodyReturnsError(t *testing.T) {
 		t.Fatalf("expected nil entitlements on decode error, got %v", got)
 	}
 }
+
+// TestProvisionRevoke_TrimWhitespaceCredentials guards against the
+// regression where ProvisionAccess / RevokeAccess sent the raw
+// secrets.APIKey / secrets.ApplicationKey without TrimSpace, while
+// every other code path (newRequest, RevokeUserSessions) trims. A
+// stored secret with an incidental trailing newline would then make
+// provision/revoke fail auth while reads succeeded. The server asserts
+// the auth headers arrive already trimmed.
+func TestProvisionRevoke_TrimWhitespaceCredentials(t *testing.T) {
+	const wantAPI = "ddAPI1234bbbbCCCC"
+	const wantApp = "ddAPP1234bbbbCCCC"
+	check := func(t *testing.T, r *http.Request) {
+		if got := r.Header.Get("DD-API-KEY"); got != wantAPI {
+			t.Errorf("DD-API-KEY = %q, want trimmed %q", got, wantAPI)
+		}
+		if got := r.Header.Get("DD-APPLICATION-KEY"); got != wantApp {
+			t.Errorf("DD-APPLICATION-KEY = %q, want trimmed %q", got, wantApp)
+		}
+	}
+	whitespaceSecrets := map[string]interface{}{
+		"api_key":         "  " + wantAPI + "\n",
+		"application_key": "\t" + wantApp + "  ",
+	}
+	t.Run("provision", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			check(t, r)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		if err := c.ProvisionAccess(context.Background(), validConfig(), whitespaceSecrets, access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"}); err != nil {
+			t.Fatalf("ProvisionAccess: %v", err)
+		}
+	})
+	t.Run("revoke", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			check(t, r)
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		if err := c.RevokeAccess(context.Background(), validConfig(), whitespaceSecrets, access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"}); err != nil {
+			t.Fatalf("RevokeAccess: %v", err)
+		}
+	})
+}

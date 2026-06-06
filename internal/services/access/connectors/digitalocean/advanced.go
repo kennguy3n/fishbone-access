@@ -129,6 +129,11 @@ func (c *DigitalOceanAccessConnector) RevokeAccess(ctx context.Context, _, secre
 	}
 }
 
+// maxEntitlementPages caps the team-pagination loop in ListEntitlements
+// so a misbehaving provider that always returns a links.pages.next can
+// never spin the worker forever.
+const maxEntitlementPages = 1000
+
 func (c *DigitalOceanAccessConnector) ListEntitlements(ctx context.Context, _, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
 	user := strings.TrimSpace(userExternalID)
 	if user == "" {
@@ -138,44 +143,57 @@ func (c *DigitalOceanAccessConnector) ListEntitlements(ctx context.Context, _, s
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/v2/teams", nil)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("digitalocean: list entitlements status %d: %s", status, string(body))
-	}
-	var envelope struct {
-		Teams []struct {
-			ID      string `json:"id"`
-			Members []struct {
-				Email string `json:"email"`
-				UUID  string `json:"uuid"`
-			} `json:"members"`
-		} `json:"teams"`
-	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, fmt.Errorf("digitalocean: decode entitlements: %w", err)
-	}
-	out := make([]access.Entitlement, 0, len(envelope.Teams))
-	for _, t := range envelope.Teams {
-		for _, m := range t.Members {
-			if strings.EqualFold(m.Email, user) || m.UUID == user {
-				out = append(out, access.Entitlement{
-					ResourceExternalID: strings.TrimSpace(t.ID),
-					Role:               "member",
-					Source:             "direct",
-				})
-				break
+	out := make([]access.Entitlement, 0)
+	path := "/v2/teams?per_page=200"
+	for page := 0; page < maxEntitlementPages; page++ {
+		req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+path, nil)
+		if err != nil {
+			return nil, err
+		}
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("digitalocean: list entitlements status %d: %s", status, string(body))
+		}
+		var envelope struct {
+			Teams []struct {
+				ID      string `json:"id"`
+				Members []struct {
+					Email string `json:"email"`
+					UUID  string `json:"uuid"`
+				} `json:"members"`
+			} `json:"teams"`
+			Links struct {
+				Pages struct {
+					Next string `json:"next,omitempty"`
+				} `json:"pages"`
+			} `json:"links"`
+		}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			return nil, fmt.Errorf("digitalocean: decode entitlements: %w", err)
+		}
+		for _, t := range envelope.Teams {
+			for _, m := range t.Members {
+				if strings.EqualFold(m.Email, user) || m.UUID == user {
+					out = append(out, access.Entitlement{
+						ResourceExternalID: strings.TrimSpace(t.ID),
+						Role:               "member",
+						Source:             "direct",
+					})
+					break
+				}
 			}
 		}
+		next := envelope.Links.Pages.Next
+		if next == "" {
+			break
+		}
+		path = nextPath(next)
 	}
 	return out, nil
 }

@@ -303,3 +303,41 @@ func TestListEntitlements_MalformedBodyReturnsError(t *testing.T) {
 		t.Fatalf("expected nil entitlements on decode error, got %v", got)
 	}
 }
+
+// TestProvisionAccess_AcceptsNon200Success guards against the regression
+// where ProvisionAccess only treated HTTP 200 as success, so a provider
+// returning 201 Created / 204 No Content (both valid 2xx) was reported
+// as a failure. The shared success range (2xx) must be honoured.
+func TestProvisionAccess_AcceptsNon200Success(t *testing.T) {
+	for _, status := range []int{http.StatusCreated, http.StatusNoContent} {
+		srv := httptest.NewServer(csHandler(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(status)
+		}))
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"})
+		srv.Close()
+		if err != nil {
+			t.Fatalf("ProvisionAccess status %d: unexpected error %v", status, err)
+		}
+	}
+}
+
+// TestRevokeAccess_NotFoundIsIdempotent guards against the regression
+// where RevokeAccess only treated 200 + body-"already" as success. A
+// 404 (the grant is already gone) must be idempotent success per
+// docs/architecture.md §2, via access.IsIdempotentRevokeStatus.
+func TestRevokeAccess_NotFoundIsIdempotent(t *testing.T) {
+	srv := httptest.NewServer(csHandler(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors":[{"code":404,"message":"not found"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "role-1"}); err != nil {
+		t.Fatalf("RevokeAccess 404 should be idempotent: %v", err)
+	}
+}

@@ -3,6 +3,7 @@ package crowdstrike
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -51,7 +52,7 @@ func (c *CrowdStrikeAccessConnector) FetchAccessAuditLogs(
 		queryURL := fmt.Sprintf("%s/user-management/queries/user-login-history/v1?offset=%d&limit=%d", base, offset, pageLimit)
 		qb, err := c.authedDo(ctx, token, http.MethodGet, queryURL, nil, "")
 		if err != nil {
-			if strings.Contains(err.Error(), "status 403") {
+			if isAuditNotAvailable(err) {
 				return access.ErrAuditNotAvailable
 			}
 			return err
@@ -157,6 +158,22 @@ func mapCrowdStrikeLogin(parent *csUserLoginHistory, e *csUserLogin) *access.Aud
 		Outcome:         outcome,
 		RawData:         rawMap,
 	}
+}
+
+// isAuditNotAvailable reports whether an authedDo error represents a
+// tenant whose token cannot read audit data (missing scope, expired
+// token, or absent resource). Per docs/architecture.md §2 the audit
+// soft-skip set is 401/403/404. Matching on the typed httpError status
+// is robust against changes to the formatted error string.
+func isAuditNotAvailable(err error) bool {
+	var he *httpError
+	if errors.As(err, &he) {
+		switch he.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return true
+		}
+	}
+	return false
 }
 
 var _ access.AccessAuditor = (*CrowdStrikeAccessConnector)(nil)
