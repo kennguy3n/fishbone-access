@@ -95,10 +95,20 @@ func (c *SumoLogicAccessConnector) FetchAccessAuditLogs(
 			}
 			batch = append(batch, entry)
 		}
-		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-			return err
+		// Per-page emit is correct here because the API paginates
+		// forward (oldest-first via `from`), so `batchMax`/`cursor`
+		// advance monotonically and `nextSince` only ever covers
+		// already-yielded events. Skip the handler entirely on an empty
+		// batch (every event on the page failed to map): it would only
+		// re-persist an unchanged cursor, and we still advance `token`
+		// below so the sweep continues. Matches the len(batch)==0 guard
+		// the sibling audit connectors apply before invoking handler.
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
 		}
-		cursor = batchMax
 		token = strings.TrimSpace(p.Next)
 		if token == "" || len(p.Data) == 0 {
 			return nil

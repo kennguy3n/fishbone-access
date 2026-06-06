@@ -69,6 +69,15 @@ func (c *TailscaleAccessConnector) FetchAccessAuditLogs(
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("tailscale: audit log: status %d: %s", resp.StatusCode, string(body))
 	}
+	// This endpoint is not paginated (no cursor/next token), so the whole
+	// window arrives in one body. If it exceeds the read cap the JSON is
+	// truncated and json.Unmarshal would fail with an opaque "decode"
+	// error indistinguishable from a genuinely malformed response.
+	// Surface a distinct, actionable error instead so the caller can
+	// narrow the time window rather than silently losing audit events.
+	if len(body) > tsAuditBodyCap {
+		return fmt.Errorf("tailscale: audit log: response exceeds %d-byte cap for this window (endpoint is not paginated); narrow the audit time range and retry", tsAuditBodyCap)
+	}
 	var resp1 tsAuditResponse
 	if err := json.Unmarshal(body, &resp1); err != nil {
 		return fmt.Errorf("tailscale: decode audit log: %w", err)
@@ -180,15 +189,24 @@ func parseTSAuditTime(s string) time.Time {
 	return time.Time{}
 }
 
+// tsAuditBodyCap bounds a single audit-log response read. Unlike the
+// paginated connectors (where a per-page cap is recoverable across
+// pages), this endpoint returns the entire window in one body, so the
+// caller treats a read at the cap as a hard, reported truncation rather
+// than silent data loss.
+const tsAuditBodyCap = 1 << 20
+
 func readTSAuditBody(resp *http.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("tailscale: empty response")
 	}
 	defer resp.Body.Close()
-	// Strict byte-exact 1 MB bound; the earlier chunked read could
-	// overshoot by up to one 4 KB buffer before the post-append guard
-	// tripped. Matches readSplunkBody in splunk/audit.go.
-	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// Read one byte past the cap with a strict byte-exact io.LimitReader
+	// (the earlier chunked read could overshoot by up to one 4 KB buffer).
+	// The extra byte lets the caller detect that the upstream body hit the
+	// cap and was truncated, so it can distinguish truncation from a
+	// genuinely malformed payload.
+	return io.ReadAll(io.LimitReader(resp.Body, tsAuditBodyCap+1))
 }
 
 var _ access.AccessAuditor = (*TailscaleAccessConnector)(nil)
