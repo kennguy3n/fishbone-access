@@ -59,7 +59,7 @@ func (c *OVHcloudAccessConnector) ProvisionAccess(ctx context.Context, configRaw
 		"description": strings.TrimSpace(grant.ResourceExternalID),
 		"group":       strings.TrimSpace(grant.ResourceExternalID),
 	})
-	endpoint := c.baseURL(cfg) + "/1.0/me/identity/user"
+	endpoint := c.baseURL(cfg) + "/me/identity/user"
 	req, err := c.newRequest(ctx, secrets, http.MethodPost, endpoint, string(payload))
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (c *OVHcloudAccessConnector) RevokeAccess(ctx context.Context, configRaw, s
 	if err != nil {
 		return err
 	}
-	endpoint := c.baseURL(cfg) + "/1.0/me/identity/user/" + url.PathEscape(strings.TrimSpace(grant.UserExternalID))
+	endpoint := c.baseURL(cfg) + "/me/identity/user/" + url.PathEscape(strings.TrimSpace(grant.UserExternalID))
 	req, err := c.newRequest(ctx, secrets, http.MethodDelete, endpoint, "")
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func (c *OVHcloudAccessConnector) ListEntitlements(ctx context.Context, configRa
 	if err != nil {
 		return nil, err
 	}
-	endpoint := c.baseURL(cfg) + "/1.0/me/identity/user"
+	endpoint := c.baseURL(cfg) + "/me/identity/user"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint, "")
 	if err != nil {
 		return nil, err

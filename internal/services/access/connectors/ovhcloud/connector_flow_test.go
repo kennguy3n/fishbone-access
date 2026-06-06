@@ -33,7 +33,7 @@ func TestOVHcloudConnectorFlow_FullLifecycle(t *testing.T) {
 			}
 		}
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/1.0/me/identity/user":
+		case r.Method == http.MethodPost && r.URL.Path == "/me/identity/user":
 			if isMember {
 				w.WriteHeader(http.StatusConflict)
 				_, _ = w.Write([]byte(`{"message":"user already exists"}`))
@@ -42,20 +42,20 @@ func TestOVHcloudConnectorFlow_FullLifecycle(t *testing.T) {
 			isMember = true
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{}`))
-		case r.Method == http.MethodDelete && r.URL.Path == "/1.0/me/identity/user/"+login:
+		case r.Method == http.MethodDelete && r.URL.Path == "/me/identity/user/"+login:
 			if !isMember {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			isMember = false
 			w.WriteHeader(http.StatusOK)
-		case r.Method == http.MethodGet && r.URL.Path == "/1.0/me/identity/user":
+		case r.Method == http.MethodGet && r.URL.Path == "/me/identity/user":
 			logins := []string{}
 			if isMember {
 				logins = append(logins, login)
 			}
 			_ = json.NewEncoder(w).Encode(logins)
-		case r.Method == http.MethodGet && r.URL.Path == "/1.0/me/identity/user/"+login:
+		case r.Method == http.MethodGet && r.URL.Path == "/me/identity/user/"+login:
 			if !isMember {
 				w.WriteHeader(http.StatusNotFound)
 				return
