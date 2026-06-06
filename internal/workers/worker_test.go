@@ -10,10 +10,11 @@ import (
 
 // memQueue is an in-memory Queue for testing the drain/retry loop.
 type memQueue struct {
-	mu        sync.Mutex
-	pending   []Job
-	completed []string
-	failed    []string
+	mu         sync.Mutex
+	pending    []Job
+	completed  []string
+	failed     []string
+	deadLetter []string
 }
 
 func (q *memQueue) Claim(_ context.Context, max int) ([]Job, error) {
@@ -45,10 +46,23 @@ func (q *memQueue) Fail(_ context.Context, jobID string, _ int, _ error, _ time.
 	return nil
 }
 
+func (q *memQueue) DeadLetter(_ context.Context, jobID string, _ int, _ error) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.deadLetter = append(q.deadLetter, jobID)
+	return nil
+}
+
 func (q *memQueue) counts() (int, int) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.completed), len(q.failed)
+}
+
+func (q *memQueue) deadLetterCount() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return len(q.deadLetter)
 }
 
 func TestWorkerProcessesAndCompletes(t *testing.T) {
@@ -83,6 +97,26 @@ func TestWorkerFailsOnProcessorError(t *testing.T) {
 
 	waitFor(t, func() bool { _, f := q.counts(); return f == 1 })
 	cancel()
+}
+
+func TestWorkerDeadLettersWhenAttemptsExhausted(t *testing.T) {
+	// Job already on its final attempt (Attempts=1, MaxAttempts=2): the next
+	// failure must dead-letter rather than reschedule.
+	q := &memQueue{pending: []Job{{ID: "x", Type: "sync", Attempts: 1}}}
+	proc := ProcessorFunc(func(_ context.Context, _ Job) error {
+		return errors.New("boom")
+	})
+	w := New(q, proc, Config{PollInterval: 5 * time.Millisecond, MaxAttempts: 2})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { _ = w.Run(ctx) }()
+
+	waitFor(t, func() bool { return q.deadLetterCount() == 1 })
+	cancel()
+
+	if _, f := q.counts(); f != 0 {
+		t.Errorf("Fail called %d times, want 0 (job should dead-letter, not reschedule)", f)
+	}
 }
 
 func TestRunStopsOnContextCancel(t *testing.T) {

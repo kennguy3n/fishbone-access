@@ -30,9 +30,13 @@ type Queue interface {
 	Claim(ctx context.Context, max int) ([]Job, error)
 	// Complete marks a job as successfully processed.
 	Complete(ctx context.Context, jobID string) error
-	// Fail records a processing error and either reschedules the job (with
-	// backoff) or moves it to dead-letter once attempts are exhausted.
+	// Fail records a processing error and reschedules the job for another
+	// attempt at retryAt (the worker only calls this while attempts remain).
 	Fail(ctx context.Context, jobID string, attempts int, cause error, retryAt time.Time) error
+	// DeadLetter records a terminally-failed job. The worker calls this
+	// instead of Fail once attempts reach the configured MaxAttempts, so the
+	// job is not rescheduled.
+	DeadLetter(ctx context.Context, jobID string, attempts int, cause error) error
 }
 
 // Processor handles a single job. Returning an error triggers Queue.Fail.
@@ -124,6 +128,13 @@ func (w *Worker) drainOnce(ctx context.Context) (int, error) {
 func (w *Worker) handle(ctx context.Context, job Job) {
 	if err := w.proc.Process(ctx, job); err != nil {
 		attempts := job.Attempts + 1
+		if attempts >= w.cfg.MaxAttempts {
+			// Attempts exhausted: dead-letter instead of rescheduling.
+			if derr := w.queue.DeadLetter(ctx, job.ID, attempts, err); derr != nil {
+				logger.Errorf(ctx, "worker: dead-letter(%s) failed: %v", job.ID, derr)
+			}
+			return
+		}
 		retryAt := time.Now().Add(w.backoff(attempts))
 		if ferr := w.queue.Fail(ctx, job.ID, attempts, err, retryAt); ferr != nil {
 			logger.Errorf(ctx, "worker: fail(%s) failed: %v", job.ID, ferr)

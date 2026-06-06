@@ -65,14 +65,23 @@ func NewSupervisor(listeners []Listener) *Supervisor {
 // in-flight connections. It returns the first bind error, or nil on clean
 // shutdown.
 func (s *Supervisor) Run(ctx context.Context) error {
-	var lc net.ListenConfig
+	// Validate the whole listener set before binding anything, so a
+	// misconfigured listener cannot leave earlier listeners bound and their
+	// serve goroutines running.
 	for _, l := range s.listeners {
 		if l.Handler == nil {
 			return fmt.Errorf("gateway: listener %q has no handler", l.Name)
 		}
+	}
+
+	var lc net.ListenConfig
+	for _, l := range s.listeners {
 		ln, err := lc.Listen(ctx, "tcp", l.Addr)
 		if err != nil {
+			// Drain any listeners/goroutines already started before failing,
+			// so callers can assume all resources are released on return.
 			s.closeAll()
+			s.wg.Wait()
 			return fmt.Errorf("gateway: bind %s (%s): %w", l.Name, l.Addr, err)
 		}
 		s.track(ln)
