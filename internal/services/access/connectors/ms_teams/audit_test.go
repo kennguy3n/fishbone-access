@@ -192,3 +192,29 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+func TestFetchAccessAuditLogs_BoundedPagination(t *testing.T) {
+	// A misbehaving endpoint that always returns @odata.nextLink must not loop
+	// forever; the connector caps pagination at teamsAuditMaxPages.
+	var serverURL string
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_, _ = w.Write([]byte(fmt.Sprintf(
+			`{"value":[{"id":"s1","createdDateTime":"2024-01-01T10:00:00Z"}],"@odata.nextLink":%q}`,
+			serverURL+"/auditLogs/signIns?next=1")))
+	}))
+	t.Cleanup(srv.Close)
+	serverURL = srv.URL
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "fake-token", nil }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{}, func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != teamsAuditMaxPages {
+		t.Fatalf("calls = %d; want %d (bounded)", calls, teamsAuditMaxPages)
+	}
+}

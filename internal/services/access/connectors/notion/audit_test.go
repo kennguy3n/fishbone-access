@@ -152,3 +152,25 @@ func TestMapNotionAuditEvent_DropsUnparseableTimestamp(t *testing.T) {
 		t.Fatalf("expected nil for unparseable timestamp, got %+v", got)
 	}
 }
+
+func TestFetchAccessAuditLogs_BoundedPagination(t *testing.T) {
+	// A misbehaving endpoint that always reports has_more:true must not loop
+	// forever; the connector caps pagination at notionAuditMaxPages.
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_, _ = w.Write([]byte(`{"object":"list","has_more":true,"next_cursor":"more","results":[{"id":"e1","event_type":"x","timestamp":"2024-01-01T10:00:00Z","actor":{"id":"a1"}}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), nil, validSecrets(),
+		map[string]time.Time{}, func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != notionAuditMaxPages {
+		t.Fatalf("calls = %d; want %d (bounded)", calls, notionAuditMaxPages)
+	}
+}

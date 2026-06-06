@@ -12,6 +12,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// notionAuditMaxPages bounds audit_log pagination so a misbehaving or
+// compromised endpoint that keeps returning has_more:true cannot loop
+// indefinitely, matching the 200-page cap used by every other audit connector.
+const notionAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Notion audit log entries into the access
 // audit pipeline. Implements access.AccessAuditor.
 //
@@ -41,7 +46,7 @@ func (c *NotionAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	pageCursor := ""
-	for {
+	for pages := 0; pages < notionAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -109,6 +114,7 @@ func (c *NotionAccessConnector) FetchAccessAuditLogs(
 		}
 		pageCursor = page.NextCursor
 	}
+	return nil
 }
 
 type notionAuditPage struct {

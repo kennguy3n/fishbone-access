@@ -18,6 +18,11 @@ import (
 // signIns stream never shadows a slower partition's progress on retry.
 const auditPartitionTeamsSignIns = "ms_teams/signIns"
 
+// teamsAuditMaxPages bounds signIns pagination so a misbehaving or compromised
+// endpoint that keeps returning @odata.nextLink cannot loop indefinitely,
+// matching the 200-page cap used by every other audit connector.
+const teamsAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Microsoft Teams sign-in events from
 // Microsoft Graph back into the access audit pipeline. Implements
 // access.AccessAuditor.
@@ -48,7 +53,7 @@ func (c *MSTeamsAccessConnector) FetchAccessAuditLogs(
 	if err != nil {
 		return err
 	}
-	for next != "" {
+	for pages := 0; next != "" && pages < teamsAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
