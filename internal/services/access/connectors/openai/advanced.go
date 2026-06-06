@@ -36,7 +36,7 @@ func openaiValidateGrant(g access.AccessGrant) error {
 }
 
 func (c *OpenAIAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return 0, nil, fmt.Errorf("openai: %s %s: %w", req.Method, req.URL.Path, err)
 	}

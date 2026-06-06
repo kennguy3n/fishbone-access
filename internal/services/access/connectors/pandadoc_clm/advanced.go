@@ -37,7 +37,7 @@ func pandadocClmValidateGrant(g access.AccessGrant) error {
 }
 
 func (c *PandaDocCLMAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return 0, nil, fmt.Errorf("pandadoc_clm: %s %s: %w", req.Method, req.URL.Path, err)
 	}

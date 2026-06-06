@@ -56,7 +56,7 @@ func (c *PandaDocAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		resp, err := c.client().Do(req)
+		resp, err := c.doHTTP(req)
 		if err != nil {
 			return fmt.Errorf("pandadoc: audit logs: %w", err)
 		}

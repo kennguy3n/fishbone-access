@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -90,12 +91,21 @@ func (c *PandaDocAccessConnector) baseURL() string {
 	return "https://api.pandadoc.com"
 }
 
-func (c *PandaDocAccessConnector) client() httpDoer {
+// doHTTP routes the request through the injected test httpClient when
+// present, otherwise through the shared RetryClient so production
+// traffic reuses the connection pool (keep-alive, TLS sessions) and
+// gets the 429/5xx retry-with-jitter policy.
+func (c *PandaDocAccessConnector) doHTTP(req *http.Request) (*http.Response, error) {
 	if c.httpClient != nil {
-		return c.httpClient()
+		return c.httpClient().Do(req)
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedRetryClient.Do(req.Context(), req)
 }
+
+// sharedRetryClient is a package-level singleton so the underlying
+// *http.Client connection pool is reused across requests rather than
+// rebuilt per call.
+var sharedRetryClient = httputil.NewRetryClient(30 * time.Second)
 
 func (c *PandaDocAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
@@ -108,7 +118,7 @@ func (c *PandaDocAccessConnector) newRequest(ctx context.Context, secrets Secret
 }
 
 func (c *PandaDocAccessConnector) do(req *http.Request) ([]byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return nil, fmt.Errorf("pandadoc: %s %s: %w", req.Method, req.URL.Path, err)
 	}

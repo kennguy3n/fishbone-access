@@ -64,7 +64,7 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		resp, err := c.client().Do(req)
+		resp, err := c.doHTTP(req)
 		if err != nil {
 			return fmt.Errorf("paypal: transactions: %w", err)
 		}

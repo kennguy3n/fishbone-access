@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // CheckSSOEnforcement implements access.SSOEnforcementChecker.
@@ -64,7 +65,7 @@ func (c *OktaAccessConnector) evaluateSignOnPolicies(
 		if p.Status != "ACTIVE" {
 			continue
 		}
-		req, err := c.newRequest(ctx, cfg, secrets, http.MethodGet, "/api/v1/policies/"+p.ID+"/rules", nil)
+		req, err := c.newRequest(ctx, cfg, secrets, http.MethodGet, "/api/v1/policies/"+url.PathEscape(p.ID)+"/rules", nil)
 		if err != nil {
 			continue
 		}

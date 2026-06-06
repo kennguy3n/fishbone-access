@@ -57,7 +57,7 @@ func (c *PaychexAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		resp, err := c.client().Do(req)
+		resp, err := c.doHTTP(req)
 		if err != nil {
 			return fmt.Errorf("paychex: audit log: %w", err)
 		}

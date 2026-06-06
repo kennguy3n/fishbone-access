@@ -134,6 +134,13 @@ func mapOnePasswordSigninAttempt(a *onepasswordSigninAttempt) *access.AuditLogEn
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, a.Timestamp)
 	}
+	// Skip entries whose timestamp is non-empty but unparseable by both
+	// layouts: a zero-timestamp audit entry would never advance the
+	// delta-sync cursor (batchMax) and could be mis-ordered downstream.
+	// Mirrors the okta auditor.
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(a)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

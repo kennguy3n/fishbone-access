@@ -48,7 +48,7 @@ func (c *OVHcloudAccessConnector) FetchAccessAuditLogs(
 	if err != nil {
 		return err
 	}
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return fmt.Errorf("ovhcloud: audit log list: %w", err)
 	}
@@ -84,7 +84,7 @@ func (c *OVHcloudAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		dresp, err := c.client().Do(dreq)
+		dresp, err := c.doHTTP(dreq)
 		if err != nil {
 			return fmt.Errorf("ovhcloud: audit log detail: %w", err)
 		}

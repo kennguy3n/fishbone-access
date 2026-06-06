@@ -59,7 +59,7 @@ func (c *OpenAIAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		resp, err := c.client().Do(req)
+		resp, err := c.doHTTP(req)
 		if err != nil {
 			return fmt.Errorf("openai: audit_logs: %w", err)
 		}

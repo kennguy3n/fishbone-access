@@ -3,20 +3,19 @@
 package pagerduty
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
-	"bytes"
-
-	"net/url"
-
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -83,15 +82,32 @@ func (c *PagerDutyAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
-func (c *PagerDutyAccessConnector) client() httpDoer {
+// doHTTP routes the request through the injected test httpClient when
+// present, otherwise through the shared RetryClient so production
+// traffic reuses the connection pool (keep-alive, TLS sessions) and
+// gets the 429/5xx retry-with-jitter policy.
+func (c *PagerDutyAccessConnector) doHTTP(req *http.Request) (*http.Response, error) {
 	if c.httpClient != nil {
-		return c.httpClient()
+		return c.httpClient().Do(req)
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedRetryClient.Do(req.Context(), req)
 }
 
+// sharedRetryClient is a package-level singleton so the underlying
+// *http.Client connection pool is reused across requests rather than
+// rebuilt per call.
+var sharedRetryClient = httputil.NewRetryClient(30 * time.Second)
+
 func (c *PagerDutyAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, path string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, nil)
+	return c.newRequestBody(ctx, secrets, method, path, nil)
+}
+
+// newRequestBody builds a PagerDuty API request with the standard Accept
+// and Authorization headers. All mutating endpoints (ProvisionAccess,
+// RevokeAccess) MUST go through this helper so the required
+// Accept: application/vnd.pagerduty+json;version=2 header is never dropped.
+func (c *PagerDutyAccessConnector) newRequestBody(ctx context.Context, secrets Secrets, method, path string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +117,7 @@ func (c *PagerDutyAccessConnector) newRequest(ctx context.Context, secrets Secre
 }
 
 func (c *PagerDutyAccessConnector) do(req *http.Request) ([]byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return nil, fmt.Errorf("pagerduty: %s %s: %w", req.Method, req.URL.Path, err)
 	}
@@ -251,14 +267,13 @@ func (c *PagerDutyAccessConnector) ProvisionAccess(ctx context.Context, configRa
 		role = "responder"
 	}
 	body, _ := json.Marshal(map[string]string{"role": role})
-	urlStr := fmt.Sprintf("%s/teams/%s/users/%s", c.baseURL(), url.PathEscape(grant.ResourceExternalID), url.PathEscape(grant.UserExternalID))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, urlStr, bytes.NewReader(body))
+	path := fmt.Sprintf("/teams/%s/users/%s", url.PathEscape(grant.ResourceExternalID), url.PathEscape(grant.UserExternalID))
+	req, err := c.newRequestBody(ctx, secrets, http.MethodPut, path, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Token token="+strings.TrimSpace(secrets.APIToken))
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return fmt.Errorf("pagerduty: provision: %w", err)
 	}
@@ -278,13 +293,12 @@ func (c *PagerDutyAccessConnector) RevokeAccess(ctx context.Context, configRaw, 
 	if err != nil {
 		return err
 	}
-	urlStr := fmt.Sprintf("%s/teams/%s/users/%s", c.baseURL(), url.PathEscape(grant.ResourceExternalID), url.PathEscape(grant.UserExternalID))
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, urlStr, nil)
+	path := fmt.Sprintf("/teams/%s/users/%s", url.PathEscape(grant.ResourceExternalID), url.PathEscape(grant.UserExternalID))
+	req, err := c.newRequestBody(ctx, secrets, http.MethodDelete, path, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Token token="+strings.TrimSpace(secrets.APIToken))
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return fmt.Errorf("pagerduty: revoke: %w", err)
 	}

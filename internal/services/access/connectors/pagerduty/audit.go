@@ -117,6 +117,13 @@ func mapPagerDutyAuditRecord(r *pdAuditRecord) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, r.ExecutionTime)
 	}
+	// Skip records whose execution_time is missing/unparseable: a
+	// zero-timestamp audit entry would never advance the delta-sync
+	// cursor (batchMax) and could be mis-ordered downstream. Mirrors
+	// the okta/ovhcloud auditors.
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(r)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

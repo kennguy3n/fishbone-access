@@ -36,6 +36,7 @@ func TestCheckSSOEnforcement_Enforced(t *testing.T) {
 	defer server.Close()
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	cfg, sec := newOktaConfigSecrets(server.URL)
 	enforced, details, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err != nil {
@@ -64,6 +65,7 @@ func TestCheckSSOEnforcement_NotEnforced(t *testing.T) {
 	defer server.Close()
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	cfg, sec := newOktaConfigSecrets(server.URL)
 	enforced, details, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err != nil {
@@ -88,6 +90,7 @@ func TestCheckSSOEnforcement_HTTPFailure(t *testing.T) {
 	defer server.Close()
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	cfg, sec := newOktaConfigSecrets(server.URL)
 	_, _, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err == nil {

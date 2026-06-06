@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -128,12 +129,21 @@ func (c *PayPalAccessConnector) baseURL(cfg Config) string {
 	return "https://api-m.paypal.com"
 }
 
-func (c *PayPalAccessConnector) client() httpDoer {
+// doHTTP routes the request through the injected test httpClient when
+// present, otherwise through the shared RetryClient so production
+// traffic reuses the connection pool (keep-alive, TLS sessions) and
+// gets the 429/5xx retry-with-jitter policy.
+func (c *PayPalAccessConnector) doHTTP(req *http.Request) (*http.Response, error) {
 	if c.httpClient != nil {
-		return c.httpClient()
+		return c.httpClient().Do(req)
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedRetryClient.Do(req.Context(), req)
 }
+
+// sharedRetryClient is a package-level singleton so the underlying
+// *http.Client connection pool is reused across requests rather than
+// rebuilt per call.
+var sharedRetryClient = httputil.NewRetryClient(30 * time.Second)
 
 func (c *PayPalAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
 	cfg, err := DecodeConfig(configRaw)
@@ -163,7 +173,7 @@ func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, sec
 	req.Header.Set("Accept", "application/json")
 	creds := strings.TrimSpace(secrets.ClientID) + ":" + strings.TrimSpace(secrets.ClientSecret)
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(creds)))
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return "", fmt.Errorf("paypal: oauth2 token: %w", err)
 	}
@@ -195,7 +205,7 @@ func (c *PayPalAccessConnector) newRequest(ctx context.Context, token, method, f
 }
 
 func (c *PayPalAccessConnector) do(req *http.Request) ([]byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return nil, fmt.Errorf("paypal: %s %s: %w", req.Method, req.URL.Path, err)
 	}

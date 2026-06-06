@@ -51,7 +51,7 @@ func paypalValidateGrant(g access.AccessGrant) error {
 }
 
 func (c *PayPalAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doHTTP(req)
 	if err != nil {
 		return 0, nil, fmt.Errorf("paypal: %s %s: %w", req.Method, req.URL.Path, err)
 	}
