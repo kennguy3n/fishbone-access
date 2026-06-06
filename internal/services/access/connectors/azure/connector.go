@@ -403,20 +403,24 @@ func (c *AzureAccessConnector) armClient(ctx context.Context, cfg Config, secret
 // (scope, principalID, roleDefinitionID) tuple so that retries land on the
 // same role assignment and 409 / 404 can be treated as idempotent.
 func armRoleAssignmentName(scope, principalID, roleDefinitionID string) string {
-	// Length-prefix each component before joining so the encoding is
-	// injective: two different (scope, principalID, roleDefinitionID)
-	// tuples can never hash to the same name regardless of the bytes
-	// they contain. (Azure scopes/principal/role ids never contain the
-	// old "|" separator today, but length-prefixing removes the
-	// assumption entirely.)
-	var sb strings.Builder
-	for _, part := range []string{scope, principalID, roleDefinitionID} {
-		fmt.Fprintf(&sb, "%d:%s", len(part), part)
-	}
+	// The hash input MUST stay byte-for-byte stable: the resulting name is
+	// the durable identity of the role assignment in Azure. Changing the
+	// encoding re-points ProvisionAccess/RevokeAccess at a different name,
+	// so any assignment created under the previous scheme can no longer be
+	// found — RevokeAccess would DELETE a non-existent name, get 404, and
+	// silently treat it as idempotent success without revoking anything.
+	//
+	// Pipe-separation is injective for the entire valid input domain: scope
+	// and roleDefinitionID are ARM resource IDs ("/subscriptions/...") and
+	// principalID is a GUID, none of which can ever contain a "|" byte, so
+	// no two distinct tuples can collide. We therefore keep this scheme
+	// rather than a length-prefixed encoding that would only guard against
+	// inputs Azure cannot produce, at the cost of breaking existing names.
+	//
 	// gosec G401: deterministic identifier, not a hash for
 	// integrity/auth. SHA-1 chosen so the 20-byte output trims
 	// cleanly to a 16-byte GUID-shaped name.
-	sum := sha1.Sum([]byte(sb.String())) // #nosec G401
+	sum := sha1.Sum([]byte(scope + "|" + principalID + "|" + roleDefinitionID)) // #nosec G401
 	b := sum[:16]
 	// Format as a GUID; this is just a deterministic identifier so we do
 	// not tag it as a specific UUID variant.
