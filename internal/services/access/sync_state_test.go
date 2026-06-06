@@ -132,6 +132,49 @@ func TestSyncStateStoreClear(t *testing.T) {
 	}
 }
 
+// TestSyncStateStoreClearThenResave guards the soft-delete + unique-index
+// interaction: Clear soft-deletes the checkpoint (deleted_at = now), and a
+// later Save must be able to create a fresh row for the same
+// (workspace, connector, sync_type). This only works when the unique index is
+// partial (WHERE deleted_at IS NULL); a non-partial index would still count the
+// soft-deleted row and reject the new insert. Mirrors the real flow where a
+// stale delta link is cleared and the next sync persists a new cursor.
+func TestSyncStateStoreClearThenResave(t *testing.T) {
+	store := NewSyncStateStore(newTestDB(t))
+	ctx := context.Background()
+	ws, conn := uuid.New(), uuid.New()
+
+	if err := store.Save(ctx, ws, conn, "", "stale-token"); err != nil {
+		t.Fatalf("Save 1: %v", err)
+	}
+	if err := store.Clear(ctx, ws, conn, ""); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	// Re-saving after a clear must succeed (no unique-constraint collision with
+	// the soft-deleted row) and must surface the new token.
+	if err := store.Save(ctx, ws, conn, "", "fresh-token"); err != nil {
+		t.Fatalf("Save after Clear: %v", err)
+	}
+	link, err := store.Load(ctx, ws, conn, "")
+	if err != nil {
+		t.Fatalf("Load after re-save: %v", err)
+	}
+	if link != "fresh-token" {
+		t.Errorf("Load after re-save = %q, want fresh-token", link)
+	}
+
+	// Exactly one live checkpoint exists (the soft-deleted one is excluded).
+	var count int64
+	if err := store.db.Model(&models.AccessSyncState{}).
+		Where("workspace_id = ? AND connector_id = ?", ws, conn).
+		Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("live checkpoint count = %d, want 1", count)
+	}
+}
+
 func TestSyncStateStoreValidation(t *testing.T) {
 	store := NewSyncStateStore(newTestDB(t))
 	ctx := context.Background()

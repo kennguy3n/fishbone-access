@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
@@ -178,5 +179,27 @@ func TestWorkerDeadLettersAfterMaxAttempts(t *testing.T) {
 	db.First(&job, "id = ?", id)
 	if job.Status != StatusDeadLetter {
 		t.Errorf("status = %q, want %q", job.Status, StatusDeadLetter)
+	}
+}
+
+// TestPostgresQueueSkipLockedDetection pins the dialect-driven locking
+// strategy: Claim must use FOR UPDATE SKIP LOCKED on Postgres (multi-replica
+// safety) and must NOT emit it on SQLite (which rejects the clause). The
+// decision is resolved once at construction from the driver's dialector, so a
+// Postgres-backed queue keeps SKIP LOCKED even though each claim runs inside a
+// transaction. We assert via the constructed driver rather than a live DB so
+// the invariant is covered without a Postgres instance.
+func TestPostgresQueueSkipLockedDetection(t *testing.T) {
+	// SQLite (the test driver): no SKIP LOCKED.
+	if q := NewPostgresQueue(newQueueDB(t)); q.skipLocked {
+		t.Error("SQLite queue has skipLocked=true, want false")
+	}
+
+	// Postgres dialector reports name "postgres" without opening a connection,
+	// so we can verify detection deterministically. This is the same handle
+	// shape ztna-api/worker build in production.
+	pg := &gorm.DB{Config: &gorm.Config{Dialector: postgres.Dialector{}}}
+	if q := NewPostgresQueue(pg); !q.skipLocked {
+		t.Error("Postgres queue has skipLocked=false, want true")
 	}
 }

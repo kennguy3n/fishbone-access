@@ -78,7 +78,12 @@ type Connection struct {
 	Name     string         `json:"name"`
 	Strategy string         `json:"strategy"`
 	Options  map[string]any `json:"options,omitempty"`
-	Enabled  bool           `json:"enabled,omitempty"`
+	// Enabled is serialized unconditionally (no omitempty): it is a meaningful
+	// request field, and omitempty on a bool would silently drop enabled=false,
+	// leaving iam-core to apply its own default and create a connection in the
+	// wrong state. Enabling/disabling an existing connection goes through
+	// ToggleConnection; this field carries the desired state at create time.
+	Enabled bool `json:"enabled"`
 }
 
 // accessToken returns a valid client_credentials access token, minting a fresh

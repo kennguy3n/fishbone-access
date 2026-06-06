@@ -161,9 +161,9 @@ type AuditEvent struct {
 // workspace for tenant isolation; one row per (workspace, connector, sync_type).
 type AccessSyncState struct {
 	Base
-	WorkspaceID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_sync_state" json:"workspace_id"`
-	ConnectorID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_sync_state" json:"connector_id"`
-	SyncType     string     `gorm:"not null;default:identities;uniqueIndex:uq_sync_state" json:"sync_type"`
+	WorkspaceID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"workspace_id"`
+	ConnectorID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"connector_id"`
+	SyncType     string     `gorm:"not null;default:identities;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"sync_type"`
 	DeltaLink    string     `json:"delta_link,omitempty"`
 	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
 }

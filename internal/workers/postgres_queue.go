@@ -38,11 +38,24 @@ const (
 // claim, which is safe because SQLite serialises writers.
 type PostgresQueue struct {
 	db *gorm.DB
+	// skipLocked records whether the underlying driver supports
+	// SELECT ... FOR UPDATE SKIP LOCKED. It is resolved once from the
+	// authoritative outer handle's dialector at construction (the driver is
+	// fixed for the queue's lifetime), rather than re-probed inside each claim
+	// transaction, so the locking strategy can never be misdetected.
+	skipLocked bool
 }
 
 // NewPostgresQueue builds a queue over the given GORM handle.
 func NewPostgresQueue(db *gorm.DB) *PostgresQueue {
-	return &PostgresQueue{db: db}
+	q := &PostgresQueue{db: db}
+	if db != nil && db.Dialector != nil {
+		// db.Name() is the dialector's Name() promoted through *Config; it is
+		// fixed for the handle's lifetime, so the SKIP LOCKED decision is made
+		// once here rather than re-probed on each claim's tx.
+		q.skipLocked = db.Name() == "postgres"
+	}
+	return q
 }
 
 // Enqueue inserts a new job. workspaceID is required (tenant scoping);
@@ -91,8 +104,10 @@ func (q *PostgresQueue) Claim(ctx context.Context, max int) ([]Job, error) {
 			Order("run_after").
 			Limit(max)
 		// FOR UPDATE SKIP LOCKED is the multi-worker safety net on Postgres;
-		// SQLite rejects the clause and doesn't need it (single writer).
-		if tx.Name() == "postgres" {
+		// SQLite rejects the clause and doesn't need it (single writer). The
+		// driver is fixed for the queue's lifetime, so this is resolved once at
+		// construction (q.skipLocked) instead of probed on the tx handle.
+		if q.skipLocked {
 			sel = sel.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"})
 		}
 		if err := sel.Find(&claimed).Error; err != nil {
