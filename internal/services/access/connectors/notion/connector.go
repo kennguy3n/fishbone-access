@@ -189,10 +189,12 @@ func (c *NotionAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	for {
-		path := "/v1/users?page_size=100"
+		q := url.Values{}
+		q.Set("page_size", "100")
 		if cursor != "" {
-			path += "&start_cursor=" + cursor
+			q.Set("start_cursor", cursor)
 		}
+		path := "/v1/users?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err

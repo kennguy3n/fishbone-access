@@ -120,3 +120,22 @@ func TestMapNetSuiteSystemNote_DropsEmptyID(t *testing.T) {
 		t.Fatalf("expected nil for empty event id, got %+v", got)
 	}
 }
+
+func TestFetchAccessAuditLogs_NotAvailableOn404(t *testing.T) {
+	// A 404 from the systemNote endpoint must soft-skip the tenant
+	// (ErrAuditNotAvailable), consistent with every other audit connector.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"type":"https://example/not-found"}`))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != access.ErrAuditNotAvailable {
+		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
+	}
+}

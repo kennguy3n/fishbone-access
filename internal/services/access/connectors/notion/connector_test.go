@@ -248,3 +248,26 @@ func TestListEntitlements_PropagatesError(t *testing.T) {
 		t.Fatalf("expected nil entitlements on error, got %+v", got)
 	}
 }
+
+func TestSyncIdentities_EncodesCursor(t *testing.T) {
+	// A checkpoint cursor containing URL-special characters must be sent
+	// verbatim (percent-encoded), not concatenated raw into the query string.
+	const weird = "a+b/c=d&e"
+	var gotCursor string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCursor = r.URL.Query().Get("start_cursor")
+		_, _ = w.Write([]byte(`{"results":[],"has_more":false,"next_cursor":null}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.SyncIdentities(context.Background(), nil, validSecrets(), weird,
+		func(_ []*access.Identity, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("SyncIdentities: %v", err)
+	}
+	if gotCursor != weird {
+		t.Fatalf("start_cursor = %q; want %q", gotCursor, weird)
+	}
+}

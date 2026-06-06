@@ -143,7 +143,7 @@ func isAuditNotAvailable(err error) bool {
 		return false
 	}
 	msg := err.Error()
-	return strings.Contains(msg, "status 401") || strings.Contains(msg, "status 403")
+	return strings.Contains(msg, "status 401") || strings.Contains(msg, "status 403") || strings.Contains(msg, "status 404")
 }
 
 var _ access.AccessAuditor = (*NetSuiteAccessConnector)(nil)
