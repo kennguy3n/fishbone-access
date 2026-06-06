@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -118,6 +120,57 @@ func TestMapWorkdayActivity_DropsZeroTimestamp(t *testing.T) {
 	}
 	if got := mapWorkdayActivity(&workdayActivityRow{ID: "act-z", ActivityAction: "Sign On", RequestTime: "2024-01-01T10:00:00Z"}); got == nil {
 		t.Error("valid requestTime: got nil, want entry")
+	}
+}
+
+// TestFetchAccessAuditLogs_CapsPages guards against an unbounded pagination
+// loop: a misbehaving tenant whose `from` filter never advances past a full
+// data window would keep returning full pages forever. The connector must stop
+// after workdayAuditMaxPages instead of looping until the context times out.
+// The server records over-runs so the test fails deterministically (no hang)
+// without the cap.
+func TestFetchAccessAuditLogs_CapsPages(t *testing.T) {
+	var calls int32
+	overran := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := atomic.AddInt32(&calls, 1)
+		// Safety net: if the connector ignores the cap, break the loop after a
+		// few extra pages so the test fails on assertion instead of hanging.
+		if int(n) > workdayAuditMaxPages+3 {
+			overran = true
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{}})
+			return
+		}
+		// Always return a FULL page (len == pageSize) with distinct, advancing
+		// timestamps so len(page.Data) < limit never triggers termination.
+		rows := make([]map[string]interface{}, 0, pageSize)
+		base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(n) * time.Hour)
+		for i := 0; i < pageSize; i++ {
+			rows = append(rows, map[string]interface{}{
+				"id":             fmt.Sprintf("act-%d-%d", n, i),
+				"activityAction": "View",
+				"requestTime":    base.Add(time.Duration(i) * time.Second).Format(time.RFC3339),
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": rows})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Time{}},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if overran {
+		t.Fatalf("connector exceeded the %d-page cap (unbounded loop)", workdayAuditMaxPages)
+	}
+	if got := atomic.LoadInt32(&calls); int(got) != workdayAuditMaxPages {
+		t.Fatalf("calls = %d, want exactly %d (max-page cap)", got, workdayAuditMaxPages)
 	}
 }
 

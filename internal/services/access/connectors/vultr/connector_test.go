@@ -100,6 +100,47 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+// TestSync_EscapesCursor pins that the opaque pagination cursor from
+// meta.links.next is URL-escaped before being concatenated into the next
+// request. Vultr cursors are opaque and can contain URL-special characters
+// (`+`, `=`, `&`, ...). Without escaping, `&`/`=` split the query and `+`
+// decodes to a space, so the server receives a corrupted cursor and
+// pagination silently breaks.
+func TestSync_EscapesCursor(t *testing.T) {
+	const trickyCursor = "ab+cd&ef=gh"
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			b, _ := json.Marshal(map[string]interface{}{
+				"users": []map[string]interface{}{{"id": "u1", "name": "A", "email": "a@x.com"}},
+				"meta":  map[string]interface{}{"links": map[string]interface{}{"next": trickyCursor}},
+			})
+			_, _ = w.Write(b)
+			return
+		}
+		if got := r.URL.Query().Get("cursor"); got != trickyCursor {
+			t.Errorf("cursor not round-tripped: got %q, want %q (cursor must be URL-escaped)", got, trickyCursor)
+		}
+		_, _ = w.Write([]byte(`{"users":[{"id":"u2","name":"B","email":"b@x.com"}],"meta":{"links":{"next":""}}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 2 || calls != 2 {
+		t.Fatalf("got=%d calls=%d, want 2/2", len(got), calls)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

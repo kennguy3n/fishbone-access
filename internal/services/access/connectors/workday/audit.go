@@ -13,6 +13,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// workdayAuditMaxPages caps the offset/limit sweep so a misbehaving tenant
+// (e.g. a `from` filter that never advances past a full data window) cannot
+// spin the loop indefinitely. Matches the cap used by sibling audit connectors.
+const workdayAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Workday activity-log events into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -38,7 +43,7 @@ func (c *WorkdayAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	offset := 0
 	const limit = pageSize
-	for {
+	for pages := 0; pages < workdayAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -91,6 +96,7 @@ func (c *WorkdayAccessConnector) FetchAccessAuditLogs(
 		}
 		offset += limit
 	}
+	return nil
 }
 
 type workdayActivityPage struct {
