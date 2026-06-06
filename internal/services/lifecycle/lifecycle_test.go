@@ -269,7 +269,8 @@ type fakeConnector struct {
 	revokeCnt      int
 	revokeSessCnt  int
 	failNProvision int  // fail this many times before succeeding
-	ssoEnforced    bool // returned by IsSSOEnforced
+	ssoEnforced    bool // returned by CheckSSOEnforcement
+	ssoDetails     string
 	identities     []*access.Identity
 
 	entitlements     []access.Entitlement // returned by ListEntitlements
@@ -325,19 +326,19 @@ func (f *fakeConnector) ListEntitlements(context.Context, map[string]any, map[st
 func (f *fakeConnector) GetSSOMetadata(context.Context, map[string]any, map[string]any) (*access.SSOMetadata, error) {
 	return &access.SSOMetadata{Protocol: "oidc"}, nil
 }
-func (f *fakeConnector) GetCredentialsMetadata(context.Context, map[string]any, map[string]any) (*access.CredentialsMetadata, error) {
-	return &access.CredentialsMetadata{}, nil
+func (f *fakeConnector) GetCredentialsMetadata(context.Context, map[string]any, map[string]any) (map[string]any, error) {
+	return map[string]any{}, nil
 }
 
-// RevokeSessions implements access.SessionRevoker (kill-switch layer).
-func (f *fakeConnector) RevokeSessions(context.Context, map[string]any, map[string]any, string) error {
+// RevokeUserSessions implements access.SessionRevoker (kill-switch layer).
+func (f *fakeConnector) RevokeUserSessions(context.Context, map[string]any, map[string]any, string) error {
 	f.revokeSessCnt++
 	return nil
 }
 
-// IsSSOEnforced implements access.SSOEnforcementChecker.
-func (f *fakeConnector) IsSSOEnforced(context.Context, map[string]any, map[string]any) (bool, error) {
-	return f.ssoEnforced, nil
+// CheckSSOEnforcement implements access.SSOEnforcementChecker.
+func (f *fakeConnector) CheckSSOEnforcement(context.Context, map[string]any, map[string]any) (bool, string, error) {
+	return f.ssoEnforced, f.ssoDetails, nil
 }
 
 var errFakeProvision = &fakeErr{"provision boom"}

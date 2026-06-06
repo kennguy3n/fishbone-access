@@ -30,6 +30,17 @@ type Config struct {
 	// RedisURL is the Redis connection URL used for the worker queue and
 	// rate limiting. Optional in degraded mode.
 	RedisURL string
+	// DBMaxOpenConns bounds the Postgres pool's total open connections.
+	// ztna-api and access-connector-worker share a database but run as
+	// separate processes, so each sizes its own pool; keeping a bound avoids
+	// exhausting Postgres' max_connections under load.
+	DBMaxOpenConns int
+	// DBMaxIdleConns bounds idle (kept-warm) connections in the pool.
+	DBMaxIdleConns int
+	// DBConnMaxLifetime caps how long a single connection is reused before
+	// being recycled, so a long-lived process picks up Postgres failovers and
+	// avoids accumulating server-side state on stale backends.
+	DBConnMaxLifetime time.Duration
 	// CredentialDEK is the base64-encoded 32-byte AES-256 key used to seal
 	// connector secrets at rest. When empty the binary refuses to persist
 	// secrets (fails closed) rather than storing plaintext.
@@ -119,12 +130,15 @@ func (c IAMCoreConfig) ResolvedManagementBaseURL() string {
 // optional dependencies are absent.
 func Load() Config {
 	return Config{
-		Env:             getEnv("ACCESS_ENV", "dev"),
-		HTTPAddr:        getEnv("ACCESS_HTTP_ADDR", ":8080"),
-		DatabaseURL:     os.Getenv("ACCESS_DATABASE_URL"),
-		RedisURL:        os.Getenv("ACCESS_REDIS_URL"),
-		CredentialDEK:   os.Getenv("ACCESS_CREDENTIAL_DEK"),
-		ShutdownTimeout: getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),
+		Env:               getEnv("ACCESS_ENV", "dev"),
+		HTTPAddr:          getEnv("ACCESS_HTTP_ADDR", ":8080"),
+		DatabaseURL:       os.Getenv("ACCESS_DATABASE_URL"),
+		RedisURL:          os.Getenv("ACCESS_REDIS_URL"),
+		CredentialDEK:     os.Getenv("ACCESS_CREDENTIAL_DEK"),
+		DBMaxOpenConns:    getInt("ACCESS_DB_MAX_OPEN_CONNS", 25),
+		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
+		DBConnMaxLifetime: getDuration("ACCESS_DB_CONN_MAX_LIFETIME", 30*time.Minute),
+		ShutdownTimeout:   getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
 			JWKSURL:           os.Getenv("IAM_CORE_JWKS_URL"),
@@ -143,6 +157,20 @@ func (c Config) DatabaseConfigured() bool { return c.DatabaseURL != "" }
 func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return def
+}
+
+// getInt reads a non-negative integer env var, returning def when unset, empty,
+// unparseable, or negative (a negative pool bound is meaningless and would be a
+// silent misconfiguration).
+func getInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+		return n
 	}
 	return def
 }

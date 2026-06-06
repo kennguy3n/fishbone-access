@@ -98,6 +98,10 @@ type SSOStatus struct {
 	ConnectorID uuid.UUID `json:"connector_id"`
 	Supported   bool      `json:"supported"`
 	Enforced    bool      `json:"enforced"`
+	// Details carries the connector's short human-readable hint when SSO is
+	// not enforced (e.g. "password login still allowed for 3 users"), so an
+	// operator can act on a regression without opening the connector.
+	Details string `json:"details,omitempty"`
 }
 
 // Check resolves a connector and, if it implements the optional
@@ -118,11 +122,12 @@ func (s *SSOEnforcementChecker) Check(ctx context.Context, workspaceID, connecto
 		return status, nil
 	}
 	status.Supported = true
-	enforced, err := checker.IsSSOEnforced(ctx, resolved.Config, resolved.Secrets)
+	enforced, details, err := checker.CheckSSOEnforcement(ctx, resolved.Config, resolved.Secrets)
 	if err != nil {
 		return status, fmt.Errorf("lifecycle: check sso enforcement: %w", err)
 	}
 	status.Enforced = enforced
+	status.Details = details
 
 	now := s.now()
 	action := "sso.not_enforced"

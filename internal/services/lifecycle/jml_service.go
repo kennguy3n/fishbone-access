@@ -434,7 +434,7 @@ func (s *JMLService) layerConnectorSweep(ctx context.Context, workspaceID uuid.U
 		}
 		if revoker, ok := resolved.Impl.(access.SessionRevoker); ok {
 			sessAttempted++
-			if err := revoker.RevokeSessions(ctx, resolved.Config, resolved.Secrets, user); err != nil {
+			if err := revoker.RevokeUserSessions(ctx, resolved.Config, resolved.Secrets, user); err != nil {
 				sessFailed++
 			}
 		}

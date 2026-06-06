@@ -787,3 +787,4 @@ components:
         connector_id: { type: string, format: uuid }
         supported: { type: boolean }
         enforced: { type: boolean }
+        details: { type: string }

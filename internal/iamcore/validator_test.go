@@ -174,3 +174,55 @@ func TestNewValidatorUnconfigured(t *testing.T) {
 		t.Fatal("NewValidator with empty config should error")
 	}
 }
+
+// TestValidateNamespacedRolesPreferred asserts the validator reads the
+// issuer-namespaced "{issuer}/roles" claim in preference to a plain "roles"
+// claim, matching the iam-core role convention shared with ShieldNet Gateway.
+func TestValidateNamespacedRolesPreferred(t *testing.T) {
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	const issuer = "https://iam.example.com"
+	v := jwksServer(t, key, issuer, "shieldnet-access")
+
+	tokenStr := signToken(t, key, jwt.MapClaims{
+		"iss":             issuer,
+		"aud":             "shieldnet-access",
+		"sub":             "user-123",
+		issuer + "/roles": []any{"platform-admin", "approver"},
+		"roles":           []any{"ignored-plain-role"},
+		"exp":             time.Now().Add(time.Hour).Unix(),
+		"iat":             time.Now().Unix(),
+	})
+
+	claims, err := v.Validate(tokenStr)
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(claims.Roles) != 2 || claims.Roles[0] != "platform-admin" || claims.Roles[1] != "approver" {
+		t.Errorf("Roles = %v; want [platform-admin approver] from namespaced claim", claims.Roles)
+	}
+}
+
+// TestValidateRolesFallback asserts that when no namespaced claim is present
+// the validator falls back to the plain "roles" claim.
+func TestValidateRolesFallback(t *testing.T) {
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	const issuer = "https://iam.example.com"
+	v := jwksServer(t, key, issuer, "shieldnet-access")
+
+	tokenStr := signToken(t, key, jwt.MapClaims{
+		"iss":   issuer,
+		"aud":   "shieldnet-access",
+		"sub":   "user-123",
+		"roles": []any{"member"},
+		"exp":   time.Now().Add(time.Hour).Unix(),
+		"iat":   time.Now().Unix(),
+	})
+
+	claims, err := v.Validate(tokenStr)
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(claims.Roles) != 1 || claims.Roles[0] != "member" {
+		t.Errorf("Roles = %v; want [member] from plain-claim fallback", claims.Roles)
+	}
+}

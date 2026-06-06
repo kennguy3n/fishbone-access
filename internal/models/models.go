@@ -62,16 +62,20 @@ type TeamMember struct {
 }
 
 // AccessConnector is a configured integration with an external identity or
-// resource provider. Secrets is an AES-GCM sealed envelope (never plaintext).
+// resource provider. SecretEnvelope is an AES-GCM sealed envelope (never
+// plaintext); SecretKeyVersion records which per-workspace DEK version sealed
+// it so the envelope encryptor can resolve the right key to open it across DEK
+// rotations.
 type AccessConnector struct {
 	Base
-	WorkspaceID    uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
-	Provider       string         `gorm:"not null" json:"provider"`
-	DisplayName    string         `json:"display_name"`
-	Status         string         `gorm:"not null;default:pending" json:"status"`
-	Config         datatypes.JSON `json:"config"`
-	SecretEnvelope string         `json:"-"`
-	LastSyncedAt   *time.Time     `json:"last_synced_at,omitempty"`
+	WorkspaceID      uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	Provider         string         `gorm:"not null" json:"provider"`
+	DisplayName      string         `json:"display_name"`
+	Status           string         `gorm:"not null;default:pending" json:"status"`
+	Config           datatypes.JSON `json:"config"`
+	SecretEnvelope   string         `json:"-"`
+	SecretKeyVersion int            `gorm:"not null;default:1" json:"-"`
+	LastSyncedAt     *time.Time     `json:"last_synced_at,omitempty"`
 }
 
 // AccessJob is a unit of background work (sync, provision, revoke) for the
@@ -210,6 +214,20 @@ type AuditEvent struct {
 	ChainHash   string         `gorm:"not null" json:"chain_hash"`
 }
 
+// AccessSyncState persists per-connector incremental-sync checkpoints. A
+// delta-capable provider (e.g. Microsoft Entra / Graph) hands back an opaque
+// delta link or cursor at the end of each sync; storing it here lets the next
+// run fetch only what changed instead of a full re-enumeration. Scoped by
+// workspace for tenant isolation; one row per (workspace, connector, sync_type).
+type AccessSyncState struct {
+	Base
+	WorkspaceID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"workspace_id"`
+	ConnectorID  uuid.UUID  `gorm:"type:uuid;index;not null;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"connector_id"`
+	SyncType     string     `gorm:"not null;default:identities;uniqueIndex:uq_access_sync_state,where:deleted_at IS NULL" json:"sync_type"`
+	DeltaLink    string     `json:"delta_link,omitempty"`
+	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
+}
+
 // All returns every model for GORM auto-migrate. Keep in sync with the SQL
 // migrations in internal/migrations.
 func All() []any {
@@ -227,5 +245,6 @@ func All() []any {
 		&Policy{},
 		&AccessOrphanAccount{},
 		&AuditEvent{},
+		&AccessSyncState{},
 	}
 }
