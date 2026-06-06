@@ -51,16 +51,21 @@ func (c *WorkdayAccessConnector) CheckSSOEnforcement(ctx context.Context, config
 	if len(payload.Data) == 0 {
 		return false, "Workday tenant has no authentication policies configured — sign-on cannot be enforced", nil
 	}
+	hasActivePolicy := false
 	for _, p := range payload.Data {
 		if !p.Active {
 			continue
 		}
+		hasActivePolicy = true
 		if p.AllowsPasswordFallback || !p.RequireFederatedAuth {
 			return false, fmt.Sprintf(
 				"Workday authentication policy %q still allows password fallback",
 				p.Name,
 			), nil
 		}
+	}
+	if !hasActivePolicy {
+		return false, "Workday tenant has no active authentication policies — sign-on cannot be enforced", nil
 	}
 	return true, "Workday authentication policies all require federated SSO for sign-in", nil
 }

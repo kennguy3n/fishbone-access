@@ -87,8 +87,15 @@ func (c *WorkdayAccessConnector) FetchAccessAuditLogs(
 			}
 			batch = append(batch, entry)
 		}
-		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-			return err
+		// Skip the handler when every row on this page was filtered out
+		// (e.g. all zero/unparseable timestamps). Emitting an empty batch
+		// with an unchanged batchMax would invite callers to persist a
+		// non-advancing cursor; this matches the sibling audit connectors,
+		// which only invoke the handler for non-empty batches.
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
 		}
 		cursor = batchMax
 		if len(page.Data) < limit {

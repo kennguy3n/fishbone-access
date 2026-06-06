@@ -174,6 +174,66 @@ func TestFetchAccessAuditLogs_CapsPages(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_SkipsEmptyBatches guards against emitting an
+// empty batch with a non-advancing cursor. When every row on a full page is
+// filtered out (e.g. unparseable timestamps), the handler must NOT be invoked
+// for that page — otherwise a caller could persist a stale watermark and
+// re-fetch the same window. Pagination must still advance to the next page.
+// This matches the sibling audit connectors, which only call the handler for
+// non-empty batches.
+func TestFetchAccessAuditLogs_SkipsEmptyBatches(t *testing.T) {
+	call := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		switch call {
+		case 0:
+			call++
+			// A FULL page where every row has an unparseable timestamp, so
+			// the mapper drops them all (batch is empty) but len==limit forces
+			// a second round-trip.
+			rows := make([]map[string]interface{}, 0, pageSize)
+			for i := 0; i < pageSize; i++ {
+				rows = append(rows, map[string]interface{}{
+					"id":             fmt.Sprintf("bad-%d", i),
+					"activityAction": "View",
+					"requestTime":    "not-a-timestamp",
+				})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": rows})
+		case 1:
+			call++
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]interface{}{
+					{"id": "good-1", "activityAction": "Sign On", "requestTime": "2024-01-01T11:00:00Z", "userId": "user-1"},
+				},
+			})
+		default:
+			t.Errorf("unexpected call %d", call)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	handlerCalls := 0
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			handlerCalls++
+			if len(batch) == 0 {
+				t.Errorf("handler invoked with an empty batch")
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if handlerCalls != 1 {
+		t.Fatalf("handler calls = %d, want 1 (empty first page must be skipped)", handlerCalls)
+	}
+}
+
 func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

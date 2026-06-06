@@ -45,6 +45,29 @@ func TestCheckSSOEnforcement_NotEnforced(t *testing.T) {
 	}
 }
 
+// TestCheckSSOEnforcement_NoActivePolicy guards against falsely reporting SSO
+// as enforced when no authentication policy is active. With every policy
+// inactive, the loop skips all of them; without an explicit "no active policy"
+// guard, execution falls through to the optimistic `return true`, masking a
+// security gap. Zero active policies means at least one non-SSO login path is
+// reachable, so enforced must be false.
+func TestCheckSSOEnforcement_NoActivePolicy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[{"name":"legacy","active":false,"requireFederatedAuthentication":true,"allowsPasswordFallback":false}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	enforced, details, err := c.CheckSSOEnforcement(context.Background(), validConfig(), validSecrets())
+	if err != nil {
+		t.Fatalf("CheckSSOEnforcement: %v", err)
+	}
+	if enforced {
+		t.Errorf("enforced=true with no active policy; want false (details=%q)", details)
+	}
+}
+
 func TestCheckSSOEnforcement_HTTPFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
