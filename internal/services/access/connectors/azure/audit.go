@@ -80,14 +80,14 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("azure: activity log status %d: %s", resp.StatusCode, string(body))
 		}
-		var page azureActivityLogResponse
-		if err := json.Unmarshal(body, &page); err != nil {
+		var pageResp azureActivityLogResponse
+		if err := json.Unmarshal(body, &pageResp); err != nil {
 			return fmt.Errorf("azure: decode activity log page: %w", err)
 		}
-		batch := make([]*access.AuditLogEntry, 0, len(page.Value))
+		batch := make([]*access.AuditLogEntry, 0, len(pageResp.Value))
 		batchMax := cursor
-		for i := range page.Value {
-			entry := mapAzureActivityEvent(&page.Value[i])
+		for i := range pageResp.Value {
+			entry := mapAzureActivityEvent(&pageResp.Value[i])
 			if entry == nil {
 				continue
 			}
@@ -100,15 +100,15 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		if page.NextLink == "" {
+		if pageResp.NextLink == "" {
 			return nil
 		}
 		// NextLink may be absolute; in tests we re-anchor to the
 		// urlOverride so the redirected server still receives it.
-		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
+			next = c.urlOverride + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
-			next = page.NextLink
+			next = pageResp.NextLink
 		}
 	}
 	return nil

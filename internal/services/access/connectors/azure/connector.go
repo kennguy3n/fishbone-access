@@ -32,6 +32,20 @@ const (
 	defaultBaseURL    = "https://graph.microsoft.com/v1.0"
 	defaultARMBaseURL = "https://management.azure.com"
 	armAPIVersion     = "2022-04-01"
+
+	// azureSyncMaxPages and azureEntitlementsMaxPages bound the
+	// @odata.nextLink pagination walks as defense-in-depth, mirroring
+	// azureAuditMaxPages and boxCollaborationsMaxPages. Both loops also
+	// stop naturally when nextLink is empty and check ctx.Err() each
+	// iteration; the caps only guard against a misbehaving upstream that
+	// keeps emitting fresh cursors. SyncIdentities walks the full
+	// directory (200 users/page) and reports its cursor to the handler
+	// every page, so reaching the cap simply defers the rest to the next
+	// sync cycle via the persisted checkpoint — no identities are
+	// dropped. The entitlements cap is small because role assignments for
+	// a single principal never span anywhere near this many pages.
+	azureSyncMaxPages         = 10000
+	azureEntitlementsMaxPages = 1000
 )
 
 // ErrNotImplemented is retained for any future capability that is not yet
@@ -300,7 +314,7 @@ func (c *AzureAccessConnector) SyncIdentities(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -342,6 +356,9 @@ func (c *AzureAccessConnector) SyncIdentities(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // armURL returns the absolute ARM URL for the given path. In tests the
@@ -523,7 +540,7 @@ func (c *AzureAccessConnector) ListEntitlements(
 		url.QueryEscape("principalId eq '"+escapedPrincipalID+"'"))
 	next := c.armURL(path)
 	var out []access.Entitlement
-	for {
+	for pageNum := 0; pageNum < azureEntitlementsMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -541,11 +558,11 @@ func (c *AzureAccessConnector) ListEntitlements(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, fmt.Errorf("azure: list entitlements status %d: %s", resp.StatusCode, string(body))
 		}
-		var page armRoleAssignmentsResponse
-		if err := json.Unmarshal(body, &page); err != nil {
+		var pageResp armRoleAssignmentsResponse
+		if err := json.Unmarshal(body, &pageResp); err != nil {
 			return nil, fmt.Errorf("azure: decode role assignments: %w", err)
 		}
-		for _, a := range page.Value {
+		for _, a := range pageResp.Value {
 			out = append(out, access.Entitlement{
 				ResourceExternalID: a.Properties.RoleDefinitionID,
 				// Role names the role itself, not the assignment
@@ -560,18 +577,20 @@ func (c *AzureAccessConnector) ListEntitlements(
 				Source: "direct",
 			})
 		}
-		if page.NextLink == "" {
+		if pageResp.NextLink == "" {
 			return out, nil
 		}
 		// NextLink may be absolute; in tests we re-anchor to the
 		// urlOverride so the redirected server still receives it.
 		// Mirrors FetchAccessAuditLogs in audit.go.
-		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
+			next = c.urlOverride + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
-			next = page.NextLink
+			next = pageResp.NextLink
 		}
 	}
+	// Hit the defensive page cap; return what we have rather than spin.
+	return out, nil
 }
 
 // roleDefinitionShortID returns the trailing identifier segment of an
@@ -625,10 +644,15 @@ func (c *AzureAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ ma
 	if err != nil {
 		return nil, err
 	}
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
+	// SSO federation metadata is derived from the tenant id alone, so do
+	// not require subscription_id here (cfg.validate would). This lets a
+	// caller fetch metadata before the full RBAC config is populated,
+	// matching bamboohr's GetSSOMetadata which deliberately skips the
+	// secrets it does not need.
 	tenant := strings.TrimSpace(cfg.TenantID)
+	if tenant == "" {
+		return nil, errors.New("azure: tenant_id is required")
+	}
 	proto := strings.ToLower(strings.TrimSpace(cfg.SSOProtocol))
 	if proto == "" {
 		proto = "oidc"
