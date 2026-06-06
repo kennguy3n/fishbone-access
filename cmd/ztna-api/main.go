@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -78,22 +79,41 @@ func run() error {
 	deps.Ready = ready
 
 	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
 		Handler:           handlers.NewRouter(deps),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// Bind synchronously so a bind failure (e.g. port in use) is a hard boot
+	// error returned from run() — exit code 1 — rather than a goroutine-only
+	// log that leaves the process exiting 0 (which would defeat container
+	// restart-on-failure). ready is only flipped once the socket is bound.
+	ln, err := net.Listen("tcp", cfg.HTTPAddr)
+	if err != nil {
+		return fmt.Errorf("listen %s: %w", cfg.HTTPAddr, err)
+	}
+	ready.Store(true)
+	logger.Infof(ctx, "ztna-api: listening on %s", ln.Addr())
+
+	serveErr := make(chan error, 1)
 	go func() {
-		ready.Store(true)
-		logger.Infof(ctx, "ztna-api: listening on %s", cfg.HTTPAddr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Errorf(ctx, "ztna-api: server error: %v", err)
-			stop()
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- err
+			return
 		}
+		serveErr <- nil
 	}()
 
-	<-ctx.Done()
-	logger.Infof(context.Background(), "ztna-api: shutting down")
+	// Wait for either a signal (ctx cancelled) or a fatal serve error.
+	select {
+	case <-ctx.Done():
+		logger.Infof(context.Background(), "ztna-api: shutting down")
+	case err := <-serveErr:
+		if err != nil {
+			return fmt.Errorf("http server: %w", err)
+		}
+		return nil
+	}
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {

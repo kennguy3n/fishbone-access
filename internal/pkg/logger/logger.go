@@ -9,30 +9,38 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync/atomic"
 )
 
-var base = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-	Level: slog.LevelInfo,
-}))
+// base holds the active logger in an atomic pointer so SetLevel (a writer) and
+// the Infof/Warnf/Errorf logging calls (readers) are race-free even if the
+// level is adjusted concurrently with logging.
+var base atomic.Pointer[slog.Logger]
 
-// SetLevel adjusts the global log level. Called once at boot from config.
+func init() {
+	base.Store(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+}
+
+// SetLevel adjusts the global log level. Safe to call concurrently with logging.
 func SetLevel(level slog.Level) {
-	base = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	base.Store(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
 }
 
 // Infof logs at info level.
 func Infof(ctx context.Context, format string, args ...any) {
-	base.InfoContext(ctx, sprintf(format, args...))
+	base.Load().InfoContext(ctx, sprintf(format, args...))
 }
 
 // Warnf logs at warn level.
 func Warnf(ctx context.Context, format string, args ...any) {
-	base.WarnContext(ctx, sprintf(format, args...))
+	base.Load().WarnContext(ctx, sprintf(format, args...))
 }
 
 // Errorf logs at error level.
 func Errorf(ctx context.Context, format string, args ...any) {
-	base.ErrorContext(ctx, sprintf(format, args...))
+	base.Load().ErrorContext(ctx, sprintf(format, args...))
 }
 
 func sprintf(format string, args ...any) string {

@@ -12,6 +12,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -58,10 +59,45 @@ func splitName(filename string) (version, name string) {
 	return base, base
 }
 
+// advisoryLockKey is a fixed, application-specific key for the Postgres
+// session-level advisory lock that serializes migration runs. Derived once from
+// the constant string "fishbone-access:migrations" so every replica computes
+// the same value; the exact number is arbitrary but must never change.
+const advisoryLockKey int64 = 0x5348_4E41_4343_0001
+
 // Run applies every migration not yet recorded in schema_migrations, inside a
-// per-migration transaction. It is safe to call repeatedly.
+// per-migration transaction. It is safe to call repeatedly and from multiple
+// instances concurrently: a Postgres session-level advisory lock serializes
+// the whole run so two replicas booting together cannot race to apply the same
+// version (which would otherwise crash the loser on the schema_migrations
+// primary-key insert).
 func Run(ctx context.Context, db *sql.DB) (applied []string, err error) {
-	if _, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+	// Pin a single connection for the lifetime of the run: a session-level
+	// advisory lock is held by the backend session, so lock, migrate, and
+	// unlock must all execute on the same physical connection.
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("migrations: acquire connection: %w", err)
+	}
+	defer func() {
+		// Release the advisory lock explicitly: returning a *sql.Conn to the
+		// pool via Close() does NOT end the backend session, so a session-level
+		// lock would otherwise leak until that pooled connection is discarded.
+		// Use a non-cancellable context so the unlock still runs even if ctx
+		// was cancelled mid-migration. Closing the conn is the final backstop.
+		if _, uerr := conn.ExecContext(context.WithoutCancel(ctx), `SELECT pg_advisory_unlock($1)`, advisoryLockKey); uerr != nil {
+			err = errors.Join(err, fmt.Errorf("migrations: release advisory lock: %w", uerr))
+		}
+		if cerr := conn.Close(); cerr != nil {
+			err = errors.Join(err, fmt.Errorf("migrations: close connection: %w", cerr))
+		}
+	}()
+
+	if _, err = conn.ExecContext(ctx, `SELECT pg_advisory_lock($1)`, advisoryLockKey); err != nil {
+		return nil, fmt.Errorf("migrations: acquire advisory lock: %w", err)
+	}
+
+	if _, err = conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
 		version TEXT PRIMARY KEY,
 		name    TEXT NOT NULL,
 		applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -76,13 +112,13 @@ func Run(ctx context.Context, db *sql.DB) (applied []string, err error) {
 
 	for _, m := range migs {
 		var exists bool
-		if err = db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`, m.Version).Scan(&exists); err != nil {
+		if err = conn.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)`, m.Version).Scan(&exists); err != nil {
 			return applied, fmt.Errorf("migrations: check %s: %w", m.Version, err)
 		}
 		if exists {
 			continue
 		}
-		tx, txErr := db.BeginTx(ctx, nil)
+		tx, txErr := conn.BeginTx(ctx, nil)
 		if txErr != nil {
 			return applied, txErr
 		}

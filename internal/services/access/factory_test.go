@@ -79,6 +79,9 @@ func TestDuplicateRegistrationPanics(t *testing.T) {
 			t.Fatal("expected panic on duplicate registration")
 		}
 	}()
-	RegisterAccessConnector("dup", noopConnector{})
+	// Seed the key via SwapConnector so the registration is cleaned up after
+	// the test (t.Cleanup) and does not permanently pollute the process-global
+	// registry — the second call still hits the real duplicate-guard panic.
+	SwapConnector(t, "dup", noopConnector{})
 	RegisterAccessConnector("dup", noopConnector{})
 }
