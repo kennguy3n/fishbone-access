@@ -13,6 +13,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// datadogAuditMaxPages bounds the cursor-pagination loop so a provider
+// that returns a non-terminating / circular links.next can never spin
+// the worker forever. Matches the cap every sibling audit connector
+// uses (200 pages × 100 events = 20k events per sync).
+const datadogAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Datadog audit events into the access
 // audit pipeline. Implements access.AccessAuditor.
 //
@@ -46,7 +52,7 @@ func (c *DatadogAccessConnector) FetchAccessAuditLogs(
 		q.Set("filter[to]", time.Now().UTC().Format(time.RFC3339))
 	}
 	nextURL := base + "/api/v2/audit/events?" + q.Encode()
-	for nextURL != "" {
+	for pageNum := 0; pageNum < datadogAuditMaxPages && nextURL != ""; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -56,15 +62,20 @@ func (c *DatadogAccessConnector) FetchAccessAuditLogs(
 		}
 		body, err := c.do(req)
 		if err != nil {
-			// Datadog returns 403 when the credentials lack the
-			// `audit_logs_read` scope (free / trial orgs and tokens
-			// scoped only to APM/metrics). We inspect the typed
-			// *httpError returned by do() rather than substring-matching
-			// err.Error() so future refactors of do()'s format string
-			// don't silently break the audit-not-available signal.
+			// Soft-skip tenants whose credentials cannot read audit
+			// data. Per docs/architecture.md §2 the audit
+			// not-available set is 401/403/404: 403 = token lacks the
+			// `audit_logs_read` scope (free / trial orgs, APM-only
+			// keys), 401 = expired/revoked key, 404 = endpoint absent.
+			// We inspect the typed *httpError returned by do() rather
+			// than substring-matching err.Error() so future refactors
+			// of do()'s format string don't silently break the signal.
 			var httpErr *httpError
-			if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusForbidden {
-				return access.ErrAuditNotAvailable
+			if errors.As(err, &httpErr) {
+				switch httpErr.StatusCode {
+				case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+					return access.ErrAuditNotAvailable
+				}
 			}
 			return err
 		}

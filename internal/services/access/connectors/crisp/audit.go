@@ -158,3 +158,5 @@ func parseCrispAuditTime(stamp int64) time.Time {
 	// Crisp stamps are milliseconds since the Unix epoch.
 	return time.UnixMilli(stamp).UTC()
 }
+
+var _ access.AccessAuditor = (*CrispAccessConnector)(nil)

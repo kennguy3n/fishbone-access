@@ -102,3 +102,62 @@ func TestFetchAccessAuditLogs_Forbidden_SoftSkip(t *testing.T) {
 		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_SoftSkipStatuses pins the full audit
+// not-available set (401/403/404 per docs/architecture.md §2). Datadog
+// previously only soft-skipped 403, so an expired key (401) or an
+// absent endpoint (404) surfaced as a hard error and broke the pipeline.
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte(`{"errors":["nope"]}`))
+			}))
+			t.Cleanup(server.Close)
+			c := New()
+			c.urlOverride = server.URL
+			c.httpClient = func() httpDoer { return server.Client() }
+			err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+				map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+				func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+			if err != access.ErrAuditNotAvailable {
+				t.Fatalf("status %d: err = %v; want ErrAuditNotAvailable", status, err)
+			}
+		})
+	}
+}
+
+// TestFetchAccessAuditLogs_MaxPageCap proves the cursor loop is bounded.
+// The server returns a perpetual links.next (circular cursor); without
+// the datadogAuditMaxPages cap the loop would never terminate. The
+// escape hatch at +50 requests only fires if the cap failed, so the
+// assertion that exactly datadogAuditMaxPages requests were made is what
+// guards the fix.
+func TestFetchAccessAuditLogs_MaxPageCap(t *testing.T) {
+	var hits int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		next := ""
+		if hits < datadogAuditMaxPages+50 {
+			next = "https://api.datadoghq.com/api/v2/audit/events?page%5Bcursor%5D=loop"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"links": map[string]interface{}{"next": next},
+			"data":  []map[string]interface{}{},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if hits != datadogAuditMaxPages {
+		t.Fatalf("made %d requests, want exactly %d (cursor loop must be capped)", hits, datadogAuditMaxPages)
+	}
+}
