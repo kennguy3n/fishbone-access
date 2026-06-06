@@ -41,6 +41,7 @@ from skills import (
     access_review_automation,
     access_risk_assessment,
     connector_setup_assistant,
+    pam_behavioural_analytics,
     pam_session_risk_assessment,
     policy_recommendation,
 )
@@ -62,6 +63,7 @@ SKILLS: dict[str, SkillFn] = {
     "access_review_automation": access_review_automation.run,
     "access_anomaly_detection": access_anomaly_detection.run,
     "pam_session_risk_assessment": pam_session_risk_assessment.run,
+    "pam_behavioural_analytics": pam_behavioural_analytics.run,
     "policy_recommendation": policy_recommendation.run,
     "connector_setup_assistant": connector_setup_assistant.run,
 }

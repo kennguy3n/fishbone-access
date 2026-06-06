@@ -99,6 +99,32 @@ func TestRecommendPolicyWithFallback_AgentDown_Empty(t *testing.T) {
 	}
 }
 
+func TestAnalyzeBehaviourWithFallback_AgentDown_EmptySlice(t *testing.T) {
+	c := NewAIClient("", nil, "")
+	got := AnalyzeBehaviourWithFallback(context.Background(), c, "", BehaviourAnalyticsInput{UserExternalID: "u1"})
+	if len(got) != 0 {
+		t.Errorf("anomalies = %v; want empty on outage (advisory only)", got)
+	}
+}
+
+func TestAnalyzeBehaviourWithFallback_HappyPath(t *testing.T) {
+	ca := newTestCA(t)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(SkillResponse{Anomalies: []AnomalyEvent{{Kind: "off_hours_sessions", Severity: "medium", Confidence: 0.6}}})
+	})
+	srv, clientTLS := mtlsServer(t, ca, handler)
+	c := newClientFor(srv, clientTLS, "")
+
+	got := AnalyzeBehaviourWithFallback(context.Background(), c, "", BehaviourAnalyticsInput{
+		UserExternalID: "u1",
+		Sessions:       []BehaviourSession{{StartHour: 3, CommandCount: 5}},
+		Baseline:       &BehaviourBaseline{Targets: []string{"db-stage"}, AvgCommandCount: 10},
+	})
+	if len(got) != 1 || got[0].Kind != "off_hours_sessions" {
+		t.Errorf("anomalies = %+v; want one off_hours_sessions event", got)
+	}
+}
+
 func TestNormalizeScore(t *testing.T) {
 	// Slice (not a map) so the deliberately whitespace-padded input " High "
 	// — which exercises trimming — is not flagged as a suspicious map key.

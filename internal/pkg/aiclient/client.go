@@ -124,6 +124,17 @@ func NewAIClientFromEnv() (*AIClient, error) {
 		}
 		return NewAIClient("", nil, ""), nil
 	}
+	// mTLS material is present. Requiring a base URL here keeps the contract
+	// symmetric with the "URL without mTLS" rejection above: a half-configured
+	// setup (certs provisioned but no agent URL) is an operator mistake that
+	// fails the boot, rather than silently loading the certs into a client that
+	// can never reach the agent and always returns ErrAIUnconfigured.
+	if baseURL == "" {
+		return nil, &MTLSConfigError{msg: fmt.Sprintf(
+			"mTLS is configured but %s is not set: set the agent URL or unset the mTLS variables (%s, %s, %s)",
+			EnvBaseURL, EnvClientCertFile, EnvClientKeyFile, EnvServerCAFile,
+		)}
+	}
 	tc, err := tlsCfg.Build()
 	if err != nil {
 		return nil, err

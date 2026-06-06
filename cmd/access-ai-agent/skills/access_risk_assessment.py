@@ -85,7 +85,8 @@ def _llm_enrich(payload: dict[str, Any], floor: str) -> tuple[str, list[str]] | 
     if score not in ALLOWED_SCORES:
         return None
     score = _max_score(score, floor)
-    factors = [str(f) for f in parsed.get("risk_factors", []) if isinstance(parsed.get("risk_factors", []), list)]
+    raw_factors = parsed.get("risk_factors", [])
+    factors = [str(f) for f in raw_factors] if isinstance(raw_factors, list) else []
     factors.append("llm_assessed")
     return score, factors
 

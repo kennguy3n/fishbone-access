@@ -74,16 +74,19 @@ func run() error {
 	}()
 
 	// Credential encryptor opens connector secret envelopes for the lifecycle
-	// provisioning / JML services this engine drives. FromKey returns a
-	// passthrough (seal-refusing) encryptor when no DEK is set, mirroring
-	// ztna-api so connectors without sealed secrets still resolve in degraded
-	// dev boots; provisioning jobs needing real secrets then fail closed.
+	// provisioning / JML services this engine drives. Like the connector worker,
+	// this binary is an asynchronous executor of provisioning/JML jobs that MUST
+	// open real connector secrets, so it refuses to boot under the fail-closed
+	// passthrough encryptor (DEK unset) rather than degrading to per-job
+	// failures. FromKey treats a non-empty but malformed key as a hard error.
 	enc, err := crypto.FromKey(cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("credential encryptor init: %w", err)
 	}
-	if cfg.CredentialDEK == "" {
-		logger.Warnf(ctx, "access-workflow-engine: ACCESS_CREDENTIAL_DEK unset; jobs needing connector secrets will fail closed")
+	if crypto.IsPassthrough(enc) {
+		logger.Errorf(ctx, "access-workflow-engine: refusing to start without ACCESS_CREDENTIAL_DEK; provisioning/JML jobs cannot open connector secrets under the passthrough encryptor")
+		stop()
+		return nil
 	}
 
 	// Lifecycle services (1C): the engine orchestrates these; it never

@@ -12,6 +12,7 @@ from skills import (
     access_risk_assessment,
     connector_setup_assistant,
     llm,
+    pam_behavioural_analytics,
     pam_session_risk_assessment,
     policy_recommendation,
 )
@@ -75,6 +76,20 @@ def test_risk_llm_cannot_lower_below_floor(monkeypatch):
     finally:
         llm.reset_test_provider(token)
     assert out["risk_score"] == "high"
+
+
+def test_risk_llm_null_factors_does_not_crash():
+    # Regression: an LLM returning "risk_factors": null (or any non-list) must not
+    # raise TypeError; the skill keeps the score and degrades the factors to none.
+    token = llm.set_test_provider(lambda p, s: json.dumps({"risk_score": "high", "risk_factors": None}))
+    try:
+        out = access_risk_assessment.run(
+            {"role": "viewer", "resource_external_id": "wiki", "justification": "x"}
+        )
+    finally:
+        llm.reset_test_provider(token)
+    assert out["risk_score"] == "high"
+    assert "llm_assessed" in out["risk_factors"]
 
 
 # -------------------------- access_review_automation --------------------------
@@ -170,6 +185,100 @@ def test_pam_routine_low():
         {"user_external_id": "u", "target_ref": "host", "commands": ["ls", "cat config.yaml"], "source_ip": "10.0.0.5"}
     )
     assert out["risk_score"] == "low"
+
+
+def test_pam_public_172_flagged_external():
+    # 172.217.14.99 is public (outside RFC 1918 172.16.0.0/12) → external_source_ip.
+    out = pam_session_risk_assessment.run(
+        {"user_external_id": "u", "target_ref": "host", "commands": ["ls"], "source_ip": "172.217.14.99"}
+    )
+    assert out["risk_score"] == "medium"
+    assert any(f.startswith("external_source_ip") for f in out["risk_factors"])
+
+
+def test_pam_rfc1918_172_internal():
+    # 172.16.0.5 IS private (RFC 1918) → must NOT be flagged external.
+    out = pam_session_risk_assessment.run(
+        {"user_external_id": "u", "target_ref": "host", "commands": ["ls"], "source_ip": "172.16.0.5"}
+    )
+    assert out["risk_score"] == "low"
+    assert not any(f.startswith("external_source_ip") for f in out["risk_factors"])
+
+
+def test_pam_session_llm_null_factors_does_not_crash():
+    # Regression: "risk_factors": null from the model must not raise TypeError.
+    token = llm.set_test_provider(
+        lambda p, s: json.dumps({"risk_score": "high", "risk_factors": None, "recommendation": "review"})
+    )
+    try:
+        out = pam_session_risk_assessment.run(
+            {"user_external_id": "u", "target_ref": "host", "commands": ["ls"]}
+        )
+    finally:
+        llm.reset_test_provider(token)
+    assert out["risk_score"] == "high"
+    assert "llm_assessed" in out["risk_factors"]
+
+
+# ------------------------ pam_behavioural_analytics ------------------------
+
+def test_behaviour_requires_user():
+    with pytest.raises(SkillError):
+        pam_behavioural_analytics.run({})
+
+
+def test_behaviour_off_hours_detected():
+    out = pam_behavioural_analytics.run(
+        {"user_external_id": "u", "sessions": [{"start_hour": 3, "command_count": 5}]}
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "off_hours_sessions" in kinds
+
+
+def test_behaviour_new_target_against_baseline():
+    out = pam_behavioural_analytics.run(
+        {
+            "user_external_id": "u",
+            "sessions": [{"start_hour": 10, "target": "db-prod"}],
+            "baseline": {"targets": ["db-stage"]},
+        }
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "new_target_access" in kinds
+
+
+def test_behaviour_volume_spike():
+    out = pam_behavioural_analytics.run(
+        {
+            "user_external_id": "u",
+            "sessions": [{"start_hour": 10, "command_count": 500}],
+            "baseline": {"avg_command_count": 10},
+        }
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "command_volume_spike" in kinds
+
+
+def test_behaviour_consistent_is_empty():
+    out = pam_behavioural_analytics.run(
+        {
+            "user_external_id": "u",
+            "sessions": [{"start_hour": 10, "target": "db-stage", "command_count": 8}],
+            "baseline": {"targets": ["db-stage"], "avg_command_count": 10},
+        }
+    )
+    assert out["anomalies"] == []
+
+
+def test_behaviour_llm_null_anomalies_does_not_crash():
+    token = llm.set_test_provider(lambda p, s: json.dumps({"anomalies": None}))
+    try:
+        out = pam_behavioural_analytics.run(
+            {"user_external_id": "u", "sessions": [{"start_hour": 10}]}
+        )
+    finally:
+        llm.reset_test_provider(token)
+    assert out["anomalies"] == []
 
 
 # --------------------------- policy_recommendation ---------------------------

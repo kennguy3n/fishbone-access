@@ -96,3 +96,55 @@ func clearMTLSEnv(t *testing.T) {
 		t.Setenv(k, "")
 	}
 }
+
+// setRealMTLSEnv writes an in-test CA + client leaf to a temp dir and points the
+// three mTLS env vars at them, so TLSConfigFromEnv().Build() succeeds.
+func setRealMTLSEnv(t *testing.T) {
+	t.Helper()
+	ca := newTestCA(t)
+	dir := t.TempDir()
+	certPath, keyPath := ca.issuePEMFiles(t, dir, "client", []string{testClientURI}, false)
+	caPath := filepath.Join(dir, "ca.crt")
+	if err := os.WriteFile(caPath, ca.certPEM, 0o600); err != nil {
+		t.Fatalf("write ca: %v", err)
+	}
+	t.Setenv(EnvClientCertFile, certPath)
+	t.Setenv(EnvClientKeyFile, keyPath)
+	t.Setenv(EnvServerCAFile, caPath)
+}
+
+func TestNewAIClientFromEnv_CertsWithoutURL_Errors(t *testing.T) {
+	clearMTLSEnv(t)
+	setRealMTLSEnv(t)
+	// EnvBaseURL intentionally left empty: a half-configured setup (mTLS material
+	// provisioned but no agent URL) must fail closed rather than silently yield
+	// an unconfigured client.
+	var mErr *MTLSConfigError
+	if _, err := NewAIClientFromEnv(); !errors.As(err, &mErr) {
+		t.Fatalf("err = %v; want *MTLSConfigError when certs are set but %s is empty", err, EnvBaseURL)
+	}
+}
+
+func TestNewAIClientFromEnv_CertsWithURL_Configured(t *testing.T) {
+	clearMTLSEnv(t)
+	setRealMTLSEnv(t)
+	t.Setenv(EnvBaseURL, "https://access-ai-agent.internal:8443")
+	c, err := NewAIClientFromEnv()
+	if err != nil {
+		t.Fatalf("NewAIClientFromEnv: %v", err)
+	}
+	if !c.Configured() {
+		t.Error("client with mTLS material and a base URL should report configured")
+	}
+}
+
+func TestNewAIClientFromEnv_NothingSet_Unconfigured(t *testing.T) {
+	clearMTLSEnv(t)
+	c, err := NewAIClientFromEnv()
+	if err != nil {
+		t.Fatalf("NewAIClientFromEnv: %v", err)
+	}
+	if c.Configured() {
+		t.Error("client should be unconfigured when neither URL nor mTLS is set")
+	}
+}

@@ -10,6 +10,7 @@ to "medium" (manual review advised).
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 from typing import Any
 
@@ -35,6 +36,18 @@ def _max_score(a: str, b: str) -> str:
     return a if _ORDER[a] >= _ORDER[b] else b
 
 
+def _is_external_ip(raw: str) -> bool:
+    """True when ``raw`` is a routable public address. RFC 1918 / loopback /
+    link-local / unique-local addresses are internal. An unparseable value is
+    treated as external (fail-safe: surface it for review rather than silently
+    trusting an opaque source)."""
+    try:
+        addr = ipaddress.ip_address(raw)
+    except ValueError:
+        return True
+    return not (addr.is_private or addr.is_loopback or addr.is_link_local)
+
+
 def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str], str]:
     commands = [str(c).lower() for c in payload.get("commands", []) or []]
     factors: list[str] = []
@@ -54,8 +67,8 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str], str]:
         factors.append(f"high_command_volume:{len(commands)}")
         score = _max_score(score, "medium")
 
-    source_ip = str(payload.get("source_ip", "") or "")
-    if source_ip and not (source_ip.startswith(("10.", "192.168.")) or source_ip.startswith("172.")):
+    source_ip = str(payload.get("source_ip", "") or "").strip()
+    if source_ip and _is_external_ip(source_ip):
         factors.append(f"external_source_ip:{source_ip}")
         score = _max_score(score, "medium")
 
@@ -84,7 +97,8 @@ def _llm_enrich(payload: dict[str, Any], floor: str) -> tuple[str, list[str], st
     if score not in ALLOWED_SCORES:
         return None
     score = _max_score(score, floor)
-    factors = [str(f) for f in parsed.get("risk_factors", []) if isinstance(parsed.get("risk_factors", []), list)]
+    raw_factors = parsed.get("risk_factors", [])
+    factors = [str(f) for f in raw_factors] if isinstance(raw_factors, list) else []
     factors.append("llm_assessed")
     recommendation = str(parsed.get("recommendation", "") or "review session")
     return score, factors, recommendation

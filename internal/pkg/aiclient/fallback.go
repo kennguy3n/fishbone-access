@@ -202,6 +202,41 @@ func AssessSessionRiskWithFallback(ctx context.Context, c *AIClient, workspaceAI
 	return SessionRisk{Score: normalizeScore(resp.RiskScore), Factors: resp.RiskFactors, Recommendation: resp.Recommendation}
 }
 
+// BehaviourSession is one privileged-session summary in a BehaviourAnalyticsInput.
+type BehaviourSession struct {
+	StartHour    int    `json:"start_hour,omitempty"`
+	DurationMin  int    `json:"duration_minutes,omitempty"`
+	CommandCount int    `json:"command_count,omitempty"`
+	Target       string `json:"target,omitempty"`
+}
+
+// BehaviourBaseline is the user's normal-behaviour reference that the analytics
+// skill compares recent sessions against.
+type BehaviourBaseline struct {
+	Targets         []string `json:"targets,omitempty"`
+	AvgCommandCount float64  `json:"avg_command_count,omitempty"`
+}
+
+// BehaviourAnalyticsInput is the payload for the pam_behavioural_analytics skill.
+type BehaviourAnalyticsInput struct {
+	UserExternalID string             `json:"user_external_id"`
+	Sessions       []BehaviourSession `json:"sessions,omitempty"`
+	Baseline       *BehaviourBaseline `json:"baseline,omitempty"`
+}
+
+// AnalyzeBehaviourWithFallback returns behavioural anomalies for a privileged
+// user's recent sessions. Like anomaly detection it is advisory (it never blocks
+// a decision), so the fallback is an empty slice — the absence of a signal, not
+// a synthetic one.
+func AnalyzeBehaviourWithFallback(ctx context.Context, c *AIClient, workspaceAITier string, in BehaviourAnalyticsInput) []AnomalyEvent {
+	resp, err := c.InvokeSkillForTier(ctx, SkillPAMBehavioural, workspaceAITier, in)
+	if err != nil {
+		logger.Warnf(ctx, "aiclient: behavioural analytics fallback (empty): %v", err)
+		return nil
+	}
+	return resp.Anomalies
+}
+
 // PolicyRecommendationInput is the payload for the policy_recommendation skill.
 type PolicyRecommendationInput struct {
 	WorkspaceID string   `json:"workspace_id"`

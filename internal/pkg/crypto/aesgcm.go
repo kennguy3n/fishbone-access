@@ -106,3 +106,17 @@ func FromKey(base64Key string) (Encryptor, error) {
 	}
 	return NewAESGCMEncryptor(base64Key)
 }
+
+// IsPassthrough reports whether enc is the fail-closed PassthroughEncryptor.
+// Boot helpers for binaries that MUST be able to open connector secrets (the
+// connector worker, the workflow engine) use this to refuse to start under the
+// no-op encryptor. It matches both the value and pointer forms so the gate is
+// robust to how the type is constructed.
+func IsPassthrough(enc Encryptor) bool {
+	switch enc.(type) {
+	case PassthroughEncryptor, *PassthroughEncryptor:
+		return true
+	default:
+		return false
+	}
+}
