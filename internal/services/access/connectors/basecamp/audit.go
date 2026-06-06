@@ -70,7 +70,13 @@ func (c *BasecampAccessConnector) FetchAccessAuditLogs(
 		olderThanCursor := false
 		for i := range events {
 			ts := parseBasecampAuditTime(events[i].CreatedAt)
-			if !since.IsZero() && !ts.IsZero() && !ts.After(since) {
+			if ts.IsZero() {
+				// Unparseable timestamp: mapBasecampAuditEvent would
+				// drop it anyway, so skip it here rather than carrying
+				// dead weight in collected.
+				continue
+			}
+			if !since.IsZero() && !ts.After(since) {
 				olderThanCursor = true
 				continue
 			}

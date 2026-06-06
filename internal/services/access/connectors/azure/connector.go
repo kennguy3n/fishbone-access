@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -116,9 +117,21 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
+// azureTenantPattern matches the two legal Entra tenant identifier forms —
+// a GUID or a verified domain (e.g. contoso.onmicrosoft.com). It excludes
+// '/', '\\' and whitespace so a tenant_id can never smuggle extra path
+// segments into the OAuth token URL built by microsoft.AzureADEndpoint,
+// which concatenates the value without URL-escaping it (subscription_id is
+// always url.PathEscape'd at its use sites, so it doesn't need this guard).
+var azureTenantPattern = regexp.MustCompile(`^[A-Za-z0-9.-]+$`)
+
 func (c Config) validate() error {
-	if strings.TrimSpace(c.TenantID) == "" {
+	tenant := strings.TrimSpace(c.TenantID)
+	if tenant == "" {
 		return errors.New("azure: tenant_id is required")
+	}
+	if !azureTenantPattern.MatchString(tenant) {
+		return errors.New("azure: tenant_id must be a GUID or domain (letters, digits, '.', '-')")
 	}
 	if strings.TrimSpace(c.SubscriptionID) == "" {
 		return errors.New("azure: subscription_id is required")

@@ -41,6 +41,25 @@ func TestValidate_RejectsMissing(t *testing.T) {
 	}
 }
 
+func TestValidate_RejectsMalformedTenant(t *testing.T) {
+	c := New()
+	// A tenant_id with path-traversal characters must be rejected before
+	// it can be concatenated into the OAuth token URL.
+	for _, bad := range []string{"../evil", "tenant/extra", "tenant id", "ten\\ant"} {
+		cfg := map[string]interface{}{"tenant_id": bad, "subscription_id": "sub-1"}
+		if err := c.Validate(context.Background(), cfg, validSecrets()); err == nil {
+			t.Errorf("tenant_id %q should be rejected", bad)
+		}
+	}
+	// Both legal forms — GUID and verified domain — are accepted.
+	for _, ok := range []string{"11111111-2222-3333-4444-555555555555", "contoso.onmicrosoft.com"} {
+		cfg := map[string]interface{}{"tenant_id": ok, "subscription_id": "sub-1"}
+		if err := c.Validate(context.Background(), cfg, validSecrets()); err != nil {
+			t.Errorf("tenant_id %q should be accepted: %v", ok, err)
+		}
+	}
+}
+
 func TestValidate_PureLocal(t *testing.T) {
 	prev := http.DefaultTransport
 	http.DefaultTransport = noNetworkRoundTripper{}
