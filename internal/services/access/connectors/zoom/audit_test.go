@@ -102,6 +102,22 @@ func TestMapZoomActivity_TimestampParsing(t *testing.T) {
 	}
 }
 
+// TestMapZoomActivity_DropsUnparseableTime is a regression test: an activity
+// with a non-empty but unparseable `time` must be dropped (nil), not emitted
+// with a zero Timestamp. A zero-valued Timestamp pollutes the audit stream
+// and prevents the watermark cursor from advancing.
+func TestMapZoomActivity_DropsUnparseableTime(t *testing.T) {
+	for _, bad := range []string{
+		"2024-01-01 10:00:00", // space instead of 'T', not RFC3339
+		"01/02/2024 10:00:00", // US-style, unparseable
+		"not-a-timestamp",     // garbage
+	} {
+		if got := mapZoomActivity(&zoomActivity{Time: bad, Email: "u@x", Type: "Sign in"}); got != nil {
+			t.Errorf("time %q: got entry %+v; want nil (dropped)", bad, got)
+		}
+	}
+}
+
 func TestFetchAccessAuditLogs_Unauthorized_SoftSkip(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
