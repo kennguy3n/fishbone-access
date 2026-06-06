@@ -3,7 +3,6 @@ package alibaba
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -236,7 +235,5 @@ func parseAlibabaAuditTime(s string) time.Time {
 	}
 	return time.Time{}
 }
-
-var _ = errors.New
 
 var _ access.AccessAuditor = (*AlibabaAccessConnector)(nil)

@@ -3,6 +3,7 @@ package auth0
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -96,7 +97,7 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
 		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
 		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
-	if err == nil {
-		t.Fatal("expected error")
+	if !errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }

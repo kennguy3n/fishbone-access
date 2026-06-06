@@ -261,7 +261,7 @@ func (c *Auth0AccessConnector) SyncIdentitiesDelta(
 			return "", fmt.Errorf("auth0: logs status %d: %s", resp.StatusCode, string(body))
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
@@ -604,7 +604,7 @@ func (c *Auth0AccessConnector) do(req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("auth0: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 func (c *Auth0AccessConnector) doRaw(req *http.Request) (*http.Response, error) {
@@ -618,7 +618,7 @@ func (c *Auth0AccessConnector) doRaw(req *http.Request) (*http.Response, error) 
 func isExpiredCursorBody(body []byte) bool {
 	s := strings.ToLower(string(body))
 	return strings.Contains(s, "expired") ||
-		strings.Contains(s, "log_id") && strings.Contains(s, "invalid") ||
+		(strings.Contains(s, "log_id") && strings.Contains(s, "invalid")) ||
 		strings.Contains(s, "out of retention")
 }
 

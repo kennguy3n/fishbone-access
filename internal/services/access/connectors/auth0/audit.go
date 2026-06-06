@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,6 +12,12 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// auth0AuditMaxPages bounds a single FetchAccessAuditLogs run, matching the
+// defensive cap used by the other connectors. The checkpoint (nextSince) is
+// persisted per page, so hitting the cap simply defers the remaining events to
+// the next sync cycle rather than looping unboundedly on a misbehaving cursor.
+const auth0AuditMaxPages = 200
 
 // FetchAccessAuditLogs streams Auth0 tenant log events into the access
 // audit pipeline. Implements access.AccessAuditor.
@@ -41,7 +48,7 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	from := ""
-	for {
+	for pageNum := 0; pageNum < auth0AuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -59,9 +66,18 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		resp, err := c.doRaw(req)
 		if err != nil {
 			return err
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("auth0: logs: status %d: %s", resp.StatusCode, string(body))
 		}
 		var page []auth0AuditLogEvent
 		if err := json.Unmarshal(body, &page); err != nil {
@@ -91,6 +107,7 @@ func (c *Auth0AccessConnector) FetchAccessAuditLogs(
 			return nil
 		}
 	}
+	return nil
 }
 
 type auth0AuditLogEvent struct {
@@ -107,11 +124,30 @@ type auth0AuditLogEvent struct {
 	Connection  string `json:"connection"`
 }
 
+// parseAuth0Time parses an Auth0 log date, trying fractional-second precision
+// first to match the parsing pattern used by the other connectors.
+func parseAuth0Time(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return ts
+	}
+	if ts, err := time.Parse(time.RFC3339, s); err == nil {
+		return ts
+	}
+	return time.Time{}
+}
+
 func mapAuth0Log(e *auth0AuditLogEvent) *access.AuditLogEntry {
 	if e == nil || e.LogID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.Date)
+	ts := parseAuth0Time(e.Date)
+	if ts.IsZero() {
+		return nil
+	}
 	outcome := "success"
 	if t := strings.ToLower(strings.TrimSpace(e.Type)); strings.HasPrefix(t, "f") {
 		outcome = "failure"
