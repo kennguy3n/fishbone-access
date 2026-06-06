@@ -30,7 +30,7 @@ func TestMixpanelConnectorFlow_FullLifecycle(t *testing.T) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Basic ") {
 			t.Errorf("missing basic auth")
 		}
-		listPath := "/api/app/me/organizations/org-1/members"
+		listPath := "/api/app/organizations/org-1/members"
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == listPath:
 			if hasMember {
