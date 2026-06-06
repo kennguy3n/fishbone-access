@@ -78,7 +78,12 @@ type Connection struct {
 	Name     string         `json:"name"`
 	Strategy string         `json:"strategy"`
 	Options  map[string]any `json:"options,omitempty"`
-	Enabled  bool           `json:"enabled,omitempty"`
+	// Enabled is serialized unconditionally (no omitempty): it is a meaningful
+	// request field, and omitempty on a bool would silently drop enabled=false,
+	// leaving iam-core to apply its own default and create a connection in the
+	// wrong state. Enabling/disabling an existing connection goes through
+	// ToggleConnection; this field carries the desired state at create time.
+	Enabled bool `json:"enabled"`
 }
 
 // accessToken returns a valid client_credentials access token, minting a fresh
@@ -284,4 +289,33 @@ func (c *ManagementClient) CreateConnection(ctx context.Context, conn Connection
 		return nil, err
 	}
 	return &created, nil
+}
+
+// GetConnection reads a single SSO connection by id
+// (GET /api/v1/management/connections/{id}).
+func (c *ManagementClient) GetConnection(ctx context.Context, id string) (*Connection, error) {
+	var conn Connection
+	if err := c.do(ctx, http.MethodGet, "/api/v1/management/connections/"+url.PathEscape(id), nil, &conn); err != nil {
+		return nil, err
+	}
+	return &conn, nil
+}
+
+// DeleteConnection removes an SSO connection
+// (DELETE /api/v1/management/connections/{id}).
+func (c *ManagementClient) DeleteConnection(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/api/v1/management/connections/"+url.PathEscape(id), nil, nil)
+}
+
+// TestConnection asks iam-core to verify connectivity for a connection
+// (POST /api/v1/management/connections/{id}/test).
+func (c *ManagementClient) TestConnection(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodPost, "/api/v1/management/connections/"+url.PathEscape(id)+"/test", nil, nil)
+}
+
+// ToggleConnection enables or disables a connection
+// (POST /api/v1/management/connections/{id}/toggle).
+func (c *ManagementClient) ToggleConnection(ctx context.Context, id string, enabled bool) error {
+	body := map[string]any{"enabled": enabled}
+	return c.do(ctx, http.MethodPost, "/api/v1/management/connections/"+url.PathEscape(id)+"/toggle", body, nil)
 }

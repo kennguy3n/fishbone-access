@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -97,10 +98,10 @@ func (v *Validator) Validate(tokenString string) (*Claims, error) {
 	if _, err := v.parser.ParseWithClaims(tokenString, mc, v.kf.Keyfunc); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidToken, err)
 	}
-	return claimsFromMap(mc)
+	return v.claimsFromMap(mc)
 }
 
-func claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
+func (v *Validator) claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
 	sub, _ := mc["sub"].(string)
 	if sub == "" {
 		return nil, fmt.Errorf("%w: missing sub", ErrInvalidToken)
@@ -108,7 +109,7 @@ func claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
 	c := &Claims{
 		Subject:      sub,
 		TenantID:     firstStringClaim(mc, "tenant_id", "tid"),
-		Roles:        stringSliceClaim(mc, "roles"),
+		Roles:        rolesClaim(mc, v.issuer),
 		Scopes:       scopeClaim(mc),
 		MFASatisfied: mfaFromClaims(mc),
 		Raw:          map[string]any(mc),
@@ -117,6 +118,23 @@ func claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
 		c.ExpiresAt = exp.Time
 	}
 	return c, nil
+}
+
+// rolesClaim reads the caller's roles, preferring the issuer-namespaced
+// "{issuer}/roles" claim and falling back to the plain "roles" claim. iam-core
+// namespaces custom claims under the issuer URL to avoid collisions with
+// registered/standard claim names (the same convention ShieldNet Gateway's
+// gateway middleware follows); honoring the namespaced form first keeps both
+// ShieldNet products consistent while the plain-claim fallback preserves
+// compatibility with tokens that carry un-namespaced roles.
+func rolesClaim(mc jwt.MapClaims, issuer string) []string {
+	if issuer != "" {
+		key := strings.TrimRight(issuer, "/") + "/roles"
+		if roles := stringSliceClaim(mc, key); len(roles) > 0 {
+			return roles
+		}
+	}
+	return stringSliceClaim(mc, "roles")
 }
 
 func firstStringClaim(mc jwt.MapClaims, keys ...string) string {

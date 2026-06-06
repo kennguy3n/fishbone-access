@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -261,5 +262,30 @@ func TestCreateConnection(t *testing.T) {
 	}
 	if conn.ID != "conn-1" {
 		t.Errorf("conn id = %q", conn.ID)
+	}
+}
+
+// TestConnectionEnabledAlwaysSerialized guards against re-introducing
+// `omitempty` on Connection.Enabled: a meaningful request bool must always be
+// sent, otherwise enabled=false is silently dropped and iam-core applies its
+// own default (creating a connection in the wrong state).
+func TestConnectionEnabledAlwaysSerialized(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		enabled bool
+		want    string
+	}{
+		{"enabled", true, `"enabled":true`},
+		{"disabled", false, `"enabled":false`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := json.Marshal(Connection{Name: "n", Strategy: "oidc", Enabled: tc.enabled})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if !strings.Contains(string(b), tc.want) {
+				t.Errorf("payload %s missing %s", b, tc.want)
+			}
+		})
 	}
 }
