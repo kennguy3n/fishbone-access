@@ -538,6 +538,105 @@ func TestSubmitDecisionConcurrentDecisionsStayConsistent(t *testing.T) {
 	}
 }
 
+// TestHistoryUnknownRequestReturnsNotFound proves History distinguishes "no
+// such request" from "a real request with an empty trail": an unknown (or
+// cross-tenant) request id must surface ErrRequestNotFound, not a 200 with an
+// empty history.
+func TestHistoryUnknownRequestReturnsNotFound(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	reqSvc := NewAccessRequestService(db)
+	ctx := context.Background()
+
+	if _, err := reqSvc.History(ctx, ws, uuid.New()); !errors.Is(err, ErrRequestNotFound) {
+		t.Fatalf("expected ErrRequestNotFound for unknown request, got %v", err)
+	}
+
+	// A real request still returns its (non-empty) trail without error.
+	connID := seedConnector(t, db, ws, "fake")
+	reqID := approveAndConnector(t, reqSvc, ws, connID)
+	hist, err := reqSvc.History(ctx, ws, reqID)
+	if err != nil {
+		t.Fatalf("History on a real request: %v", err)
+	}
+	if len(hist) == 0 {
+		t.Fatalf("expected a non-empty history for a real request")
+	}
+}
+
+// TestListItemsUnknownReviewReturnsNotFound proves ListItems 404s on an unknown
+// (or cross-tenant) review id rather than returning an empty list with 200.
+func TestListItemsUnknownReviewReturnsNotFound(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	review := NewReviewService(db, nil)
+	ctx := context.Background()
+
+	if _, err := review.ListItems(ctx, ws, uuid.New()); !errors.Is(err, ErrReviewNotFound) {
+		t.Fatalf("expected ErrReviewNotFound for unknown review, got %v", err)
+	}
+
+	// A cross-tenant review id is invisible: tenant-b cannot read tenant-a's
+	// review items (404, never a leak).
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	prov := NewAccessProvisioningService(db, reqSvc, &fakeConnector{})
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	reviewA := NewReviewService(db, prov)
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-1")
+	rev, _, err := reviewA.StartCampaign(ctx, ws, "Q1", "auditor")
+	if err != nil {
+		t.Fatalf("StartCampaign: %v", err)
+	}
+	wsB := seedWorkspace(t, db, "tenant-b")
+	if _, err := review.ListItems(ctx, wsB, rev.ID); !errors.Is(err, ErrReviewNotFound) {
+		t.Fatalf("expected ErrReviewNotFound for cross-tenant review, got %v", err)
+	}
+}
+
+// TestCompleteCampaignIsIdempotent proves completing an already-completed
+// campaign is a no-op: it returns the same report without error and does NOT
+// append a second "access_review.completed" audit event (the FOR-UPDATE guard
+// inside the transaction makes the second call observe the completed state).
+func TestCompleteCampaignIsIdempotent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	prov := NewAccessProvisioningService(db, reqSvc, &fakeConnector{})
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	review := NewReviewService(db, prov)
+	ctx := context.Background()
+
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-1")
+	rev, _, err := review.StartCampaign(ctx, ws, "Q1", "auditor")
+	if err != nil {
+		t.Fatalf("StartCampaign: %v", err)
+	}
+
+	first, err := review.CompleteCampaign(ctx, ws, rev.ID, "auditor")
+	if err != nil {
+		t.Fatalf("CompleteCampaign #1: %v", err)
+	}
+	second, err := review.CompleteCampaign(ctx, ws, rev.ID, "auditor")
+	if err != nil {
+		t.Fatalf("CompleteCampaign #2 (idempotent): %v", err)
+	}
+	if first.State != ReviewStateCompleted || second.State != ReviewStateCompleted {
+		t.Fatalf("both reports must be completed: %+v / %+v", first, second)
+	}
+
+	var completedEvents int64
+	if err := db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ? AND target_ref = ?", ws, "access_review.completed", rev.ID.String()).
+		Count(&completedEvents).Error; err != nil {
+		t.Fatalf("count audit events: %v", err)
+	}
+	if completedEvents != 1 {
+		t.Fatalf("expected exactly 1 completion audit event, got %d", completedEvents)
+	}
+}
+
 func TestLeaverKillSwitchAllLayers(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")

@@ -253,19 +253,32 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 	result := &LeaverResult{UserExternalID: user}
 
 	record := func(layer, status, detail string) {
-		result.Layers = append(result.Layers, KillSwitchLayerResult{Layer: layer, Status: status, Detail: detail})
+		entry := KillSwitchLayerResult{Layer: layer, Status: status, Detail: detail}
 		if status == LayerStatusFailed {
 			result.Errored = true
 		}
 		now := s.now()
-		_ = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if auditErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			return appendAudit(ctx, tx, now, auditEntry{
 				WorkspaceID: workspaceID,
 				Actor:       "scim",
 				Action:      "jml.leaver." + layer + "." + status,
 				TargetRef:   user,
 			})
-		})
+		}); auditErr != nil {
+			// A kill-switch layer whose tamper-evident audit row could not be
+			// written is a compliance gap, not a no-op: surface it rather than
+			// swallowing it. Mark the layer failed (annotating its detail) so
+			// HandleLeaver returns an error and the per-layer breakdown shows the
+			// audit failure. The cascade still continues to the remaining layers.
+			result.Errored = true
+			entry.Status = LayerStatusFailed
+			if entry.Detail != "" {
+				entry.Detail += "; "
+			}
+			entry.Detail += "audit write failed: " + auditErr.Error()
+		}
+		result.Layers = append(result.Layers, entry)
 	}
 
 	// Layer 1: revoke every ShieldNet-managed grant for the user.

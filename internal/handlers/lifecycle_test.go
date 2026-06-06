@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
@@ -131,6 +133,25 @@ func TestUnauthenticatedRejected(t *testing.T) {
 	w := do(t, r, http.MethodGet, "/api/v1/access-requests", "", nil)
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("no-token status = %d, want 401", w.Code)
+	}
+}
+
+// TestSubresourceUnknownParentReturns404 proves the history/items subresource
+// endpoints 404 on a non-existent parent rather than returning an empty
+// collection with 200 (which would falsely imply the parent exists but is
+// empty).
+func TestSubresourceUnknownParentReturns404(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+	missing := uuid.NewString()
+
+	w := do(t, r, http.MethodGet, "/api/v1/access-requests/"+missing+"/history", "tok-a", nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("history of unknown request = %d, want 404, body=%s", w.Code, w.Body.String())
+	}
+
+	w = do(t, r, http.MethodGet, "/api/v1/access-reviews/"+missing+"/items", "tok-a", nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("items of unknown review = %d, want 404, body=%s", w.Code, w.Body.String())
 	}
 }
 

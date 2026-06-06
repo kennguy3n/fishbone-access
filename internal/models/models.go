@@ -145,7 +145,7 @@ type AccessReview struct {
 	Base
 	WorkspaceID uuid.UUID  `gorm:"type:uuid;index;not null" json:"workspace_id"`
 	Name        string     `gorm:"not null" json:"name"`
-	State       string     `gorm:"not null;default:draft" json:"state"`
+	State       string     `gorm:"not null;default:active" json:"state"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }

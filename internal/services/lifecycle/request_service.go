@@ -163,9 +163,20 @@ func (s *AccessRequestService) ListRequests(ctx context.Context, workspaceID uui
 }
 
 // History returns the ordered state-transition trail for a request (oldest
-// first). It is workspace-scoped so a cross-tenant request id returns an empty
-// trail rather than leaking another tenant's history.
+// first). It is workspace-scoped so a cross-tenant request id is invisible. The
+// parent request's existence is verified first so an unknown id returns
+// ErrRequestNotFound (404) rather than a misleading empty trail with 200.
 func (s *AccessRequestService) History(ctx context.Context, workspaceID, requestID uuid.UUID) ([]models.AccessRequestStateHistory, error) {
+	if err := s.db.WithContext(ctx).
+		Model(&models.AccessRequest{}).
+		Select("1").
+		Where("workspace_id = ? AND id = ?", workspaceID, requestID).
+		Take(new(int)).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrRequestNotFound
+		}
+		return nil, fmt.Errorf("lifecycle: load access_request for history: %w", err)
+	}
 	var out []models.AccessRequestStateHistory
 	if err := s.db.WithContext(ctx).
 		Where("workspace_id = ? AND request_id = ?", workspaceID, requestID).

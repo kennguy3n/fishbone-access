@@ -22,6 +22,13 @@ ALTER TABLE access_grants ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS draft_impact JSONB;
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ;
 
+-- access_reviews: campaigns start active (the 1C review lifecycle is
+-- active → completed; there is no draft campaign state), so align the column
+-- default with the only initial state the service produces. The 0001 default
+-- of 'draft' was never exercised because StartCampaign always sets state
+-- explicitly.
+ALTER TABLE access_reviews ALTER COLUMN state SET DEFAULT 'active';
+
 -- access_request_state_history: one immutable row per FSM transition.
 CREATE TABLE IF NOT EXISTS access_request_state_history (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

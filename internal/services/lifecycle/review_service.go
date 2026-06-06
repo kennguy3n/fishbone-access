@@ -12,9 +12,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
 
-// Access-review campaign states.
+// Access-review campaign states. The lifecycle is active → completed; there is
+// no draft campaign state (StartCampaign opens a campaign directly as active).
 const (
-	ReviewStateDraft     = "draft"
 	ReviewStateActive    = "active"
 	ReviewStateCompleted = "completed"
 )
@@ -215,34 +215,39 @@ func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewI
 // auto-revoke them via separate calls); the returned report shows the final
 // tally.
 func (s *ReviewService) CompleteCampaign(ctx context.Context, workspaceID, reviewID uuid.UUID, actor string) (ReviewReport, error) {
-	var review models.AccessReview
-	err := s.db.WithContext(ctx).
-		Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
-		Take(&review).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ReviewReport{}, ErrReviewNotFound
-	}
-	if err != nil {
-		return ReviewReport{}, fmt.Errorf("lifecycle: load review: %w", err)
-	}
-
-	if review.State != ReviewStateCompleted {
-		now := s.now()
-		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := tx.Model(&models.AccessReview{}).
-				Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
-				Updates(map[string]any{"state": ReviewStateCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
-				return fmt.Errorf("lifecycle: complete review: %w", err)
+	now := s.now()
+	// Load + state guard + completion write all run inside one transaction that
+	// takes a row-level FOR UPDATE lock on the review (on Postgres), so two
+	// concurrent CompleteCampaign calls serialize: the second waits, re-reads the
+	// now-completed state, and the idempotent guard skips a second write (and a
+	// duplicate "completed" audit event) instead of racing.
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var review models.AccessReview
+		if err := forUpdate(tx.WithContext(ctx)).
+			Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
+			Take(&review).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrReviewNotFound
 			}
-			return appendAudit(ctx, tx, now, auditEntry{
-				WorkspaceID: workspaceID,
-				Actor:       actor,
-				Action:      "access_review.completed",
-				TargetRef:   reviewID.String(),
-			})
-		}); err != nil {
-			return ReviewReport{}, err
+			return fmt.Errorf("lifecycle: load review: %w", err)
 		}
+		if review.State == ReviewStateCompleted {
+			return nil // idempotent: already completed, nothing to write
+		}
+		if err := tx.Model(&models.AccessReview{}).
+			Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
+			Updates(map[string]any{"state": ReviewStateCompleted, "completed_at": now, "updated_at": now}).Error; err != nil {
+			return fmt.Errorf("lifecycle: complete review: %w", err)
+		}
+		return appendAudit(ctx, tx, now, auditEntry{
+			WorkspaceID: workspaceID,
+			Actor:       actor,
+			Action:      "access_review.completed",
+			TargetRef:   reviewID.String(),
+		})
+	})
+	if err != nil {
+		return ReviewReport{}, err
 	}
 	return s.Report(ctx, workspaceID, reviewID)
 }
@@ -295,8 +300,20 @@ func (s *ReviewService) Report(ctx context.Context, workspaceID, reviewID uuid.U
 	return report, nil
 }
 
-// ListItems returns a campaign's review items.
+// ListItems returns a campaign's review items. The parent review's existence is
+// verified first so an unknown (or cross-tenant) review id returns
+// ErrReviewNotFound (404) rather than a misleading empty list with 200.
 func (s *ReviewService) ListItems(ctx context.Context, workspaceID, reviewID uuid.UUID) ([]models.AccessReviewItem, error) {
+	if err := s.db.WithContext(ctx).
+		Model(&models.AccessReview{}).
+		Select("1").
+		Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
+		Take(new(int)).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrReviewNotFound
+		}
+		return nil, fmt.Errorf("lifecycle: load review for items: %w", err)
+	}
 	var items []models.AccessReviewItem
 	if err := s.db.WithContext(ctx).
 		Where("workspace_id = ? AND review_id = ?", workspaceID, reviewID).

@@ -695,7 +695,7 @@ components:
         id: { type: string, format: uuid }
         workspace_id: { type: string, format: uuid }
         name: { type: string }
-        state: { type: string, enum: [open, completed] }
+        state: { type: string, enum: [active, completed] }
         created_at: { type: string, format: date-time }
     ReviewItem:
       type: object

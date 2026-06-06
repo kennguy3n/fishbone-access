@@ -60,8 +60,18 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	defer expiryTick.Stop()
 	defer orphanTick.Stop()
 
+	// Fire the initial sweeps, but bail out between them if ctx is already
+	// cancelled so a process that is shutting down right after boot does not
+	// kick off a (potentially slow, network-bound) orphan scan it will only
+	// abandon. The per-workspace sweeps themselves honor ctx internally.
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	s.runExpirySweep(ctx)
 	if s.orphans != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		s.runOrphanSweep(ctx)
 	}
 
@@ -89,6 +99,9 @@ func (s *Scheduler) RunExpirySweep(ctx context.Context) (int, error) {
 	}
 	total := 0
 	for _, ws := range ids {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
 		res, err := s.expiry.EnforceExpired(ctx, ws)
 		if err != nil {
 			logger.Errorf(ctx, "lifecycle: expiry sweep for workspace %s: %v", ws, err)
@@ -119,6 +132,9 @@ func (s *Scheduler) RunOrphanSweep(ctx context.Context) (int, error) {
 	}
 	total := 0
 	for _, c := range connectors {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
 		res, err := s.orphans.Scan(ctx, c.WorkspaceID, c.ID, false)
 		if err != nil {
 			logger.Errorf(ctx, "lifecycle: orphan scan for connector %s: %v", c.ID, err)
