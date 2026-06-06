@@ -87,6 +87,9 @@ func (c *OktaAccessConnector) SyncGroups(
 		startURL = c.absURL(cfg, "/api/v1/groups?limit=200")
 	}
 	for next := startURL; next != ""; {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		reqURL := next
 		if c.urlOverride != "" {
 			reqURL = c.rewriteForTest(reqURL)
@@ -147,6 +150,9 @@ func (c *OktaAccessConnector) SyncGroupMembers(
 		startURL = c.absURL(cfg, "/api/v1/groups/"+url.PathEscape(groupExternalID)+"/users?limit=200")
 	}
 	for next := startURL; next != ""; {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		reqURL := next
 		if c.urlOverride != "" {
 			reqURL = c.rewriteForTest(reqURL)

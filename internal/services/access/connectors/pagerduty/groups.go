@@ -74,6 +74,9 @@ func (c *PagerDutyAccessConnector) SyncGroups(
 		}
 	}
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("/teams?limit=%d&offset=%d", pageLimit, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -132,6 +135,9 @@ func (c *PagerDutyAccessConnector) SyncGroupMembers(
 		}
 	}
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("/teams/%s/members?limit=%d&offset=%d",
 			url.PathEscape(groupExternalID), pageLimit, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
