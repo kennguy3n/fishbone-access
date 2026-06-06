@@ -261,7 +261,7 @@ func (c *Auth0AccessConnector) SyncIdentitiesDelta(
 			return "", fmt.Errorf("auth0: logs status %d: %s", resp.StatusCode, string(body))
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
