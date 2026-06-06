@@ -284,7 +284,10 @@ func (c *GrafanaAccessConnector) GetCredentialsMetadata(_ context.Context, confi
 	} else {
 		md["auth_type"] = "basic"
 		md["username_short"] = shortToken(secrets.Username)
-		md["password_short"] = shortToken(secrets.Password)
+		// Deliberately do NOT surface any portion of the password. Unlike a
+		// random API token, a password is short and guessable, so leaking
+		// its first/last characters into stored, admin-visible metadata
+		// would meaningfully aid a brute-force attack.
 	}
 	return md, nil
 }

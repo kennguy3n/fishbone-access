@@ -62,6 +62,21 @@ var adminSDKWriteScopes = []string{
 	"https://www.googleapis.com/auth/apps.licensing",
 }
 
+// scimProvisioningScopes are required by the SCIM provisioning path
+// (PushSCIMUser / PushSCIMGroup / DeleteSCIMResource), which performs
+// POST / PUT / DELETE against the Admin SDK Directory /Users, /Groups,
+// and /Groups/{id}/members surfaces. Unlike adminSDKWriteScopes (which
+// only needs to mutate group membership for ProvisionAccess), SCIM
+// creates and deletes the user and group resources themselves, so it
+// needs the non-readonly directory.user and directory.group scopes.
+// Minting the SCIM token with the read-only adminSDKScopes would make
+// every write return 403 Forbidden.
+var scimProvisioningScopes = []string{
+	"https://www.googleapis.com/auth/admin.directory.user",
+	"https://www.googleapis.com/auth/admin.directory.group",
+	"https://www.googleapis.com/auth/admin.directory.group.member",
+}
+
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

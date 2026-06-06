@@ -414,10 +414,11 @@ func (c *GitLabAccessConnector) GetSSOMetadata(_ context.Context, configRaw, sec
 	if cfg.BaseURL != "" {
 		base = strings.TrimRight(cfg.BaseURL, "/")
 	}
+	groupPath := url.PathEscape(cfg.GroupID)
 	return &access.SSOMetadata{
 		Protocol:    "saml",
-		MetadataURL: fmt.Sprintf("%s/groups/%s/-/saml/metadata", base, cfg.GroupID),
-		EntityID:    fmt.Sprintf("%s/groups/%s", base, cfg.GroupID),
+		MetadataURL: fmt.Sprintf("%s/groups/%s/-/saml/metadata", base, groupPath),
+		EntityID:    fmt.Sprintf("%s/groups/%s", base, groupPath),
 	}, nil
 }
 
