@@ -112,11 +112,17 @@ func (c *GitLabAccessConnector) baseURL(cfg Config) string {
 	return defaultBaseURL
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GitLabAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GitLabAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -184,7 +190,7 @@ func (c *GitLabAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL(cfg)+"/api/v4/groups/"+cfg.GroupID)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL(cfg)+"/api/v4/groups/"+url.PathEscape(cfg.GroupID))
 	if err != nil {
 		return err
 	}
@@ -241,7 +247,7 @@ func (c *GitLabAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL(cfg)
 	for {
-		path := fmt.Sprintf("%s/api/v4/groups/%s/members/all?per_page=100&page=%d", base, cfg.GroupID, page)
+		path := fmt.Sprintf("%s/api/v4/groups/%s/members/all?per_page=100&page=%d", base, url.PathEscape(cfg.GroupID), page)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -309,7 +315,8 @@ func (c *GitLabAccessConnector) ProvisionAccess(
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("PRIVATE-TOKEN", strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("gitlab: provision: %w", err)
@@ -339,7 +346,8 @@ func (c *GitLabAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	req.Header.Set("PRIVATE-TOKEN", strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("gitlab: revoke: %w", err)

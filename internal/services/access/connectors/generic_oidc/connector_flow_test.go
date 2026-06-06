@@ -22,11 +22,15 @@ func genericOIDCDiscoveryServer(t *testing.T) *httptest.Server {
 			http.NotFound(w, r)
 			return
 		}
+		// Publish the issuer with its scheme so it matches the connector's
+		// configured IssuerURL (srv.URL). Using a bare r.Host would always
+		// mismatch cfg.IssuerURL, leaving the issuer-equality path in
+		// fetchDiscovery untested.
 		_, _ = w.Write([]byte(`{
-            "issuer": "` + r.Host + `",
-            "authorization_endpoint": "https://` + r.Host + `/authorize",
-            "token_endpoint": "https://` + r.Host + `/oauth/token",
-            "end_session_endpoint": "https://` + r.Host + `/logout"
+            "issuer": "http://` + r.Host + `",
+            "authorization_endpoint": "http://` + r.Host + `/authorize",
+            "token_endpoint": "http://` + r.Host + `/oauth/token",
+            "end_session_endpoint": "http://` + r.Host + `/logout"
         }`))
 	}))
 	return srv

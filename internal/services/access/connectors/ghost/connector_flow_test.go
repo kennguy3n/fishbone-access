@@ -11,7 +11,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-func ghostValidConfig() map[string]interface{} { return map[string]interface{}{} }
+func ghostValidConfig() map[string]interface{} {
+	return map[string]interface{}{"base_url": "https://blog.example.com"}
+}
 func ghostValidSecrets() map[string]interface{} {
 	return map[string]interface{}{"token": "ghost_admin_demo"}
 }
