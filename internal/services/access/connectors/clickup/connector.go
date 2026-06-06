@@ -279,7 +279,7 @@ func (c *ClickUpAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
-	userID, err := strconv.ParseInt(grant.UserExternalID, 10, 64)
+	userID, err := strconv.ParseInt(strings.TrimSpace(grant.UserExternalID), 10, 64)
 	if err != nil {
 		return fmt.Errorf("clickup: user external id must be numeric: %w", err)
 	}
@@ -327,7 +327,7 @@ func (c *ClickUpAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	fullURL := c.baseURL() + "/api/v2/list/" + url.PathEscape(grant.ResourceExternalID) + "/member/" + url.PathEscape(grant.UserExternalID)
+	fullURL := c.baseURL() + "/api/v2/list/" + url.PathEscape(strings.TrimSpace(grant.ResourceExternalID)) + "/member/" + url.PathEscape(strings.TrimSpace(grant.UserExternalID))
 	req, err := c.newRequest(ctx, secrets, http.MethodDelete, fullURL)
 	if err != nil {
 		return err
