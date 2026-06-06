@@ -138,3 +138,16 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+func TestParseFigmaTime_NormalizesToUTC(t *testing.T) {
+	for _, in := range []string{
+		"2024-01-01T12:00:00+02:00",        // RFC3339 with offset
+		"2024-01-01T12:00:00.500000+02:00", // RFC3339Nano with offset
+		"1704106800",                       // Unix epoch seconds
+	} {
+		got := parseFigmaTime(in)
+		if got.Location() != time.UTC {
+			t.Errorf("parseFigmaTime(%q).Location() = %v; want UTC", in, got.Location())
+		}
+	}
+}

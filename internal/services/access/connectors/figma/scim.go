@@ -17,21 +17,30 @@ import (
 
 var (
 	scimClientOnce sync.Once
+	scimClientMu   sync.RWMutex
 	scimClient     *access.SCIMClient
 )
 
 func scim() *access.SCIMClient {
 	scimClientOnce.Do(func() {
+		scimClientMu.Lock()
 		scimClient = access.NewSCIMClient()
+		scimClientMu.Unlock()
 	})
+	scimClientMu.RLock()
+	defer scimClientMu.RUnlock()
 	return scimClient
 }
 
 // SetSCIMClientForTest swaps the package-level SCIMClient and returns
-// the previous one so the test can restore it on cleanup.
+// the previous one so the test can restore it on cleanup. Access is
+// guarded by scimClientMu so concurrent swaps and reads (e.g. parallel
+// tests) stay race-free.
 func SetSCIMClientForTest(c *access.SCIMClient) *access.SCIMClient {
 	prev := scim()
+	scimClientMu.Lock()
 	scimClient = c
+	scimClientMu.Unlock()
 	return prev
 }
 

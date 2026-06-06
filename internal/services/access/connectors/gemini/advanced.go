@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -191,19 +192,13 @@ func (c *GeminiAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 		if pol.Bindings[i].Role != role {
 			continue
 		}
-		out := pol.Bindings[i].Members[:0]
-		removed := false
-		for _, m := range pol.Bindings[i].Members {
-			if m == member {
-				removed = true
-				continue
-			}
-			out = append(out, m)
-		}
-		if !removed {
+		before := len(pol.Bindings[i].Members)
+		pol.Bindings[i].Members = slices.DeleteFunc(pol.Bindings[i].Members, func(m string) bool {
+			return m == member
+		})
+		if len(pol.Bindings[i].Members) == before {
 			return nil
 		}
-		pol.Bindings[i].Members = out
 		return c.setIamPolicy(ctx, secrets, cfg, pol)
 	}
 	return nil
