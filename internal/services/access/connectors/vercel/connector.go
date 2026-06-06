@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -141,7 +142,7 @@ func (c *VercelAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	}
 	path := "/v2/user"
 	if cfg.TeamID != "" {
-		path = "/v2/teams/" + cfg.TeamID
+		path = "/v2/teams/" + url.PathEscape(cfg.TeamID)
 	}
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 	if err != nil {
@@ -197,7 +198,7 @@ func (c *VercelAccessConnector) CountIdentities(ctx context.Context, configRaw, 
 	if cfg.TeamID == "" {
 		return 1, nil
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/v2/teams/"+cfg.TeamID+"/members?limit=50")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, vercelMembersPath(cfg.TeamID, ""))
 	if err != nil {
 		return 0, err
 	}
@@ -247,11 +248,7 @@ func (c *VercelAccessConnector) SyncIdentities(
 			Status:      "active",
 		}}, "")
 	}
-	basePath := "/v2/teams/" + cfg.TeamID + "/members?limit=50"
-	path := basePath
-	if checkpoint != "" {
-		path = basePath + "&until=" + checkpoint
-	}
+	path := vercelMembersPath(cfg.TeamID, checkpoint)
 	for {
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -291,8 +288,20 @@ func (c *VercelAccessConnector) SyncIdentities(
 		if next == "" {
 			return nil
 		}
-		path = basePath + "&until=" + next
+		path = vercelMembersPath(cfg.TeamID, next)
 	}
+}
+
+// vercelMembersPath builds the team-members list path with the team ID
+// path-escaped and query parameters (including the opaque `until`
+// pagination cursor) encoded via url.Values, so special characters in the
+// team ID or cursor cannot produce a malformed URL.
+func vercelMembersPath(teamID, until string) string {
+	q := url.Values{"limit": {"50"}}
+	if until != "" {
+		q.Set("until", until)
+	}
+	return "/v2/teams/" + url.PathEscape(teamID) + "/members?" + q.Encode()
 }
 
 // GetSSOMetadata returns the operator-supplied SAML metadata for

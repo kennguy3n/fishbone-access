@@ -169,3 +169,60 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 		t.Errorf("token_short = %q", short)
 	}
 }
+
+// TestListEntitlements_PaginatesAllPages verifies ListEntitlements walks every
+// page of the user's active repos rather than only the first. With a user
+// owning more than pageSize repos, fetching only offset=0 would silently
+// truncate the entitlement set.
+func TestListEntitlements_PaginatesAllPages(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if !strings.HasPrefix(r.URL.Path, "/user/") || !strings.HasSuffix(r.URL.Path, "/repos") {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		offset := r.URL.Query().Get("offset")
+		switch calls {
+		case 1:
+			if offset != "0" {
+				t.Errorf("page1 offset = %q; want 0", offset)
+			}
+		case 2:
+			if offset != fmt.Sprintf("%d", pageSize) {
+				t.Errorf("page2 offset = %q; want %d", offset, pageSize)
+			}
+		default:
+			t.Fatalf("unexpected request #%d", calls)
+		}
+		body := map[string]interface{}{"@pagination": map[string]interface{}{"limit": pageSize, "offset": 0, "count": pageSize + 1}}
+		if calls == 1 {
+			items := make([]map[string]interface{}, 0, pageSize)
+			for i := 0; i < pageSize; i++ {
+				items = append(items, map[string]interface{}{"id": i + 1, "slug": fmt.Sprintf("acme/r%d", i+1), "active": true})
+			}
+			body["repositories"] = items
+		} else {
+			body["repositories"] = []map[string]interface{}{{"id": 999, "slug": "acme/last", "active": true}}
+		}
+		b, _ := json.Marshal(body)
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "user-1")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("expected 2 round trips, got %d", calls)
+	}
+	if len(ents) != pageSize+1 {
+		t.Fatalf("len = %d; want %d (pagination truncated)", len(ents), pageSize+1)
+	}
+	if ents[len(ents)-1].ResourceExternalID != "999" {
+		t.Errorf("last entitlement = %q; want 999", ents[len(ents)-1].ResourceExternalID)
+	}
+}

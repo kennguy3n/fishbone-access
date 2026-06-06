@@ -145,43 +145,59 @@ func (c *TravisCIAccessConnector) ListEntitlements(ctx context.Context, configRa
 	if err != nil {
 		return nil, err
 	}
-	full := fmt.Sprintf("%s/user/%s/repos?repository.active=true&limit=%d&offset=0",
-		c.baseURL(cfg), url.PathEscape(user), pageSize)
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, full)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("travis_ci: list entitlements status %d: %s", status, string(body))
-	}
-	var resp travisReposResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("travis_ci: decode repos: %w", err)
-	}
-	out := make([]access.Entitlement, 0, len(resp.Repositories))
-	for _, r := range resp.Repositories {
-		id := strings.TrimSpace(r.ID.String())
-		if id == "" {
-			continue
+	base := c.baseURL(cfg)
+	escUser := url.PathEscape(user)
+	out := make([]access.Entitlement, 0)
+	// maxEntitlementPages bounds the loop defensively so a provider that never
+	// signals completion cannot drive an unbounded fetch.
+	const maxEntitlementPages = 1000
+	for offset, page := 0, 0; page < maxEntitlementPages; page++ {
+		full := fmt.Sprintf("%s/user/%s/repos?repository.active=true&limit=%d&offset=%d",
+			base, escUser, pageSize, offset)
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, full)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, access.Entitlement{
-			ResourceExternalID: id,
-			Role:               r.Slug,
-			Source:             "direct",
-		})
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return out, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("travis_ci: list entitlements status %d: %s", status, string(body))
+		}
+		var resp travisReposResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("travis_ci: decode repos: %w", err)
+		}
+		for _, r := range resp.Repositories {
+			id := strings.TrimSpace(r.ID.String())
+			if id == "" {
+				continue
+			}
+			out = append(out, access.Entitlement{
+				ResourceExternalID: id,
+				Role:               r.Slug,
+				Source:             "direct",
+			})
+		}
+		if len(resp.Repositories) < pageSize || offset+pageSize >= resp.At.Count {
+			return out, nil
+		}
+		offset += pageSize
 	}
 	return out, nil
 }
 
 type travisReposResponse struct {
 	Repositories []travisRepo `json:"repositories"`
+	At           struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+		Count  int `json:"count"`
+	} `json:"@pagination"`
 }
 
 type travisRepo struct {

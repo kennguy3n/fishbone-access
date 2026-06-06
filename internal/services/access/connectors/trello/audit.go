@@ -206,10 +206,10 @@ func parseTrelloTime(s string) time.Time {
 		return time.Time{}
 	}
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	return time.Time{}
 }

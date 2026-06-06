@@ -317,3 +317,21 @@ func TestFetchAccessAuditLogs_DropsZeroTimestamp(t *testing.T) {
 		}
 	}
 }
+
+// TestParseTrelloTime_NormalizesToUTC verifies parseTrelloTime normalizes a
+// timestamp carrying a non-UTC offset to UTC, matching every other audit
+// time parser in this batch. A non-UTC Location would propagate into the
+// batchMax cursor and diverge from the other connectors.
+func TestParseTrelloTime_NormalizesToUTC(t *testing.T) {
+	ts := parseTrelloTime("2024-01-01T10:00:00+05:00")
+	if ts.IsZero() {
+		t.Fatal("expected a parsed timestamp")
+	}
+	if ts.Location() != time.UTC {
+		t.Errorf("location = %v; want UTC", ts.Location())
+	}
+	want := time.Date(2024, 1, 1, 5, 0, 0, 0, time.UTC)
+	if !ts.Equal(want) || ts.Hour() != 5 {
+		t.Errorf("ts = %s; want %s (offset normalized to UTC)", ts, want)
+	}
+}

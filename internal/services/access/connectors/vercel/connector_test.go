@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -165,5 +166,35 @@ func TestGetCredentialsMetadata(t *testing.T) {
 	}
 	if !strings.Contains(md["token_short"].(string), "...") {
 		t.Errorf("token_short = %v; want shortened form", md["token_short"])
+	}
+}
+
+// TestTeamIDIsPathEscaped verifies CountIdentities/SyncIdentities/Connect
+// path-escape the team ID before interpolating it into the URL. A team ID
+// containing URL-special characters (e.g. '/' or '#') must be encoded so it
+// stays a single path segment; without escaping the '#' starts a fragment
+// and the request would be routed to a truncated path.
+func TestTeamIDIsPathEscaped(t *testing.T) {
+	const teamID = "team/with#weird"
+	wantEscaped := "/v2/teams/" + url.PathEscape(teamID) + "/members"
+	var gotEscaped string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotEscaped = r.URL.EscapedPath()
+		_, _ = w.Write([]byte(`{"members":[{"uid":"u1","email":"a@b.com"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	n, err := c.CountIdentities(context.Background(), map[string]interface{}{"team_id": teamID}, validSecrets())
+	if err != nil {
+		t.Fatalf("CountIdentities: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("count = %d; want 1", n)
+	}
+	if gotEscaped != wantEscaped {
+		t.Fatalf("escaped path = %q; want %q (team ID not path-escaped)", gotEscaped, wantEscaped)
 	}
 }
