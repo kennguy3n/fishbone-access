@@ -20,6 +20,12 @@ import (
 //
 //	GET /enterprise-accounts/{enterprise}/events?since={iso}
 //
+// The {enterprise} segment is the Heroku Enterprise account identifier,
+// which is a distinct entity from a team. It is read from
+// Config.EnterpriseAccount, falling back to Config.TeamName when unset
+// (see Config.auditAccount), so operators with differing team and
+// enterprise-account names address the correct audit resource.
+//
 // Enterprise audit access is gated behind the Heroku Enterprise tier
 // and requires an admin API key. Non-Enterprise / non-admin tenants
 // return 401 / 403 / 404 / 422 which the connector soft-skips via
@@ -39,7 +45,7 @@ func (c *HerokuAccessConnector) FetchAccessAuditLogs(
 	if err != nil {
 		return err
 	}
-	enterprise := strings.TrimSpace(cfg.TeamName)
+	enterprise := cfg.auditAccount()
 	if enterprise == "" {
 		return access.ErrAuditNotAvailable
 	}

@@ -38,6 +38,26 @@ type httpDoer interface {
 
 type Config struct {
 	TeamName string `json:"team_name,omitempty"`
+	// EnterpriseAccount identifies the Heroku Enterprise account whose
+	// audit-trail endpoint (/enterprise-accounts/{account}/events) the
+	// connector reads. In Heroku, enterprise accounts and teams are
+	// distinct entities — an enterprise account is the parent container
+	// for teams — so the audit identifier is configured separately from
+	// TeamName (which addresses /teams/{team}/members). When unset, the
+	// connector falls back to TeamName for backward compatibility with
+	// operators who previously configured the enterprise account name in
+	// team_name.
+	EnterpriseAccount string `json:"enterprise_account,omitempty"`
+}
+
+// auditAccount returns the identifier used for the enterprise audit-trail
+// endpoint: EnterpriseAccount when set, otherwise TeamName for backward
+// compatibility.
+func (cfg Config) auditAccount() string {
+	if ea := strings.TrimSpace(cfg.EnterpriseAccount); ea != "" {
+		return ea
+	}
+	return strings.TrimSpace(cfg.TeamName)
 }
 
 type Secrets struct {
@@ -59,6 +79,9 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	var cfg Config
 	if v, ok := raw["team_name"].(string); ok {
 		cfg.TeamName = v
+	}
+	if v, ok := raw["enterprise_account"].(string); ok {
+		cfg.EnterpriseAccount = v
 	}
 	return cfg, nil
 }
@@ -304,6 +327,9 @@ func (c *HerokuAccessConnector) GetCredentialsMetadata(_ context.Context, config
 	}
 	if cfg.TeamName != "" {
 		out["team_name"] = cfg.TeamName
+	}
+	if cfg.EnterpriseAccount != "" {
+		out["enterprise_account"] = cfg.EnterpriseAccount
 	}
 	return out, nil
 }

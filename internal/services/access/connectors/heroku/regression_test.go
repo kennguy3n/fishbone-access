@@ -73,6 +73,60 @@ func TestCountIdentities_TeamNameEscaped(t *testing.T) {
 	}
 }
 
+// Regression: the audit-trail endpoint addresses a Heroku Enterprise
+// account, which is a distinct entity from a team. When the operator
+// configures a separate enterprise_account, the audit request must use
+// it — not team_name. Before the fix, audit.go reused cfg.TeamName as
+// the enterprise identifier, so a team named differently from the
+// enterprise account silently queried the wrong resource.
+func TestFetchAuditLogs_UsesEnterpriseAccountOverTeamName(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(),
+		map[string]interface{}{"team_name": "my-team", "enterprise_account": "my-enterprise"},
+		validSecrets(),
+		map[string]time.Time{},
+		func([]*access.AuditLogEntry, time.Time, string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if want := "/enterprise-accounts/my-enterprise/events"; gotPath != want {
+		t.Fatalf("audit path = %q; want %q (must use enterprise_account, not team_name)", gotPath, want)
+	}
+}
+
+// Regression: with no enterprise_account configured, the audit path
+// falls back to team_name so existing operator configs keep working.
+func TestFetchAuditLogs_FallsBackToTeamName(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(),
+		map[string]interface{}{"team_name": "my-team"},
+		validSecrets(),
+		map[string]time.Time{},
+		func([]*access.AuditLogEntry, time.Time, string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if want := "/enterprise-accounts/my-team/events"; gotPath != want {
+		t.Fatalf("audit path = %q; want %q (fallback to team_name)", gotPath, want)
+	}
+}
+
 func TestFetchAuditLogs_EnterpriseEscaped(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.EscapedPath(), "/enterprise-accounts/a%2Fb/events") {
