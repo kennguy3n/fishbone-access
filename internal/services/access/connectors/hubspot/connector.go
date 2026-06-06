@@ -247,7 +247,7 @@ func (c *HubSpotAccessConnector) SyncIdentities(
 }
 
 func (c *HubSpotAccessConnector) ProvisionAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	if strings.TrimSpace(grant.UserExternalID) == "" || strings.TrimSpace(grant.ResourceExternalID) == "" {
 		return errors.New("hubspot: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
@@ -281,7 +281,7 @@ func (c *HubSpotAccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 }
 
 func (c *HubSpotAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	if strings.TrimSpace(grant.UserExternalID) == "" || strings.TrimSpace(grant.ResourceExternalID) == "" {
 		return errors.New("hubspot: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
@@ -313,7 +313,7 @@ func (c *HubSpotAccessConnector) RevokeAccess(ctx context.Context, configRaw, se
 }
 
 func (c *HubSpotAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
-	if userExternalID == "" {
+	if strings.TrimSpace(userExternalID) == "" {
 		return nil, errors.New("hubspot: user external id is required")
 	}
 	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
@@ -325,18 +325,29 @@ func (c *HubSpotAccessConnector) ListEntitlements(ctx context.Context, configRaw
 	if err != nil {
 		return nil, err
 	}
-	body, err := c.do(req)
+	resp, err := c.doRaw(req)
 	if err != nil {
 		return nil, err
 	}
-	var resp struct {
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// A user with no roles (or a deleted user) returns 404; surface that
+	// as an empty entitlement list rather than a hard error, matching the
+	// other connectors in this batch (e.g. heroku/advanced.go).
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("hubspot: list entitlements status %d: %s", resp.StatusCode, string(body))
+	}
+	var payload struct {
 		RoleIds []string `json:"roleIds"`
 	}
-	if err := json.Unmarshal(body, &resp); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("hubspot: decode entitlements: %w", err)
 	}
 	var out []access.Entitlement
-	for _, r := range resp.RoleIds {
+	for _, r := range payload.RoleIds {
 		out = append(out, access.Entitlement{ResourceExternalID: r, Role: r, Source: "direct"})
 	}
 	return out, nil

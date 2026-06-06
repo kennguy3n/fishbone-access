@@ -235,3 +235,53 @@ func TestProvisionAccess_TransientError(t *testing.T) {
 		t.Fatal("expected transient error")
 	}
 }
+
+// Regression: ListEntitlements must treat a 404 (user not found / no
+// roles) as an empty entitlement list, not a hard error, matching the
+// other connectors in this batch. Before the fix c.do() turned the 404
+// into an error.
+func TestListEntitlements_NotFoundReturnsEmpty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message":"user not found"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	out, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "missing-user")
+	if err != nil {
+		t.Fatalf("ListEntitlements 404: err = %v; want nil", err)
+	}
+	if len(out) != 0 {
+		t.Fatalf("entitlements = %+v; want empty", out)
+	}
+}
+
+// Regression: ProvisionAccess/RevokeAccess must reject whitespace-only
+// grant fields with a local validation error (via strings.TrimSpace),
+// instead of building a request path containing %20. No HTTP request
+// should be made.
+func TestProvisionRevoke_RejectWhitespaceGrantFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected HTTP request to %s for whitespace-only grant", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	grants := []access.AccessGrant{
+		{UserExternalID: "   ", ResourceExternalID: "role-1"},
+		{UserExternalID: "u-1", ResourceExternalID: "  "},
+	}
+	for _, g := range grants {
+		if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), g); err == nil {
+			t.Errorf("ProvisionAccess(%+v): err = nil; want validation error", g)
+		}
+		if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), g); err == nil {
+			t.Errorf("RevokeAccess(%+v): err = nil; want validation error", g)
+		}
+	}
+}
