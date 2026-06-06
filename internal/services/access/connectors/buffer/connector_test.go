@@ -114,3 +114,22 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 		t.Errorf("redaction failed: %q", got)
 	}
 }
+
+// TestShortToken_MasksShortSecret guards that a short (≤8 char) secret is
+// never echoed verbatim through the credential fingerprint. Real API
+// tokens are long, but a misconfigured short token must still be fully
+// masked rather than surfaced as-is in GetCredentialsMetadata output
+// (which is shown in the admin UI and may reach logs). This shortToken
+// is duplicated verbatim across the batch's connectors.
+func TestShortToken_MasksShortSecret(t *testing.T) {
+	for _, tok := range []string{"a", "abc", "secret12", "abcd1234"} {
+		got := shortToken(tok)
+		if strings.ContainsAny(got, "abcdefghijklmnopqrstuvwxyz0123456789") {
+			t.Errorf("shortToken(%q) = %q leaks secret characters; want fully masked", tok, got)
+		}
+	}
+	// Long tokens keep the first/last 4 fingerprint with an ellipsis.
+	if got := shortToken("tok_AAAA1234bbbbCCCC"); !strings.Contains(got, "...") || strings.Contains(got, "AAAA1234") {
+		t.Errorf("shortToken(long) = %q, want first4...last4 fingerprint", got)
+	}
+}

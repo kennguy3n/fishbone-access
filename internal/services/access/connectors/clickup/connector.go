@@ -431,7 +431,10 @@ func (c *ClickUpAccessConnector) GetCredentialsMetadata(_ context.Context, confi
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
 	if len(t) <= 8 {
-		return t
+		// Never echo a short secret verbatim: GetCredentialsMetadata is a
+		// non-sensitive fingerprint surfaced in the admin UI/logs, so a
+		// ≤8-char token must be fully masked rather than returned as-is.
+		return strings.Repeat("*", len(t))
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

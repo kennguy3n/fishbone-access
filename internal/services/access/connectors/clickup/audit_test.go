@@ -126,6 +126,49 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_CapsPages guards the max-page bound: a provider
+// that keeps returning a full page (e.g. a date_from window that never
+// advances) must not drive an unbounded request loop. The connector must
+// stop after clickupAuditMaxPages requests. Without the cap the loop only
+// ends once the server stops returning full pages (well past the cap), so
+// the request count would exceed clickupAuditMaxPages and fail this test.
+func TestFetchAccessAuditLogs_CapsPages(t *testing.T) {
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		// Return a full page until well past the cap so the only thing
+		// that can stop iteration is the connector's own bound; the
+		// short final page only guards against a hang if the cap is gone.
+		n := clickupAuditPageSize
+		if requests > clickupAuditMaxPages+50 {
+			n = 1
+		}
+		rows := make([]map[string]interface{}, 0, n)
+		for i := 0; i < n; i++ {
+			rows = append(rows, map[string]interface{}{
+				"id":         "evt",
+				"event_type": "WorkspaceUserInvited",
+				"date":       "2024-01-01T10:00:00Z",
+				"user":       map[string]interface{}{"id": 1, "email": "a@example.com"},
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"events": rows})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if requests != clickupAuditMaxPages {
+		t.Fatalf("requests = %d, want %d (pagination must stop at the cap)", requests, clickupAuditMaxPages)
+	}
+}
+
 // TestFetchAccessAuditLogs_DropsUnparseableTimestamp guards against
 // emitting audit entries with a zero (0001-01-01) timestamp. Events
 // whose `date` is absent or unparseable must be dropped rather than

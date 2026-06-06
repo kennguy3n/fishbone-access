@@ -14,6 +14,17 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+const (
+	clickupAuditPageSize = 100
+	// clickupAuditMaxPages bounds pagination so a provider that keeps
+	// returning a full page (e.g. a date_from window that never advances)
+	// cannot pin a worker goroutine in an unbounded request loop until the
+	// context deadline fires. Matches the cap used by every other audit
+	// connector in this package (buildium/checkpoint/circleci/clio/close/
+	// cloudsigma all use 200).
+	clickupAuditMaxPages = 200
+)
+
 // FetchAccessAuditLogs streams ClickUp Enterprise audit-log events
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -37,15 +48,13 @@ func (c *ClickUpAccessConnector) FetchAccessAuditLogs(
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
-	page := 0
-	const pageSize = 100
-	for {
+	for page := 0; page < clickupAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		q := url.Values{}
 		q.Set("page", strconv.Itoa(page))
-		q.Set("page_size", strconv.Itoa(pageSize))
+		q.Set("page_size", strconv.Itoa(clickupAuditPageSize))
 		if !since.IsZero() {
 			q.Set("date_from", strconv.FormatInt(since.UTC().UnixMilli(), 10))
 		}
@@ -87,11 +96,11 @@ func (c *ClickUpAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		if len(pg.Events) < pageSize {
+		if len(pg.Events) < clickupAuditPageSize {
 			return nil
 		}
-		page++
 	}
+	return nil
 }
 
 type clickupAuditPage struct {
