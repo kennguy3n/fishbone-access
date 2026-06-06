@@ -13,6 +13,14 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// boxAuditMaxPages bounds the stream_position pagination walk as
+// defense-in-depth: the loop normally stops when next_stream_position is
+// empty or stops advancing, but this cap guarantees it cannot spin
+// forever if a misbehaving upstream keeps returning fresh, advancing
+// cursors. Mirrors boxCollaborationsMaxPages and the explicit audit caps
+// in the other connectors of this batch.
+const boxAuditMaxPages = 1000
+
 // FetchAccessAuditLogs streams Box admin-log events into the access
 // audit pipeline. Implements access.AccessAuditor.
 //
@@ -39,7 +47,7 @@ func (c *BoxAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	streamPos := ""
-	for {
+	for page := 0; page < boxAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -98,6 +106,8 @@ func (c *BoxAccessConnector) FetchAccessAuditLogs(
 		}
 		streamPos = next
 	}
+	// Reached the defensive page cap; stop rather than spin forever.
+	return nil
 }
 
 type boxEventPage struct {

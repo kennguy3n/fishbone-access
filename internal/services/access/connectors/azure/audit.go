@@ -15,6 +15,15 @@ import (
 
 const activityLogAPIVersion = "2015-04-01"
 
+// azureAuditMaxPages bounds the nextLink pagination walk as
+// defense-in-depth: cursor pagination normally terminates when nextLink
+// is empty, but this cap guarantees the loop cannot spin forever if a
+// misbehaving upstream keeps issuing fresh nextLink cursors. Mirrors the
+// explicit per-connector audit caps elsewhere in this batch and
+// boxCollaborationsMaxPages. 1000 pages is far beyond any real activity
+// log window.
+const azureAuditMaxPages = 1000
+
 // FetchAccessAuditLogs streams Azure Monitor Activity Log management
 // events into the access audit pipeline. Implements
 // access.AccessAuditor.
@@ -52,7 +61,8 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 	}
 
 	cursor := since
-	for next := c.armURL(path); next != ""; {
+	next := c.armURL(path)
+	for page := 0; next != "" && page < azureAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
