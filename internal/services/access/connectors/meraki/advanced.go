@@ -74,19 +74,15 @@ func (c *MerakiAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	if err := merakiValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
-	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return fmt.Errorf("meraki: organization_id is required")
 	}
 	payload, _ := json.Marshal(map[string]string{
 		"email":     strings.TrimSpace(grant.UserExternalID),
 		"orgAccess": strings.TrimSpace(grant.ResourceExternalID),
 	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(orgID), payload)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(cfg.OrganizationID), payload)
 	if err != nil {
 		return err
 	}
@@ -110,15 +106,11 @@ func (c *MerakiAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	if err := merakiValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return fmt.Errorf("meraki: organization_id is required")
-	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(orgID, grant.UserExternalID), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(cfg.OrganizationID, grant.UserExternalID), nil)
 	if err != nil {
 		return err
 	}
@@ -143,15 +135,11 @@ func (c *MerakiAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if user == "" {
 		return nil, errors.New("meraki: user external id is required")
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return nil, fmt.Errorf("meraki: organization_id is required")
-	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(orgID, user), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(cfg.OrganizationID, user), nil)
 	if err != nil {
 		return nil, err
 	}

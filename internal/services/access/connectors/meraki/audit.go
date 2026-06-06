@@ -34,17 +34,13 @@ func (c *MerakiAccessConnector) FetchAccessAuditLogs(
 	sincePartitions map[string]time.Time,
 	handler func(batch []*access.AuditLogEntry, nextSince time.Time, partitionKey string) error,
 ) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return fmt.Errorf("meraki: organization_id is required")
-	}
 	since := sincePartitions[access.DefaultAuditPartition]
 	base := fmt.Sprintf("%s/api/v1/organizations/%s/actionBatches",
-		c.baseURL(), url.PathEscape(orgID))
+		c.baseURL(), url.PathEscape(cfg.OrganizationID))
 
 	var collected []merakiAuditEvent
 	startingAfter := ""
@@ -171,16 +167,6 @@ func parseMerakiTime(s string) time.Time {
 		return ts.UTC()
 	}
 	return time.Time{}
-}
-
-func merakiOrgIDFromConfig(raw map[string]interface{}) string {
-	if raw == nil {
-		return ""
-	}
-	if v, ok := raw["organization_id"].(string); ok {
-		return strings.TrimSpace(v)
-	}
-	return ""
 }
 
 var _ access.AccessAuditor = (*MerakiAccessConnector)(nil)

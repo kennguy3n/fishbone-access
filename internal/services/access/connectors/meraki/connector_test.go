@@ -39,6 +39,22 @@ func TestValidate_RejectsMissing(t *testing.T) {
 	}
 }
 
+// TestValidate_RejectsMissingOrganizationID is a regression test ensuring that
+// Validate fails fast when organization_id is absent. organization_id is
+// required by every runtime method (Connect, SyncIdentities, ProvisionAccess,
+// RevokeAccess, ListEntitlements, FetchAccessAuditLogs), so it must be caught at
+// validation time rather than surfacing later as a per-operation failure,
+// matching the sibling connectors (miro org_id, mixpanel organization_id).
+func TestValidate_RejectsMissingOrganizationID(t *testing.T) {
+	prev := http.DefaultTransport
+	http.DefaultTransport = noNetworkRoundTripper{}
+	t.Cleanup(func() { http.DefaultTransport = prev })
+	err := New().Validate(context.Background(), map[string]interface{}{}, validSecrets())
+	if err == nil || !strings.Contains(err.Error(), "organization_id") {
+		t.Fatalf("err = %v; want organization_id required", err)
+	}
+}
+
 func TestValidate_PureLocal(t *testing.T) {
 	prev := http.DefaultTransport
 	http.DefaultTransport = noNetworkRoundTripper{}

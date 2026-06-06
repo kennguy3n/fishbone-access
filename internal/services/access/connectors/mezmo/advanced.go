@@ -176,7 +176,6 @@ func (c *MezmoAccessConnector) ListEntitlements(ctx context.Context, configRaw, 
 		}
 		members = wrapper.Members
 	}
-	lower := strings.ToLower(user)
 	out := make([]access.Entitlement, 0, 1)
 	for _, m := range members {
 		if strings.EqualFold(m.Email, user) || m.ID == user {
@@ -191,7 +190,6 @@ func (c *MezmoAccessConnector) ListEntitlements(ctx context.Context, configRaw, 
 			})
 			break
 		}
-		_ = lower
 	}
 	return out, nil
 }
