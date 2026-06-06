@@ -726,6 +726,7 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrInvalidStateTransition),
 		errors.Is(err, lifecycle.ErrReviewClosed),
+		errors.Is(err, lifecycle.ErrReviewItemDecided),
 		errors.Is(err, lifecycle.ErrPolicyNotPromotable),
 		errors.Is(err, lifecycle.ErrPolicyNotEditable):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})

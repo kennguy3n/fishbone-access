@@ -264,6 +264,7 @@ func TestExecuteWorkflowParksHighRisk(t *testing.T) {
 type fakeConnector struct {
 	provisionErr   error
 	revokeErr      error
+	resolveErr     error // when set, Resolve fails (e.g. simulating a rotated DEK)
 	provisionCnt   int
 	revokeCnt      int
 	revokeSessCnt  int
@@ -273,6 +274,9 @@ type fakeConnector struct {
 }
 
 func (f *fakeConnector) Resolve(_ context.Context, _, _ uuid.UUID) (*ResolvedConnector, error) {
+	if f.resolveErr != nil {
+		return nil, f.resolveErr
+	}
 	return &ResolvedConnector{Provider: "fake", Impl: f}, nil
 }
 

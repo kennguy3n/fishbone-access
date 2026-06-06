@@ -28,6 +28,13 @@ var (
 	// completed campaign.
 	ErrReviewClosed = errors.New("lifecycle: access review is closed")
 
+	// ErrReviewItemDecided is returned when a decision is submitted against a
+	// review item that already carries a terminal decision (certify/revoke).
+	// Re-deciding is rejected so a destructive revoke can never be silently
+	// flipped back to certify (or vice versa); an escalated item may still be
+	// resolved.
+	ErrReviewItemDecided = errors.New("lifecycle: review item already decided")
+
 	// ErrGrantNotFound is returned when a grant id matches no live row.
 	ErrGrantNotFound = errors.New("lifecycle: access grant not found")
 

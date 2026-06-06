@@ -347,9 +347,15 @@ func (s *JMLService) layerConnectorSweep(ctx context.Context, workspaceID uuid.U
 	for i := range connectors {
 		resolved, err := s.resolver.Resolve(ctx, workspaceID, connectors[i].ID)
 		if err != nil {
-			// A connector we cannot resolve cannot be swept; count as a failure
-			// for both connector layers but keep going.
+			// A connector we cannot resolve (e.g. rotated DEK, missing provider
+			// registration) cannot be swept. Count it as both attempted and
+			// failed for both layers so the layer is reported "failed" (and the
+			// kill switch errors) rather than misclassified as "skipped" when
+			// every connector fails to resolve. Keep going so one bad connector
+			// does not hide failures on the others.
+			sessAttempted++
 			sessFailed++
+			scimAttempted++
 			scimFailed++
 			continue
 		}

@@ -73,6 +73,16 @@ func (c IAMCoreConfig) Configured() bool {
 	return c.Issuer != "" && c.ResolvedJWKSURL() != ""
 }
 
+// ManagementConfigured reports whether the Management API client can actually
+// authenticate. The management calls (e.g. BlockUser for the leaver kill
+// switch) mint a client_credentials token, which needs both ClientID and
+// ClientSecret in addition to the issuer. Wiring a management client without
+// these would produce a client that fails every call, so the caller should
+// leave the dependent feature unwired (reporting "skipped") when this is false.
+func (c IAMCoreConfig) ManagementConfigured() bool {
+	return c.Configured() && c.ClientID != "" && c.ClientSecret != ""
+}
+
 // ResolvedJWKSURL returns JWKSURL, deriving it from Issuer when unset.
 func (c IAMCoreConfig) ResolvedJWKSURL() string {
 	if c.JWKSURL != "" {

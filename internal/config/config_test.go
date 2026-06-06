@@ -43,6 +43,24 @@ func TestIAMCoreDerivedURLs(t *testing.T) {
 	if !c.Configured() {
 		t.Error("Configured() = false, want true when issuer set")
 	}
+	// Issuer alone is enough for JWT validation but NOT for the management API.
+	if c.ManagementConfigured() {
+		t.Error("ManagementConfigured() = true without client credentials, want false")
+	}
+}
+
+func TestManagementConfiguredRequiresClientCredentials(t *testing.T) {
+	base := IAMCoreConfig{Issuer: "https://iam.example.com"}
+	if base.ManagementConfigured() {
+		t.Error("want false with no client credentials")
+	}
+	if (IAMCoreConfig{Issuer: "https://iam.example.com", ClientID: "id"}).ManagementConfigured() {
+		t.Error("want false with client id but no secret")
+	}
+	full := IAMCoreConfig{Issuer: "https://iam.example.com", ClientID: "id", ClientSecret: "secret"}
+	if !full.ManagementConfigured() {
+		t.Error("want true with issuer + client id + secret")
+	}
 }
 
 func TestIAMCoreExplicitURLsWin(t *testing.T) {

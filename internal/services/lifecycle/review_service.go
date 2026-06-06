@@ -153,6 +153,13 @@ func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewI
 	if err != nil {
 		return fmt.Errorf("lifecycle: load review item: %w", err)
 	}
+	// A terminal decision (certify/revoke) is final: reject re-deciding so a
+	// destructive revoke can never be silently flipped to certify (leaving a
+	// torn-down grant marked "certified") or vice versa. An escalated or still
+	// pending item may be (re-)decided to resolve the escalation.
+	if item.Decision == ReviewDecisionCertify || item.Decision == ReviewDecisionRevoke {
+		return fmt.Errorf("%w: item %s is %s", ErrReviewItemDecided, itemID, item.Decision)
+	}
 
 	// Revoke the grant first (idempotent). Only persist the decision if the
 	// revocation succeeds, so a recorded "revoke" always reflects a torn-down

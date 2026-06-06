@@ -404,6 +404,60 @@ func TestReviewCampaignCertifyAndRevoke(t *testing.T) {
 	}
 }
 
+// TestReviewItemTerminalDecisionCannotBeOverwritten proves a finalized
+// certify/revoke decision cannot be flipped (which would mark a torn-down grant
+// as certified, or vice versa), while an escalated item can still be resolved.
+func TestReviewItemTerminalDecisionCannotBeOverwritten(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	review := NewReviewService(db, prov)
+	ctx := context.Background()
+
+	g1 := mustProvision(t, reqSvc, prov, ws, connID, "ext-1")
+	g2 := mustProvision(t, reqSvc, prov, ws, connID, "ext-2")
+	rev, _, err := review.StartCampaign(ctx, ws, "Q1", "auditor")
+	if err != nil {
+		t.Fatalf("StartCampaign: %v", err)
+	}
+	items, _ := review.ListItems(ctx, ws, rev.ID)
+	var revokeItem, escalateItem uuid.UUID
+	for _, it := range items {
+		switch it.GrantID {
+		case g1.ID:
+			revokeItem = it.ID
+		case g2.ID:
+			escalateItem = it.ID
+		}
+	}
+
+	// Revoke is terminal: a follow-up certify must be rejected, and the grant
+	// must stay revoked.
+	if err := review.SubmitDecision(ctx, ws, rev.ID, revokeItem, ReviewDecisionRevoke, "auditor", "stale"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	if err := review.SubmitDecision(ctx, ws, rev.ID, revokeItem, ReviewDecisionCertify, "auditor", "oops"); !errors.Is(err, ErrReviewItemDecided) {
+		t.Fatalf("expected ErrReviewItemDecided overwriting a revoke, got %v", err)
+	}
+	var g1reload models.AccessGrant
+	db.Where("id = ?", g1.ID).Take(&g1reload)
+	if g1reload.State != GrantStateRevoked {
+		t.Fatalf("revoked grant must stay revoked, got %s", g1reload.State)
+	}
+
+	// Escalate is NOT terminal: it can be resolved to a final decision.
+	if err := review.SubmitDecision(ctx, ws, rev.ID, escalateItem, ReviewDecisionEscalate, "auditor", "needs mgr"); err != nil {
+		t.Fatalf("escalate: %v", err)
+	}
+	if err := review.SubmitDecision(ctx, ws, rev.ID, escalateItem, ReviewDecisionCertify, "manager", "approved"); err != nil {
+		t.Fatalf("resolving an escalation must be allowed, got %v", err)
+	}
+}
+
 func TestLeaverKillSwitchAllLayers(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -492,6 +546,44 @@ func TestKillSwitchContinuesAfterLayerFailure(t *testing.T) {
 	}
 	if len(res.Layers) != 6 {
 		t.Fatalf("expected all 6 layers attempted, got %d", len(res.Layers))
+	}
+}
+
+// TestKillSwitchConnectorResolveFailureReportsFailedNotSkipped proves a leaver
+// sweep whose connectors all fail to resolve (e.g. rotated DEK) reports the
+// session-revoke and scim-deprovision layers as "failed" and errors the kill
+// switch — instead of misclassifying an unswept connector as "skipped" and
+// returning success.
+func TestKillSwitchConnectorResolveFailureReportsFailedNotSkipped(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{resolveErr: &fakeErr{"resolve boom: rotated DEK"}}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	disabler := &fakeDisabler{}
+	jml := NewJMLService(db, reqSvc, nil, prov, fc, disabler)
+	ctx := context.Background()
+
+	// No grant for this user, so the grant-revoke layer is a clean no-op and we
+	// isolate the connector-sweep behavior.
+	res, err := jml.HandleLeaver(ctx, ws, SCIMEvent{Method: "DELETE", UserExternalID: "ext-leaver"})
+	if err == nil {
+		t.Fatal("expected error: connector sweep failed to resolve every connector")
+	}
+	if !res.Errored {
+		t.Fatalf("expected Errored=true, got %+v", res.Layers)
+	}
+	byLayer := map[string]string{}
+	for _, l := range res.Layers {
+		byLayer[l.Layer] = l.Status
+	}
+	if byLayer[LayerSessionRevoke] != LayerStatusFailed {
+		t.Fatalf("session_revoke = %q, want failed (must not be skipped)", byLayer[LayerSessionRevoke])
+	}
+	if byLayer[LayerSCIMDeprov4] != LayerStatusFailed {
+		t.Fatalf("scim_deprovision = %q, want failed (must not be skipped)", byLayer[LayerSCIMDeprov4])
 	}
 }
 

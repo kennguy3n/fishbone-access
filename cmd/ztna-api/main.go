@@ -102,9 +102,13 @@ func run() error {
 	deps.Encryptor = enc
 
 	// The iam-core management client disables (blocks) users for the leaver
-	// kill switch (layer 3). Without iam-core configured that layer reports
-	// "skipped" rather than failing the cascade.
-	if cfg.IAMCore.Configured() {
+	// kill switch (layer 3). It is wired only when the management credentials
+	// (client id + secret) are present, since BlockUser mints a
+	// client_credentials token: gating on full management config means the
+	// layer reports "skipped" when iam-core is set up for JWT validation only,
+	// instead of a non-nil client that fails every BlockUser call (which would
+	// report the layer "failed").
+	if cfg.IAMCore.ManagementConfigured() {
 		deps.Disabler = iamcore.NewManagementClient(cfg.IAMCore, nil)
 	}
 
