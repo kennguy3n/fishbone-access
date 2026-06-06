@@ -98,7 +98,16 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	var prev models.AuditEvent
 	prevHash := ""
 	var prevSeq int64
+	// Unscoped() so the head lookup considers ALL rows, including any that were
+	// soft-deleted. AuditEvent embeds gorm.DeletedAt (via Base), so a default
+	// query implicitly filters deleted_at IS NULL. Audit events are immutable and
+	// must never be deleted, but were one ever soft-deleted the scoped query would
+	// silently skip it, pick an earlier row as the head, and the next append would
+	// chain off that — forking the SHA-256 chain and orphaning the deleted row's
+	// successors. Anchoring on the true max chain_seq regardless of soft-delete
+	// keeps the chain unforkable even under that (should-never-happen) condition.
 	err := tx.WithContext(ctx).
+		Unscoped().
 		Where("workspace_id = ?", e.WorkspaceID).
 		Order("chain_seq desc").
 		Limit(1).

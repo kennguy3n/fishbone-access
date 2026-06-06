@@ -74,6 +74,18 @@ func (r *DBConnectorResolver) Resolve(ctx context.Context, workspaceID, connecto
 		}
 		plain, err := r.enc.Open(row.SecretEnvelope, ConnectorAAD(connectorID))
 		if err != nil {
+			// When no DEK is configured the wired encryptor is a
+			// PassthroughEncryptor whose Open returns ErrSecretsDisabled. A
+			// connector that has sealed secrets but no key to open them is an
+			// unusable-by-configuration connector, not an internal fault, so it
+			// must classify the same as the nil-encryptor guard above
+			// (ErrConnectorNotConfigured → 422). Without this the error falls
+			// through to the generic 500 path and misreports a config gap as an
+			// internal server error. Genuinely transient/decode failures stay
+			// unwrapped (→500).
+			if errors.Is(err, crypto.ErrSecretsDisabled) {
+				return nil, fmt.Errorf("%w: connector has sealed secrets but credential encryption is disabled (ACCESS_CREDENTIAL_DEK unset)", ErrConnectorNotConfigured)
+			}
 			return nil, fmt.Errorf("lifecycle: open connector secrets: %w", err)
 		}
 		if len(plain) > 0 {

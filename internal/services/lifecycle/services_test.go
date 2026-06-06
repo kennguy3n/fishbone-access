@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
@@ -210,6 +211,110 @@ func TestResolverErrorClassificationIsPreserved(t *testing.T) {
 	cfgSSO := NewSSOEnforcementChecker(db, &fakeConnector{resolveErr: fmt.Errorf("%w: connector %s not found", ErrConnectorNotConfigured, connID)})
 	if _, err := cfgSSO.Check(ctx, ws, connID); !errors.Is(err, ErrConnectorNotConfigured) {
 		t.Fatalf("not-configured error must remain classified: %v", err)
+	}
+}
+
+// TestResolveSecretsDisabledClassifiesAsNotConfigured proves a connector that
+// has a sealed secret envelope but no DEK to open it (the PassthroughEncryptor
+// wired when ACCESS_CREDENTIAL_DEK is unset returns crypto.ErrSecretsDisabled
+// from Open) is classified as ErrConnectorNotConfigured (→422), not blanket
+// 500. It is unusable-by-configuration, the same class as the nil-encryptor
+// guard, so the caller gets an actionable "fix your config" response instead of
+// an opaque internal error.
+func TestResolveSecretsDisabledClassifiesAsNotConfigured(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := &models.AccessConnector{
+		WorkspaceID:    ws,
+		Provider:       "fake",
+		Status:         "active",
+		SecretEnvelope: "sealed-envelope-with-no-key-to-open-it",
+	}
+	if err := db.Create(conn).Error; err != nil {
+		t.Fatalf("seed connector: %v", err)
+	}
+
+	resolver := NewDBConnectorResolver(db, crypto.PassthroughEncryptor{})
+	// Make the provider lookup succeed so Resolve reaches the secret-open path.
+	resolver.lookup = func(string) (access.AccessConnector, error) { return &fakeConnector{}, nil }
+
+	_, err := resolver.Resolve(context.Background(), ws, conn.ID)
+	if err == nil {
+		t.Fatal("expected error resolving a connector whose secrets cannot be opened")
+	}
+	if !errors.Is(err, ErrConnectorNotConfigured) {
+		t.Fatalf("secrets-disabled open failure must classify as ErrConnectorNotConfigured (→422), got %v", err)
+	}
+}
+
+// TestAuditChainUnforkableAfterSoftDelete proves the chain-head lookup is
+// Unscoped: even if an audit row were soft-deleted (audit events are immutable
+// and must never be deleted, but the model embeds gorm.DeletedAt so the
+// capability exists), the next append still anchors on the true max chain_seq
+// rather than an earlier surviving row. A scoped lookup would skip the deleted
+// head, reuse its chain_seq, and fork the SHA-256 chain.
+func TestAuditChainUnforkableAfterSoftDelete(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	ctx := context.Background()
+
+	// Provision writes several audit events; capture the current chain head.
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-softdel")
+	var head models.AuditEvent
+	if err := db.WithContext(ctx).
+		Where("workspace_id = ?", ws).
+		Order("chain_seq desc").Limit(1).
+		Take(&head).Error; err != nil {
+		t.Fatalf("load head: %v", err)
+	}
+
+	// Soft-delete the head row (sets deleted_at; row still physically present).
+	if err := db.WithContext(ctx).Delete(&head).Error; err != nil {
+		t.Fatalf("soft-delete head: %v", err)
+	}
+
+	// A subsequent append (revoke) must chain off the soft-deleted head, not an
+	// earlier survivor.
+	var g models.AccessGrant
+	if err := db.WithContext(ctx).Where("workspace_id = ?", ws).Order("created_at desc").Limit(1).Take(&g).Error; err != nil {
+		t.Fatalf("load grant: %v", err)
+	}
+	if err := prov.RevokeGrant(ctx, ws, g.ID, "auditor", "post-softdelete append"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	// The first event appended after the soft-deleted head must reuse the next
+	// sequence and chain off the head's hash — not reuse the head's seq or chain
+	// off an earlier survivor (either of which forks the chain).
+	var successor models.AuditEvent
+	if err := db.WithContext(ctx).Unscoped().
+		Where("workspace_id = ? AND chain_seq = ?", ws, head.ChainSeq+1).
+		Take(&successor).Error; err != nil {
+		t.Fatalf("load successor at seq %d: %v", head.ChainSeq+1, err)
+	}
+	if successor.PrevHash != head.ChainHash {
+		t.Fatalf("successor must chain off the true (soft-deleted) head: prev_hash %q != head chain_hash %q", successor.PrevHash, head.ChainHash)
+	}
+
+	// No two surviving-or-deleted rows may share a chain_seq (a reused seq is the
+	// signature of a forked chain).
+	var all []models.AuditEvent
+	if err := db.WithContext(ctx).Unscoped().
+		Where("workspace_id = ?", ws).
+		Order("chain_seq asc").Find(&all).Error; err != nil {
+		t.Fatalf("load all events: %v", err)
+	}
+	seenSeq := map[int64]uuid.UUID{}
+	for _, ev := range all {
+		if other, dup := seenSeq[ev.ChainSeq]; dup {
+			t.Fatalf("chain forked: events %s and %s both use chain_seq %d", other, ev.ID, ev.ChainSeq)
+		}
+		seenSeq[ev.ChainSeq] = ev.ID
 	}
 }
 
