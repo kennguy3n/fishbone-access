@@ -2,7 +2,7 @@
 //
 // Tailscale exposes a per-user suspension endpoint at
 //
-//   POST /api/v2/user/{userId}/suspend
+//	POST /api/v2/user/{userId}/suspend
 //
 // which logs the user out of every device in the tailnet and prevents
 // reauthentication until an administrator explicitly restores them.

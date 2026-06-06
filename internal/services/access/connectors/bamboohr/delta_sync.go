@@ -4,8 +4,8 @@
 // the set of employee records whose state has changed since a
 // supplied timestamp:
 //
-//   GET /api/gateway.php/{subdomain}/v1/employees/changed
-//       ?since={RFC3339}&type={inserted|updated|deleted}
+//	GET /api/gateway.php/{subdomain}/v1/employees/changed
+//	    ?since={RFC3339}&type={inserted|updated|deleted}
 //
 // The `type` parameter is optional; when absent BambooHR returns
 // all changes. We omit it so a single API call surfaces the full
@@ -13,15 +13,15 @@
 //
 // Response shape (an object keyed by employee id, NOT an array):
 //
-//   {
-//     "employees": {
-//       "12345": {
-//         "id": "12345",
-//         "action": "Updated",        // "Inserted" | "Updated" | "Deleted"
-//         "lastChanged": "2025-05-10T12:00:00+00:00"
-//       }
-//     }
-//   }
+//	{
+//	  "employees": {
+//	    "12345": {
+//	      "id": "12345",
+//	      "action": "Updated",        // "Inserted" | "Updated" | "Deleted"
+//	      "lastChanged": "2025-05-10T12:00:00+00:00"
+//	    }
+//	  }
+//	}
 //
 // Cursor semantics (per optional_interfaces.go contract):
 //   - The returned cursor is `max(lastChanged) + 1ns` across every

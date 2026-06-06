@@ -12,12 +12,12 @@
 // as a service account. Disabling every key for a service account
 // is the GCP-side kill switch for that principal because:
 //
-//   1. New OAuth 2.0 access tokens cannot be minted from a disabled
-//      key (iam.googleapis.com/v1/{key}:disable returns 200 and the
-//      key transitions to DISABLED).
-//   2. Existing access tokens minted from those keys remain valid
-//      until they expire (typically <= 1 hour) — the same trade-off
-//      every cloud-vendor session-kill API makes.
+//  1. New OAuth 2.0 access tokens cannot be minted from a disabled
+//     key (iam.googleapis.com/v1/{key}:disable returns 200 and the
+//     key transitions to DISABLED).
+//  2. Existing access tokens minted from those keys remain valid
+//     until they expire (typically <= 1 hour) — the same trade-off
+//     every cloud-vendor session-kill API makes.
 //
 // The userExternalID input is the service account email
 // (e.g. "ci-runner@my-project.iam.gserviceaccount.com"). A

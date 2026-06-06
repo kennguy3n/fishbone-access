@@ -12,8 +12,10 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-func mondaySessionConfig() map[string]interface{}  { return map[string]interface{}{} }
-func mondaySessionSecrets() map[string]interface{} { return map[string]interface{}{"api_token": "tok-1"} }
+func mondaySessionConfig() map[string]interface{} { return map[string]interface{}{} }
+func mondaySessionSecrets() map[string]interface{} {
+	return map[string]interface{}{"api_token": "tok-1"}
+}
 
 func TestMonday_RevokeUserSessions_HappyPath(t *testing.T) {
 	var calls int32

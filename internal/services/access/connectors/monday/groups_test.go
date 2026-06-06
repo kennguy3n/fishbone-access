@@ -12,8 +12,10 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-func mondayGroupsConfig() map[string]interface{}  { return map[string]interface{}{} }
-func mondayGroupsSecrets() map[string]interface{} { return map[string]interface{}{"api_token": "tok-1"} }
+func mondayGroupsConfig() map[string]interface{} { return map[string]interface{}{} }
+func mondayGroupsSecrets() map[string]interface{} {
+	return map[string]interface{}{"api_token": "tok-1"}
+}
 
 // teamsPage returns a JSON GraphQL teams envelope with N teams.
 func teamsPage(start, n int, name string) string {

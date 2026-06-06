@@ -3,13 +3,13 @@
 // Tailscale models groups inside the tailnet ACL document under the
 // "groups" key:
 //
-//   {
-//     "groups": {
-//       "group:admins":   ["alice@example.com", "bob@example.com"],
-//       "group:dev":      ["alice@example.com", "group:admins"]
-//     },
-//     ...
-//   }
+//	{
+//	  "groups": {
+//	    "group:admins":   ["alice@example.com", "bob@example.com"],
+//	    "group:dev":      ["alice@example.com", "group:admins"]
+//	  },
+//	  ...
+//	}
 //
 // The ACL is fetched via GET /api/v2/tailnet/{tailnet}/acl which
 // supports Accept: application/json to elide HuJSON comments. Group

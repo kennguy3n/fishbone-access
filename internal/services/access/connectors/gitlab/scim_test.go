@@ -218,7 +218,6 @@ func TestGitLabConnector_PushSCIMUser_NumericGroupIDAcceptedWhenGroupPathSet(t *
 	}
 }
 
-
 // TestGitLabConnector_PushSCIMUser_NestedGroupPathURLEncoded pins
 // that nested group paths (with forward slashes) are URL-encoded as
 // a single path segment when building the SCIM endpoint. Without

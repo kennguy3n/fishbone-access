@@ -11,8 +11,10 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-func knowbe4GroupsConfig() map[string]interface{}  { return map[string]interface{}{"region": "us"} }
-func knowbe4GroupsSecrets() map[string]interface{} { return map[string]interface{}{"token": "kb4-token"} }
+func knowbe4GroupsConfig() map[string]interface{} { return map[string]interface{}{"region": "us"} }
+func knowbe4GroupsSecrets() map[string]interface{} {
+	return map[string]interface{}{"token": "kb4-token"}
+}
 
 func TestKnowBe4_SyncGroups_HappyPath_TwoPages(t *testing.T) {
 	pageOne := strings.Repeat(`{"id":1,"name":"All","status":"active"},`, pageSize)

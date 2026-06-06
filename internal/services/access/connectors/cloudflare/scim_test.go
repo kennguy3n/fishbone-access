@@ -37,8 +37,10 @@ func newCFSCIMTestServer(t *testing.T, status int, capture *[]cfSCIMRoundtrip) *
 	return srv
 }
 
-func cfSCIMConfig() map[string]interface{}  { return map[string]interface{}{"account_id": "acct-1"} }
-func cfSCIMSecrets() map[string]interface{} { return map[string]interface{}{"api_token": "t", "scim_token": "scim-1"} }
+func cfSCIMConfig() map[string]interface{} { return map[string]interface{}{"account_id": "acct-1"} }
+func cfSCIMSecrets() map[string]interface{} {
+	return map[string]interface{}{"api_token": "t", "scim_token": "scim-1"}
+}
 
 func withCFSCIMTestServer(t *testing.T, srv *httptest.Server) *CloudflareAccessConnector {
 	t.Helper()

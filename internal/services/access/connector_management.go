@@ -223,7 +223,7 @@ func (s *ConnectorManagementService) Disconnect(ctx context.Context, workspaceID
 }
 
 // loadConnector fetches a connector scoped to workspaceID, mapping a missing row
-// (including a row owned by another workspace) to ErrConnectorNotFound.
+// (including a row owned by another workspace) to ErrConnectorRowNotFound.
 func (s *ConnectorManagementService) loadConnector(ctx context.Context, db *gorm.DB, workspaceID, connectorID uuid.UUID) (*models.AccessConnector, error) {
 	if s == nil || db == nil {
 		return nil, fmt.Errorf("access: ConnectorManagementService not initialised")
@@ -268,6 +268,7 @@ type jobPayload struct {
 	SyncType    string       `json:"sync_type,omitempty"`
 	Grant       *AccessGrant `json:"grant,omitempty"`
 }
+
 func marshalConfig(cfg map[string]interface{}) (datatypes.JSON, error) {
 	if cfg == nil {
 		cfg = map[string]interface{}{}

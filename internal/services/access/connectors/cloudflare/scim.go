@@ -3,7 +3,7 @@
 // Cloudflare Access provisions identities via an IdP-specific SCIM
 // endpoint that lives under the customer's Access team domain:
 //
-//   https://{team_domain}.cloudflareaccess.com/cdn-cgi/access/sso/scim/{idp_id}/scim/v2
+//	https://{team_domain}.cloudflareaccess.com/cdn-cgi/access/sso/scim/{idp_id}/scim/v2
 //
 // Because the path includes the per-IdP identifier (created when the
 // operator configures an Access identity provider with SCIM

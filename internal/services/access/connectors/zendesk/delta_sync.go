@@ -3,20 +3,22 @@
 // Zendesk exposes user lifecycle events through the same audit log
 // endpoint the access-audit pipeline already uses:
 //
-//   GET /api/v2/audit_logs.json
-//       ?filter[created_at][]={since}&filter[created_at][]={now}
-//       &sort_by=created_at&sort_order=asc
+//	GET /api/v2/audit_logs.json
+//	    ?filter[created_at][]={since}&filter[created_at][]={now}
+//	    &sort_by=created_at&sort_order=asc
 //
 // Each `audit_logs[]` entry carries:
-//   source_type   ("user" for user lifecycle events)
-//   action        ("create" / "update" / "destroy" / "soft_destroy" / ...)
-//   source_id     (the user id when source_type == "user")
-//   created_at    (RFC3339 timestamp)
+//
+//	source_type   ("user" for user lifecycle events)
+//	action        ("create" / "update" / "destroy" / "soft_destroy" / ...)
+//	source_id     (the user id when source_type == "user")
+//	created_at    (RFC3339 timestamp)
 //
 // User lifecycle action mapping:
-//   action=create                     -> active
-//   action=update                     -> active (full sync corrects status)
-//   action=destroy / soft_destroy     -> removed (tombstoned)
+//
+//	action=create                     -> active
+//	action=update                     -> active (full sync corrects status)
+//	action=destroy / soft_destroy     -> removed (tombstoned)
 //
 // Status-code mapping:
 //

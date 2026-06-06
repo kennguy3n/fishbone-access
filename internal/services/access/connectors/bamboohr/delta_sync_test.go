@@ -397,4 +397,3 @@ func isDeltaExpired(err error) bool {
 		err = next
 	}
 }
-

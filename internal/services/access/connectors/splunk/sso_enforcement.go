@@ -3,16 +3,17 @@
 // Splunk Cloud / Enterprise expose the active authentication method
 // via:
 //
-//   GET /services/properties/authentication/authentication/authType?output_mode=json
+//	GET /services/properties/authentication/authentication/authType?output_mode=json
 //
 // The response is a single-entry envelope whose `entry[0].content`
 // equals the active authType — one of:
-//   "Splunk"   -> built-in Splunk auth (password fallback enabled)
-//   "LDAP"     -> external LDAP directory
-//   "SAML"     -> SAML SSO (SSO enforced; local Splunk password
-//                  fallback disabled unless explicitly re-enabled
-//                  per-user via a Splunk admin)
-//   "Scripted" -> external scripted auth handler
+//
+//	"Splunk"   -> built-in Splunk auth (password fallback enabled)
+//	"LDAP"     -> external LDAP directory
+//	"SAML"     -> SAML SSO (SSO enforced; local Splunk password
+//	               fallback disabled unless explicitly re-enabled
+//	               per-user via a Splunk admin)
+//	"Scripted" -> external scripted auth handler
 //
 // The check therefore returns (true, ...) only when authType == "SAML"
 // (case-insensitive). Any other value — including the bypass-able

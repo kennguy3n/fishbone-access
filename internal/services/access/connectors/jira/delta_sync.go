@@ -4,7 +4,7 @@
 // exposes user lifecycle events through the Atlassian Admin REST
 // API:
 //
-//   GET /admin/v1/orgs/{org_id}/events?from={RFC3339}
+//	GET /admin/v1/orgs/{org_id}/events?from={RFC3339}
 //
 // The events stream is unified across all Atlassian products under
 // the org. We filter to user-lifecycle event actions only and emit

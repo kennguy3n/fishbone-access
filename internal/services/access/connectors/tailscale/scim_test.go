@@ -37,8 +37,10 @@ func newTSSCIMTestServer(t *testing.T, status int, capture *[]tsSCIMRoundtrip) *
 	return srv
 }
 
-func tsSCIMConfig() map[string]interface{}  { return map[string]interface{}{"tailnet": "example.com"} }
-func tsSCIMSecrets() map[string]interface{} { return map[string]interface{}{"api_key": "v1", "scim_token": "scim-1"} }
+func tsSCIMConfig() map[string]interface{} { return map[string]interface{}{"tailnet": "example.com"} }
+func tsSCIMSecrets() map[string]interface{} {
+	return map[string]interface{}{"api_key": "v1", "scim_token": "scim-1"}
+}
 
 func withTSSCIMTestServer(t *testing.T, srv *httptest.Server) *TailscaleAccessConnector {
 	t.Helper()

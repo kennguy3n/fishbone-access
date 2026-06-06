@@ -4,9 +4,9 @@
 // Groups under `/groups`. The connector enumerates them via the
 // standard paginated Graph endpoints:
 //
-//   GET /groups?$select=id,displayName,description,securityEnabled,mailEnabled
-//   GET /groups/{id}/members?$select=id,@odata.type
-//   GET /groups/$count (ConsistencyLevel: eventual)
+//	GET /groups?$select=id,displayName,description,securityEnabled,mailEnabled
+//	GET /groups/{id}/members?$select=id,@odata.type
+//	GET /groups/$count (ConsistencyLevel: eventual)
 //
 // All three reuse the existing graphClient + doJSON helpers from
 // connector.go which already inject the OAuth bearer token and

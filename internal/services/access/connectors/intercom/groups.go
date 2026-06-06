@@ -3,8 +3,8 @@
 // Intercom models conversation-assignment groups as "Teams". The
 // public REST API exposes:
 //
-//   GET /teams              -> { "teams": [ {id,name,admin_ids:[...]} ] }
-//   GET /teams/{id}         -> { id, name, admin_ids: [...] }
+//	GET /teams              -> { "teams": [ {id,name,admin_ids:[...]} ] }
+//	GET /teams/{id}         -> { id, name, admin_ids: [...] }
 //
 // Intercom returns every team in a single response; there is no
 // documented pagination on `/teams` (the response is bounded by the

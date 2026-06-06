@@ -13,10 +13,10 @@ import (
 
 func TestAWS_RevokeUserSessions_HappyPath(t *testing.T) {
 	var (
-		mu                    sync.Mutex
-		deleteLoginCalled     bool
-		listAccessKeysCalled  bool
-		deleteAccessKeyCalls  []string
+		mu                   sync.Mutex
+		deleteLoginCalled    bool
+		listAccessKeysCalled bool
+		deleteAccessKeyCalls []string
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params := readIAMAction(t, r)

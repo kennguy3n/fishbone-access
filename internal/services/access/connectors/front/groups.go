@@ -3,9 +3,9 @@
 // Front models access groups as "Teams". The public REST API
 // exposes:
 //
-//   GET /teams                          paginated via _pagination.next
-//   GET /teams/{team_id}                team detail (id, name)
-//   GET /teams/{team_id}/teammates      paginated via _pagination.next
+//	GET /teams                          paginated via _pagination.next
+//	GET /teams/{team_id}                team detail (id, name)
+//	GET /teams/{team_id}/teammates      paginated via _pagination.next
 //
 // Pagination follows Front's standard `_pagination.next` envelope —
 // an absolute URL the client follows verbatim. ExternalID is the

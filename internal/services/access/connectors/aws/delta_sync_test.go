@@ -83,8 +83,8 @@ func TestAWS_SyncIdentitiesDelta_MapsLifecycleEvents(t *testing.T) {
 	c.timeOverride = func() time.Time { return now }
 
 	var (
-		gotBatch   []*access.Identity
-		gotRemoved []string
+		gotBatch       []*access.Identity
+		gotRemoved     []string
 		callsToHandler int
 	)
 	cursor, err := c.SyncIdentitiesDelta(context.Background(), validConfig(), validSecrets(), "",
@@ -189,8 +189,8 @@ func TestAWS_SyncIdentitiesDelta_Paginates(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"Events": []map[string]interface{}{{
 					"EventId": "p2", "EventName": "CreateUser",
-					"EventTime": float64(now.Add(-5 * time.Minute).Unix()),
-					"Username":  "root-admin",
+					"EventTime":       float64(now.Add(-5 * time.Minute).Unix()),
+					"Username":        "root-admin",
 					"CloudTrailEvent": `{"responseElements":{"user":{"userName":"charlie","userId":"AIDA3"}}}`,
 				}},
 			})
@@ -291,10 +291,10 @@ func TestAWS_SyncIdentitiesDelta_DeleteThenRecreate(t *testing.T) {
 // DeleteUser — see Devin Review BUG_… pr-review-job-567e7df4.
 func TestAWS_ExtractAWSUserIdentifiers_PrefersTargetOverActor(t *testing.T) {
 	cases := []struct {
-		name      string
-		event     cloudTrailEvent
-		wantName  string
-		wantID    string
+		name     string
+		event    cloudTrailEvent
+		wantName string
+		wantID   string
 	}{
 		{
 			name: "delete_user_target_in_request_params",
@@ -373,10 +373,10 @@ func TestAWS_SyncIdentitiesDelta_UpdateUserRename(t *testing.T) {
 		var events []map[string]interface{}
 		if parsed.LookupAttributes[0].AttributeValue == "UpdateUser" {
 			events = append(events, map[string]interface{}{
-				"EventId":   "ev-rename",
-				"EventName": "UpdateUser",
-				"EventTime": float64(now.Add(-5 * time.Minute).Unix()),
-				"Username":  "root-admin",
+				"EventId":         "ev-rename",
+				"EventName":       "UpdateUser",
+				"EventTime":       float64(now.Add(-5 * time.Minute).Unix()),
+				"Username":        "root-admin",
 				"CloudTrailEvent": `{"requestParameters":{"userName":"alice.old","newUserName":"alice.new"}}`,
 			})
 		}

@@ -3,7 +3,7 @@
 // Docker Hub does not expose a session-only revocation API; the
 // closest kill switch is removing the user from the organisation:
 //
-//   DELETE /v2/orgs/{name}/members/{username}
+//	DELETE /v2/orgs/{name}/members/{username}
 //
 // Removal terminates the user's Docker Hub Business access (image
 // pulls / pushes / private repository visibility) and forces re-auth

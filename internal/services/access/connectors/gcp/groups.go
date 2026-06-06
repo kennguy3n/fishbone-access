@@ -6,8 +6,8 @@
 // `groups/{id}` format and members are addressed by membership name
 // `groups/{id}/memberships/{member_id}`.
 //
-//   GET  /v1/groups?parent=customers/{customerId}&pageSize=...
-//   GET  /v1/{groupName}/memberships?pageSize=...
+//	GET  /v1/groups?parent=customers/{customerId}&pageSize=...
+//	GET  /v1/{groupName}/memberships?pageSize=...
 //
 // The connector reads Config.CustomerID (a top-level customer
 // resource id, e.g. "C0123abcd" or "my_customer") and routes via the
@@ -75,9 +75,9 @@ type cloudIdentityGroupsResponse struct {
 }
 
 type cloudIdentityMember struct {
-	Name             string           `json:"name"` // groups/{g}/memberships/{m}
+	Name               string           `json:"name"` // groups/{g}/memberships/{m}
 	PreferredMemberKey cloudIdentityKey `json:"preferredMemberKey"`
-	Type             string           `json:"type"`
+	Type               string           `json:"type"`
 }
 
 type cloudIdentityMembersResponse struct {
