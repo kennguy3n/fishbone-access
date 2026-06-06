@@ -276,8 +276,11 @@ func (c *PracticeFusionAccessConnector) GetCredentialsMetadata(_ context.Context
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
 	if len(t) <= 8 {
-		return t
+		return strings.Repeat("*", len(t))
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

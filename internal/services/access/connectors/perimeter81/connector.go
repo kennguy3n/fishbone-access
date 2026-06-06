@@ -273,8 +273,11 @@ func (c *Perimeter81AccessConnector) GetCredentialsMetadata(_ context.Context, c
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
 	if len(t) <= 8 {
-		return t
+		return strings.Repeat("*", len(t))
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }
