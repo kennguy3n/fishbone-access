@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -138,6 +139,44 @@ func TestConnectorManagementTestConnectivity(t *testing.T) {
 	got, _ = svc.Get(ctx, ws, row.ID)
 	if got.Status != ConnectorStatusError {
 		t.Errorf("status = %q, want error", got.Status)
+	}
+}
+
+// TestConnectorManagementTestConnectivityJoinsErrors pins that when the provider
+// connectivity test fails AND persisting the resulting status fails, the
+// returned error surfaces BOTH causes. Previously only the DB error was
+// returned, silently dropping the connectivity diagnosis an operator needs.
+func TestConnectorManagementTestConnectivityJoinsErrors(t *testing.T) {
+	connectErr := errors.New("auth failed")
+	mock := &MockAccessConnector{}
+	SwapConnector(t, "test-provider", mock)
+	svc := newMgmtService(t)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// Connect runs after the row is loaded but before the status UPDATE. Drop
+	// the table here so the subsequent persistence write fails while the
+	// connectivity error is also non-nil.
+	mock.FuncConnect = func(context.Context, map[string]interface{}, map[string]interface{}) error {
+		if e := svc.db.WithContext(ctx).Exec("DROP TABLE access_connectors").Error; e != nil {
+			t.Fatalf("drop table: %v", e)
+		}
+		return connectErr
+	}
+
+	_, err = svc.TestConnectivity(ctx, ws, row.ID, nil)
+	if err == nil {
+		t.Fatal("TestConnectivity: expected error, got nil")
+	}
+	if !errors.Is(err, connectErr) {
+		t.Errorf("returned error does not wrap connectivity error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "persist connectivity status") {
+		t.Errorf("returned error does not include the DB persistence failure: %v", err)
 	}
 }
 

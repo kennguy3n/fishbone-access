@@ -217,8 +217,20 @@ func readSCIMConfig(config, secrets map[string]interface{}) (resolvedSCIMConfig,
 	if !ok || strings.TrimSpace(rawURL) == "" {
 		return out, fmt.Errorf("%w: %s is required", ErrSCIMConfigInvalid, scimProvisionerConfigKey)
 	}
-	if _, err := url.Parse(rawURL); err != nil {
+	// url.Parse alone is far too permissive — it accepts bare strings like
+	// "not-a-url" as a relative-path URL and almost never errors. A SCIM base
+	// URL must be an absolute http(s) endpoint, so require a host and an
+	// http/https scheme here rather than letting a malformed value surface as a
+	// confusing transport error on the first SCIM call.
+	u, err := url.Parse(rawURL)
+	if err != nil {
 		return out, fmt.Errorf("%w: %s unparseable: %v", ErrSCIMConfigInvalid, scimProvisionerConfigKey, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return out, fmt.Errorf("%w: %s must be an http(s) URL (got scheme %q)", ErrSCIMConfigInvalid, scimProvisionerConfigKey, u.Scheme)
+	}
+	if u.Host == "" {
+		return out, fmt.Errorf("%w: %s must include a host", ErrSCIMConfigInvalid, scimProvisionerConfigKey)
 	}
 	out.BaseURL = rawURL
 
@@ -230,6 +242,13 @@ func readSCIMConfig(config, secrets map[string]interface{}) (resolvedSCIMConfig,
 		d, err := time.ParseDuration(rawTimeout)
 		if err != nil {
 			return out, fmt.Errorf("%w: %s unparseable: %v", ErrSCIMConfigInvalid, scimProvisionerTimeoutKey, err)
+		}
+		// A zero or negative timeout would make context.WithTimeout produce an
+		// already-expired context, so every SCIM request would fail with
+		// "context deadline exceeded" instead of doing real work. Reject it at
+		// config time with an actionable error rather than failing silently.
+		if d <= 0 {
+			return out, fmt.Errorf("%w: %s must be positive (got %v)", ErrSCIMConfigInvalid, scimProvisionerTimeoutKey, d)
 		}
 		out.Timeout = d
 	}

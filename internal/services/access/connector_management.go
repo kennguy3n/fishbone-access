@@ -173,7 +173,12 @@ func (s *ConnectorManagementService) TestConnectivity(ctx context.Context, works
 		Model(&models.AccessConnector{}).
 		Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
 		Update("status", status).Error; uerr != nil {
-		return missing, fmt.Errorf("access: persist connectivity status: %w", uerr)
+		// Surface BOTH failures: when the provider test and the status
+		// persistence fail together, returning only the DB error would hide the
+		// connectivity diagnosis an operator needs. errors.Join drops a nil
+		// connectErr, so a pure DB failure still returns just the wrapped DB
+		// error (and errors.Is against either cause keeps working).
+		return missing, errors.Join(connectErr, fmt.Errorf("access: persist connectivity status: %w", uerr))
 	}
 	return missing, connectErr
 }

@@ -269,6 +269,57 @@ func TestSCIMClient_ConfigValidation(t *testing.T) {
 			},
 		},
 		{
+			// A zero timeout would make context.WithTimeout produce an
+			// already-expired context, so every request would fail with
+			// "context deadline exceeded". It must be rejected at config time.
+			"zero timeout",
+			map[string]interface{}{
+				scimProvisionerConfigKey:  "http://example",
+				scimProvisionerTimeoutKey: "0s",
+			},
+			map[string]interface{}{},
+			func(c *SCIMClient, cfg, sec map[string]interface{}) error {
+				return c.PushSCIMUser(context.Background(), cfg, sec, SCIMUser{UserName: "x"})
+			},
+		},
+		{
+			"negative timeout",
+			map[string]interface{}{
+				scimProvisionerConfigKey:  "http://example",
+				scimProvisionerTimeoutKey: "-5s",
+			},
+			map[string]interface{}{},
+			func(c *SCIMClient, cfg, sec map[string]interface{}) error {
+				return c.PushSCIMUser(context.Background(), cfg, sec, SCIMUser{UserName: "x"})
+			},
+		},
+		{
+			// url.Parse accepts a bare token as a relative-path URL, so the
+			// scheme/host check is what rejects it.
+			"base_url without scheme",
+			map[string]interface{}{scimProvisionerConfigKey: "not-a-url"},
+			map[string]interface{}{},
+			func(c *SCIMClient, cfg, sec map[string]interface{}) error {
+				return c.PushSCIMUser(context.Background(), cfg, sec, SCIMUser{UserName: "x"})
+			},
+		},
+		{
+			"base_url with non-http scheme",
+			map[string]interface{}{scimProvisionerConfigKey: "ftp://example.com/scim"},
+			map[string]interface{}{},
+			func(c *SCIMClient, cfg, sec map[string]interface{}) error {
+				return c.PushSCIMUser(context.Background(), cfg, sec, SCIMUser{UserName: "x"})
+			},
+		},
+		{
+			"base_url missing host",
+			map[string]interface{}{scimProvisionerConfigKey: "https://"},
+			map[string]interface{}{},
+			func(c *SCIMClient, cfg, sec map[string]interface{}) error {
+				return c.PushSCIMUser(context.Background(), cfg, sec, SCIMUser{UserName: "x"})
+			},
+		},
+		{
 			"unknown resource type",
 			map[string]interface{}{scimProvisionerConfigKey: "http://example"},
 			map[string]interface{}{},
