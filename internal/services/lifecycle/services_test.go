@@ -761,8 +761,8 @@ func TestKillSwitchConnectorResolveFailureReportsFailedNotSkipped(t *testing.T) 
 	if byLayer[LayerSessionRevoke] != LayerStatusFailed {
 		t.Fatalf("session_revoke = %q, want failed (must not be skipped)", byLayer[LayerSessionRevoke])
 	}
-	if byLayer[LayerSCIMDeprov4] != LayerStatusFailed {
-		t.Fatalf("scim_deprovision = %q, want failed (must not be skipped)", byLayer[LayerSCIMDeprov4])
+	if byLayer[LayerSCIMDeprov] != LayerStatusFailed {
+		t.Fatalf("scim_deprovision = %q, want failed (must not be skipped)", byLayer[LayerSCIMDeprov])
 	}
 }
 
@@ -1025,6 +1025,28 @@ func TestSchedulerOrphanSweep(t *testing.T) {
 	}
 	if n != 1 {
 		t.Fatalf("expected 1 orphan recorded, got %d", n)
+	}
+}
+
+// TestSchedulerOrphanSweepSkipsPendingConnectors proves the sweep ignores a
+// connector that has never been configured (status "pending"): it has no synced
+// identities, so scanning it would only produce recurring resolve-error noise.
+func TestSchedulerOrphanSweepSkipsPendingConnectors(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	pending := &models.AccessConnector{WorkspaceID: ws, Provider: "fake", Status: "pending"}
+	if err := db.Create(pending).Error; err != nil {
+		t.Fatalf("seed pending connector: %v", err)
+	}
+	fc := &fakeConnector{identities: []*access.Identity{{ExternalID: "ext-orphan", Type: access.IdentityTypeUser}}}
+	sched := NewScheduler(db, NewExpiryEnforcer(db, &noopExpirer{}), NewOrphanReconciler(db, fc), SchedulerConfig{})
+
+	n, err := sched.RunOrphanSweep(context.Background())
+	if err != nil {
+		t.Fatalf("RunOrphanSweep: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("pending connector must be skipped, got %d orphan(s) recorded", n)
 	}
 }
 

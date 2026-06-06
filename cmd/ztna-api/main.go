@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -129,10 +130,24 @@ func run() error {
 			lifecycle.NewOrphanReconciler(deps.DB, resolver),
 			lifecycle.SchedulerConfig{},
 		)
+		// Give the scheduler its own cancellable context and join it on the way
+		// out so it is guaranteed to have stopped before the deferred DB-pool
+		// close runs. The pool's close defer was registered earlier (right after
+		// setupDatabase), so this later-registered defer runs first (LIFO) — the
+		// scheduler can never issue a query against an already-closed pool. This
+		// holds on every run() exit path (signal shutdown and fatal serve error).
+		schedCtx, schedCancel := context.WithCancel(ctx)
+		var schedWG sync.WaitGroup
+		schedWG.Add(1)
 		go func() {
-			if err := sched.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			defer schedWG.Done()
+			if err := sched.Run(schedCtx); err != nil && !errors.Is(err, context.Canceled) {
 				logger.Errorf(context.Background(), "ztna-api: lifecycle scheduler exited: %v", err)
 			}
+		}()
+		defer func() {
+			schedCancel()
+			schedWG.Wait()
 		}()
 		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation)")
 	}

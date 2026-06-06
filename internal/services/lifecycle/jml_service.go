@@ -26,7 +26,7 @@ const (
 	LayerTeamRemove      = "team_remove"
 	LayerIAMCoreDisable  = "iam_core_disable"
 	LayerSessionRevoke   = "session_revoke"
-	LayerSCIMDeprov4     = "scim_deprovision"
+	LayerSCIMDeprov      = "scim_deprovision"
 	LayerIdentityDisable = "identity_disable"
 )
 
@@ -356,7 +356,7 @@ func (s *JMLService) layerConnectorSweep(ctx context.Context, workspaceID uuid.U
 		Where("workspace_id = ?", workspaceID).
 		Find(&connectors).Error; err != nil {
 		record(LayerSessionRevoke, LayerStatusFailed, "load connectors: "+err.Error())
-		record(LayerSCIMDeprov4, LayerStatusFailed, "load connectors: "+err.Error())
+		record(LayerSCIMDeprov, LayerStatusFailed, "load connectors: "+err.Error())
 		return
 	}
 
@@ -392,7 +392,7 @@ func (s *JMLService) layerConnectorSweep(ctx context.Context, workspaceID uuid.U
 	}
 
 	recordSweepLayer(record, LayerSessionRevoke, sessAttempted, sessFailed)
-	recordSweepLayer(record, LayerSCIMDeprov4, scimAttempted, scimFailed)
+	recordSweepLayer(record, LayerSCIMDeprov, scimAttempted, scimFailed)
 }
 
 // scimDeprovision removes a user's upstream access on a SCIM-capable connector

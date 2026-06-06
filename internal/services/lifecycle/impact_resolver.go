@@ -123,12 +123,14 @@ func (r *ImpactResolver) ResolveImpact(ctx context.Context, workspaceID uuid.UUI
 				affectedGrantIDs[grants[i].ID] = struct{}{}
 				continue
 			}
-			if _, ok := live[pair{grants[i].IAMCoreUserID, grants[i].ResourceRef}]; ok {
-				for _, res := range def.Resources {
-					if res == grants[i].ResourceRef {
-						affectedGrantIDs[grants[i].ID] = struct{}{}
-						break
-					}
+			// We are iterating the live grants directly, so each grant's
+			// (subject, resource) is necessarily present in the live index; the
+			// only thing left to decide is whether the deny set names this
+			// grant's resource explicitly.
+			for _, res := range def.Resources {
+				if res == grants[i].ResourceRef {
+					affectedGrantIDs[grants[i].ID] = struct{}{}
+					break
 				}
 			}
 		}
