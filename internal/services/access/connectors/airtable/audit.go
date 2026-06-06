@@ -123,6 +123,9 @@ func mapAirtableAuditEvent(e *airtableAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseAirtableTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

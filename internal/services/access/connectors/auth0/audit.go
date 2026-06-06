@@ -112,6 +112,9 @@ func mapAuth0Log(e *auth0AuditLogEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339, e.Date)
+	if ts.IsZero() {
+		return nil
+	}
 	outcome := "success"
 	if t := strings.ToLower(strings.TrimSpace(e.Type)); strings.HasPrefix(t, "f") {
 		outcome = "failure"

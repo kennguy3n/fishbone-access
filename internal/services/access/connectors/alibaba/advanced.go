@@ -87,11 +87,11 @@ func (c *AlibabaAccessConnector) callRAMRaw(ctx context.Context, secrets Secrets
 	return resp.StatusCode, body, nil
 }
 
-func (c *AlibabaAccessConnector) ProvisionAccess(ctx context.Context, _, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
+func (c *AlibabaAccessConnector) ProvisionAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
 	if err := alibabaValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(map[string]interface{}{}, secretsRaw)
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -118,11 +118,11 @@ func (c *AlibabaAccessConnector) ProvisionAccess(ctx context.Context, _, secrets
 	}
 }
 
-func (c *AlibabaAccessConnector) RevokeAccess(ctx context.Context, _, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
+func (c *AlibabaAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
 	if err := alibabaValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(map[string]interface{}{}, secretsRaw)
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -149,12 +149,12 @@ func (c *AlibabaAccessConnector) RevokeAccess(ctx context.Context, _, secretsRaw
 	}
 }
 
-func (c *AlibabaAccessConnector) ListEntitlements(ctx context.Context, _, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
+func (c *AlibabaAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
 	user := strings.TrimSpace(userExternalID)
 	if user == "" {
 		return nil, errors.New("alibaba: user external id is required")
 	}
-	_, secrets, err := c.decodeBoth(map[string]interface{}{}, secretsRaw)
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}

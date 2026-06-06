@@ -127,6 +127,9 @@ func mapAsanaAuditEvent(e *asanaAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseAsanaTime(e.CreatedAt)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

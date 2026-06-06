@@ -239,7 +239,7 @@ func (c *AsanaAccessConnector) SyncIdentities(
 	for {
 		path := "/workspaces/" + cfg.WorkspaceGID + "/users?limit=100&opt_fields=name,email"
 		if offset != "" {
-			path += "&offset=" + offset
+			path += "&offset=" + url.QueryEscape(offset)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {

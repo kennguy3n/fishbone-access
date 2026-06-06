@@ -174,7 +174,7 @@ func (c *AirtableAccessConnector) Connect(ctx context.Context, configRaw, secret
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/meta/enterpriseAccount/"+cfg.EnterpriseID)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/meta/enterpriseAccount/"+url.PathEscape(cfg.EnterpriseID))
 	if err != nil {
 		return err
 	}
@@ -228,9 +228,9 @@ func (c *AirtableAccessConnector) SyncIdentities(
 	}
 	offset := checkpoint
 	for {
-		path := "/meta/enterpriseAccount/" + cfg.EnterpriseID + "/users?pageSize=100"
+		path := "/meta/enterpriseAccount/" + url.PathEscape(cfg.EnterpriseID) + "/users?pageSize=100"
 		if offset != "" {
-			path += "&offset=" + offset
+			path += "&offset=" + url.QueryEscape(offset)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
