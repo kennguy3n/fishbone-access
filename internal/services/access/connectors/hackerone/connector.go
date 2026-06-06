@@ -281,7 +281,7 @@ func (c *HackerOneAccessConnector) GetCredentialsMetadata(_ context.Context, con
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
 	if len(t) <= 8 {
-		return t
+		return strings.Repeat("*", len(t))
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

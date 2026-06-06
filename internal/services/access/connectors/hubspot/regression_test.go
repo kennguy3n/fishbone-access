@@ -285,3 +285,30 @@ func TestProvisionRevoke_RejectWhitespaceGrantFields(t *testing.T) {
 		}
 	}
 }
+
+// Regression: shortToken must never echo a secret verbatim. Tokens of
+// length <= 8 were previously returned in full from GetCredentialsMetadata
+// (whose output is logged / stored / shown in the UI). They must be fully
+// masked instead. This shared helper is duplicated across all 10 batch
+// connectors and was fixed in each.
+func TestShortToken_MasksShortSecrets(t *testing.T) {
+	for _, tok := range []string{"", "a", "secret", "12345678"} {
+		got := shortToken(tok)
+		if got != "" && got == tok {
+			t.Errorf("shortToken(%q) = %q; leaks the secret verbatim", tok, got)
+		}
+		for _, r := range got {
+			if r != '*' {
+				t.Errorf("shortToken(%q) = %q; want only '*' mask characters", tok, got)
+				break
+			}
+		}
+		if len(got) != len(tok) {
+			t.Errorf("shortToken(%q) length = %d; want %d", tok, len(got), len(tok))
+		}
+	}
+	// Long tokens keep the 4+4 fingerprint without exposing the middle.
+	if got := shortToken("pat-na1-aaaaBBBB1111"); got != "pat-...1111" {
+		t.Errorf("shortToken(long) = %q; want %q", got, "pat-...1111")
+	}
+}
