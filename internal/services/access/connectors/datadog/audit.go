@@ -141,6 +141,13 @@ func mapDatadogAuditEvent(e *ddAuditEvent) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Attributes.Timestamp)
 	}
+	// Drop events whose timestamp is present but unparseable. Without this
+	// guard a zero-value (year 0001) timestamp would flow downstream — and
+	// on a first run (since == zero) it slips into the emitted batch with a
+	// corrupted timestamp. Every other audit mapper applies the same guard.
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

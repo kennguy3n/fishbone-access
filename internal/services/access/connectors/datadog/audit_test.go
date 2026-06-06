@@ -161,3 +161,45 @@ func TestFetchAccessAuditLogs_MaxPageCap(t *testing.T) {
 		t.Fatalf("made %d requests, want exactly %d (cursor loop must be capped)", hits, datadogAuditMaxPages)
 	}
 }
+
+// TestFetchAccessAuditLogs_SkipsUnparseableTimestamp verifies the mapper
+// drops an event whose timestamp is present but unparseable instead of
+// emitting a zero-value (year 0001) entry. The partition is zero (a first
+// run), so a zero-timestamp entry would otherwise slip into the batch.
+func TestFetchAccessAuditLogs_SkipsUnparseableTimestamp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"links": map[string]interface{}{},
+			"data": []map[string]interface{}{
+				{"id": "ev-bad", "type": "audit", "attributes": map[string]interface{}{
+					"timestamp": "not-a-timestamp",
+					"attributes": map[string]interface{}{"evt.name": "user.login", "usr.email": "bad@example.com"},
+				}},
+				{"id": "ev-ok", "type": "audit", "attributes": map[string]interface{}{
+					"timestamp": "2024-01-01T10:00:00Z",
+					"attributes": map[string]interface{}{"evt.name": "user.login", "usr.email": "ok@example.com"},
+				}},
+			},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("collected %d entries, want 1 (unparseable timestamp must be dropped)", len(collected))
+	}
+	if collected[0].Timestamp.IsZero() {
+		t.Fatalf("emitted entry has zero timestamp: %+v", collected[0])
+	}
+}
