@@ -184,6 +184,23 @@ type AccessReviewItem struct {
 	Reason      string     `json:"reason,omitempty"`
 }
 
+// WorkflowApproval is one approver's decision on an access request routed to a
+// human-approval lane (manager_approval / security_review) by the workflow
+// engine. A request requires a configured number of distinct approve decisions
+// before the engine flips it requested → approved; any deny decision rejects
+// it. Rows are append-only (one per approver per request) so the full approval
+// chain is auditable. The unique index on (workspace_id, request_id, approver)
+// makes a re-submitted decision from the same approver idempotent.
+type WorkflowApproval struct {
+	Base
+	WorkspaceID  uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_workflow_approval,where:deleted_at IS NULL" json:"workspace_id"`
+	RequestID    uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_workflow_approval,where:deleted_at IS NULL" json:"request_id"`
+	Approver     string    `gorm:"not null;uniqueIndex:uq_workflow_approval,where:deleted_at IS NULL" json:"approver"`
+	ApproverRole string    `json:"approver_role,omitempty"`
+	Decision     string    `gorm:"not null" json:"decision"`
+	Reason       string    `json:"reason,omitempty"`
+}
+
 // AccessOrphanAccount is an upstream provider account with no matching live
 // grant in ShieldNet Access, surfaced by the OrphanReconciler. Disposition is
 // the operator's decision (pending → ignore | disable).
@@ -242,6 +259,7 @@ func All() []any {
 		&AccessGrant{},
 		&AccessReview{},
 		&AccessReviewItem{},
+		&WorkflowApproval{},
 		&Policy{},
 		&AccessOrphanAccount{},
 		&AuditEvent{},

@@ -78,7 +78,14 @@ func run() error {
 		logger.Warnf(ctx, "access-connector-worker: ACCESS_CREDENTIAL_DEK unset; jobs needing connector secrets will fail closed")
 	}
 
-	queue := workers.NewPostgresQueue(gdb)
+	// Filter the shared access_jobs queue to connector job types only, so this
+	// worker never claims workflow-engine jobs (which it cannot process) when
+	// both workers drain the same table.
+	queue := workers.NewPostgresQueue(gdb, workers.WithJobTypes(
+		access.JobTypeSyncIdentities,
+		access.JobTypeProvision,
+		access.JobTypeRevoke,
+	))
 	processor := access.NewConnectorJobProcessor(gdb, enc)
 	w := workers.New(queue, processor, workers.Config{})
 

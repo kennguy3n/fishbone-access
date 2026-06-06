@@ -1,0 +1,33 @@
+[project]
+name = "access-ai-agent"
+version = "0.1.0"
+description = "ShieldNet Access A2A AI agent (FastAPI + mTLS)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "B", "C4", "I", "SIM", "UP", "S"]
+# E501: line length handled by formatter; B008: FastAPI Header(...) in defaults
+# is the documented pattern; SIM117: nested with-statements are clearer here.
+ignore = ["E501", "B008", "SIM117"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use asserts (S101) and spin up localhost servers / self-signed certs.
+"tests/*" = ["S101", "S106", "S603", "S607"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = false
+warn_redundant_casts = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+# Default target is the agent source; tests are exercised by pytest and need not
+# carry full annotations (see the per-module override below).
+files = ["main.py", "mtls.py", "skills"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "conftest", "test_*"]
+disallow_untyped_defs = false

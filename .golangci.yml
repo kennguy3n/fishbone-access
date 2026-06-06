@@ -116,6 +116,14 @@ linters:
         text: "ST1003: should not use underscores in package names"
         linters:
           - staticcheck
+      # workflow_engine (Session 1E) is the canonical package name used in the
+      # worker dispatcher job-type routes and the workflow audit log; renaming
+      # the Go package would break that slug alignment. Suppress only the
+      # package-name underscore lint (line 1 of each file), as for connectors.
+      - path: internal/services/access/workflow_engine/
+        text: "ST1003: should not use underscores in package names"
+        linters:
+          - staticcheck
 
 issues:
   max-issues-per-linter: 0
