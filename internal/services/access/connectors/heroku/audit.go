@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -43,7 +44,7 @@ func (c *HerokuAccessConnector) FetchAccessAuditLogs(
 		return access.ErrAuditNotAvailable
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
-	path := "/enterprise-accounts/" + enterprise + "/events"
+	path := "/enterprise-accounts/" + url.PathEscape(enterprise) + "/events"
 	if !since.IsZero() {
 		path = path + "?since=" + since.UTC().Format(time.RFC3339)
 	}
