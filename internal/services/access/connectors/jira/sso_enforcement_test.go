@@ -52,6 +52,40 @@ func TestJira_CheckSSOEnforcement_UsesAdminGateway(t *testing.T) {
 	}
 }
 
+// TestJira_CheckSSOEnforcement_RequiresOrgID is a regression guard for the bug
+// where a missing org_id silently fell back to cfg.CloudID. CloudID is a
+// per-site product identifier (/ex/jira/{cloudID}); org_id is the distinct
+// Atlassian organization identifier the admin API keys on
+// (/admin/v1/orgs/{orgID}/...). Substituting CloudID produced a misleading 404
+// that callers would map to "unknown" rather than surfacing the real
+// misconfiguration. The connector must instead return a clear error and issue
+// no request at all. The fake doer asserts no HTTP call is made.
+func TestJira_CheckSSOEnforcement_RequiresOrgID(t *testing.T) {
+	doer := &recordingDoer{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"data":[]}`)),
+		},
+	}
+	c := New()
+	c.httpClient = func() httpDoer { return doer }
+	cfg := map[string]interface{}{"cloud_id": "cid-1", "site_url": "https://acme.atlassian.net"} // no org_id
+	enforced, _, err := c.CheckSSOEnforcement(context.Background(), cfg, jiraSSOSecrets())
+	if err == nil {
+		t.Fatal("err = nil; want an error when org_id is absent (cloud_id must not be used as the admin org id)")
+	}
+	if !strings.Contains(err.Error(), "org_id") {
+		t.Fatalf("err = %v; want mention of org_id", err)
+	}
+	if enforced {
+		t.Fatal("enforced = true; must never report enforced on a misconfiguration error")
+	}
+	if doer.gotURL != "" {
+		t.Fatalf("issued request to %q; want no request when org_id is missing", doer.gotURL)
+	}
+}
+
 func jiraSSOConfig() map[string]interface{} {
 	return map[string]interface{}{"cloud_id": "cid-1", "site_url": "https://acme.atlassian.net", "org_id": "org-1"}
 }

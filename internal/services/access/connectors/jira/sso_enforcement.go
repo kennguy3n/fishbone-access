@@ -3,6 +3,7 @@ package jira
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,14 +23,20 @@ import (
 // non-nil err so callers map them to "unknown" — never to "not
 // enforced".
 func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw, secretsRaw map[string]interface{}) (bool, string, error) {
-	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return false, "", err
 	}
 	orgID, _ := configRaw["org_id"].(string)
 	orgID = strings.TrimSpace(orgID)
 	if orgID == "" {
-		orgID = cfg.CloudID
+		// org_id is the Atlassian *organization* identifier the admin API
+		// keys on (/admin/v1/orgs/{orgID}/...). cloud_id is a distinct
+		// per-site *product* identifier (/ex/jira/{cloudID}) and is not
+		// interchangeable: substituting it here produces a misleading 404
+		// from the admin gateway that masquerades as "SSO not enforced".
+		// Require org_id explicitly, matching SyncIdentitiesDelta.
+		return false, "", errors.New("jira: sso-enforcement: config.org_id is required (cloud_id is a per-site product id, not the Atlassian org id)")
 	}
 	endpoint := c.adminBaseURL() + "/admin/v1/orgs/" + url.PathEscape(orgID) + "/authentication-policies"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)

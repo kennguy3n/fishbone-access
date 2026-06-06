@@ -60,8 +60,14 @@ func (c *IroncladAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return fmt.Errorf("ironclad: audit logs: %w", err)
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
+		if readErr != nil {
+			// Surface read failures instead of advancing the cursor on a
+			// truncated body that could parse as a short page and end the
+			// sweep early (matches jfrog/jira read-error handling).
+			return fmt.Errorf("ironclad: read audit logs body: %w", readErr)
+		}
 		switch resp.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return access.ErrAuditNotAvailable

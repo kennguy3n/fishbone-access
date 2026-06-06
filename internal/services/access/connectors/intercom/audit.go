@@ -65,8 +65,13 @@ func (c *IntercomAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
+		if readErr != nil {
+			// Surface read failures (connection reset, TLS error, context
+			// cancel) instead of advancing the cursor on a truncated body.
+			return fmt.Errorf("intercom: read activity_logs body: %w", readErr)
+		}
 		switch resp.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return access.ErrAuditNotAvailable
@@ -90,10 +95,15 @@ func (c *IntercomAccessConnector) FetchAccessAuditLogs(
 			}
 			batch = append(batch, entry)
 		}
-		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-			return err
+		// Skip the handler call on an all-filtered (empty) page: there is no
+		// newest entry to anchor nextSince to, matching the sibling
+		// connectors. Pagination still advances via starting_after below.
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
 		}
-		cursor = batchMax
 		next := strings.TrimSpace(page.Pages.Next.StartingAfter)
 		if next == "" {
 			return nil

@@ -42,16 +42,16 @@ func (c *KlaviyoAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	base := c.baseURL() + "/api/account-activity-logs"
 
-	var collected []klaviyoAuditEntry
-	cursor := ""
+	cursor := since
+	pageCursor := ""
 	for page := 0; page < klaviyoAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		q := url.Values{}
 		q.Set("page[size]", fmt.Sprintf("%d", klaviyoAuditPageSize))
-		if cursor != "" {
-			q.Set("page[cursor]", cursor)
+		if pageCursor != "" {
+			q.Set("page[cursor]", pageCursor)
 		}
 		if !since.IsZero() {
 			q.Set("filter", fmt.Sprintf("greater-than(datetime,%s)", since.UTC().Format(time.RFC3339)))
@@ -64,8 +64,14 @@ func (c *KlaviyoAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return fmt.Errorf("klaviyo: account-activity-logs: %w", err)
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
+		if readErr != nil {
+			// Surface read failures instead of advancing the cursor on a
+			// truncated body that could parse as a short page and end the
+			// sweep early (matches jfrog/jira read-error handling).
+			return fmt.Errorf("klaviyo: read account-activity-logs body: %w", readErr)
+		}
 		switch resp.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return access.ErrAuditNotAvailable
@@ -77,36 +83,38 @@ func (c *KlaviyoAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("klaviyo: decode account-activity-logs: %w", err)
 		}
-		collected = append(collected, envelope.Data...)
+		// Emit each page as it is fetched so the caller persists nextSince
+		// per page as a monotonic cursor (AccessAuditor contract). batchMax
+		// starts at the running cursor so it never moves backward, and a
+		// mid-stream handler failure only replays the un-acked tail.
+		batch := make([]*access.AuditLogEntry, 0, len(envelope.Data))
+		batchMax := cursor
+		for i := range envelope.Data {
+			entry := mapKlaviyoAudit(&envelope.Data[i])
+			if entry == nil {
+				continue
+			}
+			if entry.Timestamp.After(batchMax) {
+				batchMax = entry.Timestamp
+			}
+			batch = append(batch, entry)
+		}
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
+		}
 		next := strings.TrimSpace(envelope.Links.Next)
 		if next == "" || len(envelope.Data) == 0 {
 			break
 		}
-		cursor = klaviyoCursorFromNext(next)
-		if cursor == "" {
+		pageCursor = klaviyoCursorFromNext(next)
+		if pageCursor == "" {
 			break
 		}
 	}
-
-	if len(collected) == 0 {
-		return nil
-	}
-	batch := make([]*access.AuditLogEntry, 0, len(collected))
-	batchMax := since
-	for i := range collected {
-		entry := mapKlaviyoAudit(&collected[i])
-		if entry == nil {
-			continue
-		}
-		if entry.Timestamp.After(batchMax) {
-			batchMax = entry.Timestamp
-		}
-		batch = append(batch, entry)
-	}
-	if len(batch) == 0 {
-		return nil
-	}
-	return handler(batch, batchMax, access.DefaultAuditPartition)
+	return nil
 }
 
 type klaviyoAuditEntry struct {

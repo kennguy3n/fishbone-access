@@ -14,6 +14,31 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// errBody is a response body whose Read fails after returning the opening
+// bytes, simulating a connection reset / TLS error mid-stream.
+type errBody struct{ read bool }
+
+func (b *errBody) Read(p []byte) (int, error) {
+	if !b.read {
+		b.read = true
+		p[0] = '{'
+		return 1, nil
+	}
+	return 0, errors.New("simulated connection reset")
+}
+func (b *errBody) Close() error { return nil }
+
+// errDoer returns a 200 response whose body errors mid-read.
+type errDoer struct{}
+
+func (errDoer) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       &errBody{},
+	}, nil
+}
+
 func TestIroncladFetchAccessAuditLogs_Maps(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/public/api/v1/audit-logs" {
@@ -145,5 +170,28 @@ func TestIroncladFetchAccessAuditLogs_EmitsPerPage(t *testing.T) {
 	}
 	if !last.Equal(time.Date(2024, 9, 2, 10, 0, 0, 0, time.UTC)) {
 		t.Errorf("final nextSince = %s; want 2024-09-02T10:00:00Z", last)
+	}
+}
+
+// TestIroncladFetchAccessAuditLogs_SurfacesReadError is a regression guard for
+// the read-error-swallowing class: a body that fails mid-read must abort the
+// sweep with a non-nil error rather than be treated as a (short/empty) page,
+// which would silently advance the cursor past unseen events. Representative
+// of the shared fix applied across the batch's audit readers.
+func TestIroncladFetchAccessAuditLogs_SurfacesReadError(t *testing.T) {
+	c := New()
+	c.urlOverride = "https://ironclad.example"
+	c.httpClient = func() httpDoer { return errDoer{} }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error {
+			t.Fatal("handler must not be called when the body read fails")
+			return nil
+		})
+	if err == nil {
+		t.Fatal("err = nil; want the read error surfaced, not swallowed")
+	}
+	if !strings.Contains(err.Error(), "connection reset") {
+		t.Fatalf("err = %v; want it to wrap the underlying read error", err)
 	}
 }

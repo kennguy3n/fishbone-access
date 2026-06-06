@@ -119,6 +119,70 @@ func TestKlaviyoFetchAccessAuditLogs_PaginatesByCursor(t *testing.T) {
 	}
 }
 
+// TestKlaviyoFetchAccessAuditLogs_EmitsPerPage is a regression guard for the
+// AccessAuditor contract: the handler must be invoked once per fetched page
+// (so the caller can persist nextSince as a monotonic cursor and resume
+// mid-sweep), not once at the end after buffering every page. Before the fix
+// klaviyo accumulated all pages into a single slice and called the handler a
+// single time, so this test (which asserts >=2 handler calls with a
+// non-decreasing per-call cursor) fails against the buffered implementation.
+func TestKlaviyoFetchAccessAuditLogs_EmitsPerPage(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&calls, 1)
+		switch n {
+		case 1:
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]interface{}{{
+					"type": "account-activity-log", "id": "aal-1",
+					"attributes": map[string]interface{}{"datetime": "2024-09-01T10:00:00Z", "action": "login"},
+				}},
+				"links": map[string]string{"next": "/api/account-activity-logs?page%5Bcursor%5D=cur2"},
+			})
+		case 2:
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]interface{}{{
+					"type": "account-activity-log", "id": "aal-2",
+					"attributes": map[string]interface{}{"datetime": "2024-09-01T11:00:00Z", "action": "logout"},
+				}},
+				"links": map[string]string{"next": ""},
+			})
+		default:
+			t.Errorf("unexpected call %d", n)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	var handlerCalls int
+	var sinces []time.Time
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{}, func(batch []*access.AuditLogEntry, n time.Time, _ string) error {
+			if len(batch) == 0 {
+				t.Errorf("handler called with empty batch")
+			}
+			handlerCalls++
+			sinces = append(sinces, n)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if handlerCalls != 2 {
+		t.Fatalf("handler calls = %d; want 2 (once per page, not buffered)", handlerCalls)
+	}
+	for i := 1; i < len(sinces); i++ {
+		if sinces[i].Before(sinces[i-1]) {
+			t.Fatalf("nextSince went backwards: %s then %s", sinces[i-1], sinces[i])
+		}
+	}
+	if !sinces[len(sinces)-1].Equal(time.Date(2024, 9, 1, 11, 0, 0, 0, time.UTC)) {
+		t.Fatalf("final nextSince = %s; want 2024-09-01T11:00:00Z", sinces[len(sinces)-1])
+	}
+}
+
 func TestKlaviyoFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
