@@ -39,6 +39,18 @@ func TestValidate_RejectsMissing(t *testing.T) {
 	}
 }
 
+// TestValidate_RequiresOrganizationID asserts that a missing organization_id is
+// caught at Validate() time (fail-closed) rather than being deferred to the
+// first sync/provision call. Every Meraki endpoint is org-scoped, so the field
+// is part of the typed Config and enforced by Config.validate().
+func TestValidate_RequiresOrganizationID(t *testing.T) {
+	c := New()
+	err := c.Validate(context.Background(), map[string]interface{}{}, validSecrets())
+	if err == nil || !strings.Contains(err.Error(), "organization_id") {
+		t.Fatalf("err = %v; want organization_id required at validate time", err)
+	}
+}
+
 func TestValidate_PureLocal(t *testing.T) {
 	prev := http.DefaultTransport
 	http.DefaultTransport = noNetworkRoundTripper{}

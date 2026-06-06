@@ -23,7 +23,15 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Config struct{}
+// Config carries the connector's non-secret settings. organization_id is
+// required: every Meraki Dashboard endpoint this connector calls
+// (getOrganizationAdmins, action batches, admin provision/revoke) is scoped
+// under /organizations/{organization_id}, so the value is decoded into the
+// typed Config and enforced by validate() — making Validate() fail closed at
+// connector-test time rather than deferring the error to the first sync.
+type Config struct {
+	OrganizationID string `json:"organization_id"`
+}
 
 type Secrets struct {
 	Token string `json:"token"`
@@ -41,7 +49,11 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	if raw == nil {
 		return Config{}, errors.New("meraki: config is nil")
 	}
-	return Config{}, nil
+	var cfg Config
+	if v, ok := raw["organization_id"].(string); ok {
+		cfg.OrganizationID = strings.TrimSpace(v)
+	}
+	return cfg, nil
 }
 
 func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
@@ -55,7 +67,12 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
-func (Config) validate() error { return nil }
+func (c Config) validate() error {
+	if c.OrganizationID == "" {
+		return errors.New("meraki: organization_id is required")
+	}
+	return nil
+}
 
 func (s Secrets) validate() error {
 	if strings.TrimSpace(s.Token) == "" {
@@ -135,15 +152,11 @@ func (c *MerakiAccessConnector) decodeBoth(configRaw, secretsRaw map[string]inte
 }
 
 func (c *MerakiAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return fmt.Errorf("meraki: organization_id is required")
-	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(orgID))
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(cfg.OrganizationID))
 	if err != nil {
 		return err
 	}
@@ -189,15 +202,11 @@ func (c *MerakiAccessConnector) SyncIdentities(
 	_ string,
 	handler func(batch []*access.Identity, nextCheckpoint string) error,
 ) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	orgID := merakiOrgIDFromConfig(configRaw)
-	if orgID == "" {
-		return fmt.Errorf("meraki: organization_id is required")
-	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(orgID))
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(cfg.OrganizationID))
 	if err != nil {
 		return err
 	}
