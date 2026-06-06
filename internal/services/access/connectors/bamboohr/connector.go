@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -64,9 +65,21 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
+// subdomainPattern restricts the configured subdomain to a single DNS
+// label (letters, digits, hyphen; not leading/trailing hyphen). The
+// subdomain is interpolated directly into hostnames in baseURL and
+// ssoBaseURL, so rejecting characters like '.', '/', '#' or '@' here
+// prevents a malformed config from producing a URL that points at an
+// unintended host.
+var subdomainPattern = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`)
+
 func (c Config) validate() error {
-	if strings.TrimSpace(c.Subdomain) == "" {
+	sub := strings.TrimSpace(c.Subdomain)
+	if sub == "" {
 		return errors.New("bamboohr: subdomain is required")
+	}
+	if !subdomainPattern.MatchString(sub) {
+		return fmt.Errorf("bamboohr: subdomain %q is not a valid hostname label", sub)
 	}
 	return nil
 }
@@ -525,9 +538,17 @@ func (c *BambooHRAccessConnector) ListEntitlements(
 	return out, nil
 }
 
-func (c *BambooHRAccessConnector) GetSSOMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (*access.SSOMetadata, error) {
-	cfg, _, err := c.decodeBoth(configRaw, secretsRaw)
+// GetSSOMetadata derives the SAML metadata endpoints from the tenant
+// subdomain alone. It deliberately does not validate secrets: SSO
+// metadata discovery must keep working when API credentials are absent,
+// rotated, or expired (matching the azure connector and the
+// SSOMetadataFromConfig-based connectors in this batch).
+func (c *BambooHRAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	host := c.ssoBaseURL(cfg)

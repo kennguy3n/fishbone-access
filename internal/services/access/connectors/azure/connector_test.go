@@ -409,6 +409,35 @@ func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_FollowsNextLinkAcrossPages exercises the
+// @odata.nextLink pagination loop and the urlOverride re-anchoring so a
+// principal with role assignments spread across pages is fully
+// enumerated (mirrors the audit.go re-anchor behavior).
+func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("$skiptoken") == "PAGE2" {
+			_, _ = w.Write([]byte(`{"value":[{"id":"ra2","name":"ra2","properties":{"roleDefinitionId":"role-2","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+			return
+		}
+		// First page advertises an absolute ARM nextLink; the connector
+		// must re-anchor it to the test server via urlOverride.
+		next := defaultARMBaseURL + "/subscriptions/sub-1/providers/Microsoft.Authorization/roleAssignments?api-version=" + armAPIVersion + "&$skiptoken=PAGE2"
+		_, _ = w.Write([]byte(`{"nextLink":"` + next + `","value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"role-1","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "principal-1")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(got) != 2 || got[0].ResourceExternalID != "role-1" || got[1].ResourceExternalID != "role-2" {
+		t.Fatalf("expected 2 roles across 2 pages, got = %+v", got)
+	}
+}
+
 func TestListEntitlements_4xxReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

@@ -518,7 +518,14 @@ func (c *AzureAccessConnector) ListEntitlements(
 		if page.NextLink == "" {
 			return out, nil
 		}
-		next = page.NextLink
+		// NextLink may be absolute; in tests we re-anchor to the
+		// urlOverride so the redirected server still receives it.
+		// Mirrors FetchAccessAuditLogs in audit.go.
+		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
+			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		} else {
+			next = page.NextLink
+		}
 	}
 }
 
