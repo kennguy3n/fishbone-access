@@ -1,6 +1,7 @@
 // Command ztna-api is the ShieldNet Access HTTP API. It boots a Gin server
-// exposing the access-platform endpoints, validates iam-core bearer tokens, and
-// blank-imports every connector so the process-global registry is populated.
+// exposing the access-platform endpoints and validates iam-core bearer tokens.
+// Provider connectors register themselves via the access registry; the binary
+// that wires in the connectors/all aggregator populates the process-global map.
 //
 // When ACCESS_DATABASE_URL is set the binary opens a GORM Postgres pool and
 // applies the SQL migrations in internal/migrations. When it is unset the
@@ -37,10 +38,6 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
-
-	// Blank-import the connector aggregator so every provider's init()
-	// registers it with the access registry.
-	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/all"
 )
 
 func main() {
