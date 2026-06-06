@@ -35,15 +35,17 @@ const (
 
 	// azureSyncMaxPages and azureEntitlementsMaxPages bound the
 	// @odata.nextLink pagination walks as defense-in-depth, mirroring
-	// azureAuditMaxPages and boxCollaborationsMaxPages. Both loops also
-	// stop naturally when nextLink is empty and check ctx.Err() each
+	// azureAuditMaxPages and boxCollaborationsMaxPages. Every walk also
+	// stops naturally when nextLink is empty and checks ctx.Err() each
 	// iteration; the caps only guard against a misbehaving upstream that
-	// keeps emitting fresh cursors. SyncIdentities walks the full
-	// directory (200 users/page) and reports its cursor to the handler
-	// every page, so reaching the cap simply defers the rest to the next
-	// sync cycle via the persisted checkpoint — no identities are
-	// dropped. The entitlements cap is small because role assignments for
-	// a single principal never span anywhere near this many pages.
+	// keeps emitting fresh cursors. azureSyncMaxPages covers all the
+	// directory walks — SyncIdentities (connector.go), SyncGroups and
+	// SyncGroupMembers (groups.go) — each of which walks 200 objects/page
+	// and reports its cursor to the handler every page, so reaching the
+	// cap simply defers the rest to the next sync cycle via the persisted
+	// checkpoint and no objects are dropped. The entitlements cap is
+	// small because role assignments for a single principal never span
+	// anywhere near this many pages.
 	azureSyncMaxPages         = 10000
 	azureEntitlementsMaxPages = 1000
 )

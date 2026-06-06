@@ -18,6 +18,16 @@ import (
 
 const ProviderName = "basecamp"
 
+// basecampSyncMaxPages bounds the account-directory /people.json
+// rel="next" walk in SyncIdentities as defense-in-depth, mirroring
+// basecampPeopleMaxPages (project rosters) and basecampAuditMaxPages.
+// The loop also stops naturally on an absent next link and checks
+// ctx.Err() each iteration. The cap is generous (account directories
+// dwarf single-project rosters); because SyncIdentities reports each
+// page's next-link to the handler as a checkpoint, hitting the cap just
+// defers the remainder to the next sync cycle — no identities dropped.
+const basecampSyncMaxPages = 10000
+
 var ErrNotImplemented = fmt.Errorf("basecamp: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
 
 type httpDoer interface {
@@ -256,7 +266,7 @@ func (c *BasecampAccessConnector) SyncIdentities(
 	if cp := strings.TrimSpace(checkpoint); cp != "" {
 		nextURL = cp
 	}
-	for nextURL != "" {
+	for page := 0; nextURL != "" && page < basecampSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
