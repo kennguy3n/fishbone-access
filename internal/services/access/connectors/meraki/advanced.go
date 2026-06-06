@@ -45,12 +45,12 @@ func (c *MerakiAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 	return resp.StatusCode, body, nil
 }
 
-func (c *MerakiAccessConnector) adminsURL() string {
-	return c.baseURL() + "/api/v1/admins"
+func (c *MerakiAccessConnector) adminsURL(orgID string) string {
+	return c.baseURL() + "/api/v1/organizations/" + url.PathEscape(strings.TrimSpace(orgID)) + "/admins"
 }
 
-func (c *MerakiAccessConnector) adminURL(adminID string) string {
-	return c.adminsURL() + "/" + url.PathEscape(strings.TrimSpace(adminID))
+func (c *MerakiAccessConnector) adminURL(orgID, adminID string) string {
+	return c.adminsURL(orgID) + "/" + url.PathEscape(strings.TrimSpace(adminID))
 }
 
 func (c *MerakiAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
@@ -78,11 +78,15 @@ func (c *MerakiAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	if err != nil {
 		return err
 	}
+	orgID := merakiOrgIDFromConfig(configRaw)
+	if orgID == "" {
+		return fmt.Errorf("meraki: organization_id is required")
+	}
 	payload, _ := json.Marshal(map[string]string{
 		"email":     strings.TrimSpace(grant.UserExternalID),
 		"orgAccess": strings.TrimSpace(grant.ResourceExternalID),
 	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(), payload)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(orgID), payload)
 	if err != nil {
 		return err
 	}
@@ -110,7 +114,11 @@ func (c *MerakiAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	if err != nil {
 		return err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(grant.UserExternalID), nil)
+	orgID := merakiOrgIDFromConfig(configRaw)
+	if orgID == "" {
+		return fmt.Errorf("meraki: organization_id is required")
+	}
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(orgID, grant.UserExternalID), nil)
 	if err != nil {
 		return err
 	}
@@ -139,7 +147,11 @@ func (c *MerakiAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(user), nil)
+	orgID := merakiOrgIDFromConfig(configRaw)
+	if orgID == "" {
+		return nil, fmt.Errorf("meraki: organization_id is required")
+	}
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(orgID, user), nil)
 	if err != nil {
 		return nil, err
 	}

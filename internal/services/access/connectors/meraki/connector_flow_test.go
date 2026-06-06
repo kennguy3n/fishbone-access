@@ -12,7 +12,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-func merakiValidConfig() map[string]interface{} { return map[string]interface{}{} }
+func merakiValidConfig() map[string]interface{} {
+	return map[string]interface{}{"organization_id": "1234567"}
+}
 func merakiValidSecrets() map[string]interface{} {
 	return map[string]interface{}{"token": "meraki-api-key-AAAA"}
 }
@@ -27,7 +29,7 @@ func TestMerakiConnectorFlow_FullLifecycle(t *testing.T) {
 		if strings.TrimSpace(r.Header.Get("X-Cisco-Meraki-API-Key")) == "" {
 			t.Errorf("api key missing")
 		}
-		admins := "/api/v1/admins"
+		admins := "/api/v1/organizations/1234567/admins"
 		adminPath := admins + "/" + user
 		mu.Lock()
 		defer mu.Unlock()

@@ -9,17 +9,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-const (
-	ProviderName = "meraki"
-	pageSize     = 100
-)
+const ProviderName = "meraki"
 
 var ErrNotImplemented = fmt.Errorf("meraki: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
 
@@ -143,9 +139,11 @@ func (c *MerakiAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	q := url.Values{"page": []string{"1"}, "per_page": []string{"1"}}
-	probe := c.baseURL() + "/api/v1/admins?" + q.Encode()
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
+	orgID := merakiOrgIDFromConfig(configRaw)
+	if orgID == "" {
+		return fmt.Errorf("meraki: organization_id is required")
+	}
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(orgID))
 	if err != nil {
 		return err
 	}
@@ -176,10 +174,6 @@ type merakiUser struct {
 	Name  string `json:"name"`
 }
 
-type merakiListResponse struct {
-	Items []merakiUser `json:"data"`
-}
-
 func (c *MerakiAccessConnector) CountIdentities(ctx context.Context, configRaw, secretsRaw map[string]interface{}) (int, error) {
 	count := 0
 	err := c.SyncIdentities(ctx, configRaw, secretsRaw, "", func(b []*access.Identity, _ string) error {
@@ -192,65 +186,46 @@ func (c *MerakiAccessConnector) CountIdentities(ctx context.Context, configRaw, 
 func (c *MerakiAccessConnector) SyncIdentities(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
-	checkpoint string,
+	_ string,
 	handler func(batch []*access.Identity, nextCheckpoint string) error,
 ) error {
 	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	page := 1
-	if checkpoint != "" {
-		_, _ = fmt.Sscanf(checkpoint, "%d", &page)
-		if page < 1 {
-			page = 1
-		}
+	orgID := merakiOrgIDFromConfig(configRaw)
+	if orgID == "" {
+		return fmt.Errorf("meraki: organization_id is required")
 	}
-	base := c.baseURL()
-	for {
-		q := url.Values{
-			"page":     []string{fmt.Sprintf("%d", page)},
-			"per_page": []string{fmt.Sprintf("%d", pageSize)},
-		}
-		path := base + "/api/v1/admins?" + q.Encode()
-		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
-		if err != nil {
-			return err
-		}
-		body, err := c.do(req)
-		if err != nil {
-			return err
-		}
-		var resp merakiListResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return fmt.Errorf("meraki: decode users: %w", err)
-		}
-		identities := make([]*access.Identity, 0, len(resp.Items))
-		for _, u := range resp.Items {
-			display := strings.TrimSpace(u.Name)
-			if display == "" {
-				display = u.Email
-			}
-			identities = append(identities, &access.Identity{
-				ExternalID:  u.ID,
-				Type:        access.IdentityTypeUser,
-				DisplayName: display,
-				Email:       u.Email,
-				Status:      "active",
-			})
-		}
-		next := ""
-		if len(resp.Items) == pageSize {
-			next = fmt.Sprintf("%d", page+1)
-		}
-		if err := handler(identities, next); err != nil {
-			return err
-		}
-		if next == "" {
-			return nil
-		}
-		page++
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.adminsURL(orgID))
+	if err != nil {
+		return err
 	}
+	body, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	// getOrganizationAdmins returns a bare JSON array of admins and is not a
+	// paginated endpoint, so a single request yields the complete set.
+	var admins []merakiUser
+	if err := json.Unmarshal(body, &admins); err != nil {
+		return fmt.Errorf("meraki: decode admins: %w", err)
+	}
+	identities := make([]*access.Identity, 0, len(admins))
+	for _, u := range admins {
+		display := strings.TrimSpace(u.Name)
+		if display == "" {
+			display = u.Email
+		}
+		identities = append(identities, &access.Identity{
+			ExternalID:  u.ID,
+			Type:        access.IdentityTypeUser,
+			DisplayName: display,
+			Email:       u.Email,
+			Status:      "active",
+		})
+	}
+	return handler(identities, "")
 }
 
 func (c *MerakiAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
