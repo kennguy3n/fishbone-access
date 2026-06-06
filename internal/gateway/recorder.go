@@ -135,6 +135,12 @@ func (r *IORecorder) appendLocked(dir Direction, at time.Time, payload []byte) {
 	}
 	if r.buf.Len()+frameHeaderLen+len(payload) > r.maxBytes {
 		r.truncated = true
+		// The marker is always emitted so the transcript records that bytes were
+		// dropped (a silent stop would be worse for audit). buf.Len() was kept
+		// <= maxBytes by the prior frame, so the final buffer is bounded by
+		// maxBytes + this marker frame — a fixed, content-independent overshoot,
+		// not attacker-amplifiable. The cap is a soft growth guard, not a hard
+		// allocation limit, so we don't reserve headroom for it.
 		r.writeFrameLocked(DirControl, at, []byte("[recording truncated: size cap reached]"))
 		return
 	}
