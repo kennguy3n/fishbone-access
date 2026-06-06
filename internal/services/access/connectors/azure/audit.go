@@ -137,6 +137,13 @@ func mapAzureActivityEvent(e *azureActivityEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339, e.EventTimestamp)
+	if ts.IsZero() {
+		// Drop events whose timestamp cannot be parsed: a zero
+		// timestamp would not advance the watermark cursor and would
+		// be re-fetched every sync cycle. Matches the other audit
+		// mappers in this package set.
+		return nil
+	}
 	outcome := strings.ToLower(strings.TrimSpace(e.Status.Value))
 	if outcome == "" {
 		outcome = "unknown"

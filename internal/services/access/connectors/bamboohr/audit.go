@@ -128,6 +128,12 @@ func mapBambooChangedEvent(c *bambooChangedEmployee) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseBambooTime(c.LastChanged)
+	if ts.IsZero() {
+		// Drop changes with an unparseable lastChanged: a zero
+		// timestamp would not advance the batchMax cursor and would be
+		// re-fetched on every sync. Matches the other audit mappers.
+		return nil
+	}
 	action := strings.ToLower(strings.TrimSpace(c.Action))
 	if action == "" {
 		action = "updated"

@@ -132,6 +132,12 @@ func mapBoxEvent(e *boxEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseBoxTime(e.CreatedAt)
+	if ts.IsZero() {
+		// Drop events with an unparseable created_at: a zero
+		// timestamp does not advance the batchMax cursor and would be
+		// re-emitted on every sync. Matches the other audit mappers.
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

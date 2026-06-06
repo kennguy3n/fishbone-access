@@ -476,12 +476,20 @@ func (c *AzureAccessConnector) ListEntitlements(
 		return nil, err
 	}
 	client := c.armClient(ctx, cfg, secrets)
+	// Escape per OData (double single quotes) and URL-encode the literal
+	// before embedding into $filter so a principal id containing quotes
+	// cannot break out of the filter string. Mirrors the escaping in
+	// GetCredentialsMetadata.
+	escapedPrincipalID := strings.ReplaceAll(userExternalID, "'", "''")
 	path := fmt.Sprintf("/subscriptions/%s/providers/Microsoft.Authorization/roleAssignments?api-version=%s&$filter=%s",
 		url.PathEscape(cfg.SubscriptionID), armAPIVersion,
-		url.QueryEscape("principalId eq '"+userExternalID+"'"))
+		url.QueryEscape("principalId eq '"+escapedPrincipalID+"'"))
 	next := c.armURL(path)
 	var out []access.Entitlement
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, next, nil)
 		if err != nil {
 			return nil, err

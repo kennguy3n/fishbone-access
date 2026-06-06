@@ -391,6 +391,24 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 	}
 }
 
+func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A single quote in the principal id must be doubled per OData
+		// so it cannot break out of the filter string literal.
+		if got := r.URL.Query().Get("$filter"); got != "principalId eq 'p''1 or 1 eq 1'" {
+			t.Fatalf("$filter = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	if _, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "p'1 or 1 eq 1"); err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+}
+
 func TestListEntitlements_4xxReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
