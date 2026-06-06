@@ -17,12 +17,19 @@ import (
 //
 // It is purely informational: simulation never mutates the data plane.
 type ImpactReport struct {
-	Action            string   `json:"action"`
-	SubjectCount      int      `json:"subject_count"`
-	ResourceCount     int      `json:"resource_count"`
+	Action        string `json:"action"`
+	SubjectCount  int    `json:"subject_count"`
+	ResourceCount int    `json:"resource_count"`
+	// PairCount counts only the enumerable (subject, concrete-resource) pairs,
+	// so the invariant PairCount == NewGrantPairs + RedundantPairs always holds
+	// for a grant policy. A "*" resource cannot be expanded into concrete pairs;
+	// when present WildcardResource is true and the wildcard is excluded from
+	// PairCount (it is surfaced via WildcardResource instead of being silently
+	// dropped from an otherwise-inconsistent total).
 	PairCount         int      `json:"pair_count"`
 	NewGrantPairs     int      `json:"new_grant_pairs"`
 	RedundantPairs    int      `json:"redundant_pairs"`
+	WildcardResource  bool     `json:"wildcard_resource"`
 	AffectedGrants    int      `json:"affected_grants"`
 	AffectedSubjects  []string `json:"affected_subjects"`
 	AffectedResources []string `json:"affected_resources"`
@@ -63,18 +70,24 @@ func (r *ImpactResolver) ResolveImpact(ctx context.Context, workspaceID uuid.UUI
 	}
 
 	resourceWildcard := false
+	concreteResources := 0
 	for _, res := range def.Resources {
 		if res == "*" {
 			resourceWildcard = true
-			break
+			continue
 		}
+		concreteResources++
 	}
 
 	report := ImpactReport{
-		Action:            def.Action,
-		SubjectCount:      len(def.Subjects),
-		ResourceCount:     len(def.Resources),
-		PairCount:         len(def.Subjects) * len(def.Resources),
+		Action:        def.Action,
+		SubjectCount:  len(def.Subjects),
+		ResourceCount: len(def.Resources),
+		// Only concrete resources are enumerable into pairs; a "*" is reported
+		// via WildcardResource rather than counted, keeping PairCount consistent
+		// with NewGrantPairs + RedundantPairs.
+		PairCount:         len(def.Subjects) * concreteResources,
+		WildcardResource:  resourceWildcard,
 		AffectedSubjects:  append([]string(nil), def.Subjects...),
 		AffectedResources: append([]string(nil), def.Resources...),
 	}

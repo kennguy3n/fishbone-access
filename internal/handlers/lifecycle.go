@@ -693,7 +693,11 @@ func bind(c *gin.Context, dst any) bool {
 // bindOptional decodes a body that may be empty (e.g. an action with only an
 // optional reason). An empty body is fine; a malformed non-empty body is 400.
 func bindOptional(c *gin.Context, dst any) bool {
-	if c.Request == nil || c.Request.Body == nil || c.Request.ContentLength == 0 {
+	// ContentLength is 0 for an explicitly empty body and -1 when the client
+	// sent no Content-Length header at all (e.g. a bodyless POST or chunked
+	// encoding). Both mean "no body to bind", so treat <= 0 as empty; otherwise
+	// ShouldBindJSON would read EOF and 400 a legitimate bodyless request.
+	if c.Request == nil || c.Request.Body == nil || c.Request.ContentLength <= 0 {
 		return true
 	}
 	if err := c.ShouldBindJSON(dst); err != nil {
@@ -712,7 +716,8 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 	case errors.Is(err, lifecycle.ErrRequestNotFound),
 		errors.Is(err, lifecycle.ErrPolicyNotFound),
 		errors.Is(err, lifecycle.ErrReviewNotFound),
-		errors.Is(err, lifecycle.ErrGrantNotFound):
+		errors.Is(err, lifecycle.ErrGrantNotFound),
+		errors.Is(err, lifecycle.ErrOrphanNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrInvalidStateTransition),
 		errors.Is(err, lifecycle.ErrReviewClosed),

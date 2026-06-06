@@ -165,3 +165,41 @@ func TestPolicyPromoteRequiresMFA(t *testing.T) {
 		t.Fatalf("promote with MFA = %d, want 200, body=%s", w.Code, w.Body.String())
 	}
 }
+
+// TestOptionalBodyEndpointAcceptsNoContentLength proves an optional-body action
+// (cancel) succeeds when the client sends no Content-Length header. Go reports
+// ContentLength == -1 for such requests; bindOptional must treat that as "no
+// body" rather than feeding an empty reader to ShouldBindJSON (which would EOF
+// and 400). httptest.NewRequest with a *bytes.Buffer sets a real length, so this
+// builds the request directly to exercise the -1 path.
+func TestOptionalBodyEndpointAcceptsNoContentLength(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+
+	// tenant-a creates a high-risk (parked, cancellable) request.
+	w := do(t, r, http.MethodPost, "/api/v1/access-requests", "tok-a", map[string]any{
+		"target_user_id": "ext-user",
+		"resource_ref":   "app:db",
+		"role":           "reader",
+		"risk_level":     "high",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var created struct {
+		Request models.AccessRequest `json:"request"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	id := created.Request.ID.String()
+
+	// Bodyless POST with no Content-Length header (ContentLength == -1).
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/access-requests/"+id+"/cancel", http.NoBody)
+	req.ContentLength = -1
+	req.Header.Set("Authorization", "Bearer tok-a")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cancel with no Content-Length = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+}

@@ -152,6 +152,10 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 		GrantedAt:     now,
 		ExpiresAt:     req.ExpiresAt,
 	}
+	// Assign the id up front rather than relying on the BeforeCreate hook so the
+	// audit event below records the real grant id regardless of GORM callback
+	// ordering (a zero id in the audit trail would be silently wrong).
+	row.ID = uuid.New()
 	row.CreatedAt = now
 	row.UpdatedAt = now
 

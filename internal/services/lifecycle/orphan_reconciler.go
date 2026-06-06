@@ -180,7 +180,7 @@ func (s *OrphanReconciler) SetDisposition(ctx context.Context, workspaceID, orph
 		Where("workspace_id = ? AND id = ?", workspaceID, orphanID).
 		Take(&orphan).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrGrantNotFound
+		return ErrOrphanNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("lifecycle: load orphan: %w", err)

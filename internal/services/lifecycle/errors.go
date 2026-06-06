@@ -31,6 +31,10 @@ var (
 	// ErrGrantNotFound is returned when a grant id matches no live row.
 	ErrGrantNotFound = errors.New("lifecycle: access grant not found")
 
+	// ErrOrphanNotFound is returned when an orphan-account id matches no row
+	// in the caller's workspace.
+	ErrOrphanNotFound = errors.New("lifecycle: orphan account not found")
+
 	// ErrAlreadyRevoked is returned by the provisioning service when Revoke is
 	// called on a grant whose RevokedAt is already set.
 	ErrAlreadyRevoked = errors.New("lifecycle: access grant already revoked")

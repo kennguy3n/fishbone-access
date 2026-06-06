@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -244,6 +245,33 @@ func TestConflictDetectorGrantVsDeny(t *testing.T) {
 	}
 }
 
+func TestImpactReportWildcardPairCountConsistent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	r := NewImpactResolver(db)
+	ctx := context.Background()
+
+	// A wildcard resource cannot be enumerated into concrete pairs. PairCount
+	// must therefore exclude it (counting only concrete resources) so the
+	// invariant PairCount == NewGrantPairs + RedundantPairs still holds, and
+	// WildcardResource must flag that a "*" was present.
+	def := PolicyDefinition{Action: PolicyActionGrant, Subjects: []string{"u1", "u2"}, Resources: []string{"app:db", "*"}, Role: "reader"}
+	rep, err := r.ResolveImpact(ctx, ws, def)
+	if err != nil {
+		t.Fatalf("ResolveImpact: %v", err)
+	}
+	if !rep.WildcardResource {
+		t.Fatal("expected WildcardResource=true when resources include \"*\"")
+	}
+	// 2 subjects × 1 concrete resource ("app:db"); "*" excluded.
+	if rep.PairCount != 2 {
+		t.Fatalf("expected pair_count 2 (wildcard excluded), got %d", rep.PairCount)
+	}
+	if rep.PairCount != rep.NewGrantPairs+rep.RedundantPairs {
+		t.Fatalf("pair_count %d != new %d + redundant %d", rep.PairCount, rep.NewGrantPairs, rep.RedundantPairs)
+	}
+}
+
 func TestReviewCampaignCertifyAndRevoke(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -465,6 +493,13 @@ func TestOrphanReconcilerDryRunAndDisposition(t *testing.T) {
 	reloaded, _ := rec.ListOrphans(ctx, ws)
 	if reloaded[0].Disposition != OrphanDispositionIgnore {
 		t.Fatalf("expected ignore disposition, got %s", reloaded[0].Disposition)
+	}
+
+	// A disposition on an unknown orphan id must report the orphan-specific
+	// not-found sentinel (not ErrGrantNotFound), so the REST layer returns an
+	// accurate 404 message.
+	if err := rec.SetDisposition(ctx, ws, uuid.New(), OrphanDispositionIgnore, "admin"); !errors.Is(err, ErrOrphanNotFound) {
+		t.Fatalf("expected ErrOrphanNotFound for missing orphan, got %v", err)
 	}
 }
 

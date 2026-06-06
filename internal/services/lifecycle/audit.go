@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -14,6 +15,28 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
+
+// auditChainLockNamespace salts the per-workspace advisory-lock key so it can
+// never collide with the migration runner's advisory lock (which uses a
+// different fixed key).
+const auditChainLockNamespace uint64 = 0x4155_4449_5443_4841 // "AUDITCHA"
+
+// lockAuditChain serializes audit appends per workspace on Postgres by taking a
+// transaction-scoped advisory lock keyed on the workspace id. Without it, two
+// concurrent transactions at READ COMMITTED could both read the same chain head
+// and fork the hash chain. The lock is released automatically when tx commits
+// or rolls back. On non-Postgres dialects (e.g. the SQLite test path, which
+// serializes writers with a single global write lock) this is a no-op.
+func lockAuditChain(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID) error {
+	if tx.Dialector == nil || tx.Name() != "postgres" {
+		return nil
+	}
+	key := int64(binary.BigEndian.Uint64(workspaceID[:8]) ^ auditChainLockNamespace)
+	if err := tx.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(?)", key).Error; err != nil {
+		return fmt.Errorf("lifecycle: lock audit chain: %w", err)
+	}
+	return nil
+}
 
 // auditEntry is the high-level description of an action to record. The chain
 // bookkeeping (prev/chain hash, timestamps, id) is filled in by appendAudit.
@@ -40,6 +63,12 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	}
 	if e.Action == "" {
 		return fmt.Errorf("%w: audit event requires an action", ErrValidation)
+	}
+
+	// Serialize concurrent appends in this workspace so the read-head/insert
+	// pair below is atomic and the chain cannot fork (see lockAuditChain).
+	if err := lockAuditChain(ctx, tx, e.WorkspaceID); err != nil {
+		return err
 	}
 
 	var prev models.AuditEvent
