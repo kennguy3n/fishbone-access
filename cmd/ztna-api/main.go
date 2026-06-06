@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -144,6 +145,12 @@ func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 	}
 	sqlDB, err := gdb.DB()
 	if err != nil {
+		// gdb.DB() only fails when the pool isn't a *sql.DB (never with the
+		// postgres driver today), but close defensively so a future driver swap
+		// can't leak the pool — mirroring the migration-failure path below.
+		if closer, ok := gdb.ConnPool.(io.Closer); ok {
+			_ = closer.Close()
+		}
 		return nil, err
 	}
 	applied, err := migrations.Run(ctx, sqlDB)

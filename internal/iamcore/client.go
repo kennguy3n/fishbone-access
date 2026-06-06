@@ -17,6 +17,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/config"
 )
 
+// tokenMintTimeout bounds a single client_credentials mint. The mint runs on a
+// context detached from any one caller's request (see accessToken), so it needs
+// its own deadline to avoid hanging forever if the caller-supplied http.Client
+// has no timeout of its own.
+const tokenMintTimeout = 15 * time.Second
+
 // ManagementClient calls iam-core's audience-restricted Management API
 // (/api/v1/management/*) and Connections API. It authenticates with a
 // client_credentials access token minted at /oauth2/token, cached until just
@@ -95,7 +101,17 @@ func (c *ManagementClient) accessToken(ctx context.Context) (string, error) {
 		if tok, ok := c.cachedToken(); ok {
 			return tok, nil
 		}
-		return c.mintToken(ctx)
+		// Detach from the leader's context. The minted token is shared by every
+		// concurrent waiter in this singleflight round, so it must not be tied
+		// to the first caller's request lifecycle: if we passed ctx and that
+		// caller cancelled (client disconnect / request timeout), the mint would
+		// fail and cascade the same cancellation error to all waiters whose own
+		// contexts are still valid. Give the mint its own bounded deadline so a
+		// detached context can't hang indefinitely. (Same rationale as the
+		// context.WithoutCancel used for the migrations advisory-lock release.)
+		mintCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), tokenMintTimeout)
+		defer cancel()
+		return c.mintToken(mintCtx)
 	})
 	if err != nil {
 		return "", err
@@ -161,22 +177,42 @@ func (c *ManagementClient) mintToken(ctx context.Context) (string, error) {
 	return tr.AccessToken, nil
 }
 
+// do issues an authenticated management request, retrying once if the server
+// rejects the (possibly cached) token with 401. iam-core may revoke a token or
+// rotate signing keys before our client-side TTL elapses; without this a stale
+// cached token would keep failing every call until expiry (up to expires_in-30s
+// of dead time). On a 401 we drop the cached token and retry with a freshly
+// minted one. Exactly one retry: a second 401 means the credentials themselves
+// are rejected, not that the cache was stale, so we surface that error instead
+// of looping.
 func (c *ManagementClient) do(ctx context.Context, method, path string, body, out any) error {
+	status, err := c.doAttempt(ctx, method, path, body, out)
+	if err != nil && status == http.StatusUnauthorized {
+		c.invalidateToken()
+		_, err = c.doAttempt(ctx, method, path, body, out)
+	}
+	return err
+}
+
+// doAttempt performs a single authenticated management request. It returns the
+// HTTP status code (0 when the request never reached the server) alongside any
+// error so do can decide whether a 401 retry is warranted.
+func (c *ManagementClient) doAttempt(ctx context.Context, method, path string, body, out any) (int, error) {
 	tok, err := c.accessToken(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var rdr io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		rdr = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.mgmtBase+path, rdr)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req.Header.Set("Authorization", "Bearer "+tok)
 	if body != nil {
@@ -184,17 +220,29 @@ func (c *ManagementClient) do(ctx context.Context, method, path string, body, ou
 	}
 	resp, err := c.httpc.Do(req)
 	if err != nil {
-		return fmt.Errorf("iamcore: %s %s: %w", method, path, err)
+		return 0, fmt.Errorf("iamcore: %s %s: %w", method, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("iamcore: %s %s status %d: %s", method, path, resp.StatusCode, string(snippet))
+		return resp.StatusCode, fmt.Errorf("iamcore: %s %s status %d: %s", method, path, resp.StatusCode, string(snippet))
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+			return resp.StatusCode, err
+		}
 	}
-	return nil
+	return resp.StatusCode, nil
+}
+
+// invalidateToken drops the cached token so the next accessToken call mints a
+// fresh one. Called after a management endpoint returns 401 (server-side
+// revocation or key rotation that happened before our client-side TTL).
+func (c *ManagementClient) invalidateToken() {
+	c.mu.Lock()
+	c.token = ""
+	c.tokenExp = time.Time{}
+	c.mu.Unlock()
 }
 
 // CreateUser provisions a user in iam-core (POST /api/v1/management/users).
