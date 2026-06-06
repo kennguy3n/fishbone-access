@@ -82,18 +82,22 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
-func TestFetchAccessAuditLogs_Forbidden_SoftSkip(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-	}))
-	t.Cleanup(server.Close)
-	c := New()
-	c.urlOverride = server.URL
-	c.httpClient = func() httpDoer { return server.Client() }
-	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
-		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
-		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
-	if err != access.ErrAuditNotAvailable {
-		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			}))
+			t.Cleanup(server.Close)
+			c := New()
+			c.urlOverride = server.URL
+			c.httpClient = func() httpDoer { return server.Client() }
+			err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+				map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+				func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+			if err != access.ErrAuditNotAvailable {
+				t.Fatalf("status %d: err = %v; want ErrAuditNotAvailable", status, err)
+			}
+		})
 	}
 }

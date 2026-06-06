@@ -50,8 +50,11 @@ func (c *SentryAccessConnector) FetchAccessAuditLogs(
 		}
 		resp, err := c.doRaw(req)
 		if err != nil {
-			if resp != nil && resp.StatusCode == http.StatusForbidden {
-				return access.ErrAuditNotAvailable
+			if resp != nil {
+				switch resp.StatusCode {
+				case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+					return access.ErrAuditNotAvailable
+				}
 			}
 			return err
 		}

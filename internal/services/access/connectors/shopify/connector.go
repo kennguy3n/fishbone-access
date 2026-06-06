@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -121,16 +122,24 @@ func (c *ShopifyAccessConnector) newRequest(ctx context.Context, secrets Secrets
 }
 
 func (c *ShopifyAccessConnector) do(req *http.Request) ([]byte, error) {
+	body, _, err := c.doWithHeader(req)
+	return body, err
+}
+
+// doWithHeader performs the request and returns the body together with
+// the response headers so callers can read the RFC 5988 `Link` header
+// Shopify uses for cursor pagination.
+func (c *ShopifyAccessConnector) doWithHeader(req *http.Request) ([]byte, http.Header, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("shopify: %s %s: %w", req.Method, req.URL.Path, err)
+		return nil, nil, fmt.Errorf("shopify: %s %s: %w", req.Method, req.URL.Path, err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("shopify: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return nil, nil, fmt.Errorf("shopify: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 	}
-	return body, nil
+	return body, resp.Header, nil
 }
 
 func (c *ShopifyAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
@@ -186,8 +195,31 @@ type shopifyUser struct {
 }
 
 type shopifyListResponse struct {
-	Items        []shopifyUser `json:"users"`
-	NextPageInfo string        `json:"next_page_info"`
+	Items []shopifyUser `json:"users"`
+}
+
+// shopifyLinkNextPattern captures the URL of the rel="next" entry in a
+// Shopify Link header, e.g.
+//
+//	<https://shop.myshopify.com/admin/api/2024-01/users.json?limit=100&page_info=abc>; rel="next"
+var shopifyLinkNextPattern = regexp.MustCompile(`<([^>]+)>\s*;\s*rel="next"`)
+
+// nextPageInfoFromLink extracts the page_info cursor from the rel="next"
+// entry of a Shopify Link header. It returns "" when there is no next
+// page, which terminates pagination.
+func nextPageInfoFromLink(linkHeader string) string {
+	if strings.TrimSpace(linkHeader) == "" {
+		return ""
+	}
+	m := shopifyLinkNextPattern.FindStringSubmatch(linkHeader)
+	if len(m) < 2 {
+		return ""
+	}
+	u, err := url.Parse(m[1])
+	if err != nil {
+		return ""
+	}
+	return u.Query().Get("page_info")
 }
 
 func (c *ShopifyAccessConnector) CountIdentities(ctx context.Context, configRaw, secretsRaw map[string]interface{}) (int, error) {
@@ -224,7 +256,7 @@ func (c *ShopifyAccessConnector) SyncIdentities(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		body, header, err := c.doWithHeader(req)
 		if err != nil {
 			return err
 		}
@@ -246,10 +278,7 @@ func (c *ShopifyAccessConnector) SyncIdentities(
 				Status:      "active",
 			})
 		}
-		next := ""
-		if strings.TrimSpace(resp.NextPageInfo) != "" {
-			next = strings.TrimSpace(resp.NextPageInfo)
-		}
+		next := nextPageInfoFromLink(header.Get("Link"))
 		if err := handler(identities, next); err != nil {
 			return err
 		}
