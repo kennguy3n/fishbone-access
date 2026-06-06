@@ -7,10 +7,21 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+)
+
+const (
+	cloudflareAuditPageSize = 100
+	// cloudflareAuditMaxPages bounds pagination so an inflated
+	// ResultInfo.TotalPages (a broad multi-year window, or an API bug)
+	// cannot pin a worker goroutine in an excessive request loop. Matches
+	// the cap used by every other audit connector in this PR
+	// (buildium/checkpoint/circleci/clio/close/cloudsigma/clickup = 200).
+	cloudflareAuditMaxPages = 200
 )
 
 // FetchAccessAuditLogs streams Cloudflare audit log events into the
@@ -35,14 +46,13 @@ func (c *CloudflareAccessConnector) FetchAccessAuditLogs(
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
-	page := 1
-	for {
+	for page := 1; page <= cloudflareAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		q := url.Values{}
-		q.Set("per_page", "100")
-		q.Set("page", fmt.Sprintf("%d", page))
+		q.Set("per_page", strconv.Itoa(cloudflareAuditPageSize))
+		q.Set("page", strconv.Itoa(page))
 		q.Set("direction", "asc")
 		if !since.IsZero() {
 			q.Set("since", since.UTC().Format(time.RFC3339))
@@ -92,8 +102,8 @@ func (c *CloudflareAccessConnector) FetchAccessAuditLogs(
 		if resp.ResultInfo.TotalPages <= page || len(resp.Result) == 0 {
 			return nil
 		}
-		page++
 	}
+	return nil
 }
 
 type cfAuditLogPage struct {

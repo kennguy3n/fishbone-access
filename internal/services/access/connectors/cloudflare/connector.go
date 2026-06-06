@@ -228,7 +228,7 @@ func (c *CloudflareAccessConnector) Connect(ctx context.Context, configRaw, secr
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+cfg.AccountID+"/members?per_page=1")
+	req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+url.PathEscape(cfg.AccountID)+"/members?per_page=1")
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func (c *CloudflareAccessConnector) VerifyPermissions(
 	for _, cap := range capabilities {
 		switch cap {
 		case "sync_identity":
-			req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+cfg.AccountID+"/members?per_page=1")
+			req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+url.PathEscape(cfg.AccountID)+"/members?per_page=1")
 			if err != nil {
 				missing = append(missing, fmt.Sprintf("sync_identity (%v)", err))
 				continue
@@ -297,7 +297,7 @@ func (c *CloudflareAccessConnector) CountIdentities(ctx context.Context, configR
 	if err != nil {
 		return 0, err
 	}
-	req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+cfg.AccountID+"/members?per_page=1")
+	req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, "/accounts/"+url.PathEscape(cfg.AccountID)+"/members?per_page=1")
 	if err != nil {
 		return 0, err
 	}
@@ -330,7 +330,7 @@ func (c *CloudflareAccessConnector) SyncIdentities(
 		}
 	}
 	for {
-		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", cfg.AccountID, perPage, page)
+		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", url.PathEscape(cfg.AccountID), perPage, page)
 		req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -472,7 +472,7 @@ func (c *CloudflareAccessConnector) findMemberIDByEmail(ctx context.Context, sec
 	const perPage = 50
 	page := 1
 	for {
-		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", cfg.AccountID, perPage, page)
+		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", url.PathEscape(cfg.AccountID), perPage, page)
 		req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, path)
 		if err != nil {
 			return "", err
