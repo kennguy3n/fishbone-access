@@ -2,7 +2,9 @@ package notion
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -301,5 +303,100 @@ func TestSyncIdentities_EncodesCursor(t *testing.T) {
 	}
 	if gotCursor != weird {
 		t.Fatalf("start_cursor = %q; want %q", gotCursor, weird)
+	}
+}
+
+// captureProvisionRole runs ProvisionAccess against a mock that records the
+// "role" sent in the first permissions entry of the PATCH body.
+func captureProvisionRole(t *testing.T, grant access.AccessGrant) string {
+	t.Helper()
+	var gotRole string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var body struct {
+			Permissions []struct {
+				Role string `json:"role"`
+			} `json:"permissions"`
+		}
+		_ = json.Unmarshal(raw, &body)
+		if len(body.Permissions) > 0 {
+			gotRole = body.Permissions[0].Role
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.ProvisionAccess(context.Background(), nil, validSecrets(), grant); err != nil {
+		t.Fatalf("ProvisionAccess: %v", err)
+	}
+	return gotRole
+}
+
+// TestProvisionAccess_HonorsGrantRole verifies the connector forwards the
+// caller's requested role instead of hardcoding "editor". Pre-fix the payload
+// always carried "editor", so a read-only grant was silently escalated to
+// write access.
+func TestProvisionAccess_HonorsGrantRole(t *testing.T) {
+	if got := captureProvisionRole(t, access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "page-1", Role: "reader"}); got != "reader" {
+		t.Errorf("role=%q; want the requested role \"reader\" (not a hardcoded editor)", got)
+	}
+	// An unset role falls back to the historical "editor" default.
+	if got := captureProvisionRole(t, access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "page-1"}); got != "editor" {
+		t.Errorf("role=%q; want default \"editor\" when grant.Role is empty", got)
+	}
+}
+
+// TestRevokeAccess_Accepts2xx verifies RevokeAccess treats the full 2xx range
+// as success. Pre-fix only 200/404 were accepted, so a 204 No Content (a
+// plausible response for a permission-clearing PATCH) was wrongly surfaced as
+// an error to the leaver flow.
+func TestRevokeAccess_Accepts2xx(t *testing.T) {
+	for _, status := range []int{http.StatusNoContent, http.StatusAccepted} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+		}))
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		if err := c.RevokeAccess(context.Background(), nil, validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "page-1"}); err != nil {
+			t.Errorf("RevokeAccess on %d: %v; want nil (2xx is success)", status, err)
+		}
+		srv.Close()
+	}
+}
+
+// TestProvisionRevoke_RejectWhitespaceIDs verifies grant IDs are trimmed before
+// the emptiness check, matching every other connector in the batch — a
+// whitespace-only ID must be a clean validation error, not sent to the API.
+func TestProvisionRevoke_RejectWhitespaceIDs(t *testing.T) {
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits++
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cases := []access.AccessGrant{
+		{UserExternalID: "   ", ResourceExternalID: "page-1"},
+		{UserExternalID: "u-1", ResourceExternalID: "  "},
+	}
+	for _, g := range cases {
+		if err := c.ProvisionAccess(context.Background(), nil, validSecrets(), g); err == nil {
+			t.Errorf("ProvisionAccess(%+v): err=nil; want validation error", g)
+		}
+		if err := c.RevokeAccess(context.Background(), nil, validSecrets(), g); err == nil {
+			t.Errorf("RevokeAccess(%+v): err=nil; want validation error", g)
+		}
+	}
+	// A whitespace-only ID must be rejected by local validation before any
+	// API call — pre-fix the untrimmed check let it through to the server.
+	if hits != 0 {
+		t.Errorf("server received %d request(s); want 0 (whitespace IDs must fail validation locally)", hits)
 	}
 }

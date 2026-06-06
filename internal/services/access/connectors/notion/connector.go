@@ -236,15 +236,26 @@ func (c *NotionAccessConnector) SyncIdentities(
 }
 
 func (c *NotionAccessConnector) ProvisionAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	userID := strings.TrimSpace(grant.UserExternalID)
+	resourceID := strings.TrimSpace(grant.ResourceExternalID)
+	if userID == "" || resourceID == "" {
 		return errors.New("notion: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	secrets, err := c.decodeBoth(secretsRaw)
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]interface{}{"properties": map[string]interface{}{}, "permissions": []map[string]interface{}{{"type": "user", "user_id": grant.UserExternalID, "role": "editor"}}})
-	urlStr := fmt.Sprintf("%s/v1/pages/%s", c.baseURL(), url.PathEscape(grant.ResourceExternalID))
+	// Honor the caller's requested role instead of silently forcing
+	// "editor": a read-only grant must never be escalated to write
+	// access. iam-core supplies the provider-appropriate role string
+	// (mirroring how ms_teams maps grant.Role -> member/owner); we fall
+	// back to "editor" only when the grant leaves Role unset.
+	role := strings.TrimSpace(grant.Role)
+	if role == "" {
+		role = "editor"
+	}
+	body, _ := json.Marshal(map[string]interface{}{"properties": map[string]interface{}{}, "permissions": []map[string]interface{}{{"type": "user", "user_id": userID, "role": role}}})
+	urlStr := fmt.Sprintf("%s/v1/pages/%s", c.baseURL(), url.PathEscape(resourceID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, urlStr, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -273,7 +284,9 @@ func (c *NotionAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 }
 
 func (c *NotionAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	userID := strings.TrimSpace(grant.UserExternalID)
+	resourceID := strings.TrimSpace(grant.ResourceExternalID)
+	if userID == "" || resourceID == "" {
 		return errors.New("notion: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	secrets, err := c.decodeBoth(secretsRaw)
@@ -281,7 +294,7 @@ func (c *NotionAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 		return err
 	}
 	body, _ := json.Marshal(map[string]interface{}{"permissions": []map[string]interface{}{}})
-	urlStr := fmt.Sprintf("%s/v1/pages/%s", c.baseURL(), url.PathEscape(grant.ResourceExternalID))
+	urlStr := fmt.Sprintf("%s/v1/pages/%s", c.baseURL(), url.PathEscape(resourceID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, urlStr, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -294,10 +307,17 @@ func (c *NotionAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 		return fmt.Errorf("notion: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	// Accept the full 2xx range (a permission-clearing PATCH may return
+	// 204 No Content) plus 404, matching ProvisionAccess and the rest of
+	// the batch. Previously only 200/404 were accepted, so a 204 was
+	// wrongly surfaced as a revoke failure to the leaver flow.
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	if resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
 	return fmt.Errorf("notion: revoke status %d: %s", resp.StatusCode, string(respBody))
 }
 
