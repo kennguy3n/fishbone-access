@@ -85,14 +85,18 @@ func (c *BambooHRAccessConnector) FetchAccessAuditLogs(
 	type kv struct {
 		EmployeeID string
 		Change     bambooChangedEmployee
+		changedAt  time.Time
 	}
 	pairs := make([]kv, 0, len(page.Employees))
 	for id, change := range page.Employees {
 		change.EmployeeID = id
-		pairs = append(pairs, kv{EmployeeID: id, Change: change})
+		// Parse lastChanged once here rather than inside the sort
+		// comparator, which would re-parse the same strings O(n log n)
+		// times for large deltas.
+		pairs = append(pairs, kv{EmployeeID: id, Change: change, changedAt: parseBambooTime(change.LastChanged)})
 	}
 	sort.Slice(pairs, func(i, j int) bool {
-		return parseBambooTime(pairs[i].Change.LastChanged).Before(parseBambooTime(pairs[j].Change.LastChanged))
+		return pairs[i].changedAt.Before(pairs[j].changedAt)
 	})
 
 	batch := make([]*access.AuditLogEntry, 0, len(pairs))

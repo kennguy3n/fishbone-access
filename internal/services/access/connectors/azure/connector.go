@@ -289,6 +289,9 @@ func (c *AzureAccessConnector) SyncIdentities(
 		path = checkpoint
 	}
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
