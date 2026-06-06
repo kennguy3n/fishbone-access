@@ -3,6 +3,7 @@ package sendgrid
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -173,6 +174,62 @@ func TestRevokeAccess_NoActiveOrPendingIsIdempotent(t *testing.T) {
 	grant := access.AccessGrant{UserExternalID: "ghost@example.com", ResourceExternalID: "mail.send"}
 	if err := c.RevokeAccess(context.Background(), sendgridValidConfig(), sendgridValidSecrets(), grant); err != nil {
 		t.Fatalf("RevokeAccess (idempotent): %v", err)
+	}
+}
+
+// When the matching pending invite lives beyond the first page, revoke must
+// paginate the pending list (offset/limit) to find and delete it rather than
+// stopping after page 0.
+func TestRevokeAccess_PendingInviteOnLaterPage(t *testing.T) {
+	const email = "late@example.com"
+	const token = "pend-tok-late"
+	const pageSize = sendgridPendingPageSize
+	var deletedPending bool
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch {
+		case r.Method == http.MethodDelete && r.URL.Path == "/v3/teammates/"+email:
+			w.WriteHeader(http.StatusNotFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/teammates/pending":
+			offset := 0
+			_, _ = fmt.Sscanf(r.URL.Query().Get("offset"), "%d", &offset)
+			result := make([]map[string]interface{}, 0, pageSize)
+			if offset == 0 {
+				// A full first page that does NOT contain the target,
+				// forcing the lookup to request the next page.
+				for i := 0; i < pageSize; i++ {
+					result = append(result, map[string]interface{}{
+						"email": fmt.Sprintf("filler-%d@example.com", i),
+						"token": fmt.Sprintf("tok-%d", i),
+					})
+				}
+			} else {
+				result = append(result, map[string]interface{}{"email": email, "token": token})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": result})
+		case r.Method == http.MethodDelete && r.URL.Path == "/v3/teammates/pending/"+token:
+			deletedPending = true
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	grant := access.AccessGrant{UserExternalID: email, ResourceExternalID: "mail.send"}
+	if err := c.RevokeAccess(context.Background(), sendgridValidConfig(), sendgridValidSecrets(), grant); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !deletedPending {
+		t.Fatal("expected pending invite on later page to be deleted by token")
 	}
 }
 

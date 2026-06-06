@@ -20,6 +20,10 @@ import (
 const (
 	ProviderName = "sentinelone"
 	pageLimit    = 100
+	// auditMaxPages bounds the audit-log pagination loop so a never-empty
+	// cursor (API bug/change) cannot spin forever, matching the safety
+	// guard used by the other connectors in this batch.
+	auditMaxPages = 200
 )
 
 var ErrNotImplemented = fmt.Errorf("sentinelone: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)

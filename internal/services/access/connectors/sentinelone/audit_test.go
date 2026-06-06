@@ -88,6 +88,39 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// A provider that always returns a non-empty nextCursor must not loop
+// forever: the auditMaxPages guard bounds the number of requests and the
+// fetch returns nil so the persisted cursor lets the next run resume.
+func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		next := "always-more"
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(sentineloneActivitiesResponse{
+			Data: []sentineloneActivity{{
+				ID: "a", ActivityTypeName: "Login", CreatedAt: "2024-01-01T10:00:00Z",
+			}},
+			Pagination: struct {
+				NextCursor *string `json:"nextCursor"`
+				TotalItems int     `json:"totalItems"`
+			}{NextCursor: &next},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		nil, func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != auditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, auditMaxPages)
+	}
+}
+
 func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

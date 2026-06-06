@@ -13,6 +13,14 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+const (
+	// sendgridPendingPageSize / sendgridPendingMaxPages bound the
+	// offset/limit pagination of the pending-invite lookup used by
+	// revoke fallback.
+	sendgridPendingPageSize = 100
+	sendgridPendingMaxPages = 200
+)
+
 // advanced-capability mapping for sendgrid:
 //
 //   - ProvisionAccess  -> POST   /v3/teammates                (invite teammate)
@@ -147,41 +155,14 @@ func (c *SendgridAccessConnector) RevokeAccess(ctx context.Context, configRaw, s
 // (DELETE /v3/teammates/pending/{token}). It is idempotent: if no matching
 // pending invite exists (already accepted, already deleted, or never sent)
 // it returns nil, matching the soft revoke contract.
+//
+// The pending list is paginated with offset/limit (bounded by
+// sendgridPendingMaxPages) so the lookup is correct on accounts that have
+// more pending invites than fit in a single page.
 func (c *SendgridAccessConnector) revokePendingInvite(ctx context.Context, secrets Secrets, email string) error {
-	listReq, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/v3/teammates/pending", nil)
+	token, err := c.findPendingInviteToken(ctx, secrets, email)
 	if err != nil {
 		return err
-	}
-	status, body, err := c.doRaw(listReq)
-	if err != nil {
-		return err
-	}
-	if status == http.StatusNotFound {
-		// Account/plan does not expose pending invites; nothing more we
-		// can do, so treat the original 404 as already-revoked.
-		return nil
-	}
-	if status < 200 || status >= 300 {
-		if access.IsTransientStatus(status) {
-			return fmt.Errorf("sendgrid: list pending invites transient status %d: %s", status, string(body))
-		}
-		return fmt.Errorf("sendgrid: list pending invites status %d: %s", status, string(body))
-	}
-	var pending struct {
-		Result []struct {
-			Email string `json:"email"`
-			Token string `json:"token"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(body, &pending); err != nil {
-		return fmt.Errorf("sendgrid: decode pending invites: %w", err)
-	}
-	token := ""
-	for _, p := range pending.Result {
-		if strings.EqualFold(strings.TrimSpace(p.Email), email) {
-			token = strings.TrimSpace(p.Token)
-			break
-		}
 	}
 	if token == "" {
 		// Neither an active teammate nor a pending invite: already revoked.
@@ -203,6 +184,54 @@ func (c *SendgridAccessConnector) revokePendingInvite(ctx context.Context, secre
 	default:
 		return fmt.Errorf("sendgrid: revoke pending invite status %d: %s", delStatus, string(delBody))
 	}
+}
+
+// findPendingInviteToken pages through GET /v3/teammates/pending (offset/limit)
+// and returns the token of the pending invite whose email matches, or "" if
+// none is found. A 404 means the account/plan does not expose pending invites
+// and is treated as "no match" (already-revoked).
+func (c *SendgridAccessConnector) findPendingInviteToken(ctx context.Context, secrets Secrets, email string) (string, error) {
+	for page := 0; page < sendgridPendingMaxPages; page++ {
+		q := url.Values{}
+		q.Set("limit", fmt.Sprintf("%d", sendgridPendingPageSize))
+		q.Set("offset", fmt.Sprintf("%d", page*sendgridPendingPageSize))
+		listReq, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/v3/teammates/pending?"+q.Encode(), nil)
+		if err != nil {
+			return "", err
+		}
+		status, body, err := c.doRaw(listReq)
+		if err != nil {
+			return "", err
+		}
+		if status == http.StatusNotFound {
+			return "", nil
+		}
+		if status < 200 || status >= 300 {
+			if access.IsTransientStatus(status) {
+				return "", fmt.Errorf("sendgrid: list pending invites transient status %d: %s", status, string(body))
+			}
+			return "", fmt.Errorf("sendgrid: list pending invites status %d: %s", status, string(body))
+		}
+		var pending struct {
+			Result []struct {
+				Email string `json:"email"`
+				Token string `json:"token"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal(body, &pending); err != nil {
+			return "", fmt.Errorf("sendgrid: decode pending invites: %w", err)
+		}
+		for _, p := range pending.Result {
+			if strings.EqualFold(strings.TrimSpace(p.Email), email) {
+				return strings.TrimSpace(p.Token), nil
+			}
+		}
+		if len(pending.Result) < sendgridPendingPageSize {
+			// Last (partial) page reached without a match.
+			return "", nil
+		}
+	}
+	return "", nil
 }
 
 func (c *SendgridAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {

@@ -45,8 +45,16 @@ func (c *SlackAccessConnector) CheckSSOEnforcement(ctx context.Context, configRa
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return false, "", fmt.Errorf("slack: decode team.info: %w", err)
 	}
-	if payload.Team.SSOProvider.Type == "saml" || payload.Enterprise.IsSSOEnabled {
-		return true, "Slack workspace is wired to a SAML identity provider", nil
+	// SSO is only *enforced* when a SAML provider is wired AND the
+	// workspace has SSO sign-in enabled (password sign-in disabled). A
+	// configured provider alone is not sufficient: a workspace can have
+	// SAML available while still permitting password login, in which case
+	// access is not actually gated behind the IdP. Reporting enforced=true
+	// in that case is a false positive that masks a real security
+	// regression for the connector-health endpoint and orphan-account
+	// reconciler, so both signals are required (matching slack_enterprise).
+	if payload.Team.SSOProvider.Type == "saml" && payload.Enterprise.IsSSOEnabled {
+		return true, "Slack workspace is wired to a SAML identity provider and password sign-in is disabled", nil
 	}
 	return false, "Slack workspace allows password sign-in alongside SSO", nil
 }

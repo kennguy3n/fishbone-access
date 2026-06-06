@@ -42,7 +42,7 @@ func (c *SentinelOneAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	pageCursor := ""
 	base := c.baseURL(cfg)
-	for {
+	for pageNum := 0; pageNum < auditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -91,6 +91,10 @@ func (c *SentinelOneAccessConnector) FetchAccessAuditLogs(
 		}
 		pageCursor = *page.Pagination.NextCursor
 	}
+	// Page budget exhausted while the API still reports more pages; stop
+	// rather than loop unbounded. The persisted cursor lets the next run
+	// resume where this one left off.
+	return nil
 }
 
 type sentineloneActivitiesResponse struct {
