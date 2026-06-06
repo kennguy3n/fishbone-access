@@ -452,8 +452,7 @@ func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
 // principal with role assignments spread across pages is fully
 // enumerated (mirrors the audit.go re-anchor behavior).
 func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
-	var srv *httptest.Server
-	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("$skiptoken") == "PAGE2" {
 			_, _ = w.Write([]byte(`{"value":[{"id":"ra2","name":"ra2","properties":{"roleDefinitionId":"role-2","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
 			return

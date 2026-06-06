@@ -20,9 +20,9 @@ func TestSyncIdentities_CursorURLEncoded(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page++
 		if page == 1 {
-			_, _ = w.Write([]byte(fmt.Sprintf(
+			_, _ = fmt.Fprintf(w,
 				`{"results":[{"id":"1","email":"a@b.com","firstName":"A"}],"paging":{"next":{"after":%q,"link":"/x"}}}`,
-				specialCursor)))
+				specialCursor)
 			return
 		}
 		got := r.URL.Query().Get("after")
