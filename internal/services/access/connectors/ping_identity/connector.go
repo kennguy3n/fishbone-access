@@ -377,7 +377,7 @@ func (c *PingIdentityAccessConnector) GetSSOMetadata(_ context.Context, configRa
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
-	authBase := c.authURL(cfg, "/"+cfg.EnvironmentID+"/as")
+	authBase := c.authURL(cfg, "/"+url.PathEscape(cfg.EnvironmentID)+"/as")
 	return &access.SSOMetadata{
 		Protocol:    "oidc",
 		MetadataURL: authBase + "/.well-known/openid-configuration",
@@ -448,7 +448,7 @@ func (c *PingIdentityAccessConnector) fetchAccessToken(ctx context.Context, cfg 
 	form := url.Values{}
 	form.Set("grant_type", "client_credentials")
 
-	tokenURL := c.authURL(cfg, "/"+cfg.EnvironmentID+"/as/token")
+	tokenURL := c.authURL(cfg, "/"+url.PathEscape(cfg.EnvironmentID)+"/as/token")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return "", err
@@ -494,7 +494,7 @@ func (c *PingIdentityAccessConnector) do(req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("ping_identity: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 func (c *PingIdentityAccessConnector) doRaw(req *http.Request) (*http.Response, error) {

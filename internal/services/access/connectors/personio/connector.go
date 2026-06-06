@@ -118,7 +118,7 @@ func (c *PersonioAccessConnector) authToken(ctx context.Context, secrets Secrets
 	req.ContentLength = int64(len(encoded))
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return "", fmt.Errorf("personio: auth: network error")
+		return "", fmt.Errorf("personio: auth: %w", err)
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
