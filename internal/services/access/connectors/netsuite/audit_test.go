@@ -139,3 +139,25 @@ func TestFetchAccessAuditLogs_NotAvailableOn404(t *testing.T) {
 		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
 	}
 }
+
+func TestFetchAccessAuditLogs_BoundedPagination(t *testing.T) {
+	// A misbehaving endpoint that always reports hasMore:true must not loop
+	// forever; the connector caps pagination at netsuiteAuditMaxPages.
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_, _ = w.Write([]byte(`{"items":[{"id":"n1","type":"Create","date":"2024-02-01T10:00:00Z"}],"hasMore":true}`))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{}, func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != netsuiteAuditMaxPages {
+		t.Fatalf("calls = %d; want %d (bounded)", calls, netsuiteAuditMaxPages)
+	}
+}

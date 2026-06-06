@@ -12,6 +12,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// netsuiteAuditMaxPages bounds systemNote pagination so a misbehaving or
+// compromised endpoint that keeps returning hasMore:true cannot loop
+// indefinitely, matching the 200-page cap used by every other audit connector.
+const netsuiteAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams NetSuite SystemNote audit events into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -38,7 +43,7 @@ func (c *NetSuiteAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	offset := 0
 	base := c.baseURL()
-	for {
+	for pages := 0; pages < netsuiteAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -85,6 +90,7 @@ func (c *NetSuiteAccessConnector) FetchAccessAuditLogs(
 		}
 		offset += len(page.Items)
 	}
+	return nil
 }
 
 type netsuiteSystemNotePage struct {
