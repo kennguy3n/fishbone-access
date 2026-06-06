@@ -16,6 +16,15 @@ import (
 const (
 	paypalAuditPageSize = 100
 	paypalAuditMaxPages = 200
+
+	// paypalAuditBackfill bounds the first-ever audit run (no persisted
+	// cursor). The PayPal Transaction Search API rejects any start_date/
+	// end_date span longer than 31 days, so unlike Okta/1Password we cannot
+	// reach back further in a single window — 31 days is the provider's
+	// maximum and therefore the widest correct first-run backfill. The
+	// previous 24h default silently dropped up to 30 days of history.
+	// Subsequent runs resume from the persisted cursor.
+	paypalAuditBackfill = 31 * 24 * time.Hour
 )
 
 // FetchAccessAuditLogs streams PayPal transaction/activity events into the
@@ -42,7 +51,7 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
 	if since.IsZero() {
-		since = time.Now().UTC().Add(-24 * time.Hour)
+		since = time.Now().UTC().Add(-paypalAuditBackfill)
 	}
 	base := c.baseURL(cfg) + "/v1/reporting/transactions"
 

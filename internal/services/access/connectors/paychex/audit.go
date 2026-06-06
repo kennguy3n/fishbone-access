@@ -143,8 +143,25 @@ func mapPaychexChange(e *paychexChange) *access.AuditLogEntry {
 		ActorExternalID:  strings.TrimSpace(e.ChangedBy),
 		TargetExternalID: strings.TrimSpace(e.WorkerID),
 		TargetType:       "worker",
-		Outcome:          strings.TrimSpace(e.Status),
+		Outcome:          normalizePaychexOutcome(e.Status),
 		RawData:          rawMap,
+	}
+}
+
+// normalizePaychexOutcome maps Paychex's raw worker-change status onto the
+// canonical success/failure vocabulary every other connector emits, so
+// downstream consumers that switch on AuditLogEntry.Outcome classify Paychex
+// entries consistently. The raw status is preserved verbatim under RawData.
+// A change is "success" by default (an applied/completed change), and only
+// known unsuccessful terminal states map to "failure". Unknown values default
+// to "success" rather than being dropped, matching the optimistic default used
+// by the okta/paypal mappers.
+func normalizePaychexOutcome(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "rejected", "failed", "failure", "error", "cancelled", "canceled", "denied", "declined", "reversed", "voided":
+		return "failure"
+	default:
+		return "success"
 	}
 }
 

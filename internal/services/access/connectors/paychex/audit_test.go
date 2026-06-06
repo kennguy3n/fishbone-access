@@ -53,6 +53,36 @@ func TestPaychexFetchAccessAuditLogs_Maps(t *testing.T) {
 	if len(collected) != 1 || collected[0].TargetExternalID != "w-99" {
 		t.Fatalf("collected = %+v", collected)
 	}
+	// Raw status "applied" must be normalized to the canonical "success".
+	if collected[0].Outcome != "success" {
+		t.Errorf("Outcome = %q; want normalized \"success\"", collected[0].Outcome)
+	}
+	// Raw status must still be available to consumers via RawData.
+	if raw, _ := collected[0].RawData["status"].(string); raw != "applied" {
+		t.Errorf("RawData[status] = %q; want raw \"applied\" preserved", raw)
+	}
+}
+
+func TestNormalizePaychexOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		status string
+		want   string
+	}{
+		{"applied", "success"},
+		{"completed", "success"},
+		{"", "success"},
+		{"PENDING", "success"},
+		{"rejected", "failure"},
+		{"Failed", "failure"},
+		{"  error ", "failure"},
+		{"cancelled", "failure"},
+		{"canceled", "failure"},
+		{"voided", "failure"},
+	} {
+		if got := normalizePaychexOutcome(tc.status); got != tc.want {
+			t.Errorf("normalizePaychexOutcome(%q) = %q; want %q", tc.status, got, tc.want)
+		}
+	}
 }
 
 func TestPaychexFetchAccessAuditLogs_NotAvailable(t *testing.T) {

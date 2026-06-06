@@ -46,6 +46,49 @@ func TestPayPalFetchAccessAuditLogs_Maps(t *testing.T) {
 	}
 }
 
+func TestPayPalFetchAccessAuditLogs_FirstRunBackfillWindow(t *testing.T) {
+	// On the first run (zero since) PayPal must request the widest window the
+	// Transaction Search API allows (31 days) rather than only 24h, otherwise
+	// up to 30 days of history is silently lost. We assert the start_date is
+	// ~31 days before end_date.
+	var gotStart, gotEnd string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/oauth2/token":
+			_, _ = w.Write([]byte(`{"access_token":"tok-123"}`))
+		case "/v1/reporting/transactions":
+			gotStart = r.URL.Query().Get("start_date")
+			gotEnd = r.URL.Query().Get("end_date")
+			_, _ = w.Write([]byte(`{"transaction_details":[],"page":1,"total_pages":1}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{}, // no cursor -> zero since
+		func([]*access.AuditLogEntry, time.Time, string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	start, err := time.Parse(time.RFC3339, gotStart)
+	if err != nil {
+		t.Fatalf("parse start_date %q: %v", gotStart, err)
+	}
+	end, err := time.Parse(time.RFC3339, gotEnd)
+	if err != nil {
+		t.Fatalf("parse end_date %q: %v", gotEnd, err)
+	}
+	window := end.Sub(start)
+	if window < paypalAuditBackfill-time.Minute || window > paypalAuditBackfill+time.Minute {
+		t.Errorf("first-run window = %s; want ~%s (PayPal 31d max)", window, paypalAuditBackfill)
+	}
+}
+
 func TestPayPalFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
