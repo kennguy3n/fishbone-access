@@ -398,10 +398,17 @@ func (c *LastPassAccessConnector) postJSON(ctx context.Context, body map[string]
 	if err != nil {
 		return nil, err
 	}
-	// LastPass returns 200 even on error; we sniff for the "status":"FAIL"
-	// convention. Keeping this loose because the project documents
-	// inconsistencies.
-	if strings.Contains(string(respBody), `"status":"FAIL"`) {
+	// LastPass returns HTTP 200 even on logical errors, signalling them
+	// with a top-level {"status":"FAIL"}. Decode the status field rather
+	// than substring-matching the raw bytes, so the check is insensitive
+	// to JSON whitespace and key ordering. Non-object payloads (the
+	// reporting array shape, user/folder lists) leave status empty and
+	// pass through unchanged.
+	var probe struct {
+		Status string `json:"status"`
+	}
+	_ = json.Unmarshal(respBody, &probe)
+	if strings.EqualFold(strings.TrimSpace(probe.Status), "FAIL") {
 		return nil, fmt.Errorf("lastpass: api FAIL: %s", string(respBody))
 	}
 	return respBody, nil

@@ -174,6 +174,43 @@ func TestFetchAccessAuditLogs_ArrayResponseDecodes(t *testing.T) {
 	if len(collected) != 1 || collected[0].EventType != "AdminUserAdded" {
 		t.Fatalf("collected = %+v", collected)
 	}
+	// The array shape carries no sequence key; the decoder must still
+	// synthesize a non-empty EventID so downstream dedup/indexing works.
+	if collected[0].EventID == "" {
+		t.Error("array-format event has empty EventID")
+	}
+}
+
+// TestFetchAccessAuditLogs_UnparseableTimestampDropped ensures events
+// whose Time is non-empty but in an unrecognized format are dropped
+// rather than persisted with a zero (year 0001) timestamp.
+func TestFetchAccessAuditLogs_UnparseableTimestampDropped(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"0": {"Time": "not-a-timestamp", "Username": "x@example.com", "Action": "Login"},
+			"1": {"Time": "2024-09-01 09:00:00", "Username": "y@example.com", "Action": "Login"}
+		}`))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("collected %d entries; want 1 (the unparseable one dropped)", len(collected))
+	}
+	if collected[0].ActorEmail != "y@example.com" {
+		t.Errorf("kept wrong entry: %+v", collected[0])
+	}
 }
 
 // TestFetchAccessAuditLogs_EmptyResponseSkipsHandler guards the cursor

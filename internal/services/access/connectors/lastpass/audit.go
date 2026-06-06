@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,6 +99,14 @@ func decodeLastPassAuditLog(body []byte) ([]lastpassAuditEvent, error) {
 		if err := json.Unmarshal(body, &arr); err != nil {
 			return nil, fmt.Errorf("lastpass: decode reporting (array): %w", err)
 		}
+		// The array shape carries no sequence key, so synthesize one from
+		// the position (mirrors the keyed shape's `v.SeqNumber = k`) to
+		// avoid emitting entries with an empty EventID.
+		for i := range arr {
+			if arr[i].SeqNumber == "" {
+				arr[i].SeqNumber = strconv.Itoa(i)
+			}
+		}
 		return arr, nil
 	}
 	var keyed map[string]lastpassAuditEvent
@@ -134,6 +143,11 @@ func mapLastPassAuditEvent(e lastpassAuditEvent) *access.AuditLogEntry {
 	if ts.IsZero() {
 		// LastPass also serves "2024-01-01 12:34:56" UTC strings.
 		ts, _ = time.Parse("2006-01-02 15:04:05", e.Time)
+	}
+	if ts.IsZero() {
+		// Unparseable timestamp: drop rather than persist an entry with a
+		// zero-time (year 0001), matching every other audit connector.
+		return nil
 	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
