@@ -77,6 +77,17 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 		_ = resp.Body.Close()
+		// Soft-skip the tenant when the service principal lacks the
+		// Microsoft.Insights activity-log permission (403), the creds
+		// were rotated/revoked (401), or the endpoint isn't available
+		// (404). Collapsing to ErrAuditNotAvailable lets the audit
+		// pipeline fall back to its no-op path instead of hard-failing
+		// the worker — matching every other AccessAuditor in this batch
+		// (see box/audit.go).
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("azure: activity log status %d: %s", resp.StatusCode, string(body))
 		}

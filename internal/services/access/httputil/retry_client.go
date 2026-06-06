@@ -181,15 +181,23 @@ func (r *RetryClient) Do(ctx context.Context, req *http.Request) (*http.Response
 		lastBody   string
 	)
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		if attempt > 1 && req.GetBody != nil {
-			body, err := req.GetBody()
+		// Clone a fresh *Request for every attempt. Go's http.Client.Do
+		// documents "the caller should not mutate or reuse the request
+		// after calling Do"; handing each attempt its own clone keeps us
+		// strictly within that contract (and safe if a future stdlib
+		// revision mutates the request during redirect handling). The
+		// body, which Do consumes, is re-derived from GetBody so the
+		// clone always carries a rewound reader.
+		attemptReq := req.Clone(ctx)
+		if attemptReq.GetBody != nil {
+			body, err := attemptReq.GetBody()
 			if err != nil {
 				return nil, fmt.Errorf("httputil: GetBody on attempt %d: %w", attempt, err)
 			}
-			req.Body = body
+			attemptReq.Body = body
 		}
 
-		resp, err := r.HTTP.Do(req)
+		resp, err := r.HTTP.Do(attemptReq)
 		if err != nil {
 			// Network-level errors are returned directly. The
 			// caller decides whether to surface "context
