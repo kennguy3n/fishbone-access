@@ -56,27 +56,28 @@ func (c *GitHubAccessConnector) SyncIdentitiesDelta(
 		if err != nil {
 			return "", err
 		}
-		resp, err := c.client().Do(req)
-		if err != nil {
-			return "", fmt.Errorf("github: delta request: %w", err)
-		}
-		body := readAllAndClose(resp)
-		switch resp.StatusCode {
-		case http.StatusOK:
-		case http.StatusUnprocessableEntity:
-			if isExpiredAuditCursor(body) {
+		// Route through doRaw so this path shares the same body-limit,
+		// header-cloning and error-wrapping as every other GitHub call.
+		// doRaw returns the rawResponse even on non-2xx, so we inspect
+		// StatusCode for the expired-cursor signals before surfacing
+		// the generic status error.
+		resp, doErr := c.doRaw(req)
+		if resp != nil {
+			switch resp.StatusCode {
+			case http.StatusUnprocessableEntity:
+				if isExpiredAuditCursor(resp.Body) {
+					return "", access.ErrDeltaTokenExpired
+				}
+				return "", doErr
+			case http.StatusGone:
 				return "", access.ErrDeltaTokenExpired
 			}
-			return "", fmt.Errorf("github: delta status %d: %s", resp.StatusCode, string(body))
-		case http.StatusGone:
-			return "", access.ErrDeltaTokenExpired
-		default:
-			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-				return "", fmt.Errorf("github: delta status %d: %s", resp.StatusCode, string(body))
-			}
+		}
+		if doErr != nil {
+			return "", doErr
 		}
 		var events []githubAuditEvent
-		if err := json.Unmarshal(body, &events); err != nil {
+		if err := json.Unmarshal(resp.Body, &events); err != nil {
 			return "", fmt.Errorf("github: decode audit log: %w", err)
 		}
 		batch, removed, latestID := mapAuditEvents(events)
@@ -188,26 +189,6 @@ func (c *GitHubAccessConnector) InitialDeltaCursor(
 		return "", err
 	}
 	return buildAuditCursorFromTimestamp(cfg.Organization, c.baseURL(), time.Now()), nil
-}
-
-func readAllAndClose(resp *http.Response) []byte {
-	defer resp.Body.Close()
-	const lim = 1 << 20
-	buf := make([]byte, 0, 512)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= lim {
-				return buf[:lim]
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf
 }
 
 // matches the subset of audit-log fields we need.

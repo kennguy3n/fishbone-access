@@ -466,10 +466,11 @@ func (c *GitHubAccessConnector) GetSSOMetadata(_ context.Context, configRaw, sec
 	if err != nil {
 		return nil, err
 	}
+	org := url.PathEscape(cfg.Organization)
 	return &access.SSOMetadata{
 		Protocol:    "saml",
-		MetadataURL: "https://github.com/organizations/" + cfg.Organization + "/saml/metadata",
-		EntityID:    "https://github.com/orgs/" + cfg.Organization,
+		MetadataURL: "https://github.com/organizations/" + org + "/saml/metadata",
+		EntityID:    "https://github.com/orgs/" + org,
 	}, nil
 }
 
