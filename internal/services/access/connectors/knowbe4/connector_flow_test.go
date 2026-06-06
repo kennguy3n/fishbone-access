@@ -88,6 +88,50 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_Paginates verifies ListEntitlements walks every page
+// of /v1/groups/{id}/members: page 1 is a full page (pageSize members) that
+// does not contain the user, and the user only appears on page 2. A
+// single-page fetch would wrongly report no entitlement.
+func TestListEntitlements_Paginates(t *testing.T) {
+	const groupID = "9"
+	const userID = "5555"
+	var sawPages []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !strings.HasSuffix(r.URL.Path, "/v1/groups/"+groupID+"/members") {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		page := r.URL.Query().Get("page")
+		sawPages = append(sawPages, page)
+		members := []map[string]interface{}{}
+		switch page {
+		case "1":
+			// Full page that does NOT contain the user, forcing a page 2.
+			for i := 0; i < pageSize; i++ {
+				members = append(members, map[string]interface{}{"id": 1000 + i, "email": "x@example.com"})
+			}
+		case "2":
+			members = append(members, map[string]interface{}{"id": 5555, "email": "needle@example.com"})
+		}
+		_ = json.NewEncoder(w).Encode(members)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(),
+		map[string]interface{}{"region": "us", "group_id": groupID},
+		map[string]interface{}{"token": "tok"}, userID)
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != groupID {
+		t.Fatalf("ents = %#v; want 1 with group %s", ents, groupID)
+	}
+	if len(sawPages) != 2 || sawPages[0] != "1" || sawPages[1] != "2" {
+		t.Fatalf("requested pages = %v; want [1 2]", sawPages)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

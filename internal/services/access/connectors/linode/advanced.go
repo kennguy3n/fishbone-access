@@ -22,6 +22,7 @@ import (
 // AccessGrant maps:
 //   - grant.UserExternalID     -> Linode account username (or email)
 //   - grant.ResourceExternalID -> "restricted" or "unrestricted" role token
+//   - grant.Scope["email"]     -> email used when creating the Linode user
 //
 // Bearer auth. Idempotent on (UserExternalID, ResourceExternalID).
 
@@ -33,6 +34,36 @@ func linodeValidateGrant(g access.AccessGrant) error {
 		return errors.New("linode: grant.ResourceExternalID is required")
 	}
 	return nil
+}
+
+// linodeResolveUserCreate derives the username and email for the
+// POST /v4/account/users body. Linode requires a valid username (which
+// disallows '@') and a separate, valid email address. SyncIdentities exports
+// the Linode username as the identity ExternalID, so the email arrives
+// out-of-band via grant.Scope["email"]; when the ExternalID is itself an
+// email we use it as the email and derive the username from its local part.
+// The username is never reused as the email — the real API rejects that and
+// the connector could otherwise never provision successfully.
+func linodeResolveUserCreate(grant access.AccessGrant) (username, email string, err error) {
+	id := strings.TrimSpace(grant.UserExternalID)
+	if v, ok := grant.Scope["email"].(string); ok {
+		email = strings.TrimSpace(v)
+	}
+	if at := strings.IndexByte(id, '@'); at >= 0 {
+		if email == "" {
+			email = id
+		}
+		username = strings.TrimSpace(id[:at])
+	} else {
+		username = id
+	}
+	if username == "" {
+		return "", "", errors.New("linode: could not derive a username for provisioning")
+	}
+	if email == "" {
+		return "", "", fmt.Errorf("linode: an email is required to create user %q; supply grant.Scope[\"email\"] or an email-form UserExternalID", username)
+	}
+	return username, email, nil
 }
 
 func (c *LinodeAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
@@ -70,10 +101,14 @@ func (c *LinodeAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	if err != nil {
 		return err
 	}
+	username, email, err := linodeResolveUserCreate(grant)
+	if err != nil {
+		return err
+	}
 	restricted := strings.EqualFold(strings.TrimSpace(grant.ResourceExternalID), "restricted")
 	payload, _ := json.Marshal(map[string]interface{}{
-		"username":   strings.TrimSpace(grant.UserExternalID),
-		"email":      strings.TrimSpace(grant.UserExternalID),
+		"username":   username,
+		"email":      email,
 		"restricted": restricted,
 	})
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.baseURL()+"/v4/account/users", payload)

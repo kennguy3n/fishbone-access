@@ -153,41 +153,52 @@ func (c *KnowBe4AccessConnector) ListEntitlements(ctx context.Context, configRaw
 	if groupID == "" {
 		return nil, errors.New("knowbe4: group_id is required in config for ListEntitlements")
 	}
-	endpoint := fmt.Sprintf("%s/v1/groups/%s/members",
-		c.baseURL(cfg), url.PathEscape(groupID))
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("knowbe4: list group members status %d: %s", status, string(body))
-	}
-	var members []struct {
-		ID    json.Number `json:"id"`
-		Email string      `json:"email"`
-	}
-	if err := json.Unmarshal(body, &members); err != nil {
-		return nil, fmt.Errorf("knowbe4: decode members: %w", err)
-	}
-	for i := range members {
-		idStr := members[i].ID.String()
-		if strings.EqualFold(strings.TrimSpace(idStr), user) ||
-			strings.EqualFold(strings.TrimSpace(members[i].Email), user) {
-			return []access.Entitlement{{
-				ResourceExternalID: groupID,
-				Role:               "member",
-				Source:             "direct",
-			}}, nil
+	base := c.baseURL(cfg)
+	// /v1/groups/{id}/members is paginated (see SyncGroupMembers); a single
+	// fetch could miss the user in a large group and wrongly report no
+	// entitlement, so page through until the user is found or the list ends.
+	for page := 1; ; page++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		endpoint := fmt.Sprintf("%s/v1/groups/%s/members?page=%d&per_page=%d",
+			base, url.PathEscape(groupID), page, pageSize)
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
+		if err != nil {
+			return nil, err
+		}
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("knowbe4: list group members status %d: %s", status, string(body))
+		}
+		var members []struct {
+			ID    json.Number `json:"id"`
+			Email string      `json:"email"`
+		}
+		if err := json.Unmarshal(body, &members); err != nil {
+			return nil, fmt.Errorf("knowbe4: decode members: %w", err)
+		}
+		for i := range members {
+			idStr := members[i].ID.String()
+			if strings.EqualFold(strings.TrimSpace(idStr), user) ||
+				strings.EqualFold(strings.TrimSpace(members[i].Email), user) {
+				return []access.Entitlement{{
+					ResourceExternalID: groupID,
+					Role:               "member",
+					Source:             "direct",
+				}}, nil
+			}
+		}
+		if len(members) < pageSize {
+			return nil, nil
 		}
 	}
-	return nil, nil
 }
 
 func knowbe4OptionalGroupID(raw map[string]interface{}) string {

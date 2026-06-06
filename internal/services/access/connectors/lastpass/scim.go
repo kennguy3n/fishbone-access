@@ -1,9 +1,14 @@
 // Package lastpass — SCIM v2.0 outbound provisioning composition.
 //
-// LastPass Enterprise exposes a SCIM-compatible endpoint at
-// https://lastpass.com/enterpriseapi.php for Tier 1 SCIM
-// provisioning. The access-platform's generic SCIMClient handles
-// the wire plumbing.
+// LastPass Enterprise exposes a SCIM 2.0 endpoint whose base ("Tenant")
+// URL is https://lastpass.com/scim/v2 — distinct from the proprietary
+// cmd-based provisioning API at https://lastpass.com/enterpriseapi.php
+// that the rest of this connector uses. The access-platform's generic
+// SCIMClient appends /Users and /Groups to this base, so the SCIM base
+// URL must be the SCIM root and NOT enterpriseapi.php. The base URL is
+// overridable via configRaw["scim_base_url"] for self-hosted SCIM
+// proxies and tests, matching the convention used by knowbe4/scim.go
+// and launchdarkly/scim.go.
 //
 // Auth: API key from secrets.api_key sent as
 // "Authorization: Basic {b64(account_number:api_key)}" in the
@@ -20,6 +25,11 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// lastpassSCIMDefaultBaseURL is the SCIM 2.0 root the generic SCIMClient
+// appends /Users and /Groups to. It is deliberately NOT the proprietary
+// enterpriseapi.php endpoint used by the connector's primary API path.
+const lastpassSCIMDefaultBaseURL = "https://lastpass.com/scim/v2"
 
 // scimClient holds the process-wide SCIMClient behind an atomic pointer so
 // both the lazy initialization and SetSCIMClientForTest are goroutine-safe,
@@ -55,7 +65,12 @@ func (c *LastPassAccessConnector) scimConfig(configRaw, secretsRaw map[string]in
 	if err := cfg.validate(); err != nil {
 		return nil, nil, err
 	}
-	scimBaseURL := defaultEndpoint
+	scimBaseURL := lastpassSCIMDefaultBaseURL
+	if override, ok := configRaw["scim_base_url"].(string); ok {
+		if v := strings.TrimSpace(override); v != "" {
+			scimBaseURL = strings.TrimRight(v, "/")
+		}
+	}
 	if c.urlOverride != "" {
 		scimBaseURL = strings.TrimRight(c.urlOverride, "/")
 	}

@@ -65,6 +65,35 @@ func expectedLPAuth() string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte("12345:apikey"))
 }
 
+// TestLastPassSCIMBaseURL verifies the SCIM base URL defaults to the
+// SCIM 2.0 root (so the client builds .../scim/v2/Users), never the
+// proprietary enterpriseapi.php endpoint, and that an operator can
+// override it via configRaw["scim_base_url"].
+func TestLastPassSCIMBaseURL(t *testing.T) {
+	conn := New() // no urlOverride: exercise the production default
+	scimCfg, _, err := conn.scimConfig(lpSCIMConfig(), lpSCIMSecrets())
+	if err != nil {
+		t.Fatalf("scimConfig: %v", err)
+	}
+	got, _ := scimCfg["scim_base_url"].(string)
+	if got != lastpassSCIMDefaultBaseURL {
+		t.Fatalf("default scim_base_url = %q; want %q", got, lastpassSCIMDefaultBaseURL)
+	}
+	if strings.Contains(got, "enterpriseapi.php") {
+		t.Fatalf("SCIM base URL must not reuse the enterpriseapi.php endpoint: %q", got)
+	}
+
+	cfg := lpSCIMConfig()
+	cfg["scim_base_url"] = "https://scim.proxy.example.com/v2/"
+	scimCfg, _, err = conn.scimConfig(cfg, lpSCIMSecrets())
+	if err != nil {
+		t.Fatalf("scimConfig override: %v", err)
+	}
+	if got, _ := scimCfg["scim_base_url"].(string); got != "https://scim.proxy.example.com/v2" {
+		t.Fatalf("override scim_base_url = %q; want trailing slash trimmed", got)
+	}
+}
+
 func TestLastPassConnector_PushSCIMUser_HappyPath(t *testing.T) {
 	var captured []scimRoundtrip
 	srv := newSCIMTestServer(t, http.StatusCreated, &captured)

@@ -26,6 +26,22 @@ func TestLinodeConnectorFlow_FullLifecycle(t *testing.T) {
 		}
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/v4/account/users":
+			// Linode requires a valid username (no '@') and a separate,
+			// valid email — the connector must not reuse the username as
+			// the email.
+			var probe struct {
+				Username string `json:"username"`
+				Email    string `json:"email"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&probe); err != nil {
+				t.Errorf("decode provision body: %v", err)
+			}
+			if probe.Username != username {
+				t.Errorf("provision username = %q; want %q", probe.Username, username)
+			}
+			if probe.Email != "alice@example.com" {
+				t.Errorf("provision email = %q; want alice@example.com", probe.Email)
+			}
 			if isMember {
 				w.WriteHeader(http.StatusConflict)
 				_, _ = w.Write([]byte(`{"errors":[{"reason":"already exists"}]}`))
@@ -63,7 +79,11 @@ func TestLinodeConnectorFlow_FullLifecycle(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	cfg := linodeValidConfig()
 	secrets := linodeValidSecrets()
-	grant := access.AccessGrant{UserExternalID: username, ResourceExternalID: role}
+	grant := access.AccessGrant{
+		UserExternalID:     username,
+		ResourceExternalID: role,
+		Scope:              map[string]interface{}{"email": "alice@example.com"},
+	}
 
 	if err := c.Validate(context.Background(), cfg, secrets); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -104,8 +124,53 @@ func TestLinodeConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	err := c.ProvisionAccess(context.Background(),
 		linodeValidConfig(), linodeValidSecrets(),
-		access.AccessGrant{UserExternalID: "alice", ResourceExternalID: "restricted"})
+		access.AccessGrant{
+			UserExternalID:     "alice",
+			ResourceExternalID: "restricted",
+			Scope:              map[string]interface{}{"email": "alice@example.com"},
+		})
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// TestLinodeProvision_EmailResolution covers the username/email derivation
+// for the create-user body: an email must be supplied (via Scope or an
+// email-form ExternalID) and is never just the bare username.
+func TestLinodeProvision_EmailResolution(t *testing.T) {
+	// Bare username with no email anywhere: must fail loud rather than
+	// POST an invalid email equal to the username.
+	c := New()
+	c.urlOverride = "http://127.0.0.1:0"
+	c.httpClient = func() httpDoer { return http.DefaultClient }
+	err := c.ProvisionAccess(context.Background(), linodeValidConfig(), linodeValidSecrets(),
+		access.AccessGrant{UserExternalID: "bob", ResourceExternalID: "restricted"})
+	if err == nil || !strings.Contains(err.Error(), "email is required") {
+		t.Fatalf("bare-username err = %v; want email-required error", err)
+	}
+
+	// Email-form ExternalID: username derived from the local part, email
+	// taken from the identifier.
+	var gotUser, gotEmail string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var probe struct {
+			Username string `json:"username"`
+			Email    string `json:"email"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&probe)
+		gotUser, gotEmail = probe.Username, probe.Email
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	c2 := New()
+	c2.urlOverride = srv.URL
+	c2.httpClient = func() httpDoer { return srv.Client() }
+	if err := c2.ProvisionAccess(context.Background(), linodeValidConfig(), linodeValidSecrets(),
+		access.AccessGrant{UserExternalID: "carol@example.com", ResourceExternalID: "unrestricted"}); err != nil {
+		t.Fatalf("email-form provision: %v", err)
+	}
+	if gotUser != "carol" || gotEmail != "carol@example.com" {
+		t.Fatalf("derived (username=%q,email=%q); want (carol, carol@example.com)", gotUser, gotEmail)
 	}
 }
