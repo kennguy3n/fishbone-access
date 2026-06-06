@@ -20,9 +20,15 @@ var (
 	// caller's workspace.
 	ErrPolicyNotFound = errors.New("lifecycle: policy not found")
 
-	// ErrReviewNotFound is returned when a review id (or review item) matches
-	// no row in the caller's workspace.
+	// ErrReviewNotFound is returned when a review id matches no row in the
+	// caller's workspace.
 	ErrReviewNotFound = errors.New("lifecycle: access review not found")
+
+	// ErrReviewItemNotFound is returned when a review exists but the referenced
+	// item id matches no row in it. Distinct from ErrReviewNotFound so a client
+	// gets an accurate message (the review is fine; the item is the problem)
+	// rather than a misleading "access review not found". Both still map to 404.
+	ErrReviewItemNotFound = errors.New("lifecycle: access review item not found")
 
 	// ErrReviewClosed is returned when a decision is submitted against a
 	// completed campaign.

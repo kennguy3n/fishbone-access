@@ -112,7 +112,10 @@ func (s *WorkflowService) ExecuteWorkflow(ctx context.Context, workspaceID uuid.
 	}
 	if decision.StepType == WorkflowStepAutoApprove {
 		if err := s.requestSvc.ApproveRequest(ctx, workspaceID, req.ID, actor, "auto-approved: "+decision.Reason); err != nil {
-			return WorkflowDecision{}, err
+			// Preserve the resolved lane (Approved stays false) so the caller can
+			// still surface which queue the request was routed to even when the
+			// auto-approval itself failed, instead of an empty/zero decision.
+			return decision, err
 		}
 		decision.Approved = true
 	}

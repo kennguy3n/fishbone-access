@@ -1220,3 +1220,181 @@ func TestAuditChainStaysLinearAcrossMultiEventTransactions(t *testing.T) {
 		prevHash = ev.ChainHash
 	}
 }
+
+// failingApprover is a RequestApprover whose ApproveRequest always fails, used
+// to prove ExecuteWorkflow preserves the resolved lane on approval failure.
+type failingApprover struct{ err error }
+
+func (f failingApprover) ApproveRequest(context.Context, uuid.UUID, uuid.UUID, string, string) error {
+	return f.err
+}
+
+// TestExecuteWorkflowPreservesDecisionOnApproveError proves that when the
+// auto-approve lane's ApproveRequest fails, ExecuteWorkflow still returns the
+// resolved decision (which lane the request was routed to) rather than a zero
+// WorkflowDecision, so the caller/UI does not lose the routing information.
+func TestExecuteWorkflowPreservesDecisionOnApproveError(t *testing.T) {
+	wantErr := errors.New("approve boom")
+	wf := NewWorkflowService(failingApprover{err: wantErr})
+	req := &models.AccessRequest{RiskLevel: RiskLow}
+	req.ID = uuid.New()
+
+	dec, err := wf.ExecuteWorkflow(context.Background(), uuid.New(), req, "system")
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected the approve error to propagate, got %v", err)
+	}
+	if dec.StepType != WorkflowStepAutoApprove {
+		t.Fatalf("expected lane preserved as auto_approve, got %q", dec.StepType)
+	}
+	if dec.Approved {
+		t.Fatalf("Approved must stay false when ApproveRequest failed")
+	}
+}
+
+// TestHandleJoinerAutoProvisionsBaseline proves a SCIM joiner carrying a
+// baseline resource+role is not only auto-approved but also provisioned: the
+// grant must be materialized on the connector with no human in the loop,
+// honoring HandleJoiner's "provisions baseline access" contract.
+func TestHandleJoinerAutoProvisionsBaseline(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	jml := NewJMLService(db, reqSvc, NewWorkflowService(reqSvc), prov, fc, &fakeDisabler{})
+	ctx := context.Background()
+
+	req, err := jml.HandleJoiner(ctx, ws, SCIMEvent{
+		Method:         "POST",
+		UserExternalID: "ext-joiner",
+		ConnectorID:    &connID,
+		ResourceRef:    "app:db",
+		Role:           "reader",
+	})
+	if err != nil {
+		t.Fatalf("HandleJoiner: %v", err)
+	}
+	if req == nil {
+		t.Fatal("expected a request for a baseline joiner")
+	}
+	// Request must have been driven all the way to active (provisioned).
+	got, err := reqSvc.GetRequest(ctx, ws, req.ID)
+	if err != nil {
+		t.Fatalf("GetRequest: %v", err)
+	}
+	if got.State != StateActive {
+		t.Fatalf("expected joiner request active after auto-provision, got %s", got.State)
+	}
+	if fc.provisionCnt != 1 {
+		t.Fatalf("expected exactly 1 connector provision, got %d", fc.provisionCnt)
+	}
+	// A live grant must exist for the joiner.
+	var grants int64
+	db.Model(&models.AccessGrant{}).
+		Where("workspace_id = ? AND iam_core_user_id = ? AND state = ? AND revoked_at IS NULL", ws, "ext-joiner", GrantStateActive).
+		Count(&grants)
+	if grants != 1 {
+		t.Fatalf("expected 1 live grant for joiner, got %d", grants)
+	}
+
+	// Redelivery of the same SCIM joiner event must not double-provision
+	// (Provision is idempotent: reuses the live grant).
+	if _, err := jml.HandleJoiner(ctx, ws, SCIMEvent{
+		Method: "POST", UserExternalID: "ext-joiner", ConnectorID: &connID,
+		ResourceRef: "app:db", Role: "reader",
+	}); err != nil {
+		t.Fatalf("HandleJoiner redelivery: %v", err)
+	}
+	db.Model(&models.AccessGrant{}).
+		Where("workspace_id = ? AND iam_core_user_id = ? AND revoked_at IS NULL", ws, "ext-joiner").
+		Count(&grants)
+	if grants != 1 {
+		t.Fatalf("redelivery must not create a second grant, got %d live grants", grants)
+	}
+}
+
+// TestOrphanDisableAggregatesRevocationFailures proves the "disable"
+// disposition attempts every entitlement and aggregates failures (maximal
+// revocation), instead of aborting on the first failed RevokeAccess. The
+// disposition must NOT be committed when any revocation fails, so an operator
+// re-run can idempotently retry.
+func TestOrphanDisableAggregatesRevocationFailures(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	fc := &fakeConnector{
+		entitlements: []access.Entitlement{
+			{ResourceExternalID: "res-1", Role: "reader"},
+			{ResourceExternalID: "res-2", Role: "reader"},
+			{ResourceExternalID: "res-3", Role: "reader"},
+		},
+		revokeFailFor: map[string]bool{"res-1": true},
+	}
+	rec := NewOrphanReconciler(db, fc)
+	ctx := context.Background()
+
+	orphan := &models.AccessOrphanAccount{
+		WorkspaceID:    ws,
+		ConnectorID:    connID,
+		ExternalUserID: "ext-orphan",
+		Disposition:    OrphanDispositionPending,
+	}
+	if err := db.Create(orphan).Error; err != nil {
+		t.Fatalf("seed orphan: %v", err)
+	}
+
+	err := rec.SetDisposition(ctx, ws, orphan.ID, OrphanDispositionDisable, "admin")
+	if err == nil {
+		t.Fatal("expected an aggregated error when a revocation fails")
+	}
+	// Every entitlement must have been attempted despite res-1 failing first.
+	if len(fc.revokedResources) != 3 {
+		t.Fatalf("expected all 3 entitlements attempted, got %v", fc.revokedResources)
+	}
+	// Disposition must remain pending (not committed) so a re-run can retry.
+	var reloaded models.AccessOrphanAccount
+	db.Where("id = ?", orphan.ID).Take(&reloaded)
+	if reloaded.Disposition != OrphanDispositionPending {
+		t.Fatalf("disposition must stay pending on failure, got %s", reloaded.Disposition)
+	}
+
+	// Clear the failure and re-run: all succeed, disposition commits.
+	fc.revokeFailFor = nil
+	if err := rec.SetDisposition(ctx, ws, orphan.ID, OrphanDispositionDisable, "admin"); err != nil {
+		t.Fatalf("SetDisposition retry: %v", err)
+	}
+	db.Where("id = ?", orphan.ID).Take(&reloaded)
+	if reloaded.Disposition != OrphanDispositionDisable {
+		t.Fatalf("expected disable disposition after successful retry, got %s", reloaded.Disposition)
+	}
+}
+
+// TestSubmitDecisionMissingItemReturnsItemNotFound proves that when the review
+// exists but the item id is unknown, SubmitDecision returns the dedicated
+// ErrReviewItemNotFound sentinel (not the misleading ErrReviewNotFound).
+func TestSubmitDecisionMissingItemReturnsItemNotFound(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	rev := NewReviewService(db, prov)
+	ctx := context.Background()
+
+	review, _, err := rev.StartCampaign(ctx, ws, "q3-review", "admin")
+	if err != nil {
+		t.Fatalf("StartCampaign: %v", err)
+	}
+
+	err = rev.SubmitDecision(ctx, ws, review.ID, uuid.New(), ReviewDecisionCertify, "auditor", "looks fine")
+	if !errors.Is(err, ErrReviewItemNotFound) {
+		t.Fatalf("expected ErrReviewItemNotFound for a missing item, got %v", err)
+	}
+	// A genuinely missing review still returns ErrReviewNotFound.
+	err = rev.SubmitDecision(ctx, ws, uuid.New(), uuid.New(), ReviewDecisionCertify, "auditor", "x")
+	if !errors.Is(err, ErrReviewNotFound) {
+		t.Fatalf("expected ErrReviewNotFound for a missing review, got %v", err)
+	}
+}

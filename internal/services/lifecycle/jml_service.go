@@ -177,6 +177,32 @@ func (s *JMLService) HandleJoiner(ctx context.Context, workspaceID uuid.UUID, e 
 		return nil, nil
 	}
 
+	// Idempotency: SCIM webhooks redeliver, so a joiner event may arrive more
+	// than once. If the user already holds a live grant for this resource+role,
+	// there is nothing to provision — creating another request would auto-approve
+	// and materialize a duplicate grant. Skip and record the redelivery for audit.
+	var live int64
+	if err := s.db.WithContext(ctx).Model(&models.AccessGrant{}).
+		Where("workspace_id = ? AND iam_core_user_id = ? AND resource_ref = ? AND role = ? AND state = ? AND revoked_at IS NULL",
+			workspaceID, e.UserExternalID, e.ResourceRef, e.Role, GrantStateActive).
+		Count(&live).Error; err != nil {
+		return nil, fmt.Errorf("lifecycle: check existing joiner grant: %w", err)
+	}
+	if live > 0 {
+		now := s.now()
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return appendAudit(ctx, tx, now, auditEntry{
+				WorkspaceID: workspaceID,
+				Actor:       "scim",
+				Action:      "jml.joiner.already_provisioned",
+				TargetRef:   e.UserExternalID,
+			})
+		}); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
 	req, err := s.requests.CreateRequest(ctx, CreateAccessRequestInput{
 		WorkspaceID:   workspaceID,
 		RequesterID:   "scim",
@@ -190,8 +216,24 @@ func (s *JMLService) HandleJoiner(ctx context.Context, workspaceID uuid.UUID, e 
 	if err != nil {
 		return nil, err
 	}
-	if s.workflow != nil {
-		if _, err := s.workflow.ExecuteWorkflow(ctx, workspaceID, req, "scim"); err != nil {
+	if s.workflow == nil {
+		// No workflow wired: leave the request in StateRequested for a human to
+		// approve. Nothing to provision yet.
+		return req, nil
+	}
+	decision, err := s.workflow.ExecuteWorkflow(ctx, workspaceID, req, "scim")
+	if err != nil {
+		return req, err
+	}
+	// A SCIM joiner has no human in the loop, so when the workflow auto-approves
+	// the low-risk baseline request we must also materialize the grant on the
+	// connector — otherwise the approved request sits idle forever and the
+	// "provisions baseline access" contract is never honored. Medium/high or
+	// sensitive-resource joiners are parked for human approval (Approved=false)
+	// and are intentionally NOT auto-provisioned here. Provision is idempotent,
+	// so a redelivered SCIM joiner event will not double-grant.
+	if decision.Approved && s.provisioner != nil {
+		if _, err := s.provisioner.Provision(ctx, workspaceID, req.ID, "scim"); err != nil {
 			return req, err
 		}
 	}

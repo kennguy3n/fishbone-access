@@ -163,7 +163,9 @@ func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewI
 			Where("workspace_id = ? AND review_id = ? AND id = ?", workspaceID, reviewID, itemID).
 			Take(&item).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrReviewNotFound
+				// The review loaded above, so it's specifically the item that is
+				// missing — report that distinctly instead of "review not found".
+				return ErrReviewItemNotFound
 			}
 			return fmt.Errorf("lifecycle: load review item: %w", err)
 		}

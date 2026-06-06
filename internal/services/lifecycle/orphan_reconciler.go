@@ -197,14 +197,24 @@ func (s *OrphanReconciler) SetDisposition(ctx context.Context, workspaceID, orph
 		if err != nil {
 			return fmt.Errorf("lifecycle: list orphan entitlements: %w", err)
 		}
+		// Attempt every entitlement and aggregate failures rather than aborting on
+		// the first one: a transient failure on one entitlement must not leave the
+		// remaining ones live (the same maximal-revocation rule the kill switch's
+		// scimDeprovision follows). The disposition is only committed below when
+		// all revocations succeed, so on a returned error the operator can re-run
+		// and RevokeAccess (idempotent) retries whatever is still live.
+		var errs []error
 		for _, ent := range ents {
 			if err := resolved.Impl.RevokeAccess(ctx, resolved.Config, resolved.Secrets, access.AccessGrant{
 				UserExternalID:     orphan.ExternalUserID,
 				ResourceExternalID: ent.ResourceExternalID,
 				Role:               ent.Role,
 			}); err != nil {
-				return fmt.Errorf("lifecycle: revoke orphan access: %w", err)
+				errs = append(errs, fmt.Errorf("revoke %s/%s: %w", ent.ResourceExternalID, ent.Role, err))
 			}
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("lifecycle: %d/%d orphan entitlement revocations failed: %w", len(errs), len(ents), errors.Join(errs...))
 		}
 	}
 
