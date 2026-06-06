@@ -74,7 +74,10 @@ func (c *BoxAccessConnector) SyncGroups(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < boxSyncMaxPages; pageCount++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/2.0/groups?limit=%d&offset=%d", base, pageSize, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -109,6 +112,9 @@ func (c *BoxAccessConnector) SyncGroups(
 		}
 		offset += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // SyncGroupMembers paginates /2.0/groups/{id}/memberships and emits
@@ -133,7 +139,10 @@ func (c *BoxAccessConnector) SyncGroupMembers(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < boxSyncMaxPages; pageCount++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/2.0/groups/%s/memberships?limit=%d&offset=%d",
 			base, url.PathEscape(groupExternalID), pageSize, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
@@ -166,6 +175,9 @@ func (c *BoxAccessConnector) SyncGroupMembers(
 		}
 		offset += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 var _ access.GroupSyncer = (*BoxAccessConnector)(nil)

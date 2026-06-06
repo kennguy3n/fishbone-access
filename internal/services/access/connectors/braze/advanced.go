@@ -1,6 +1,7 @@
 package braze
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -54,7 +55,7 @@ func (c *BrazeAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 func (c *BrazeAccessConnector) newSCIMRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
 	var rdr io.Reader
 	if len(body) > 0 {
-		rdr = strings.NewReader(string(body))
+		rdr = bytes.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {

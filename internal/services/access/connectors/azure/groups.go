@@ -60,7 +60,7 @@ func (c *AzureAccessConnector) CountGroups(ctx context.Context, configRaw, secre
 		return 0, err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/groups/$count")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/groups/$count")
 	if err != nil {
 		return 0, err
 	}
@@ -91,11 +91,11 @@ func (c *AzureAccessConnector) SyncGroups(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}
@@ -122,10 +122,9 @@ func (c *AzureAccessConnector) SyncGroups(
 				},
 			})
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Follow @odata.nextLink verbatim; doJSON resolves absolute
+		// URLs directly (see SyncIdentities for rationale).
+		next := resp.NextLink
 		if err := handler(identities, next); err != nil {
 			return err
 		}
@@ -134,6 +133,9 @@ func (c *AzureAccessConnector) SyncGroups(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // SyncGroupMembers paginates GET /groups/{id}/members and emits the
@@ -160,11 +162,11 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}
@@ -178,10 +180,9 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 				memberIDs = append(memberIDs, m.ID)
 			}
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Follow @odata.nextLink verbatim; doJSON resolves absolute
+		// URLs directly (see SyncIdentities for rationale).
+		next := resp.NextLink
 		if err := handler(memberIDs, next); err != nil {
 			return err
 		}
@@ -190,6 +191,9 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 var _ access.GroupSyncer = (*AzureAccessConnector)(nil)

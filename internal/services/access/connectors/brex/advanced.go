@@ -141,15 +141,15 @@ func (c *BrexAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	}
 	var envelope struct {
 		Data []struct {
-			ID   interface{} `json:"id"`
-			Name string      `json:"name"`
+			ID   json.RawMessage `json:"id"`
+			Name string          `json:"name"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		// Some providers omit the envelope and return a bare array.
 		var bare []struct {
-			ID   interface{} `json:"id"`
-			Name string      `json:"name"`
+			ID   json.RawMessage `json:"id"`
+			Name string          `json:"name"`
 		}
 		if err2 := json.Unmarshal(body, &bare); err2 != nil {
 			return nil, fmt.Errorf("brex: decode entitlements: %w", err)
@@ -158,7 +158,7 @@ func (c *BrexAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	}
 	out := make([]access.Entitlement, 0, len(envelope.Data))
 	for _, r := range envelope.Data {
-		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
+		id := decodeFlexibleID(r.ID)
 		if id == "" {
 			continue
 		}
@@ -169,4 +169,26 @@ func (c *BrexAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 		})
 	}
 	return out, nil
+}
+
+// decodeFlexibleID extracts a role id from a raw JSON value, tolerating
+// either a string ("ADMIN") or a numeric id while preserving the exact
+// representation. Decoding into interface{} would coerce JSON numbers to
+// float64 and lose precision (or emit scientific notation) for ids beyond
+// 2^53; keeping the raw token text avoids that. A JSON string is unquoted
+// so its surrounding quotes don't leak into the entitlement id.
+func decodeFlexibleID(raw json.RawMessage) string {
+	s := strings.TrimSpace(string(raw))
+	if s == "" || s == "null" {
+		return ""
+	}
+	if s[0] == '"' {
+		var str string
+		if err := json.Unmarshal(raw, &str); err == nil {
+			return strings.TrimSpace(str)
+		}
+	}
+	// Numeric (or any other) token: use the verbatim text, so large
+	// integer ids round-trip exactly.
+	return s
 }

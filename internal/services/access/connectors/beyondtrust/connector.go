@@ -19,6 +19,14 @@ import (
 const (
 	ProviderName = "beyondtrust"
 	pageSize     = 100
+
+	// beyondtrustSyncMaxPages bounds the offset pagination walk as
+	// defense-in-depth, matching azureSyncMaxPages / basecampSyncMaxPages.
+	// The loop also stops on a short page and honours ctx cancellation via
+	// the request context; SyncIdentities reports each page's offset to the
+	// handler as a checkpoint, so reaching the cap merely defers the
+	// remainder to the next sync cycle.
+	beyondtrustSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("beyondtrust: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -208,7 +216,7 @@ func (c *BeyondTrustAccessConnector) SyncIdentities(
 	}
 	_ = cfg
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < beyondtrustSyncMaxPages; pageCount++ {
 		q := url.Values{
 			"offset": []string{fmt.Sprintf("%d", offset)},
 			"limit":  []string{fmt.Sprintf("%d", pageSize)},
@@ -252,6 +260,9 @@ func (c *BeyondTrustAccessConnector) SyncIdentities(
 		}
 		offset += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 func (c *BeyondTrustAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {

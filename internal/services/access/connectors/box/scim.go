@@ -7,7 +7,6 @@ package box
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -45,7 +44,7 @@ func (c *BoxAccessConnector) scimConfig(configRaw, secretsRaw map[string]interfa
 		"scim_base_url": scimBaseURL,
 	}
 	scimSecrets := map[string]interface{}{
-		"scim_auth_header": "Bearer " + strings.TrimPrefix(strings.TrimSpace(secrets.AccessToken), "Bearer "),
+		"scim_auth_header": bearerHeader(secrets),
 	}
 	return scimCfg, scimSecrets, nil
 }
