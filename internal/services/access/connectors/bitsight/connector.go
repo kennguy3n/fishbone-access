@@ -1,0 +1,233 @@
+// Package bitsight implements the access.AccessConnector contract for the
+// BitSight Security Ratings API.
+//
+// BitSight is audit / security-rating focused: there is no per-tenant
+// identity directory the platform consumes via SyncIdentities (so that
+// method returns an empty batch immediately and CountIdentities reports
+// zero). However, BitSight does expose a small per-account user roster
+// at /ratings/v1/users for operators of the rating account itself, and
+// advanced.go uses that surface to back real ProvisionAccess /
+// RevokeAccess / ListEntitlements implementations. Validate / Connect
+// verify the bearer token against the public probe endpoint.
+package bitsight
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
+)
+
+const ProviderName = "bitsight"
+
+// ErrNotImplemented preserves the original sentinel for backward
+// compatibility (existing tests use errors.Is against it) and wraps
+// access.ErrCapabilityNotSupported so callers that switch to the
+// canonical platform sentinel also match. ProvisionAccess /
+// RevokeAccess / ListEntitlements are now implemented against the
+// /ratings/v1/users surface (see advanced.go); this sentinel is kept
+// for any future capability that BitSight does not expose (e.g.
+// SCIM, group sync) so callers do not have to special-case the
+// package name.
+var ErrNotImplemented = fmt.Errorf("bitsight: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
+
+type httpDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type Config struct{}
+
+type Secrets struct {
+	Token string `json:"token"`
+}
+
+type BitSightAccessConnector struct {
+	httpClient  func() httpDoer
+	urlOverride string
+}
+
+func New() *BitSightAccessConnector { return &BitSightAccessConnector{} }
+func init()                         { access.RegisterAccessConnector(ProviderName, New()) }
+
+func DecodeConfig(raw map[string]interface{}) (Config, error) {
+	if raw == nil {
+		return Config{}, errors.New("bitsight: config is nil")
+	}
+	return Config{}, nil
+}
+
+func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
+	if raw == nil {
+		return Secrets{}, errors.New("bitsight: secrets is nil")
+	}
+	var s Secrets
+	if v, ok := raw["token"].(string); ok {
+		s.Token = v
+	}
+	return s, nil
+}
+
+func (Config) validate() error { return nil }
+
+func (s Secrets) validate() error {
+	if strings.TrimSpace(s.Token) == "" {
+		return errors.New("bitsight: token is required")
+	}
+	return nil
+}
+
+func (c *BitSightAccessConnector) Validate(_ context.Context, configRaw, secretsRaw map[string]interface{}) error {
+	cfg, err := DecodeConfig(configRaw)
+	if err != nil {
+		return err
+	}
+	if err := cfg.validate(); err != nil {
+		return err
+	}
+	s, err := DecodeSecrets(secretsRaw)
+	if err != nil {
+		return err
+	}
+	return s.validate()
+}
+
+func (c *BitSightAccessConnector) baseURL() string {
+	if c.urlOverride != "" {
+		return strings.TrimRight(c.urlOverride, "/")
+	}
+	return "https://api.bitsighttech.com"
+}
+
+func (c *BitSightAccessConnector) client() httpDoer {
+	if c.httpClient != nil {
+		return c.httpClient()
+	}
+	return &http.Client{Timeout: 30 * time.Second}
+}
+
+func (c *BitSightAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Token "+strings.TrimSpace(secrets.Token))
+	return req, nil
+}
+
+func (c *BitSightAccessConnector) do(req *http.Request) ([]byte, error) {
+	resp, err := c.client().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("bitsight: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("bitsight: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+	}
+	return body, nil
+}
+
+func (c *BitSightAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
+	cfg, err := DecodeConfig(configRaw)
+	if err != nil {
+		return Config{}, Secrets{}, err
+	}
+	if err := cfg.validate(); err != nil {
+		return Config{}, Secrets{}, err
+	}
+	s, err := DecodeSecrets(secretsRaw)
+	if err != nil {
+		return Config{}, Secrets{}, err
+	}
+	if err := s.validate(); err != nil {
+		return Config{}, Secrets{}, err
+	}
+	return cfg, s, nil
+}
+
+func (c *BitSightAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	if err != nil {
+		return err
+	}
+	probe := c.baseURL() + "/ratings/v1/users/info"
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
+	if err != nil {
+		return err
+	}
+	if _, err := c.do(req); err != nil {
+		return fmt.Errorf("bitsight: connect probe: %w", err)
+	}
+	return nil
+}
+
+func (c *BitSightAccessConnector) VerifyPermissions(ctx context.Context, configRaw, secretsRaw map[string]interface{}, capabilities []string) ([]string, error) {
+	if err := c.Connect(ctx, configRaw, secretsRaw); err != nil {
+		var missing []string
+		for _, cap := range capabilities {
+			missing = append(missing, fmt.Sprintf("%s (%v)", cap, err))
+		}
+		return missing, nil
+	}
+	return nil, nil
+}
+
+// CountIdentities reports zero — the BitSight connector is audit-/rating-
+// focused and exposes no per-tenant identity directory in this scope.
+// Config and secrets are still validated so callers with invalid
+// credentials receive a deterministic error instead of a silent success.
+func (c *BitSightAccessConnector) CountIdentities(_ context.Context, configRaw, secretsRaw map[string]interface{}) (int, error) {
+	if _, _, err := c.decodeBoth(configRaw, secretsRaw); err != nil {
+		return 0, err
+	}
+	return 0, nil
+}
+
+// SyncIdentities is a no-op for BitSight — invokes the handler with an
+// empty batch and terminates.
+func (c *BitSightAccessConnector) SyncIdentities(
+	_ context.Context,
+	configRaw, secretsRaw map[string]interface{},
+	_ string,
+	handler func(batch []*access.Identity, nextCheckpoint string) error,
+) error {
+	if _, _, err := c.decodeBoth(configRaw, secretsRaw); err != nil {
+		return err
+	}
+	// Non-nil empty slice per SyncIdentities empty-batch contract — see
+	// types.go.
+	return handler([]*access.Identity{}, "")
+}
+
+func (c *BitSightAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	return access.SSOMetadataFromConfig(configRaw, "saml"), nil
+}
+
+func (c *BitSightAccessConnector) GetCredentialsMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (map[string]interface{}, error) {
+	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"provider":    ProviderName,
+		"auth_type":   "token",
+		"token_short": shortToken(secrets.Token),
+		"sync_kind":   "audit_only",
+	}, nil
+}
+
+func shortToken(t string) string {
+	t = strings.TrimSpace(t)
+	if len(t) <= 8 {
+		return t
+	}
+	return t[:4] + "..." + t[len(t)-4:]
+}
+
+var _ access.AccessConnector = (*BitSightAccessConnector)(nil)
