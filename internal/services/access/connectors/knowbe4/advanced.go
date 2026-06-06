@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -73,9 +74,17 @@ func (c *KnowBe4AccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 	if err != nil {
 		return err
 	}
-	payload, _ := json.Marshal(map[string]interface{}{
-		"user_id": strings.TrimSpace(grant.UserExternalID),
-	})
+	// KnowBe4 represents user IDs as JSON numbers everywhere (the member
+	// list, audit feed, and SyncIdentities all use numeric ids), so send
+	// user_id as a number to match the API's data model. ExternalID is the
+	// stringified numeric id; fall back to the raw string only if it is not
+	// numeric so a non-standard id is still forwarded rather than dropped.
+	userID := strings.TrimSpace(grant.UserExternalID)
+	payloadMap := map[string]interface{}{"user_id": userID}
+	if n, convErr := strconv.ParseInt(userID, 10, 64); convErr == nil {
+		payloadMap["user_id"] = n
+	}
+	payload, _ := json.Marshal(payloadMap)
 	endpoint := fmt.Sprintf("%s/v1/groups/%s/members",
 		c.baseURL(cfg),
 		url.PathEscape(strings.TrimSpace(grant.ResourceExternalID)))
