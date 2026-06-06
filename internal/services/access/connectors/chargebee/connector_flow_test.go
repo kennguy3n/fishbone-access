@@ -35,6 +35,19 @@ func TestChargebeeConnectorFlow_FullLifecycle(t *testing.T) {
 		defer mu.Unlock()
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == customers:
+			// Chargebee v2 write paths are form-encoded, not JSON.
+			if ct := r.Header.Get("Content-Type"); ct != "application/x-www-form-urlencoded" {
+				t.Errorf("Content-Type = %q, want application/x-www-form-urlencoded", ct)
+			}
+			if err := r.ParseForm(); err != nil {
+				t.Errorf("ParseForm: %v", err)
+			}
+			if r.PostFormValue("email") != email {
+				t.Errorf("form email = %q, want %q (body not form-encoded?)", r.PostFormValue("email"), email)
+			}
+			if r.PostFormValue("role") != role {
+				t.Errorf("form role = %q, want %q", r.PostFormValue("role"), role)
+			}
 			if state != "" {
 				w.WriteHeader(http.StatusConflict)
 				_, _ = w.Write([]byte(`{"error":"customer already exists"}`))

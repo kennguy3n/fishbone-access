@@ -18,6 +18,24 @@ func TestCheckPointFetchAccessAuditLogs_Maps(t *testing.T) {
 		if r.URL.Path != "/web_api/show-logs" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
+		// The /web_api/* endpoints are POST-only and take their params in a
+		// JSON body, not URL query params (a GET 405s on the real API).
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", r.Method)
+		}
+		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+			t.Errorf("Content-Type = %q, want application/json", ct)
+		}
+		if r.URL.RawQuery != "" {
+			t.Errorf("params must be in body, got query %q", r.URL.RawQuery)
+		}
+		var reqBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		if reqBody["limit"] == nil {
+			t.Errorf("limit missing from JSON body: %+v", reqBody)
+		}
 		if r.Header.Get("X-chkp-sid") == "" {
 			t.Errorf("missing X-chkp-sid")
 		}

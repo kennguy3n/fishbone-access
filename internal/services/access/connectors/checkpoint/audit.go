@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -23,7 +22,11 @@ const (
 //
 // Endpoint:
 //
-//	GET /web_api/show-logs?offset=0&limit=100&new_query=true
+//	POST /web_api/show-logs   { "offset": 0, "limit": 100, "new-query": true }
+//
+// Like every other /web_api/* call, show-logs is POST-only and takes its
+// parameters in a JSON body (see newPostJSON); issuing a GET with query
+// params yields 405 against the real Management API.
 //
 // The show-logs API requires a Management API session token with the
 // "log access" permission; non-eligible sessions surface 401 / 403 / 404
@@ -47,14 +50,16 @@ func (c *CheckPointAccessConnector) FetchAccessAuditLogs(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		q := url.Values{}
-		q.Set("offset", fmt.Sprintf("%d", page*checkpointAuditPageSize))
-		q.Set("limit", fmt.Sprintf("%d", checkpointAuditPageSize))
-		q.Set("new_query", "true")
-		if !since.IsZero() {
-			q.Set("since", since.UTC().Format(time.RFC3339))
+		params := map[string]interface{}{
+			"offset":    page * checkpointAuditPageSize,
+			"limit":     checkpointAuditPageSize,
+			"new-query": true,
 		}
-		req, err := c.newRequest(ctx, secrets, http.MethodGet, base+"?"+q.Encode())
+		if !since.IsZero() {
+			params["since"] = since.UTC().Format(time.RFC3339)
+		}
+		reqBody, _ := json.Marshal(params)
+		req, err := c.newPostJSON(ctx, secrets, base, reqBody)
 		if err != nil {
 			return err
 		}

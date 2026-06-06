@@ -79,6 +79,30 @@ func (c *ChargebeeAccessConnector) newJSONRequest(ctx context.Context, secrets S
 	return req, nil
 }
 
+// newFormRequest builds a write request whose parameters are sent as
+// application/x-www-form-urlencoded. Chargebee's v2 API accepts request
+// parameters as form-encoded data (its own curl docs use `-d key=value`),
+// NOT a JSON body — posting application/json silently drops every field,
+// so the customer would be created without the intended attributes.
+func (c *ChargebeeAccessConnector) newFormRequest(ctx context.Context, secrets Secrets, method, fullURL string, form url.Values) (*http.Request, error) {
+	encoded := form.Encode()
+	var rdr io.Reader
+	if encoded != "" {
+		rdr = strings.NewReader(encoded)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if encoded != "" {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	creds := strings.TrimSpace(secrets.APIKey) + ":"
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(creds)))
+	return req, nil
+}
+
 func (c *ChargebeeAccessConnector) ProvisionAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
 	if err := chargebeeValidateGrant(grant); err != nil {
 		return err
@@ -87,11 +111,10 @@ func (c *ChargebeeAccessConnector) ProvisionAccess(ctx context.Context, configRa
 	if err != nil {
 		return err
 	}
-	payload, _ := json.Marshal(map[string]string{
-		"email": strings.TrimSpace(grant.UserExternalID),
-		"role":  strings.TrimSpace(grant.ResourceExternalID),
-	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.customersURL(cfg), payload)
+	form := url.Values{}
+	form.Set("email", strings.TrimSpace(grant.UserExternalID))
+	form.Set("role", strings.TrimSpace(grant.ResourceExternalID))
+	req, err := c.newFormRequest(ctx, secrets, http.MethodPost, c.customersURL(cfg), form)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// circleCIMaxRestrictionPages caps how many pages of context restrictions
+// the connector will walk before giving up, so a malformed/looping
+// next_page_token can never produce an unbounded request loop.
+const circleCIMaxRestrictionPages = 1000
+
 // advanced-capability mapping for CircleCI:
 //
 // CircleCI v2 does not expose org-member CRUD; the closest first-class
@@ -158,70 +163,92 @@ func (c *CircleCIAccessConnector) ListEntitlements(ctx context.Context, configRa
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet,
-		c.baseURL()+"/api/v2/context/restrictions?project_id="+url.QueryEscape(project))
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("circleci: list entitlements status %d: %s", status, string(body))
-	}
-	var resp circleCIRestrictionsResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("circleci: decode restrictions: %w", err)
-	}
+	base := c.baseURL() + "/api/v2/context/restrictions?project_id=" + url.QueryEscape(project)
 	var out []access.Entitlement
-	for i := range resp.Items {
-		ctxID := strings.TrimSpace(resp.Items[i].ContextID)
-		val := strings.TrimSpace(resp.Items[i].RestrictionValue)
-		if val != project && val != "" {
-			continue
+	pageToken := ""
+	for page := 0; page < circleCIMaxRestrictionPages; page++ {
+		fullURL := base
+		if pageToken != "" {
+			fullURL += "&page-token=" + url.QueryEscape(pageToken)
 		}
-		if ctxID == "" {
-			continue
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, fullURL)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, access.Entitlement{
-			ResourceExternalID: ctxID,
-			Role:               "project",
-			Source:             "direct",
-		})
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return out, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("circleci: list entitlements status %d: %s", status, string(body))
+		}
+		var resp circleCIRestrictionsResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("circleci: decode restrictions: %w", err)
+		}
+		for i := range resp.Items {
+			ctxID := strings.TrimSpace(resp.Items[i].ContextID)
+			val := strings.TrimSpace(resp.Items[i].RestrictionValue)
+			if val != project && val != "" {
+				continue
+			}
+			if ctxID == "" {
+				continue
+			}
+			out = append(out, access.Entitlement{
+				ResourceExternalID: ctxID,
+				Role:               "project",
+				Source:             "direct",
+			})
+		}
+		pageToken = strings.TrimSpace(resp.NextPageToken)
+		if pageToken == "" {
+			break
+		}
 	}
 	return out, nil
 }
 
 func (c *CircleCIAccessConnector) findCircleCIRestriction(ctx context.Context, secrets Secrets, grant access.AccessGrant) (string, error) {
 	contextID := url.PathEscape(strings.TrimSpace(grant.ResourceExternalID))
-	req, err := c.newRequest(ctx, secrets, http.MethodGet,
-		c.baseURL()+"/api/v2/context/"+contextID+"/restrictions")
-	if err != nil {
-		return "", err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return "", err
-	}
-	if status == http.StatusNotFound {
-		return "", nil
-	}
-	if status < 200 || status >= 300 {
-		return "", fmt.Errorf("circleci: list restrictions status %d: %s", status, string(body))
-	}
-	var resp circleCIRestrictionsResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return "", fmt.Errorf("circleci: decode restrictions: %w", err)
-	}
+	base := c.baseURL() + "/api/v2/context/" + contextID + "/restrictions"
 	want := strings.TrimSpace(grant.UserExternalID)
-	for i := range resp.Items {
-		if strings.TrimSpace(resp.Items[i].RestrictionValue) == want ||
-			strings.TrimSpace(resp.Items[i].ProjectID) == want {
-			return strings.TrimSpace(resp.Items[i].ID), nil
+	pageToken := ""
+	for page := 0; page < circleCIMaxRestrictionPages; page++ {
+		fullURL := base
+		if pageToken != "" {
+			fullURL += "?page-token=" + url.QueryEscape(pageToken)
+		}
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, fullURL)
+		if err != nil {
+			return "", err
+		}
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return "", err
+		}
+		if status == http.StatusNotFound {
+			return "", nil
+		}
+		if status < 200 || status >= 300 {
+			return "", fmt.Errorf("circleci: list restrictions status %d: %s", status, string(body))
+		}
+		var resp circleCIRestrictionsResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return "", fmt.Errorf("circleci: decode restrictions: %w", err)
+		}
+		for i := range resp.Items {
+			if strings.TrimSpace(resp.Items[i].RestrictionValue) == want ||
+				strings.TrimSpace(resp.Items[i].ProjectID) == want {
+				return strings.TrimSpace(resp.Items[i].ID), nil
+			}
+		}
+		pageToken = strings.TrimSpace(resp.NextPageToken)
+		if pageToken == "" {
+			break
 		}
 	}
 	return "", nil
