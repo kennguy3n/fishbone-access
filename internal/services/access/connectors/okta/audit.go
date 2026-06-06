@@ -124,8 +124,13 @@ func mapOktaAuditEvent(e *oktaAuditEvent) *access.AuditLogEntry {
 	// Skip events whose published timestamp is empty or unparseable:
 	// delivering a zero-timestamp audit entry would never advance the
 	// delta-sync cursor and could be mis-ordered/mis-filtered by the
-	// pipeline. This mirrors the ovhcloud auditor's behaviour.
-	ts, err := time.Parse(time.RFC3339, e.Published)
+	// pipeline. This mirrors the ovhcloud auditor's behaviour. Try the
+	// fractional-second layout first, then the plain RFC3339 fallback,
+	// matching the other auditors (onepassword/ovhcloud/pagerduty).
+	ts, err := time.Parse(time.RFC3339Nano, e.Published)
+	if err != nil {
+		ts, err = time.Parse(time.RFC3339, e.Published)
+	}
 	if err != nil || ts.IsZero() {
 		return nil
 	}

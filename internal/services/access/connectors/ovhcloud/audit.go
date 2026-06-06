@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -198,21 +199,7 @@ func readOVHAuditBody(resp *http.Response) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	return io.ReadAll(io.LimitReader(resp.Body, max))
 }
 
 var _ access.AccessAuditor = (*OVHcloudAccessConnector)(nil)

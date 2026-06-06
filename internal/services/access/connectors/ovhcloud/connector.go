@@ -340,8 +340,14 @@ func (c *OVHcloudAccessConnector) GetCredentialsMetadata(_ context.Context, conf
 
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
+	if t == "" {
+		return ""
+	}
+	// Never echo a token verbatim. Production tokens are far longer than
+	// 8 chars, but a misconfigured/test token must not leak in full
+	// through GetCredentialsMetadata, so short tokens are fully masked.
 	if len(t) <= 8 {
-		return t
+		return "***"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

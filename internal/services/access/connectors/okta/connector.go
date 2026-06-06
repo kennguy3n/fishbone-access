@@ -648,11 +648,24 @@ func mapOktaLogEvents(events []oktaLogEvent) ([]*access.Identity, []string) {
 		case "user.lifecycle.delete.completed", "user.lifecycle.deactivate":
 			removed = append(removed, userID)
 		default:
+			// A delta event signals the user changed; emit the status the
+			// event implies so the record isn't misreported as active.
+			// Suspend/lock keep the user as an identity (not removed) but
+			// in a non-active state, using the same lowercased vocabulary
+			// as the full sync (strings.ToLower(u.Status)). Anything else
+			// (activate, unsuspend, unlock, profile update, ...) is active.
+			status := "active"
+			switch {
+			case strings.HasPrefix(e.EventType, "user.lifecycle.suspend"):
+				status = "suspended"
+			case strings.HasPrefix(e.EventType, "user.account.lock"):
+				status = "locked_out"
+			}
 			identities = append(identities, &access.Identity{
 				ExternalID: userID,
 				Type:       access.IdentityTypeUser,
 				Email:      userEmail,
-				Status:     "active",
+				Status:     status,
 			})
 		}
 	}
