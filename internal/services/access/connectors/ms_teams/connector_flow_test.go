@@ -2,6 +2,7 @@ package msteams
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -85,5 +86,38 @@ func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Fatalf("ProvisionAccess: want 403, got %v", err)
+	}
+}
+
+// TestProvisionAccess_EscapesODataSingleQuote verifies that a UserExternalID
+// containing a single quote (a valid UPN such as o'brien@contoso.com) is
+// escaped per OData rules (doubled quote) inside the user@odata.bind literal,
+// rather than producing a syntactically broken /users('o'brien@...') value.
+func TestProvisionAccess_EscapesODataSingleQuote(t *testing.T) {
+	const upn = "o'brien@contoso.com"
+	var gotBind string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/members") {
+			var payload struct {
+				Bind string `json:"user@odata.bind"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			gotBind = payload.Bind
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"membership-1"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := newAdvancedTestConnector(srv)
+	grant := access.AccessGrant{UserExternalID: upn, ResourceExternalID: "team-1", Role: "member"}
+	if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), grant); err != nil {
+		t.Fatalf("ProvisionAccess: %v", err)
+	}
+	want := srv.URL + "/users('o''brien@contoso.com')"
+	if gotBind != want {
+		t.Fatalf("user@odata.bind = %q; want %q (single quote must be OData-escaped as '')", gotBind, want)
 	}
 }

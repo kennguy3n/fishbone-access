@@ -330,6 +330,15 @@ func (c *MSTeamsAccessConnector) SyncIdentities(
 
 // ---------- advanced capabilities ----------
 
+// odataEscapeLiteral escapes a value for safe interpolation inside a
+// single-quoted OData string literal (e.g. /users('{id}')). OData escapes an
+// embedded single quote by doubling it, so a UPN such as o'brien@contoso.com
+// becomes o''brien@contoso.com. url.PathEscape is deliberately NOT used here:
+// it would percent-encode the '@' in a UPN and break the bind expression.
+func odataEscapeLiteral(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
 // targetTeamID picks the team to operate on. Grants may carry a
 // ResourceExternalID, in which case it wins; otherwise the connector
 // falls back to the Config-bound team. This lets a single connector
@@ -401,7 +410,7 @@ func (c *MSTeamsAccessConnector) ProvisionAccess(
 	payload := map[string]interface{}{
 		"@odata.type":     "#microsoft.graph.aadUserConversationMember",
 		"roles":           roles,
-		"user@odata.bind": fmt.Sprintf("%s/users('%s')", c.baseURL(), grant.UserExternalID),
+		"user@odata.bind": fmt.Sprintf("%s/users('%s')", c.baseURL(), odataEscapeLiteral(strings.TrimSpace(grant.UserExternalID))),
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
