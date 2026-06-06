@@ -414,7 +414,7 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 		if got := r.URL.Query().Get("$filter"); got != "principalId eq 'principal-1'" {
 			t.Fatalf("$filter = %q", got)
 		}
-		_, _ = w.Write([]byte(`{"value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"role-1","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+		_, _ = w.Write([]byte(`{"value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"/subscriptions/sub-1/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
 	}))
 	t.Cleanup(srv.Close)
 	c := New()
@@ -424,7 +424,13 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEntitlements: %v", err)
 	}
-	if len(got) != 1 || got[0].ResourceExternalID != "role-1" || got[0].Source != "direct" {
+	// ResourceExternalID carries the full roleDefinitionId (used for
+	// provision/revoke round-trips); Role names the role itself (its
+	// canonical trailing id segment), never the assignment scope.
+	if len(got) != 1 ||
+		got[0].ResourceExternalID != "/subscriptions/sub-1/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7" ||
+		got[0].Role != "acdd72a7-3385-48ef-bd42-f606fba81ae7" ||
+		got[0].Source != "direct" {
 		t.Fatalf("got = %+v", got)
 	}
 }

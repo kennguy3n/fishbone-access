@@ -407,7 +407,11 @@ func (c *AzureAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
-	scope := "/subscriptions/" + cfg.SubscriptionID
+	// PathEscape the subscription id before embedding it in the URL
+	// path, mirroring ListEntitlements/FetchAccessAuditLogs. Azure
+	// subscription ids are UUIDs in practice, but escaping keeps the
+	// URL well-formed if one ever carried a path-special character.
+	scope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
 		scope, url.PathEscape(name), armAPIVersion)
@@ -461,7 +465,10 @@ func (c *AzureAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	scope := "/subscriptions/" + cfg.SubscriptionID
+	// PathEscape the subscription id (same as ProvisionAccess) so the
+	// deterministic assignment name derives from an identical scope on
+	// both sides and the DELETE URL stays well-formed.
+	scope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
 		scope, url.PathEscape(name), armAPIVersion)
@@ -541,8 +548,16 @@ func (c *AzureAccessConnector) ListEntitlements(
 		for _, a := range page.Value {
 			out = append(out, access.Entitlement{
 				ResourceExternalID: a.Properties.RoleDefinitionID,
-				Role:               a.Properties.Scope,
-				Source:             "direct",
+				// Role names the role itself, not the assignment
+				// scope. The role-assignment payload only carries the
+				// roleDefinitionId, so use its canonical trailing id
+				// segment (the built-in/custom role's GUID) — the most
+				// role-descriptive value available without a secondary
+				// roleDefinitions lookup, and consistent with the other
+				// connectors that surface the role value straight from
+				// the listing response.
+				Role:   roleDefinitionShortID(a.Properties.RoleDefinitionID),
+				Source: "direct",
 			})
 		}
 		if page.NextLink == "" {
@@ -557,6 +572,18 @@ func (c *AzureAccessConnector) ListEntitlements(
 			next = page.NextLink
 		}
 	}
+}
+
+// roleDefinitionShortID returns the trailing identifier segment of an
+// Azure roleDefinitionId (e.g. ".../roleDefinitions/{guid}" -> "{guid}").
+// This is the canonical role identifier and is used for Entitlement.Role
+// so the field describes the role rather than the assignment scope.
+func roleDefinitionShortID(roleDefinitionID string) string {
+	id := strings.TrimRight(strings.TrimSpace(roleDefinitionID), "/")
+	if i := strings.LastIndex(id, "/"); i >= 0 {
+		return id[i+1:]
+	}
+	return id
 }
 
 func validateGrantPair(grant access.AccessGrant) error {

@@ -136,7 +136,7 @@ func mapAzureActivityEvent(e *azureActivityEvent) *access.AuditLogEntry {
 	if e == nil || e.EventDataID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.EventTimestamp)
+	ts := parseAzureTime(e.EventTimestamp)
 	if ts.IsZero() {
 		// Drop events whose timestamp cannot be parsed: a zero
 		// timestamp would not advance the watermark cursor and would
@@ -167,6 +167,26 @@ func mapAzureActivityEvent(e *azureActivityEvent) *access.AuditLogEntry {
 		Outcome:          outcome,
 		RawData:          rawMap,
 	}
+}
+
+// parseAzureTime parses Azure activity-log timestamps, trying
+// RFC3339Nano (fractional seconds) before RFC3339, matching the
+// parseXxxTime helpers in the other connectors of this batch. RFC3339
+// alone already tolerates fractional seconds on input, so this is a
+// consistency wrapper; it returns the zero time when the input is empty
+// or unparseable so callers can drop the event.
+func parseAzureTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return ts
+	}
+	if ts, err := time.Parse(time.RFC3339, s); err == nil {
+		return ts
+	}
+	return time.Time{}
 }
 
 var _ access.AccessAuditor = (*AzureAccessConnector)(nil)
