@@ -393,8 +393,8 @@ func (c *GitLabAccessConnector) ListEntitlements(
 		AccessLevel int    `json:"access_level"`
 		Username    string `json:"username"`
 	}
-	if json.Unmarshal(resp.Body, &m) != nil {
-		return nil, nil
+	if err := json.Unmarshal(resp.Body, &m); err != nil {
+		return nil, fmt.Errorf("gitlab: decode entitlements: %w", err)
 	}
 	return []access.Entitlement{{
 		ResourceExternalID: cfg.GroupID,

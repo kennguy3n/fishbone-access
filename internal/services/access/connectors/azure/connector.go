@@ -199,17 +199,24 @@ func (b *bearerTransportClient) Do(req *http.Request) (*http.Response, error) {
 // doJSON issues a GET/DELETE against the Microsoft Graph API and
 // returns the decoded body. path may be either a base-relative path
 // (e.g. "/users?...") or an already-absolute URL (e.g. an
-// @odata.nextLink pagination cursor); an absolute URL is used verbatim
-// while a relative path is resolved against baseURL(). Accepting the
-// cursor as-is means SyncIdentities/SyncGroups/SyncGroupMembers can
-// hand the raw nextLink straight back without stripping baseURL, so a
-// nextLink that ever points at a different host/format (regional
-// endpoint, trailing-slash variation) is followed correctly instead of
-// being concatenated into a malformed "baseURLhttps://..." URL. ctx is
-// the first parameter per Go convention.
+// @odata.nextLink pagination cursor); an absolute URL is followed
+// verbatim while a relative path is resolved against baseURL(). Accepting
+// the cursor as-is lets SyncIdentities/SyncGroups/SyncGroupMembers hand
+// the raw nextLink straight back without stripping baseURL (avoiding a
+// malformed "baseURLhttps://..." concatenation), but because the bearer
+// transport attaches the Graph access token to every request, an absolute
+// cursor is first checked to be on the same host as baseURL(). Graph
+// always returns nextLinks on the request host, so a cursor pointing
+// elsewhere (a Graph bug or a tampered/MITM'd response) is rejected rather
+// than leaking the bearer token off-host. ctx is the first parameter per
+// Go convention.
 func (c *AzureAccessConnector) doJSON(ctx context.Context, client httpDoer, method, path string) ([]byte, error) {
 	endpoint := path
-	if !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		if err := c.assertSameHost(path); err != nil {
+			return nil, err
+		}
+	} else {
 		endpoint = c.baseURL() + path
 	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, nil)
@@ -228,6 +235,26 @@ func (c *AzureAccessConnector) doJSON(ctx context.Context, client httpDoer, meth
 		return nil, fmt.Errorf("azure: %s %s: status %d: %s", method, path, resp.StatusCode, string(body))
 	}
 	return body, nil
+}
+
+// assertSameHost verifies that an absolute @odata.nextLink cursor targets
+// the same host as baseURL() before doJSON follows it with the bearer
+// token attached. This keeps the credential from being sent to an
+// unexpected host if a nextLink ever points off the configured Graph
+// endpoint.
+func (c *AzureAccessConnector) assertSameHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("azure: parse nextLink %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL())
+	if err != nil {
+		return fmt.Errorf("azure: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("azure: refusing to follow nextLink to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
 }
 
 func (c *AzureAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {

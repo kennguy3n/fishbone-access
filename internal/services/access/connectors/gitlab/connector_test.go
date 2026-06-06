@@ -107,6 +107,45 @@ func TestConnect_Failure(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_MalformedBody pins that a 200 response with an
+// undecodable body surfaces an error instead of being swallowed as
+// "no entitlements" (which would silently report a user as having no access
+// on a transient/garbled response). A 404 is still the documented soft-skip.
+func TestListEntitlements_MalformedBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{not json"))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected decode error, got nil (entitlements=%v)", got)
+	}
+	if !strings.Contains(err.Error(), "decode entitlements") {
+		t.Errorf("err = %v; want decode entitlements error", err)
+	}
+}
+
+func TestListEntitlements_NotMemberSoftSkips(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err != nil {
+		t.Fatalf("404 should soft-skip to empty, got err %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d entitlements; want 0", len(got))
+	}
+}
+
 func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	md, err := New().GetCredentialsMetadata(context.Background(), validConfig(), validSecrets())
 	if err != nil {

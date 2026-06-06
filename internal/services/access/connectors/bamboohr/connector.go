@@ -49,7 +49,11 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	}
 	var cfg Config
 	if v, ok := raw["subdomain"].(string); ok {
-		cfg.Subdomain = v
+		// Canonicalize at decode time so the value interpolated into
+		// baseURL/ssoBaseURL is the same one validate() checks against
+		// subdomainPattern (otherwise a padded " acme " would pass the
+		// trimmed regex check yet yield "https:// acme .bamboohr.com").
+		cfg.Subdomain = strings.TrimSpace(v)
 	}
 	return cfg, nil
 }
@@ -74,12 +78,11 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 var subdomainPattern = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`)
 
 func (c Config) validate() error {
-	sub := strings.TrimSpace(c.Subdomain)
-	if sub == "" {
+	if c.Subdomain == "" {
 		return errors.New("bamboohr: subdomain is required")
 	}
-	if !subdomainPattern.MatchString(sub) {
-		return fmt.Errorf("bamboohr: subdomain %q is not a valid hostname label", sub)
+	if !subdomainPattern.MatchString(c.Subdomain) {
+		return fmt.Errorf("bamboohr: subdomain %q is not a valid hostname label", c.Subdomain)
 	}
 	return nil
 }

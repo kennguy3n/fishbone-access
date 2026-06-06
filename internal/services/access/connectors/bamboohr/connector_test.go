@@ -38,6 +38,30 @@ func TestValidate_RejectsMissing(t *testing.T) {
 	}
 }
 
+// TestDecodeConfig_CanonicalizesSubdomain pins that a padded subdomain is
+// trimmed at decode time, so the value used by baseURL/ssoBaseURL matches the
+// one validate() approves — a padded " acme " must not yield a hostname with
+// embedded whitespace.
+func TestDecodeConfig_CanonicalizesSubdomain(t *testing.T) {
+	cfg, err := DecodeConfig(map[string]interface{}{"subdomain": "  acme  "})
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if cfg.Subdomain != "acme" {
+		t.Fatalf("Subdomain = %q; want trimmed %q", cfg.Subdomain, "acme")
+	}
+	c := New()
+	if got := c.baseURL(cfg); strings.ContainsAny(got, " \t") {
+		t.Errorf("baseURL has whitespace: %q", got)
+	}
+	if got := c.ssoBaseURL(cfg); strings.ContainsAny(got, " \t") {
+		t.Errorf("ssoBaseURL has whitespace: %q", got)
+	}
+	if err := New().Validate(context.Background(), map[string]interface{}{"subdomain": "  acme  "}, validSecrets()); err != nil {
+		t.Errorf("padded subdomain should validate after trim: %v", err)
+	}
+}
+
 func TestValidate_PureLocal(t *testing.T) {
 	prev := http.DefaultTransport
 	http.DefaultTransport = noNetworkRoundTripper{}
