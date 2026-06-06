@@ -141,6 +141,57 @@ func TestVercelListEntitlements_UsesV2MembersEndpoint(t *testing.T) {
 	}
 }
 
+// TestVercelListEntitlements_PaginatesAllPages verifies ListEntitlements walks
+// every member page instead of stopping after the first. The /v2 members
+// endpoint is paginated via an opaque `until` cursor (pagination.next); the
+// target user here only appears on page 2. Before the fix ListEntitlements
+// fetched a single page and would return an empty (false "no access") result.
+func TestVercelListEntitlements_PaginatesAllPages(t *testing.T) {
+	const userID = "u-on-page-2"
+	const role = "OWNER"
+	page2Hit := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/v2/teams/team_abc/members" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		switch r.URL.Query().Get("until") {
+		case "": // page 1 — target user absent; hand back a next cursor
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"members":    []map[string]string{{"uid": "someone-else", "role": "MEMBER", "email": "x@example.com"}},
+				"pagination": map[string]interface{}{"next": "cursor2"},
+			})
+		case "cursor2": // page 2 — target user lives here, no further pages
+			page2Hit = true
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"members":    []map[string]string{{"uid": userID, "role": role, "email": "bob@example.com"}},
+				"pagination": map[string]interface{}{},
+			})
+		default:
+			t.Errorf("unexpected until cursor %q", r.URL.Query().Get("until"))
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	ents, err := c.ListEntitlements(context.Background(),
+		vercelValidConfig(), vercelValidSecrets(), userID)
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if !page2Hit {
+		t.Fatalf("ListEntitlements never paginated to page 2")
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != role {
+		t.Fatalf("ents = %#v, want 1 with role=%s", ents, role)
+	}
+}
+
 func TestVercelConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

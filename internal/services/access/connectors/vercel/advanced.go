@@ -145,42 +145,48 @@ func (c *VercelAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if strings.TrimSpace(cfg.TeamID) == "" {
 		return nil, nil
 	}
-	endpoint := c.baseURL() + "/v2/teams/" + url.PathEscape(cfg.TeamID) + "/members"
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("vercel: list entitlements status %d: %s", status, string(body))
-	}
-	var envelope struct {
-		Members []struct {
-			UID      string `json:"uid"`
-			Email    string `json:"email"`
-			Role     string `json:"role"`
-			Username string `json:"username"`
-		} `json:"members"`
-	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, fmt.Errorf("vercel: decode entitlements: %w", err)
-	}
-	out := make([]access.Entitlement, 0, len(envelope.Members))
-	for _, m := range envelope.Members {
-		if m.UID != user && !strings.EqualFold(m.Email, user) && !strings.EqualFold(m.Username, user) {
-			continue
+	// The /v2/teams/{id}/members endpoint is paginated (opaque `until`
+	// cursor in pagination.next), so the target user may sit on any page.
+	// Walk every page until the user is found or the listing is exhausted;
+	// stopping after page 1 would silently return "no entitlements" (a false
+	// "no access") for any user beyond the first page on a large team.
+	const maxEntitlementPages = 1000
+	for until, page := "", 0; page < maxEntitlementPages; page++ {
+		endpoint := c.baseURL() + vercelMembersPath(cfg.TeamID, until)
+		req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, endpoint, nil)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, access.Entitlement{
-			ResourceExternalID: strings.TrimSpace(m.Role),
-			Role:               strings.TrimSpace(m.Role),
-			Source:             "direct",
-		})
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("vercel: list entitlements status %d: %s", status, string(body))
+		}
+		var envelope vercelMembersResponse
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			return nil, fmt.Errorf("vercel: decode entitlements: %w", err)
+		}
+		for _, m := range envelope.Members {
+			if m.UID != user && !strings.EqualFold(m.Email, user) && !strings.EqualFold(m.Username, user) {
+				continue
+			}
+			// A user holds at most one membership per team, so the first
+			// match is authoritative — return immediately.
+			return []access.Entitlement{{
+				ResourceExternalID: strings.TrimSpace(m.Role),
+				Role:               strings.TrimSpace(m.Role),
+				Source:             "direct",
+			}}, nil
+		}
+		if envelope.Pagination.Next == "" {
+			return nil, nil
+		}
+		until = envelope.Pagination.Next
 	}
-	return out, nil
+	return nil, nil
 }
