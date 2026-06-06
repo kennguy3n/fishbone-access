@@ -41,6 +41,12 @@ var ErrNotImplemented = fmt.Errorf("cloudflare: capability not supported by this
 
 const defaultBaseURL = "https://api.cloudflare.com/client/v4"
 
+// cloudflareMembersMaxPages bounds member-list pagination so a response
+// with an inflated result_info.total_pages (API bug or hostile mock)
+// cannot pin a worker goroutine in an unbounded request loop. Matches the
+// cap used by every audit connector in this package.
+const cloudflareMembersMaxPages = 200
+
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -329,7 +335,7 @@ func (c *CloudflareAccessConnector) SyncIdentities(
 			page = n
 		}
 	}
-	for {
+	for iter := 0; iter < cloudflareMembersMaxPages; iter++ {
 		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", url.PathEscape(cfg.AccountID), perPage, page)
 		req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, path)
 		if err != nil {
@@ -356,6 +362,7 @@ func (c *CloudflareAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return nil
 }
 
 func mapMembers(in []cfMember) []*access.Identity {
@@ -393,14 +400,16 @@ func mapMembers(in []cfMember) []*access.Identity {
 func (c *CloudflareAccessConnector) ProvisionAccess(
 	ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant,
 ) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	userExt := strings.TrimSpace(grant.UserExternalID)
+	roleExt := strings.TrimSpace(grant.ResourceExternalID)
+	if userExt == "" || roleExt == "" {
 		return errors.New("cloudflare: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	cfg, secrets, err := decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]interface{}{"email": grant.UserExternalID, "roles": []string{grant.ResourceExternalID}})
+	body, _ := json.Marshal(map[string]interface{}{"email": userExt, "roles": []string{roleExt}})
 	req, err := c.newRequest(ctx, secrets, cfg, http.MethodPost, "/accounts/"+url.PathEscape(cfg.AccountID)+"/members")
 	if err != nil {
 		return err
@@ -417,7 +426,7 @@ func (c *CloudflareAccessConnector) ProvisionAccess(
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		return nil
 	}
-	if strings.Contains(string(respBody), "already a member") {
+	if access.IsIdempotentProvisionStatus(resp.StatusCode, respBody) {
 		return nil
 	}
 	return fmt.Errorf("cloudflare: provision status %d: %s", resp.StatusCode, string(respBody))
@@ -426,14 +435,15 @@ func (c *CloudflareAccessConnector) ProvisionAccess(
 func (c *CloudflareAccessConnector) RevokeAccess(
 	ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant,
 ) error {
-	if grant.UserExternalID == "" || grant.ResourceExternalID == "" {
+	userExt := strings.TrimSpace(grant.UserExternalID)
+	if userExt == "" || strings.TrimSpace(grant.ResourceExternalID) == "" {
 		return errors.New("cloudflare: grant.UserExternalID and grant.ResourceExternalID are required")
 	}
 	cfg, secrets, err := decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	memberID, err := c.findMemberIDByEmail(ctx, secrets, cfg, grant.UserExternalID)
+	memberID, err := c.findMemberIDByEmail(ctx, secrets, cfg, userExt)
 	if err != nil {
 		return err
 	}
@@ -471,7 +481,7 @@ func (c *CloudflareAccessConnector) findMemberIDByEmail(ctx context.Context, sec
 	}
 	const perPage = 50
 	page := 1
-	for {
+	for iter := 0; iter < cloudflareMembersMaxPages; iter++ {
 		path := fmt.Sprintf("/accounts/%s/members?per_page=%d&page=%d", url.PathEscape(cfg.AccountID), perPage, page)
 		req, err := c.newRequest(ctx, secrets, cfg, http.MethodGet, path)
 		if err != nil {
@@ -495,19 +505,21 @@ func (c *CloudflareAccessConnector) findMemberIDByEmail(ctx context.Context, sec
 		}
 		page++
 	}
+	return "", fmt.Errorf("cloudflare: member lookup exceeded %d pages", cloudflareMembersMaxPages)
 }
 
 func (c *CloudflareAccessConnector) ListEntitlements(
 	ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string,
 ) ([]access.Entitlement, error) {
-	if userExternalID == "" {
+	user := strings.TrimSpace(userExternalID)
+	if user == "" {
 		return nil, errors.New("cloudflare: user external id is required")
 	}
 	cfg, secrets, err := decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}
-	memberID, err := c.findMemberIDByEmail(ctx, secrets, cfg, userExternalID)
+	memberID, err := c.findMemberIDByEmail(ctx, secrets, cfg, user)
 	if err != nil {
 		return nil, err
 	}

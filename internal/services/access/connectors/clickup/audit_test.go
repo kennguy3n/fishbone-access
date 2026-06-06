@@ -212,3 +212,21 @@ func TestFetchAccessAuditLogs_DropsUnparseableTimestamp(t *testing.T) {
 		}
 	}
 }
+
+// TestParseClickupTime_NormalizesToUTC ensures RFC3339 timestamps with a
+// non-UTC offset are normalized to UTC, matching the Unix-epoch paths and
+// every other connector. Without .UTC() the returned time would retain its
+// original +05:30 location, producing inconsistent AuditLogEntry.Timestamp
+// representations across the system.
+func TestParseClickupTime_NormalizesToUTC(t *testing.T) {
+	ts := parseClickupTime("2024-01-01T10:00:00+05:30")
+	if ts.IsZero() {
+		t.Fatal("parseClickupTime returned zero for a valid RFC3339 string")
+	}
+	if _, off := ts.Zone(); off != 0 {
+		t.Fatalf("zone offset = %d, want 0 (UTC); RFC3339 timestamps must be normalized to UTC", off)
+	}
+	if got := ts.Format(time.RFC3339); got != "2024-01-01T04:30:00Z" {
+		t.Fatalf("normalized time = %q, want 2024-01-01T04:30:00Z", got)
+	}
+}

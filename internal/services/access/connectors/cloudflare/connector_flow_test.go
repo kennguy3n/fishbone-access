@@ -98,3 +98,38 @@ func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 		t.Fatalf("ProvisionAccess: want 403 error, got %v", err)
 	}
 }
+
+// TestProvisionAccess_IdempotentOnConflictAndCasing verifies the
+// idempotency check delegates to access.IsIdempotentProvisionStatus
+// rather than a case-sensitive single-phrase substring match. Cloudflare
+// can signal "already a member" via a 409 Conflict or a 400 with mixed
+// casing / alternate phrasing; all must collapse to idempotent success so
+// re-provisioning an existing member doesn't surface a spurious error.
+func TestProvisionAccess_IdempotentOnConflictAndCasing(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"409 conflict", http.StatusConflict, `{"errors":[{"message":"member exists"}]}`},
+		{"400 capitalized phrase", http.StatusBadRequest, `{"errors":[{"message":"User is Already A Member of this account"}]}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			t.Cleanup(srv.Close)
+			c := New()
+			c.urlOverride = srv.URL
+			c.httpClient = func() httpDoer { return srv.Client() }
+			err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{
+				UserExternalID: "user@example.com", ResourceExternalID: "role-1",
+			})
+			if err != nil {
+				t.Fatalf("ProvisionAccess(%s): want idempotent success, got %v", tc.name, err)
+			}
+		})
+	}
+}

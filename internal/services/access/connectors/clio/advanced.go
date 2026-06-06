@@ -158,6 +158,12 @@ func (c *ClioAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	}
 	out := make([]access.Entitlement, 0, len(envelope.Data))
 	for _, r := range envelope.Data {
+		// A JSON null id unmarshals to a nil interface{}, and
+		// fmt.Sprintf("%v", nil) yields the literal "<nil>" which would
+		// slip past the empty-string guard and emit a bogus entitlement.
+		if r.ID == nil {
+			continue
+		}
 		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
 		if id == "" {
 			continue

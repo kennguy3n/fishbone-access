@@ -112,3 +112,33 @@ func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// TestListEntitlements_SkipsNullID verifies that an entitlement whose JSON
+// "id" is null is skipped rather than emitted as the literal "<nil>".
+// Because the id field is typed interface{}, fmt.Sprintf("%v", nil) yields
+// "<nil>", which would slip past the empty-string guard and produce a
+// bogus ResourceExternalID.
+func TestListEntitlements_SkipsNullID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{
+			{"id": nil, "name": "Ghost"},
+			{"id": "role-9", "name": "Power User"},
+		}})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "user-42")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	for _, e := range ents {
+		if e.ResourceExternalID == "<nil>" || e.ResourceExternalID == "" {
+			t.Fatalf("emitted entitlement with bogus id %q (null id must be skipped)", e.ResourceExternalID)
+		}
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "role-9" {
+		t.Fatalf("entitlements = %+v, want exactly [role-9]", ents)
+	}
+}
