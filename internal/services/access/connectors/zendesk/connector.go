@@ -369,8 +369,13 @@ func (c *ZendeskAccessConnector) ListEntitlements(ctx context.Context, configRaw
 			GroupID int `json:"group_id"`
 		} `json:"group_memberships"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		// Propagate decode failures rather than reporting "no
+		// entitlements": a 2xx body that does not parse (e.g. an HTML
+		// error page from a misconfigured proxy, or a truncated
+		// payload) means the truth is unknown, not that the user lacks
+		// access. Swallowing it would risk an incorrect access decision.
+		return nil, fmt.Errorf("zendesk: decode group memberships: %w", err)
 	}
 	var out []access.Entitlement
 	for _, gm := range resp.GroupMemberships {
@@ -382,9 +387,17 @@ func (c *ZendeskAccessConnector) ListEntitlements(ctx context.Context, configRaw
 // GetSSOMetadata returns the Zendesk SAML metadata URL for the configured
 // subdomain. Zendesk publishes SAML metadata at
 // `https://{subdomain}.zendesk.com/access/saml/metadata` once SSO is configured.
-func (c *ZendeskAccessConnector) GetSSOMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (*access.SSOMetadata, error) {
-	cfg, _, err := c.decodeBoth(configRaw, secretsRaw)
+func (c *ZendeskAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	// SSO metadata is derived purely from the subdomain config, so only
+	// decode/validate the config. Requiring secrets here (as decodeBoth
+	// did) breaks the interface contract and fails when metadata is
+	// queried before credentials are provisioned; every other connector
+	// ignores secrets in GetSSOMetadata.
+	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	host := "https://" + cfg.Subdomain + ".zendesk.com"

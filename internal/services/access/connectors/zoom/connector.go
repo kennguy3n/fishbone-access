@@ -453,8 +453,12 @@ func (c *ZoomAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 			Name string `json:"name"`
 		} `json:"groups"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		// Propagate decode failures rather than reporting "no
+		// entitlements": an unparseable 2xx body means the truth is
+		// unknown, not that the user lacks access. Swallowing it would
+		// risk an incorrect access decision.
+		return nil, fmt.Errorf("zoom: decode user groups: %w", err)
 	}
 	var out []access.Entitlement
 	for _, g := range resp.Groups {

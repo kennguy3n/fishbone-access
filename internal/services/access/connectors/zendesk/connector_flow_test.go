@@ -70,6 +70,44 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_UnparseableBodyErrors is a regression test: a 2xx
+// response whose body does not parse as JSON (e.g. an HTML error page from a
+// misconfigured proxy) must surface as an error, not be swallowed into
+// (nil, nil) — which the caller would read as "user has no entitlements" and
+// could turn into an incorrect access decision.
+func TestListEntitlements_UnparseableBodyErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body>proxy error</body></html>"))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected decode error, got nil (ents=%v)", ents)
+	}
+	if ents != nil {
+		t.Fatalf("expected nil entitlements on decode error, got %v", ents)
+	}
+}
+
+// TestGetSSOMetadata_NoSecretsRequired is a regression test: SSO metadata is
+// derived purely from the subdomain config, so it must succeed even when no
+// secrets are supplied (metadata may be queried before credentials are
+// provisioned). Previously decodeBoth required api_token + email.
+func TestGetSSOMetadata_NoSecretsRequired(t *testing.T) {
+	md, err := New().GetSSOMetadata(context.Background(), validConfig(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("GetSSOMetadata without secrets: %v", err)
+	}
+	if md == nil || md.MetadataURL != "https://acme.zendesk.com/access/saml/metadata" {
+		t.Fatalf("unexpected metadata: %+v", md)
+	}
+}
+
 func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

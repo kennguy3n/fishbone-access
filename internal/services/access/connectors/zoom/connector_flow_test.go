@@ -68,6 +68,30 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_UnparseableBodyErrors is a regression test: a 2xx
+// response whose body does not parse as JSON must surface as an error rather
+// than being swallowed into (nil, nil), which the caller would misread as
+// "user has no entitlements".
+func TestListEntitlements_UnparseableBodyErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body>proxy error</body></html>"))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected decode error, got nil (ents=%v)", ents)
+	}
+	if ents != nil {
+		t.Fatalf("expected nil entitlements on decode error, got %v", ents)
+	}
+}
+
 func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
