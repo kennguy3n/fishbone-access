@@ -147,3 +147,50 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+// TestFetchAccessAuditLogs_DropsUnparseableTimestamp guards against
+// emitting audit entries with a zero (0001-01-01) timestamp. Events
+// whose `when` is absent or unparseable must be dropped rather than
+// forwarded, otherwise they poison the watermark cursor and surface a
+// bogus timestamp downstream.
+func TestFetchAccessAuditLogs_DropsUnparseableTimestamp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"result_info": map[string]interface{}{
+				"page": 1, "per_page": 100, "total_pages": 1,
+			},
+			"result": []map[string]interface{}{
+				{"id": "ev-good", "when": "2024-01-01T10:00:00Z", "action": map[string]interface{}{"type": "user.login", "result": true}},
+				{"id": "ev-bad", "when": "not-a-timestamp", "action": map[string]interface{}{"type": "user.login", "result": true}},
+				{"id": "ev-empty", "when": "", "action": map[string]interface{}{"type": "user.login", "result": true}},
+			},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("len = %d, want 1 (zero-timestamp events must be dropped)", len(collected))
+	}
+	if collected[0].EventID != "ev-good" {
+		t.Errorf("EventID = %s, want ev-good", collected[0].EventID)
+	}
+	for _, e := range collected {
+		if e.Timestamp.IsZero() {
+			t.Errorf("emitted entry with zero timestamp: %+v", e)
+		}
+	}
+}

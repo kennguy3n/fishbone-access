@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,6 +28,11 @@ import (
 const (
 	ProviderName = "stripe"
 	pageSize     = 100
+	// stripeIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns
+	// has_more=false. Mirrors stripeAuditMaxPages in audit.go and
+	// splunkIdentitiesMaxPages in splunk/connector.go.
+	stripeIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("stripe: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -212,10 +218,10 @@ func (c *StripeAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	base := c.baseURL()
-	for {
+	for pages := 0; pages < stripeIdentitiesMaxPages; pages++ {
 		path := fmt.Sprintf("%s/v1/accounts?limit=%d", base, pageSize)
 		if cursor != "" {
-			path += "&starting_after=" + cursor
+			path += "&starting_after=" + url.QueryEscape(cursor)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -266,6 +272,7 @@ func (c *StripeAccessConnector) SyncIdentities(
 		}
 		cursor = next
 	}
+	return fmt.Errorf("stripe: sync identities: pagination exceeded %d pages", stripeIdentitiesMaxPages)
 }
 
 // GetSSOMetadata projects the connector's configured `sso_metadata_url` /

@@ -100,6 +100,48 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+func TestSync_FollowsLinkHeaderPagination(t *testing.T) {
+	var srvURL string
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		switch r.URL.Query().Get("page") {
+		case "", "1":
+			// First page advertises a next page via the RFC 5988 Link header.
+			w.Header().Set("Link", "<"+srvURL+"/people.json?page=2>; rel=\"next\"")
+			b, _ := json.Marshal([]map[string]interface{}{
+				{"id": 1, "name": "Alice", "email_address": "a@x.com"},
+			})
+			_, _ = w.Write(b)
+		default:
+			// Last page: no Link header -> pagination terminates.
+			b, _ := json.Marshal([]map[string]interface{}{
+				{"id": 2, "name": "Bob", "email_address": "b@x.com"},
+			})
+			_, _ = w.Write(b)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	srvURL = srv.URL
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 2 || calls != 2 {
+		t.Fatalf("expected 2 identities across 2 pages, got=%d calls=%d", len(got), calls)
+	}
+	if got[0].ExternalID != "1" || got[1].ExternalID != "2" {
+		t.Errorf("unexpected identities: %q, %q", got[0].ExternalID, got[1].ExternalID)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

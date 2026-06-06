@@ -131,6 +131,9 @@ func mapHelpscoutActivity(e *helpscoutActivity) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseHelpscoutTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

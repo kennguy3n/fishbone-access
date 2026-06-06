@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -238,13 +239,15 @@ func (c *SlackAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	for {
-		path := "/users.list?limit=200"
+		q := url.Values{}
+		q.Set("limit", "200")
 		if cfg.TeamID != "" {
-			path += "&team_id=" + cfg.TeamID
+			q.Set("team_id", cfg.TeamID)
 		}
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			q.Set("cursor", cursor)
 		}
+		path := "/users.list?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -308,8 +311,10 @@ func (c *SlackAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
-	form := fmt.Sprintf("channel=%s&users=%s", grant.ResourceExternalID, grant.UserExternalID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.invite", strings.NewReader(form))
+	form := url.Values{}
+	form.Set("channel", grant.ResourceExternalID)
+	form.Set("users", grant.UserExternalID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.invite", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
@@ -340,8 +345,10 @@ func (c *SlackAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	form := fmt.Sprintf("channel=%s&user=%s", grant.ResourceExternalID, grant.UserExternalID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.kick", strings.NewReader(form))
+	form := url.Values{}
+	form.Set("channel", grant.ResourceExternalID)
+	form.Set("user", grant.UserExternalID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.kick", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
@@ -375,10 +382,14 @@ func (c *SlackAccessConnector) ListEntitlements(
 	var out []access.Entitlement
 	cursor := ""
 	for {
-		path := fmt.Sprintf("/users.conversations?user=%s&limit=200&types=public_channel,private_channel", userExternalID)
+		q := url.Values{}
+		q.Set("user", userExternalID)
+		q.Set("limit", "200")
+		q.Set("types", "public_channel,private_channel")
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			q.Set("cursor", cursor)
 		}
+		path := "/users.conversations?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return nil, err

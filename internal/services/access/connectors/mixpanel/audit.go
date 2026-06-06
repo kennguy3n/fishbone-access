@@ -18,7 +18,7 @@ import (
 //
 // Endpoint (Enterprise plan only):
 //
-//	GET /api/app/me/organizations/{org_id}/audit?limit=100
+//	GET /api/app/organizations/{org_id}/audit?limit=100
 //	    &from_date={iso}&cursor={c}
 //
 // Mixpanel exposes an organization-scoped audit feed on the Enterprise
@@ -38,7 +38,7 @@ func (c *MixpanelAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	pageCursor := ""
-	base := c.baseURL() + "/api/app/me/organizations/" + url.PathEscape(strings.TrimSpace(cfg.OrganizationID)) + "/audit"
+	base := c.baseURL() + "/api/app/organizations/" + url.PathEscape(strings.TrimSpace(cfg.OrganizationID)) + "/audit"
 	for {
 		if err := ctx.Err(); err != nil {
 			return err

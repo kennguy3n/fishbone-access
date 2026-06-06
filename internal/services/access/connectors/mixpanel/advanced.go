@@ -16,13 +16,13 @@ import (
 
 // advanced-capability mapping for mixpanel:
 //
-//   - ProvisionAccess  -> POST   /api/app/me/organizations/{org_id}/members
+//   - ProvisionAccess  -> POST   /api/app/organizations/{org_id}/members
 //                         body {email, role}
-//   - RevokeAccess     -> DELETE /api/app/me/organizations/{org_id}/members?email=...
+//   - RevokeAccess     -> DELETE /api/app/organizations/{org_id}/members?email=...
 //                         (Mixpanel keys members by id; we resolve via
 //                          the email query parameter to keep callers
 //                          honest about the AccessGrant key)
-//   - ListEntitlements -> GET    /api/app/me/organizations/{org_id}/members
+//   - ListEntitlements -> GET    /api/app/organizations/{org_id}/members
 //
 // AccessGrant maps:
 //   - grant.UserExternalID     -> member email address

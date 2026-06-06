@@ -129,6 +129,9 @@ func mapSmartsheetEvent(e *smartsheetEvent) *access.AuditLogEntry {
 		}
 	}
 	ts := parseSmartsheetTime(e.EventTime)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

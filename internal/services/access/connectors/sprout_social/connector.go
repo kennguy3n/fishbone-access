@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "sprout_social"
 	pageSize     = 100
+	// sproutSocialIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	sproutSocialIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("sprout_social: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -202,7 +207,7 @@ func (c *SproutSocialAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	pathOnly := base + ("/v1/users")
-	for {
+	for pages := 0; pages < sproutSocialIdentitiesMaxPages; pages++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -246,6 +251,7 @@ func (c *SproutSocialAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return fmt.Errorf("sprout_social: sync identities: pagination exceeded %d pages", sproutSocialIdentitiesMaxPages)
 }
 
 // GetSSOMetadata surfaces operator-supplied SAML metadata for the

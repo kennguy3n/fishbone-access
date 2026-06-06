@@ -172,7 +172,7 @@ func (c *ClickUpAccessConnector) Connect(ctx context.Context, configRaw, secrets
 	if err != nil {
 		return err
 	}
-	probe := fmt.Sprintf("%s/api/v2/team/%s", c.baseURL(), cfg.TeamID)
+	probe := fmt.Sprintf("%s/api/v2/team/%s", c.baseURL(), url.PathEscape(cfg.TeamID))
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -228,8 +228,8 @@ func (c *ClickUpAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
-	url := fmt.Sprintf("%s/api/v2/team/%s/member", c.baseURL(), cfg.TeamID)
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, url)
+	memberURL := fmt.Sprintf("%s/api/v2/team/%s/member", c.baseURL(), url.PathEscape(cfg.TeamID))
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, memberURL)
 	if err != nil {
 		return err
 	}

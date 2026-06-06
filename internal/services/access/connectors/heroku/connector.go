@@ -9,11 +9,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// teamPath builds the URL path for a Heroku team, escaping the
+// operator-supplied team name so names containing URL-sensitive
+// characters ("/", "%", "?") cannot corrupt the request path. Mirrors
+// the escaping already applied by teamMembersURL/teamMemberURL in
+// advanced.go so every Heroku endpoint treats TeamName consistently.
+func teamPath(team string) string {
+	return "/teams/" + url.PathEscape(strings.TrimSpace(team))
+}
 
 const (
 	ProviderName   = "heroku"
@@ -141,7 +151,7 @@ func (c *HerokuAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	}
 	path := "/account"
 	if cfg.TeamName != "" {
-		path = "/teams/" + cfg.TeamName
+		path = teamPath(cfg.TeamName)
 	}
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 	if err != nil {
@@ -189,7 +199,7 @@ func (c *HerokuAccessConnector) CountIdentities(ctx context.Context, configRaw, 
 	if cfg.TeamName == "" {
 		return 1, nil
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/teams/"+cfg.TeamName+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, teamPath(cfg.TeamName)+"/members")
 	if err != nil {
 		return 0, err
 	}
@@ -239,7 +249,7 @@ func (c *HerokuAccessConnector) SyncIdentities(
 			Status:      "active",
 		}}, "")
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/teams/"+cfg.TeamName+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, teamPath(cfg.TeamName)+"/members")
 	if err != nil {
 		return err
 	}

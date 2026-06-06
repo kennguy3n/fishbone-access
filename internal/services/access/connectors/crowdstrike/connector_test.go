@@ -280,3 +280,26 @@ func TestListEntitlements_Empty(t *testing.T) {
 		t.Fatalf("got %d, want 0", len(got))
 	}
 }
+
+// TestListEntitlements_MalformedBodyReturnsError guards against the
+// error-swallowing regression where a 2xx response with an
+// undecodable body returned (nil, nil) — silently reporting "no
+// entitlements" instead of surfacing the decode failure. A truncated
+// or malformed body must produce a non-nil error so an access review
+// fails loud rather than recording a false "no access".
+func TestListEntitlements_MalformedBodyReturnsError(t *testing.T) {
+	srv := httptest.NewServer(csHandler(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"resources": "not-an-array"`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected decode error, got nil (entitlements=%v)", got)
+	}
+	if got != nil {
+		t.Fatalf("expected nil entitlements on decode error, got %v", got)
+	}
+}

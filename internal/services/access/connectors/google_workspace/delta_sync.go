@@ -38,7 +38,7 @@ func (c *GoogleWorkspaceAccessConnector) SyncIdentitiesDelta(
 	if err != nil {
 		return "", err
 	}
-	client, err := c.directoryClient(ctx, cfg, secrets)
+	client, err := c.reportsClient(ctx, cfg, secrets)
 	if err != nil {
 		return "", err
 	}

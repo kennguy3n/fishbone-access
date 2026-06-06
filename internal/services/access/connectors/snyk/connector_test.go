@@ -230,3 +230,38 @@ func TestListEntitlements_Empty(t *testing.T) {
 		t.Fatalf("got %d, want 0", len(got))
 	}
 }
+
+// A transient upstream failure (5xx) must surface as an error so the
+// caller can retry, rather than being swallowed as "no access".
+func TestListEntitlements_TransientErrorSurfaces(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected error on 500, got nil (entitlements=%#v)", got)
+	}
+	if got != nil {
+		t.Fatalf("expected nil entitlements on error, got %#v", got)
+	}
+}
+
+// PATCH provisioning commonly returns 204/201; any 2xx is success.
+func TestProvisionAccess_Accepts2xx(t *testing.T) {
+	for _, code := range []int{http.StatusCreated, http.StatusNoContent} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(code)
+		}))
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "m-1"}); err != nil {
+			t.Errorf("status %d: ProvisionAccess: %v", code, err)
+		}
+		srv.Close()
+	}
+}

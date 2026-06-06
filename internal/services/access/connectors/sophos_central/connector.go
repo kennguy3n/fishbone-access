@@ -255,8 +255,13 @@ func (c *SophosCentralAccessConnector) SyncIdentities(
 	}
 }
 
-func (c *SophosCentralAccessConnector) GetSSOMetadata(_ context.Context, _, _ map[string]interface{}) (*access.SSOMetadata, error) {
-	return nil, nil
+// GetSSOMetadata projects the operator-supplied `sso_metadata_url` /
+// `sso_entity_id` config into the shared SAML envelope used to broker
+// Sophos Central console SSO federation. When `sso_metadata_url` is
+// blank the helper returns (nil, nil) and the caller gracefully
+// downgrades, matching every other connector in this batch.
+func (c *SophosCentralAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	return access.SSOMetadataFromConfig(configRaw, "saml"), nil
 }
 
 func (c *SophosCentralAccessConnector) GetCredentialsMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (map[string]interface{}, error) {

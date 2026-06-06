@@ -176,7 +176,7 @@ func (c *FigmaAccessConnector) Connect(ctx context.Context, configRaw, secretsRa
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/teams/"+cfg.TeamID+"/projects")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/teams/"+url.PathEscape(cfg.TeamID)+"/projects")
 	if err != nil {
 		return err
 	}
@@ -256,9 +256,9 @@ func (c *FigmaAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	for {
-		path := "/teams/" + cfg.TeamID + "/members"
+		path := "/teams/" + url.PathEscape(cfg.TeamID) + "/members"
 		if cursor != "" {
-			path += "?cursor=" + cursor
+			path += "?" + url.Values{"cursor": {cursor}}.Encode()
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {

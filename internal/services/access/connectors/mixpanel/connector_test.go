@@ -29,6 +29,22 @@ func TestValidate_HappyPath(t *testing.T) {
 	}
 }
 
+// TestBuildPath_OmitsMeSegment is a regression test for the fix that removed the
+// stray "/me/" segment from the org-scoped path. Mixpanel's documented app API
+// addresses organization resources at /api/app/organizations/{organizationId}/...
+// (e.g. GET /api/app/organizations/{organizationId}/service-accounts), not under
+// /api/app/me/. Requesting /api/app/me/organizations/{org}/members 404s.
+func TestBuildPath_OmitsMeSegment(t *testing.T) {
+	got := New().buildPath(Config{OrganizationID: "12345"})
+	const want = "/api/app/organizations/12345/members"
+	if got != want {
+		t.Fatalf("buildPath = %q; want %q", got, want)
+	}
+	if strings.Contains(got, "/me/") {
+		t.Fatalf("buildPath %q must not contain the /me/ segment", got)
+	}
+}
+
 func TestValidate_RejectsMissing(t *testing.T) {
 	c := New()
 	if err := c.Validate(context.Background(), validConfig(), map[string]interface{}{}); err == nil {
@@ -61,7 +77,7 @@ func TestSync_PaginatesUsers(t *testing.T) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Basic ") {
 			t.Errorf("expected Basic auth")
 		}
-		if r.URL.Path != "/api/app/me/organizations/12345/members" {
+		if r.URL.Path != "/api/app/organizations/12345/members" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		body := map[string]interface{}{"members": []map[string]interface{}{

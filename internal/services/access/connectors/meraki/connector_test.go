@@ -19,7 +19,9 @@ func (noNetworkRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) 
 	return nil, errors.New("network call attempted")
 }
 
-func validConfig() map[string]interface{} { return map[string]interface{}{} }
+func validConfig() map[string]interface{} {
+	return map[string]interface{}{"organization_id": "1234567"}
+}
 func validSecrets() map[string]interface{} {
 	return map[string]interface{}{"token": "mk_AAAA1234bbbbCCCC"}
 }
@@ -54,10 +56,11 @@ func TestRegistryIntegration(t *testing.T) {
 
 func TestSync_DefaultsStatusActiveRegardlessOfHasApiKey(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		body := map[string]interface{}{"data": []map[string]interface{}{
+		// getOrganizationAdmins returns a bare JSON array, not a {"data":[...]} envelope.
+		body := []map[string]interface{}{
 			{"id": "a1", "email": "a@x.com", "name": "A", "hasApiKey": false},
 			{"id": "a2", "email": "b@x.com", "name": "B", "hasApiKey": true},
-		}}
+		}
 		b, _ := json.Marshal(body)
 		_, _ = w.Write(b)
 	}))
@@ -83,34 +86,28 @@ func TestSync_DefaultsStatusActiveRegardlessOfHasApiKey(t *testing.T) {
 	}
 }
 
-func TestSync_PaginatesUsers(t *testing.T) {
+// TestSync_OrgScopedSingleRequest is a regression test for the fix that points
+// identity sync at the org-scoped getOrganizationAdmins endpoint
+// (/api/v1/organizations/{organizationId}/admins). That endpoint returns a bare
+// JSON array and is not paginated, so Sync must issue exactly one request and
+// decode the array directly (the previous code hit a non-existent /api/v1/admins
+// and expected a paginated {"data":[...]} envelope).
+func TestSync_OrgScopedSingleRequest(t *testing.T) {
+	const wantPath = "/api/v1/organizations/1234567/admins"
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		if r.Header.Get("X-Cisco-Meraki-API-Key") == "" {
 			t.Errorf("expected X-Cisco-Meraki-API-Key header")
 		}
-		if r.URL.Path != "/api/v1/admins" {
-			t.Errorf("path = %q", r.URL.Path)
+		if r.URL.Path != wantPath {
+			t.Errorf("path = %q; want %q", r.URL.Path, wantPath)
 		}
-		page := r.URL.Query().Get("page")
-		body := map[string]interface{}{}
 		var arr []map[string]interface{}
-		if calls == 1 {
-			if page != "1" {
-				t.Errorf("page = %q", page)
-			}
-			for i := 0; i < pageSize; i++ {
-				arr = append(arr, map[string]interface{}{"id": fmt.Sprintf("u%d", i), "email": fmt.Sprintf("u%d@x.com", i), "name": fmt.Sprintf("U%d", i)})
-			}
-		} else {
-			if page != "2" {
-				t.Errorf("page = %q", page)
-			}
-			arr = []map[string]interface{}{{"id": "ulast", "email": "last@x.com", "name": "Last"}}
+		for i := 0; i < 150; i++ {
+			arr = append(arr, map[string]interface{}{"id": fmt.Sprintf("u%d", i), "email": fmt.Sprintf("u%d@x.com", i), "name": fmt.Sprintf("U%d", i)})
 		}
-		body["data"] = arr
-		b, _ := json.Marshal(body)
+		b, _ := json.Marshal(arr)
 		_, _ = w.Write(b)
 	}))
 	t.Cleanup(srv.Close)
@@ -125,8 +122,19 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if len(got) != pageSize+1 || calls != 2 {
-		t.Fatalf("got=%d calls=%d", len(got), calls)
+	if len(got) != 150 || calls != 1 {
+		t.Fatalf("got=%d calls=%d; want 150 identities in 1 request", len(got), calls)
+	}
+}
+
+// TestSync_RequiresOrganizationID asserts that identity sync fails fast when the
+// org id is absent, mirroring the org-scoped audit + admin endpoints.
+func TestSync_RequiresOrganizationID(t *testing.T) {
+	c := New()
+	c.httpClient = func() httpDoer { return &http.Client{} }
+	err := c.SyncIdentities(context.Background(), map[string]interface{}{}, validSecrets(), "", func([]*access.Identity, string) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), "organization_id") {
+		t.Fatalf("err = %v; want organization_id required", err)
 	}
 }
 

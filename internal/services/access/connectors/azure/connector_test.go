@@ -114,6 +114,44 @@ func TestSync_DecodesUsersAndPaginates(t *testing.T) {
 	}
 }
 
+// TestSync_FollowsAbsoluteNextLinkOnDifferentHost guards the doJSON
+// absolute-URL handling: when Graph returns an @odata.nextLink whose
+// host/format differs from baseURL(), the connector must follow it
+// verbatim rather than mangling it. The page-1 server advertises a
+// nextLink pointing at a *second* server; the old TrimPrefix-then-
+// re-prepend logic would have produced "<baseURL><absolute nextLink>"
+// and never reached page two.
+func TestSync_FollowsAbsoluteNextLinkOnDifferentHost(t *testing.T) {
+	page2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.RequestURI(), "://") {
+			t.Errorf("page-2 request target leaked absolute URL: %q", r.URL.RequestURI())
+		}
+		_, _ = w.Write([]byte(`{"value":[{"id":"u2","displayName":"Bob","userPrincipalName":"bob@uney.com","accountEnabled":false}]}`))
+	}))
+	t.Cleanup(page2.Close)
+
+	page1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// Absolute nextLink on a DIFFERENT host than baseURL().
+		_, _ = w.Write([]byte(`{"value":[{"id":"u1","displayName":"Alice","userPrincipalName":"alice@uney.com","mail":"alice@uney.com","accountEnabled":true}],"@odata.nextLink":"` + page2.URL + `/users?$skiptoken=NEXT"}`))
+	}))
+	t.Cleanup(page1.Close)
+
+	c := New()
+	c.urlOverride = page1.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+
+	var got []*access.Identity
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 2 || got[0].ExternalID != "u1" || got[1].ExternalID != "u2" {
+		t.Fatalf("got = %+v; want both pages [u1 u2]", got)
+	}
+}
+
 func TestCount_ParsesPlainInt(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, "/users/$count") {
@@ -388,6 +426,53 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].ResourceExternalID != "role-1" || got[0].Source != "direct" {
 		t.Fatalf("got = %+v", got)
+	}
+}
+
+func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A single quote in the principal id must be doubled per OData
+		// so it cannot break out of the filter string literal.
+		if got := r.URL.Query().Get("$filter"); got != "principalId eq 'p''1 or 1 eq 1'" {
+			t.Fatalf("$filter = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	if _, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "p'1 or 1 eq 1"); err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+}
+
+// TestListEntitlements_FollowsNextLinkAcrossPages exercises the
+// @odata.nextLink pagination loop and the urlOverride re-anchoring so a
+// principal with role assignments spread across pages is fully
+// enumerated (mirrors the audit.go re-anchor behavior).
+func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("$skiptoken") == "PAGE2" {
+			_, _ = w.Write([]byte(`{"value":[{"id":"ra2","name":"ra2","properties":{"roleDefinitionId":"role-2","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+			return
+		}
+		// First page advertises an absolute ARM nextLink; the connector
+		// must re-anchor it to the test server via urlOverride.
+		next := defaultARMBaseURL + "/subscriptions/sub-1/providers/Microsoft.Authorization/roleAssignments?api-version=" + armAPIVersion + "&$skiptoken=PAGE2"
+		_, _ = w.Write([]byte(`{"nextLink":"` + next + `","value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"role-1","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "principal-1")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(got) != 2 || got[0].ResourceExternalID != "role-1" || got[1].ResourceExternalID != "role-2" {
+		t.Fatalf("expected 2 roles across 2 pages, got = %+v", got)
 	}
 }
 

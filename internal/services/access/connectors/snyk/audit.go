@@ -65,9 +65,10 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 		req.Header.Set("Accept", "application/vnd.api+json")
 		req.Header.Set("Content-Type", "application/vnd.api+json")
 		req.Header.Set("Authorization", "token "+strings.TrimSpace(secrets.APIToken))
-		respBody, err := snykDoRaw(c, req)
+		respBody, status, err := snykDoRaw(c, req)
 		if err != nil {
-			if strings.Contains(err.Error(), "status 403") {
+			switch status {
+			case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 				return access.ErrAuditNotAvailable
 			}
 			return err
@@ -101,10 +102,10 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 	return nil
 }
 
-func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, error) {
+func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, int, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("snyk: %s %s: %w", req.Method, req.URL.Path, err)
+		return nil, 0, fmt.Errorf("snyk: %s %s: %w", req.Method, req.URL.Path, err)
 	}
 	defer resp.Body.Close()
 	body := make([]byte, 0, 1<<16)
@@ -122,9 +123,9 @@ func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, error) {
 		}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("snyk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return nil, resp.StatusCode, fmt.Errorf("snyk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 	}
-	return body, nil
+	return body, resp.StatusCode, nil
 }
 
 type snykAuditPage struct {
@@ -153,6 +154,9 @@ func mapSnykAuditEvent(e *snykAuditEvent) *access.AuditLogEntry {
 	ts, _ := time.Parse(time.RFC3339Nano, e.Attributes.CreatedAt)
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Attributes.CreatedAt)
+	}
+	if ts.IsZero() {
+		return nil
 	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}

@@ -196,8 +196,23 @@ func (b *bearerTransportClient) Do(req *http.Request) (*http.Response, error) {
 	return b.inner.Do(req)
 }
 
-func (c *AzureAccessConnector) doJSON(client httpDoer, ctx context.Context, method, path string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, nil)
+// doJSON issues a GET/DELETE against the Microsoft Graph API and
+// returns the decoded body. path may be either a base-relative path
+// (e.g. "/users?...") or an already-absolute URL (e.g. an
+// @odata.nextLink pagination cursor); an absolute URL is used verbatim
+// while a relative path is resolved against baseURL(). Accepting the
+// cursor as-is means SyncIdentities/SyncGroups/SyncGroupMembers can
+// hand the raw nextLink straight back without stripping baseURL, so a
+// nextLink that ever points at a different host/format (regional
+// endpoint, trailing-slash variation) is followed correctly instead of
+// being concatenated into a malformed "baseURLhttps://..." URL. ctx is
+// the first parameter per Go convention.
+func (c *AzureAccessConnector) doJSON(ctx context.Context, client httpDoer, method, path string) ([]byte, error) {
+	endpoint := path
+	if !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") {
+		endpoint = c.baseURL() + path
+	}
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +236,7 @@ func (c *AzureAccessConnector) Connect(ctx context.Context, configRaw, secretsRa
 		return err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	if _, err := c.doJSON(client, ctx, http.MethodGet, "/users?$top=1"); err != nil {
+	if _, err := c.doJSON(ctx, client, http.MethodGet, "/users?$top=1"); err != nil {
 		return fmt.Errorf("azure: connect probe: %w", err)
 	}
 	return nil
@@ -258,7 +273,7 @@ func (c *AzureAccessConnector) CountIdentities(ctx context.Context, configRaw, s
 		return 0, err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/users/$count")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/users/$count")
 	if err != nil {
 		return 0, err
 	}
@@ -286,7 +301,10 @@ func (c *AzureAccessConnector) SyncIdentities(
 		path = checkpoint
 	}
 	for {
-		body, err := c.doJSON(client, ctx, http.MethodGet, path)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		body, err := c.doJSON(ctx, client, http.MethodGet, path)
 		if err != nil {
 			return err
 		}
@@ -312,10 +330,10 @@ func (c *AzureAccessConnector) SyncIdentities(
 				Status:      status,
 			})
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Hand Graph's @odata.nextLink back verbatim; doJSON follows
+		// absolute URLs directly, so no fragile baseURL stripping is
+		// needed and an unexpected host/format cannot be mangled.
+		next := resp.NextLink
 		if err := handler(identities, next); err != nil {
 			return err
 		}
@@ -353,10 +371,20 @@ func (c *AzureAccessConnector) armClient(ctx context.Context, cfg Config, secret
 // (scope, principalID, roleDefinitionID) tuple so that retries land on the
 // same role assignment and 409 / 404 can be treated as idempotent.
 func armRoleAssignmentName(scope, principalID, roleDefinitionID string) string {
+	// Length-prefix each component before joining so the encoding is
+	// injective: two different (scope, principalID, roleDefinitionID)
+	// tuples can never hash to the same name regardless of the bytes
+	// they contain. (Azure scopes/principal/role ids never contain the
+	// old "|" separator today, but length-prefixing removes the
+	// assumption entirely.)
+	var sb strings.Builder
+	for _, part := range []string{scope, principalID, roleDefinitionID} {
+		fmt.Fprintf(&sb, "%d:%s", len(part), part)
+	}
 	// gosec G401: deterministic identifier, not a hash for
 	// integrity/auth. SHA-1 chosen so the 20-byte output trims
 	// cleanly to a 16-byte GUID-shaped name.
-	sum := sha1.Sum([]byte(scope + "|" + principalID + "|" + roleDefinitionID)) // #nosec G401
+	sum := sha1.Sum([]byte(sb.String())) // #nosec G401
 	b := sum[:16]
 	// Format as a GUID; this is just a deterministic identifier so we do
 	// not tag it as a specific UUID variant.
@@ -450,8 +478,10 @@ func (c *AzureAccessConnector) RevokeAccess(
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		// Covers 204 No Content (the normal ARM delete response).
 		return nil
-	case resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound:
+	case resp.StatusCode == http.StatusNotFound:
+		// Assignment already gone ⇒ idempotent success.
 		return nil
 	default:
 		rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -476,12 +506,20 @@ func (c *AzureAccessConnector) ListEntitlements(
 		return nil, err
 	}
 	client := c.armClient(ctx, cfg, secrets)
+	// Escape per OData (double single quotes) and URL-encode the literal
+	// before embedding into $filter so a principal id containing quotes
+	// cannot break out of the filter string. Mirrors the escaping in
+	// GetCredentialsMetadata.
+	escapedPrincipalID := strings.ReplaceAll(userExternalID, "'", "''")
 	path := fmt.Sprintf("/subscriptions/%s/providers/Microsoft.Authorization/roleAssignments?api-version=%s&$filter=%s",
 		url.PathEscape(cfg.SubscriptionID), armAPIVersion,
-		url.QueryEscape("principalId eq '"+userExternalID+"'"))
+		url.QueryEscape("principalId eq '"+escapedPrincipalID+"'"))
 	next := c.armURL(path)
 	var out []access.Entitlement
 	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, next, nil)
 		if err != nil {
 			return nil, err
@@ -510,7 +548,14 @@ func (c *AzureAccessConnector) ListEntitlements(
 		if page.NextLink == "" {
 			return out, nil
 		}
-		next = page.NextLink
+		// NextLink may be absolute; in tests we re-anchor to the
+		// urlOverride so the redirected server still receives it.
+		// Mirrors FetchAccessAuditLogs in audit.go.
+		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
+			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		} else {
+			next = page.NextLink
+		}
 	}
 }
 
@@ -603,7 +648,7 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 	// quotes or other special characters cannot break out of the filter.
 	escapedClientID := strings.ReplaceAll(secrets.ClientID, "'", "''")
 	filter := url.QueryEscape("appId eq '" + escapedClientID + "'")
-	body, err := c.doJSON(client, ctx, http.MethodGet, "/applications?$filter="+filter+"&$select=passwordCredentials")
+	body, err := c.doJSON(ctx, client, http.MethodGet, "/applications?$filter="+filter+"&$select=passwordCredentials")
 	if err != nil {
 		return out, nil
 	}
@@ -621,6 +666,10 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 	if len(resp.Value) > 0 && len(resp.Value[0].PasswordCredentials) > 0 {
 		creds := resp.Value[0].PasswordCredentials
 		earliest := ""
+		// Microsoft Graph always returns endDateTime as a UTC ISO 8601
+		// instant with the trailing Z (e.g. 2027-06-15T00:00:00Z), so a
+		// lexicographic min over the consistent format yields the
+		// earliest expiry without parsing.
 		for _, c := range creds {
 			if c.EndDateTime != "" && (earliest == "" || c.EndDateTime < earliest) {
 				earliest = c.EndDateTime

@@ -85,14 +85,18 @@ func (c *BambooHRAccessConnector) FetchAccessAuditLogs(
 	type kv struct {
 		EmployeeID string
 		Change     bambooChangedEmployee
+		changedAt  time.Time
 	}
 	pairs := make([]kv, 0, len(page.Employees))
 	for id, change := range page.Employees {
 		change.EmployeeID = id
-		pairs = append(pairs, kv{EmployeeID: id, Change: change})
+		// Parse lastChanged once here rather than inside the sort
+		// comparator, which would re-parse the same strings O(n log n)
+		// times for large deltas.
+		pairs = append(pairs, kv{EmployeeID: id, Change: change, changedAt: parseBambooTime(change.LastChanged)})
 	}
 	sort.Slice(pairs, func(i, j int) bool {
-		return parseBambooTime(pairs[i].Change.LastChanged).Before(parseBambooTime(pairs[j].Change.LastChanged))
+		return pairs[i].changedAt.Before(pairs[j].changedAt)
 	})
 
 	batch := make([]*access.AuditLogEntry, 0, len(pairs))
@@ -107,10 +111,15 @@ func (c *BambooHRAccessConnector) FetchAccessAuditLogs(
 		}
 		batch = append(batch, entry)
 	}
-	if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-		return err
+	if len(batch) == 0 {
+		// Nothing mapped (empty delta, or every event had an
+		// unparseable lastChanged and was dropped). Skip the
+		// handler entirely — there's no progress to record and
+		// batchMax == since, so calling it would be a no-op. This
+		// mirrors the basecamp/bigcommerce audit paths.
+		return nil
 	}
-	return nil
+	return handler(batch, batchMax, access.DefaultAuditPartition)
 }
 
 type bambooChangedPage struct {
@@ -118,6 +127,11 @@ type bambooChangedPage struct {
 }
 
 type bambooChangedEmployee struct {
+	// EmployeeID is populated from the JSON object key in
+	// FetchAccessAuditLogs (change.EmployeeID = id), not from the
+	// value body — BambooHR's /employees/changed response keys each
+	// change by employee ID rather than carrying it as a field.
+	// Hence json:"-": it must never be (re)decoded from the value.
 	EmployeeID  string `json:"-"`
 	Action      string `json:"action"`
 	LastChanged string `json:"lastChanged"`
@@ -128,6 +142,12 @@ func mapBambooChangedEvent(c *bambooChangedEmployee) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseBambooTime(c.LastChanged)
+	if ts.IsZero() {
+		// Drop changes with an unparseable lastChanged: a zero
+		// timestamp would not advance the batchMax cursor and would be
+		// re-fetched on every sync. Matches the other audit mappers.
+		return nil
+	}
 	action := strings.ToLower(strings.TrimSpace(c.Action))
 	if action == "" {
 		action = "updated"

@@ -430,8 +430,8 @@ func (c *CrowdStrikeAccessConnector) ListEntitlements(ctx context.Context, confi
 	var resp struct {
 		Resources []string `json:"resources"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("crowdstrike: decode entitlements: %w", err)
 	}
 	var out []access.Entitlement
 	for _, r := range resp.Resources {

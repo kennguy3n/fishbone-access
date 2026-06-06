@@ -13,6 +13,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// airtableAuditMaxPages bounds a single FetchAccessAuditLogs run, matching the
+// defensive cap used by the other connectors. The checkpoint (nextSince) is
+// persisted per page, so hitting the cap simply defers the remaining events to
+// the next sync cycle rather than looping unboundedly on a misbehaving cursor.
+const airtableAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Airtable Enterprise audit-log events
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -37,7 +43,7 @@ func (c *AirtableAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	offset := ""
-	for {
+	for pageNum := 0; pageNum < airtableAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -93,6 +99,7 @@ func (c *AirtableAccessConnector) FetchAccessAuditLogs(
 		}
 		offset = next
 	}
+	return nil
 }
 
 type airtableAuditPage struct {
@@ -123,6 +130,9 @@ func mapAirtableAuditEvent(e *airtableAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseAirtableTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

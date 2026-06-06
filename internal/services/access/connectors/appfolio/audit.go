@@ -121,7 +121,7 @@ type appfolioAuditPage struct {
 }
 
 func mapAppFolioAuditEvent(e *appfolioAuditEvent) *access.AuditLogEntry {
-	if e == nil {
+	if e == nil || strings.TrimSpace(e.ID) == "" {
 		return nil
 	}
 	ts := parseAppFolioAuditTime(e.Timestamp)

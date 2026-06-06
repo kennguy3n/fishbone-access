@@ -27,7 +27,13 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Config struct{}
+// Config holds the per-tenant Ghost connection settings. BaseURL is the
+// operator's Ghost site root (e.g. "https://blog.example.com"); the Admin
+// API lives under "{BaseURL}/ghost/api/admin/". Ghost is self-hosted per
+// customer, so there is no shared default host — BaseURL is required.
+type Config struct {
+	BaseURL string `json:"base_url"`
+}
 
 type Secrets struct {
 	Token string `json:"token"`
@@ -45,7 +51,11 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	if raw == nil {
 		return Config{}, errors.New("ghost: config is nil")
 	}
-	return Config{}, nil
+	var cfg Config
+	if v, ok := raw["base_url"].(string); ok {
+		cfg.BaseURL = strings.TrimSpace(v)
+	}
+	return cfg, nil
 }
 
 func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
@@ -59,7 +69,15 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
-func (c Config) validate() error { return nil }
+func (c Config) validate() error {
+	if c.BaseURL == "" {
+		return errors.New("ghost: base_url is required (your Ghost site URL, e.g. https://blog.example.com)")
+	}
+	if !strings.HasPrefix(c.BaseURL, "http://") && !strings.HasPrefix(c.BaseURL, "https://") {
+		return errors.New("ghost: base_url must include scheme (http:// or https://)")
+	}
+	return nil
+}
 func (s Secrets) validate() error {
 	if strings.TrimSpace(s.Token) == "" {
 		return errors.New("ghost: token is required")
@@ -82,18 +100,24 @@ func (c *GhostAccessConnector) Validate(_ context.Context, configRaw, secretsRaw
 	return s.validate()
 }
 
-func (c *GhostAccessConnector) baseURL() string {
+func (c *GhostAccessConnector) baseURL(cfg Config) string {
 	if c.urlOverride != "" {
 		return strings.TrimRight(c.urlOverride, "/")
 	}
-	return "https://api.ghost.org"
+	return strings.TrimRight(cfg.BaseURL, "/")
 }
+
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 func (c *GhostAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GhostAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -138,11 +162,11 @@ func (c *GhostAccessConnector) decodeBoth(configRaw, secretsRaw map[string]inter
 }
 
 func (c *GhostAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	probe := c.baseURL() + ("/ghost/api/admin/users/") + "?page=1&limit=1"
+	probe := c.baseURL(cfg) + ("/ghost/api/admin/users/") + "?page=1&limit=1"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -189,7 +213,7 @@ func (c *GhostAccessConnector) SyncIdentities(
 	checkpoint string,
 	handler func(batch []*access.Identity, nextCheckpoint string) error,
 ) error {
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -200,7 +224,7 @@ func (c *GhostAccessConnector) SyncIdentities(
 			page = 1
 		}
 	}
-	base := c.baseURL()
+	base := c.baseURL(cfg)
 	pathOnly := base + ("/ghost/api/admin/users/")
 	for {
 		q := url.Values{

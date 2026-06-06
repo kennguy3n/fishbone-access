@@ -259,3 +259,61 @@ func TestFetchAccessAuditLogs_HandlerFailureDoesNotAdvanceCursor(t *testing.T) {
 		t.Fatalf("handler called %d times, want exactly 1", handlerCalls)
 	}
 }
+
+// TestFetchAccessAuditLogs_DropsZeroTimestamp verifies that actions whose
+// `date` is missing or unparseable are dropped rather than emitted with a
+// zero (0001-01-01) timestamp. Emitting a zero-timestamp entry pollutes the
+// audit pipeline and can poison the watermark cursor.
+func TestFetchAccessAuditLogs_DropsZeroTimestamp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{
+			{
+				"id":              "act-valid",
+				"type":            "addMemberToOrganization",
+				"date":            "2024-01-01T11:00:00.000Z",
+				"idMemberCreator": "actor-1",
+			},
+			{
+				// Missing/blank date must not become a zero-ts entry.
+				"id":              "act-nodate",
+				"type":            "createBoard",
+				"date":            "",
+				"idMemberCreator": "actor-2",
+			},
+			{
+				// Unparseable date must also be dropped.
+				"id":              "act-baddate",
+				"type":            "updateBoard",
+				"date":            "not-a-timestamp",
+				"idMemberCreator": "actor-3",
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("len = %d, want 1 (zero-timestamp entries must be dropped): %#v", len(collected), collected)
+	}
+	if collected[0].EventID != "act-valid" {
+		t.Errorf("kept entry = %+v, want act-valid", collected[0])
+	}
+	for _, e := range collected {
+		if e.Timestamp.IsZero() {
+			t.Errorf("emitted entry with zero timestamp: %+v", e)
+		}
+	}
+}

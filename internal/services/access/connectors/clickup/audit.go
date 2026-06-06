@@ -131,6 +131,13 @@ func mapClickupEvent(e *clickupAuditEvent) *access.AuditLogEntry {
 		}
 	}
 	ts := parseClickupTime(e.Date)
+	if ts.IsZero() {
+		// An unparseable/absent timestamp cannot advance the watermark
+		// cursor and would be persisted as a bogus 0001-01-01 entry,
+		// so drop it — consistent with every other connector's audit
+		// mapper.
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

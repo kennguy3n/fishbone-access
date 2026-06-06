@@ -257,12 +257,17 @@ func (c *GenericSAMLAccessConnector) fetchMetadata(ctx context.Context, cfg Conf
 	return parseSAMLMetadata(body)
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GenericSAMLAccessConnector) doRaw(req *http.Request) (*http.Response, error) {
 	if c.httpClient != nil {
 		return c.httpClient().Do(req)
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
-	return client.Do(req)
+	return sharedHTTPClient.Do(req)
 }
 
 // samlEntityDescriptor is the minimum SAML metadata shape we care about.

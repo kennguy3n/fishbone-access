@@ -97,3 +97,5 @@ func (c *LastPassAccessConnector) DeleteSCIMResource(ctx context.Context, config
 	}
 	return scim().DeleteSCIMResource(ctx, scimCfg, scimSecrets, resourceType, externalID)
 }
+
+var _ access.SCIMProvisioner = (*LastPassAccessConnector)(nil)

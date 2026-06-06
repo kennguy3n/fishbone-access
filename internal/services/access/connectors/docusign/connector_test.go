@@ -20,7 +20,7 @@ func (noNetworkRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) 
 }
 
 func validConfig() map[string]interface{} {
-	return map[string]interface{}{"account_environment": "production"}
+	return map[string]interface{}{"account_environment": "production", "account_id": "acct-guid-123"}
 }
 func validSecrets() map[string]interface{} {
 	return map[string]interface{}{"token": "dsg_AAAA1234bbbbCCCC"}
@@ -85,7 +85,7 @@ func TestSync_PaginatesUsers(t *testing.T) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 			t.Errorf("expected Bearer auth")
 		}
-		if r.URL.Path != "/restapi/v2.1/users" {
+		if r.URL.Path != "/restapi/v2.1/accounts/acct-guid-123/users" {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		page := r.URL.Query().Get("page")

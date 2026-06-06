@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +13,15 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// sumoAuditMaxPages bounds a single audit sweep as a defense-in-depth
+// guard against an upstream that perpetually returns a non-empty
+// continuation token with non-empty data. Mirrors the explicit caps
+// used by every sibling audit connector (sophosXGAuditMaxPages,
+// splunkAuditMaxPages, stripeAuditMaxPages, surveymonkeyAuditMaxPages).
+// Events are handed to the handler per page, so hitting the cap simply
+// stops the sweep — already-yielded events are durably checkpointed.
+const sumoAuditMaxPages = 200
 
 // FetchAccessAuditLogs streams Sumo Logic audit events into the access
 // audit pipeline. Implements access.AccessAuditor.
@@ -38,7 +48,7 @@ func (c *SumoLogicAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	token := ""
 	base := c.baseURL(cfg) + "/api/v1/account/audit-events"
-	for {
+	for pages := 0; pages < sumoAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -94,6 +104,10 @@ func (c *SumoLogicAccessConnector) FetchAccessAuditLogs(
 			return nil
 		}
 	}
+	// Cap reached: events seen so far were already passed to the
+	// handler (and checkpointed) per page, so stop the sweep cleanly
+	// rather than looping unbounded.
+	return nil
 }
 
 type sumoAuditPage struct {
@@ -172,22 +186,10 @@ func readSumoBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("sumo_logic: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	// Match the strict 1 MB cap that do() applies via io.LimitReader,
+	// keeping the audit path consistent with the rest of the connector
+	// (and avoiding the up-to-4 KB overshoot of a manual chunked read).
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 var _ access.AccessAuditor = (*SumoLogicAccessConnector)(nil)

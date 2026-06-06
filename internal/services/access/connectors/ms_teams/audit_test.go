@@ -108,6 +108,59 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_SkipsUnparseableTimestamp is a regression test for
+// mapTeamsSignIn previously emitting entries with a zero (0001-01-01) timestamp
+// when createdDateTime was unparseable, diverging from every sibling connector
+// which drops such records. Records with bad timestamps must be skipped, not
+// surfaced to downstream consumers with a meaningless timestamp.
+func TestFetchAccessAuditLogs_SkipsUnparseableTimestamp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"value": []map[string]interface{}{
+				{
+					"id":              "si-bad",
+					"createdDateTime": "not-a-real-timestamp",
+					"userId":          "user-bad",
+					"appDisplayName":  "Microsoft Teams",
+				},
+				{
+					"id":              "si-good",
+					"createdDateTime": "2024-01-02T08:00:00Z",
+					"userId":          "user-good",
+					"appDisplayName":  "Microsoft Teams",
+				},
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{auditPartitionTeamsSignIns: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("len = %d, want 1 (zero-timestamp record must be dropped)", len(collected))
+	}
+	if collected[0].EventID != "si-good" {
+		t.Errorf("EventID = %q, want si-good", collected[0].EventID)
+	}
+	for _, e := range collected {
+		if e.Timestamp.IsZero() {
+			t.Errorf("emitted entry %q has zero timestamp", e.EventID)
+		}
+	}
+}
+
 func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

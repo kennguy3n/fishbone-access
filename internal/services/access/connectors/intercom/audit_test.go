@@ -127,3 +127,22 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestMapIntercomActivity_DropsZeroTimestamp is a regression guard for the
+// missing zero-timestamp drop in mapIntercomActivity. An Intercom activity_log
+// row whose `created_at` is absent or non-positive must be dropped rather than
+// emitted with a 0001-01-01 timestamp. Mirrors the guard already present in the
+// sibling connectors' audit mappers.
+func TestMapIntercomActivity_DropsZeroTimestamp(t *testing.T) {
+	e := &intercomActivity{ActivityType: "admin.login"}
+	e.ID = json.Number("123")
+	// created_at == 0 -> zero timestamp -> must be dropped.
+	if got := mapIntercomActivity(e); got != nil {
+		t.Fatalf("mapIntercomActivity with zero created_at = %+v; want nil", got)
+	}
+	// Sanity: a well-formed activity is still mapped with a non-zero timestamp.
+	e.CreatedAt = 1700000000
+	if got := mapIntercomActivity(e); got == nil || got.Timestamp.IsZero() {
+		t.Fatalf("mapIntercomActivity with valid created_at returned nil/zero ts: %+v", got)
+	}
+}

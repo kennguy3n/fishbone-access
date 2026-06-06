@@ -164,3 +164,29 @@ func TestFetchAccessAuditLogs_MissingOrgID(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestMapJiraAuditEvent_DropsZeroTimestamp is a regression guard for the missing
+// zero-timestamp drop in mapJiraAuditEvent. An Atlassian audit record whose
+// `time` is absent or unparseable must be dropped rather than emitted with a
+// 0001-01-01 timestamp; the latter pollutes the audit stream with bogus
+// zero-time entries (and, on watermark cursors that don't use strict After()
+// semantics, can stall forward progress). Mirrors the guard already present in
+// the sibling connectors' audit mappers.
+func TestMapJiraAuditEvent_DropsZeroTimestamp(t *testing.T) {
+	e := &jiraAuditEvent{ID: "evt-1"}
+	e.Attributes.Action = "user_login"
+	// Empty Time -> parseJiraTime returns the zero value -> must be dropped.
+	if got := mapJiraAuditEvent(e); got != nil {
+		t.Fatalf("mapJiraAuditEvent with empty time = %+v; want nil", got)
+	}
+	// An unparseable timestamp must also be dropped.
+	e.Attributes.Time = "not-a-timestamp"
+	if got := mapJiraAuditEvent(e); got != nil {
+		t.Fatalf("mapJiraAuditEvent with bad time = %+v; want nil", got)
+	}
+	// Sanity: a well-formed event is still mapped with a non-zero timestamp.
+	e.Attributes.Time = "2023-11-14T22:13:20Z"
+	if got := mapJiraAuditEvent(e); got == nil || got.Timestamp.IsZero() {
+		t.Fatalf("mapJiraAuditEvent with valid time returned nil/zero ts: %+v", got)
+	}
+}

@@ -166,3 +166,45 @@ func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 		t.Fatalf("err = ErrAuditNotAvailable; want generic error")
 	}
 }
+
+// TestFetchAccessAuditLogs_DropsUnparseableTimestamp verifies that an event
+// whose `received` value is present but not a valid timestamp is dropped
+// rather than emitted with a zero (0001-01-01) timestamp.
+func TestFetchAccessAuditLogs_DropsUnparseableTimestamp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(tenableAuditPage{
+			Events: []tenableEvent{
+				{ID: "ev-good", Action: "user.logged_in", CRUD: "u", Received: "2024-05-01T10:00:00.000Z", Actor: tenableEventActor{ID: "u1"}},
+				{ID: "ev-bad", Action: "user.logged_in", CRUD: "u", Received: "not-a-timestamp", Actor: tenableEventActor{ID: "u2"}},
+			},
+		})
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("collected %d; want 1 (unparseable-timestamp event must be dropped): %#v", len(collected), collected)
+	}
+	if collected[0].EventID != "ev-good" {
+		t.Errorf("kept entry = %+v, want ev-good", collected[0])
+	}
+	for _, e := range collected {
+		if e.Timestamp.IsZero() {
+			t.Errorf("emitted entry with zero timestamp: %+v", e)
+		}
+	}
+}

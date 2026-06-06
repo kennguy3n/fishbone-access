@@ -103,11 +103,17 @@ func (c *GitHubAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GitHubAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GitHubAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -176,7 +182,7 @@ func (c *GitHubAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+cfg.Organization)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+url.PathEscape(cfg.Organization))
 	if err != nil {
 		return err
 	}
@@ -235,7 +241,7 @@ func (c *GitHubAccessConnector) SyncIdentities(
 	}
 	nextURL := checkpoint
 	if nextURL == "" {
-		nextURL = c.baseURL() + "/orgs/" + cfg.Organization + "/members?per_page=100"
+		nextURL = c.baseURL() + "/orgs/" + url.PathEscape(cfg.Organization) + "/members?per_page=100"
 	}
 	for {
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
@@ -436,6 +442,9 @@ func (c *GitHubAccessConnector) ListEntitlements(
 			}
 		}
 		nextURL = parseNextLink(resp.Header.Get("Link"))
+		if nextURL != "" && c.urlOverride != "" {
+			nextURL = strings.Replace(nextURL, defaultBaseURL, strings.TrimRight(c.urlOverride, "/"), 1)
+		}
 	}
 	return out, nil
 }

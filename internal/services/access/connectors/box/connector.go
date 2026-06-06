@@ -407,31 +407,63 @@ func (c *BoxAccessConnector) RevokeAccess(
 	}
 }
 
+// boxCollaborationsMaxPages bounds the marker-pagination walk so a
+// pathological upstream (one that keeps returning a non-empty
+// next_marker) cannot pin the worker indefinitely. A folder with
+// thousands of collaborators is already far past any realistic
+// access-grant scenario.
+const boxCollaborationsMaxPages = 1000
+
+// findCollaborationID locates the collaboration id for (folderID, userID)
+// by walking the folder's collaboration list. Box paginates this endpoint
+// with a marker cursor (next_marker, surfaced when usemarker=true), so we
+// MUST follow it: if the target user's collaboration is on a later page
+// and we only read page one, RevokeAccess would short-circuit to a silent
+// idempotent-success without ever issuing the DELETE. Mirrors the
+// listBasecampProjectPeople pagination fix in basecamp/advanced.go.
 func (c *BoxAccessConnector) findCollaborationID(ctx context.Context, secrets Secrets, folderID, userID string) (string, error) {
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/2.0/folders/"+url.PathEscape(folderID)+"/collaborations")
-	if err != nil {
-		return "", err
-	}
-	resp, err := c.doRaw(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return "", nil
-	}
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("box: collaborations GET status %d: %s", resp.StatusCode, string(body))
-	}
-	var list boxCollaborationsResponse
-	if err := json.Unmarshal(body, &list); err != nil {
-		return "", fmt.Errorf("box: decode collaborations: %w", err)
-	}
-	for _, e := range list.Entries {
-		if e.AccessibleBy.ID == userID || strings.EqualFold(e.AccessibleBy.Login, userID) {
-			return e.ID, nil
+	marker := ""
+	for page := 0; page < boxCollaborationsMaxPages; page++ {
+		if err := ctx.Err(); err != nil {
+			return "", err
 		}
+		q := url.Values{}
+		q.Set("usemarker", "true")
+		q.Set("limit", fmt.Sprintf("%d", pageSize))
+		if marker != "" {
+			q.Set("marker", marker)
+		}
+		endpoint := c.baseURL() + "/2.0/folders/" + url.PathEscape(folderID) + "/collaborations?" + q.Encode()
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
+		if err != nil {
+			return "", err
+		}
+		resp, err := c.doRaw(req)
+		if err != nil {
+			return "", err
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			_ = resp.Body.Close()
+			return "", nil
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return "", fmt.Errorf("box: collaborations GET status %d: %s", resp.StatusCode, string(body))
+		}
+		var list boxCollaborationsResponse
+		if err := json.Unmarshal(body, &list); err != nil {
+			return "", fmt.Errorf("box: decode collaborations: %w", err)
+		}
+		for _, e := range list.Entries {
+			if e.AccessibleBy.ID == userID || strings.EqualFold(e.AccessibleBy.Login, userID) {
+				return e.ID, nil
+			}
+		}
+		if strings.TrimSpace(list.NextMarker) == "" {
+			return "", nil
+		}
+		marker = list.NextMarker
 	}
 	return "", nil
 }

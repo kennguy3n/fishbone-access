@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -40,7 +41,7 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		return err
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
-	client, err := c.directoryClient(ctx, cfg, secrets)
+	client, err := c.reportsClient(ctx, cfg, secrets)
 	if err != nil {
 		return err
 	}
@@ -69,9 +70,23 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := doJSON(client, req)
+		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("google_workspace: reports activity: %w", err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 50<<20))
+		_ = resp.Body.Close()
+		// 401/403 (token lacks the reports scope / caller is not an
+		// auditor) and 404 (tenant has no audit surface) are not hard
+		// failures: the AccessAuditor contract requires them to be
+		// soft-skipped so the worker drops the tenant instead of
+		// retrying forever. Every other audit connector does the same.
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("google_workspace: reports activity: status %d: %s", resp.StatusCode, string(body))
 		}
 		var page struct {
 			Items         []reportsActivity `json:"items"`

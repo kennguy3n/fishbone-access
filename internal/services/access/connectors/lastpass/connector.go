@@ -264,14 +264,29 @@ func (c *LastPassAccessConnector) batchChangeGroup(
 	if err != nil {
 		return err
 	}
-	lower := strings.ToLower(string(respBody))
-	if strings.Contains(lower, `"status":"ok"`) {
+	// Decode the status field rather than substring-matching the raw body so
+	// formatting/whitespace (e.g. `"status": "OK"`) can't mask a success,
+	// matching postJSON's robustness.
+	var probe struct {
+		Status string   `json:"status"`
+		Error  string   `json:"error"`
+		Errors []string `json:"errors"`
+	}
+	_ = json.Unmarshal(respBody, &probe)
+	if strings.EqualFold(strings.TrimSpace(probe.Status), "ok") {
 		return nil
 	}
-	if op == "add" && (strings.Contains(lower, "already") || strings.Contains(lower, "alreadyinthegroup")) {
+	// LastPass reports "already in group" / "not in group" as FAIL responses;
+	// treat them as idempotent successes. Match the decoded error fields,
+	// falling back to the raw body so we stay resilient to shape changes.
+	msg := strings.ToLower(strings.Join(append(probe.Errors, probe.Error), " "))
+	if strings.TrimSpace(msg) == "" {
+		msg = strings.ToLower(string(respBody))
+	}
+	if op == "add" && strings.Contains(msg, "already") {
 		return nil
 	}
-	if op == "del" && (strings.Contains(lower, "not in") || strings.Contains(lower, "notinthegroup") || strings.Contains(lower, "notmember")) {
+	if op == "del" && (strings.Contains(msg, "not in") || strings.Contains(msg, "notinthegroup") || strings.Contains(msg, "notmember")) {
 		return nil
 	}
 	return fmt.Errorf("lastpass: %s status FAIL: %s", op, string(respBody))
@@ -394,14 +409,21 @@ func (c *LastPassAccessConnector) postJSON(ctx context.Context, body map[string]
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("lastpass: status %d: %s", resp.StatusCode, string(respBody))
 	}
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, err
 	}
-	// LastPass returns 200 even on error; we sniff for the "status":"FAIL"
-	// convention. Keeping this loose because the project documents
-	// inconsistencies.
-	if strings.Contains(string(respBody), `"status":"FAIL"`) {
+	// LastPass returns HTTP 200 even on logical errors, signalling them
+	// with a top-level {"status":"FAIL"}. Decode the status field rather
+	// than substring-matching the raw bytes, so the check is insensitive
+	// to JSON whitespace and key ordering. Non-object payloads (the
+	// reporting array shape, user/folder lists) leave status empty and
+	// pass through unchanged.
+	var probe struct {
+		Status string `json:"status"`
+	}
+	_ = json.Unmarshal(respBody, &probe)
+	if strings.EqualFold(strings.TrimSpace(probe.Status), "FAIL") {
 		return nil, fmt.Errorf("lastpass: api FAIL: %s", string(respBody))
 	}
 	return respBody, nil
@@ -438,7 +460,7 @@ func (c *LastPassAccessConnector) postJSONAllowFail(ctx context.Context, body ma
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("lastpass: status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 func mapLastPassUsers(users []lastpassUser) []*access.Identity {

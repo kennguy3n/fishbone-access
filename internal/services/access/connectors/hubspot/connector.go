@@ -191,10 +191,12 @@ func (c *HubSpotAccessConnector) SyncIdentities(
 	}
 	after := checkpoint
 	for {
-		path := "/settings/v3/users?limit=100"
+		q := url.Values{}
+		q.Set("limit", "100")
 		if after != "" {
-			path += "&after=" + after
+			q.Set("after", after)
 		}
+		path := "/settings/v3/users?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -253,11 +255,17 @@ func (c *HubSpotAccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 		return fmt.Errorf("hubspot: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("hubspot: provision status %d: %s", resp.StatusCode, string(respBody))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("hubspot: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("hubspot: provision status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *HubSpotAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
@@ -279,11 +287,17 @@ func (c *HubSpotAccessConnector) RevokeAccess(ctx context.Context, configRaw, se
 		return fmt.Errorf("hubspot: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("hubspot: revoke status %d: %s", resp.StatusCode, string(respBody))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("hubspot: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("hubspot: revoke status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *HubSpotAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {
@@ -306,8 +320,8 @@ func (c *HubSpotAccessConnector) ListEntitlements(ctx context.Context, configRaw
 	var resp struct {
 		RoleIds []string `json:"roleIds"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("hubspot: decode entitlements: %w", err)
 	}
 	var out []access.Entitlement
 	for _, r := range resp.RoleIds {

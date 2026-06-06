@@ -12,6 +12,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// duoAuditMaxPages bounds a single audit sweep so a provider that keeps
+// returning a non-empty next_offset (or a server-side pagination bug)
+// cannot spin the loop forever; mirrors the cap used by the other
+// paginated audit connectors in this family.
+const duoAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Duo Security authentication-log events
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -55,7 +61,7 @@ func (c *DuoAccessConnector) FetchAccessAuditLogs(
 	// the previous page-max are not lost. mintime is only used on the
 	// first page to bound the lookback window.
 	nextOffset := ""
-	for {
+	for pageNum := 0; pageNum < duoAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -101,6 +107,7 @@ func (c *DuoAccessConnector) FetchAccessAuditLogs(
 			return nil
 		}
 	}
+	return nil
 }
 
 type duoAuthLogResponse struct {

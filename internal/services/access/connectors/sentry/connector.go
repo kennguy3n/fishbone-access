@@ -175,7 +175,7 @@ func (c *SentryAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	probe := c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/"
+	probe := c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func (c *SentryAccessConnector) SyncIdentities(
 	}
 	nextURL := checkpoint
 	if nextURL == "" {
-		nextURL = c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/members/"
+		nextURL = c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/members/"
 	}
 	for {
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
@@ -359,14 +359,22 @@ func (c *SentryAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	}
 	resp, err := c.doRaw(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr // entitlement-not-found is a soft signal; surface as empty list per ListEntitlements contract
+		// Member-not-found is a soft signal: the user simply holds no
+		// entitlements, so return an empty list per the ListEntitlements
+		// contract. Transient/server/network failures (5xx, timeouts)
+		// must surface so the caller can retry rather than recording a
+		// false "no access" during an upstream outage.
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var m struct {
 		Role  string   `json:"role"`
 		Teams []string `json:"teams"`
 	}
-	if json.Unmarshal(resp.Body, &m) != nil {
-		return nil, nil
+	if err := json.Unmarshal(resp.Body, &m); err != nil {
+		return nil, fmt.Errorf("sentry: decode entitlements: %w", err)
 	}
 	out := []access.Entitlement{{ResourceExternalID: cfg.OrganizationSlug, Role: m.Role, Source: "direct"}}
 	for _, t := range m.Teams {

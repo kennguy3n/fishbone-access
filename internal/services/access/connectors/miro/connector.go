@@ -229,9 +229,9 @@ func (c *MiroAccessConnector) SyncIdentities(
 	}
 	cursor := checkpoint
 	for {
-		path := "/orgs/" + cfg.OrgID + "/members?limit=100"
+		path := "/orgs/" + url.PathEscape(cfg.OrgID) + "/members?limit=100"
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			path += "&cursor=" + url.QueryEscape(cursor)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 
 func TestBuildiumFetchAccessAuditLogs_Maps(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/audit-logs" {
+		if r.URL.Path != "/v1/audit-logs" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		if r.Header.Get("Authorization") == "" {

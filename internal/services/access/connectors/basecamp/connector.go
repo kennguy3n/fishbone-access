@@ -135,6 +135,44 @@ func (c *BasecampAccessConnector) do(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+// doWithLink performs the request and returns the response body together
+// with the rel="next" URL parsed from the RFC 5988 Link header, so
+// collection endpoints (e.g. /people.json) can be fully paginated.
+func (c *BasecampAccessConnector) doWithLink(req *http.Request) ([]byte, string, error) {
+	resp, err := c.client().Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("basecamp: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, "", fmt.Errorf("basecamp: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+	}
+	return body, nextLinkFromHeader(resp.Header.Get("Link")), nil
+}
+
+// nextLinkFromHeader extracts the rel="next" URL from an RFC 5988 Link
+// header (Basecamp's documented pagination mechanism), returning "" when
+// there is no further page.
+func nextLinkFromHeader(link string) string {
+	for _, part := range strings.Split(link, ",") {
+		segments := strings.Split(part, ";")
+		if len(segments) < 2 {
+			continue
+		}
+		urlPart := strings.TrimSpace(segments[0])
+		if !strings.HasPrefix(urlPart, "<") || !strings.HasSuffix(urlPart, ">") {
+			continue
+		}
+		for _, attr := range segments[1:] {
+			if v := strings.TrimSpace(attr); v == `rel="next"` || v == "rel=next" {
+				return urlPart[1 : len(urlPart)-1]
+			}
+		}
+	}
+	return ""
+}
+
 func (c *BasecampAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
 	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
@@ -202,46 +240,63 @@ func (c *BasecampAccessConnector) CountIdentities(ctx context.Context, configRaw
 func (c *BasecampAccessConnector) SyncIdentities(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
-	_ string,
+	checkpoint string,
 	handler func(batch []*access.Identity, nextCheckpoint string) error,
 ) error {
 	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	endpoint := c.baseURL(cfg) + "/people.json"
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
-	if err != nil {
-		return err
+	// Basecamp paginates /people.json via the RFC 5988 Link header; a
+	// single GET only returns the first page, silently truncating larger
+	// directories. Follow rel="next" until it is absent so the full
+	// directory is enumerated. An incoming checkpoint (a previously
+	// returned next-page URL) resumes mid-directory.
+	nextURL := c.baseURL(cfg) + "/people.json"
+	if cp := strings.TrimSpace(checkpoint); cp != "" {
+		nextURL = cp
 	}
-	body, err := c.do(req)
-	if err != nil {
-		return err
-	}
-	var people []basecampPerson
-	if err := json.Unmarshal(body, &people); err != nil {
-		return fmt.Errorf("basecamp: decode people: %w", err)
-	}
-	identities := make([]*access.Identity, 0, len(people))
-	for _, p := range people {
-		display := p.Name
-		if display == "" {
-			display = p.EmailAddress
+	for nextURL != "" {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		idType := access.IdentityTypeUser
-		if p.Bot {
-			idType = access.IdentityTypeServiceAccount
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
+		if err != nil {
+			return err
 		}
-		identities = append(identities, &access.Identity{
-			ExternalID:  fmt.Sprintf("%d", p.ID),
-			Type:        idType,
-			DisplayName: display,
-			Email:       p.EmailAddress,
-			Status:      "active",
-			RawData:     map[string]interface{}{"admin": p.Admin, "owner": p.Owner, "title": p.TitleClient},
-		})
+		body, next, err := c.doWithLink(req)
+		if err != nil {
+			return err
+		}
+		var people []basecampPerson
+		if err := json.Unmarshal(body, &people); err != nil {
+			return fmt.Errorf("basecamp: decode people: %w", err)
+		}
+		identities := make([]*access.Identity, 0, len(people))
+		for _, p := range people {
+			display := p.Name
+			if display == "" {
+				display = p.EmailAddress
+			}
+			idType := access.IdentityTypeUser
+			if p.Bot {
+				idType = access.IdentityTypeServiceAccount
+			}
+			identities = append(identities, &access.Identity{
+				ExternalID:  fmt.Sprintf("%d", p.ID),
+				Type:        idType,
+				DisplayName: display,
+				Email:       p.EmailAddress,
+				Status:      "active",
+				RawData:     map[string]interface{}{"admin": p.Admin, "owner": p.Owner, "title": p.TitleClient},
+			})
+		}
+		if err := handler(identities, next); err != nil {
+			return err
+		}
+		nextURL = next
 	}
-	return handler(identities, "")
+	return nil
 }
 
 // Basecamp SSO federation. When `sso_metadata_url` is blank the helper returns

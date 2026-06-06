@@ -13,6 +13,13 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// egnyteAuditMaxPages bounds a single audit sweep to ~20k events
+// (200 pages * 100 rows). Without this cap a provider that keeps
+// returning full pages (or a server-side pagination bug) would spin
+// the offset loop indefinitely; mirrors the cap used by the other
+// paginated audit connectors in this family.
+const egnyteAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Egnyte audit events into the access
 // audit pipeline. Implements access.AccessAuditor.
 //
@@ -38,7 +45,7 @@ func (c *EgnyteAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	offset := 0
 	const limit = 100
-	for {
+	for pageNum := 0; pageNum < egnyteAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -91,6 +98,7 @@ func (c *EgnyteAccessConnector) FetchAccessAuditLogs(
 		}
 		offset += limit
 	}
+	return nil
 }
 
 type egnyteAuditPage struct {
@@ -120,6 +128,12 @@ func mapEgnyteAuditEvent(e *egnyteAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseEgnyteTime(e.Timestamp)
+	if ts.IsZero() {
+		// A zero timestamp would poison the watermark cursor and
+		// force an infinite re-fetch of the same window; skip the
+		// unparseable event instead of emitting it.
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

@@ -114,11 +114,17 @@ func (c *GrafanaAccessConnector) baseURL(cfg Config) string {
 	return strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GrafanaAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GrafanaAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -278,7 +284,10 @@ func (c *GrafanaAccessConnector) GetCredentialsMetadata(_ context.Context, confi
 	} else {
 		md["auth_type"] = "basic"
 		md["username_short"] = shortToken(secrets.Username)
-		md["password_short"] = shortToken(secrets.Password)
+		// Deliberately do NOT surface any portion of the password. Unlike a
+		// random API token, a password is short and guessable, so leaking
+		// its first/last characters into stored, admin-visible metadata
+		// would meaningfully aid a brute-force attack.
 	}
 	return md, nil
 }

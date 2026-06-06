@@ -121,6 +121,9 @@ func mapSentineloneActivity(a *sentineloneActivity) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, a.CreatedAt)
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	eventType := strings.TrimSpace(a.ActivityTypeName)
 	if eventType == "" {
 		eventType = fmt.Sprintf("activity_type_%d", a.ActivityType)

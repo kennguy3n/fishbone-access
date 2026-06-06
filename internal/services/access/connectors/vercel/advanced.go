@@ -17,7 +17,12 @@ import (
 //
 //   - ProvisionAccess  -> POST   /v1/teams/{teamId}/members
 //   - RevokeAccess     -> DELETE /v1/teams/{teamId}/members/{userId}
-//   - ListEntitlements -> GET    /v1/teams/{teamId}/members
+//   - ListEntitlements -> GET    /v2/teams/{teamId}/members
+//
+// The member-listing read must use the v2 collection endpoint (the same
+// one SyncIdentities uses); Vercel exposes no v1 member-list endpoint, so
+// a v1 GET 404s and would surface as a false "no entitlements". Invite
+// (POST) and remove (DELETE) remain on their documented v1 paths.
 //
 // Idempotent on (UserExternalID, ResourceExternalID) per docs/architecture.md §2.
 // The Vercel team ID is read from Config.TeamID; ResourceExternalID
@@ -140,7 +145,7 @@ func (c *VercelAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if strings.TrimSpace(cfg.TeamID) == "" {
 		return nil, nil
 	}
-	endpoint := c.baseURL() + "/v1/teams/" + url.PathEscape(cfg.TeamID) + "/members"
+	endpoint := c.baseURL() + "/v2/teams/" + url.PathEscape(cfg.TeamID) + "/members"
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
