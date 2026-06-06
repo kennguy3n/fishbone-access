@@ -13,6 +13,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// shopifyAuditMaxPages bounds the events pagination loop so a since_id that
+// never advances to the final page (API bug/change) cannot drive unbounded
+// HTTP requests, matching the safety guard used by the other audit connectors
+// in this batch.
+const shopifyAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Shopify Admin `/events.json` records
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -45,7 +51,7 @@ func (c *ShopifyAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	sinceID := int64(0)
 	base := c.baseURL(cfg) + "/admin/api/2024-01/events.json"
-	for {
+	for pageNum := 0; pageNum < shopifyAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -104,6 +110,10 @@ func (c *ShopifyAccessConnector) FetchAccessAuditLogs(
 		}
 		sinceID = lastID
 	}
+	// Page budget exhausted while Shopify still returns full pages; stop
+	// rather than loop unbounded. The persisted cursor lets the next run
+	// resume from the last timestamp seen.
+	return nil
 }
 
 type shopifyEventsPage struct {

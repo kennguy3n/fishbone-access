@@ -80,6 +80,33 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// A workspace whose audit API always returns a non-empty next_cursor must
+// not loop forever: slackAuditMaxPages bounds the request count and the fetch
+// returns nil so the persisted cursor lets the next run resume.
+func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok":                true,
+			"entries":           []map[string]interface{}{},
+			"response_metadata": map[string]interface{}{"next_cursor": "always-more"},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), nil, validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != slackAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, slackAuditMaxPages)
+	}
+}
+
 func TestFetchAccessAuditLogs_NotEnterprise(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "team_not_eligible"})

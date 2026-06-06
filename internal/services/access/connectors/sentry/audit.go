@@ -12,6 +12,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// sentryAuditMaxPages bounds the audit-log pagination loop so an always-present
+// RFC 5988 next link (API bug/change) cannot drive unbounded HTTP requests,
+// matching the safety guard used by the other audit connectors in this batch.
+const sentryAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Sentry audit log events into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -40,7 +45,7 @@ func (c *SentryAccessConnector) FetchAccessAuditLogs(
 	startQuery := url.Values{}
 	startQuery.Set("per_page", "100")
 	nextURL := c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/audit-logs/?" + startQuery.Encode()
-	for nextURL != "" {
+	for pageNum := 0; pageNum < sentryAuditMaxPages && nextURL != ""; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

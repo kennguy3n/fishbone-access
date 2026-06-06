@@ -73,6 +73,32 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// A Sentry org whose audit API always returns a rel="next" Link header must
+// not loop forever: sentryAuditMaxPages bounds the request count and the
+// fetch returns nil.
+func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.Header().Set("Link", `<https://sentry.io/api/0/organizations/acme/audit-logs/?cursor=always-more>; rel="next"; results="true"; cursor="always-more"`)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"rows": []map[string]interface{}{},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != sentryAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, sentryAuditMaxPages)
+	}
+}
+
 func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
 		t.Run(http.StatusText(status), func(t *testing.T) {

@@ -12,6 +12,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// snykAuditMaxPages bounds the audit-log pagination loop so an always-present
+// links.next cursor (API bug/change) cannot drive unbounded HTTP requests,
+// matching the safety guard used by the other audit connectors in this batch.
+const snykAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Snyk org audit log events into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -48,7 +53,7 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 	}
 	nextURL := fmt.Sprintf("%s/rest/orgs/%s/audit_logs/search?%s", c.baseURL(), url.PathEscape(cfg.OrgID), q.Encode())
 
-	for nextURL != "" {
+	for pageNum := 0; pageNum < snykAuditMaxPages && nextURL != ""; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

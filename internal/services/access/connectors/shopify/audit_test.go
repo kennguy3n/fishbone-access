@@ -62,6 +62,42 @@ func TestShopifyFetchAccessAuditLogs_MapsAndCursors(t *testing.T) {
 	}
 }
 
+// A shop whose events feed always returns a full page with advancing ids
+// (so since_id never reaches the end) must not loop forever:
+// shopifyAuditMaxPages bounds the request count and the fetch returns nil.
+func TestShopifyFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	nextID := 1
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		events := make([]map[string]interface{}, 0, 250)
+		for i := 0; i < 250; i++ {
+			events = append(events, map[string]interface{}{
+				"id":           nextID,
+				"subject_id":   42,
+				"subject_type": "User",
+				"verb":         "created",
+				"author":       "admin@example.com",
+				"created_at":   "2024-01-01T11:00:00Z",
+			})
+			nextID++
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"events": events})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != shopifyAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, shopifyAuditMaxPages)
+	}
+}
+
 func TestShopifyFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

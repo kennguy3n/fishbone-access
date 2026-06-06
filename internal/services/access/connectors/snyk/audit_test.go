@@ -89,6 +89,32 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// A Snyk org whose audit API always returns a non-empty links.next must not
+// loop forever: snykAuditMaxPages bounds the request count and the fetch
+// returns nil.
+func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"links": map[string]interface{}{"next": "/rest/orgs/abc-org/audit_logs/search?version=2024-08-25&page=always-more"},
+			"data":  []map[string]interface{}{},
+		})
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != snykAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, snykAuditMaxPages)
+	}
+}
+
 func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
 		t.Run(http.StatusText(status), func(t *testing.T) {

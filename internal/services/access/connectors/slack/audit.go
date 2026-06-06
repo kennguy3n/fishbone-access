@@ -14,6 +14,11 @@ import (
 
 const slackAuditBaseURL = "https://api.slack.com"
 
+// slackAuditMaxPages bounds the audit-log pagination loop so a never-empty
+// next_cursor (API bug/change) cannot drive unbounded HTTP requests, matching
+// the safety guard used by the other audit connectors in this batch.
+const slackAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Slack Enterprise Grid audit log events
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -39,7 +44,7 @@ func (c *SlackAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	pageCursor := ""
-	for {
+	for pageNum := 0; pageNum < slackAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -96,6 +101,9 @@ func (c *SlackAccessConnector) FetchAccessAuditLogs(
 		}
 		pageCursor = next
 	}
+	// Page budget exhausted while Slack still reports more pages; stop
+	// rather than loop unbounded.
+	return nil
 }
 
 func (c *SlackAccessConnector) auditURL(path string) string {
