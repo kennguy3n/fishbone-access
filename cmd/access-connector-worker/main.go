@@ -20,6 +20,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
+
+	// Blank-import connectors so the worker can dispatch to any provider.
+	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/all"
 )
 
 func main() {
