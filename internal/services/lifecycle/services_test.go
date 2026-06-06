@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -169,6 +170,46 @@ func TestProvisionIsIdempotentWhenGrantAlreadyExists(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("expected exactly 1 grant for request, got %d (duplicate grant created)", count)
+	}
+	// The guard must not leave the request stranded in provisioning: it
+	// reconciles the request forward to active to match the live grant it
+	// returned, so the request state can never lag a materialized grant.
+	got, err := reqSvc.GetRequest(ctx, ws, reqID)
+	if err != nil {
+		t.Fatalf("get request: %v", err)
+	}
+	if got.State != StateActive {
+		t.Fatalf("expected request reconciled to active, got %s", got.State)
+	}
+}
+
+// TestResolverErrorClassificationIsPreserved proves the connector-resolution
+// call sites surface DBConnectorResolver.Resolve's own error classification
+// instead of blanket-wrapping every failure as ErrConnectorNotConfigured. A raw
+// DB/transient error (which Resolve leaves untagged) must NOT be reported as
+// "connector not configured" (the handler maps that sentinel to 422 — a DB
+// outage should be a 500); only genuinely-unusable connectors carry the
+// sentinel. Check is representative: all six call sites share the same pattern.
+func TestResolverErrorClassificationIsPreserved(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := uuid.New()
+	ctx := context.Background()
+
+	// A raw, untagged error (e.g. a transient DB outage surfaced by Resolve)
+	// must not be reclassified as ErrConnectorNotConfigured.
+	rawSSO := NewSSOEnforcementChecker(db, &fakeConnector{resolveErr: &fakeErr{"dial tcp: connection refused"}})
+	if _, err := rawSSO.Check(ctx, ws, connID); err == nil {
+		t.Fatal("expected error from raw resolve failure")
+	} else if errors.Is(err, ErrConnectorNotConfigured) {
+		t.Fatalf("raw DB error must not be classified as ErrConnectorNotConfigured: %v", err)
+	}
+
+	// An ErrConnectorNotConfigured-tagged error (genuinely unusable connector)
+	// must stay classified so the handler still returns 422.
+	cfgSSO := NewSSOEnforcementChecker(db, &fakeConnector{resolveErr: fmt.Errorf("%w: connector %s not found", ErrConnectorNotConfigured, connID)})
+	if _, err := cfgSSO.Check(ctx, ws, connID); !errors.Is(err, ErrConnectorNotConfigured) {
+		t.Fatalf("not-configured error must remain classified: %v", err)
 	}
 }
 

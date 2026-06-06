@@ -106,7 +106,11 @@ type SSOStatus struct {
 func (s *SSOEnforcementChecker) Check(ctx context.Context, workspaceID, connectorID uuid.UUID) (SSOStatus, error) {
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, connectorID)
 	if err != nil {
-		return SSOStatus{}, fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+		// Preserve Resolve's classification: it wraps a genuinely unusable
+		// connector with ErrConnectorNotConfigured (→422) but leaves transient
+		// DB/decode errors unwrapped (→500); re-wrapping here would misreport a
+		// DB outage as "connector not configured".
+		return SSOStatus{}, err
 	}
 	status := SSOStatus{ConnectorID: connectorID}
 	checker, ok := resolved.Impl.(access.SSOEnforcementChecker)

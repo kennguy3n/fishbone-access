@@ -120,7 +120,12 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 		// Could not even resolve the connector: fail the request so it is not
 		// stuck in provisioning, then surface the error.
 		_ = s.transition(ctx, workspaceID, requestID, StateProvisionFailed, actor, "connector resolve failed: "+err.Error())
-		return nil, fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+		// Surface the resolver's own error verbatim: Resolve wraps a genuinely
+		// unusable connector (missing row / unknown provider / no encryptor) with
+		// ErrConnectorNotConfigured (→422) but leaves transient DB/decode errors
+		// unwrapped (→500). Re-wrapping everything with ErrConnectorNotConfigured
+		// would misreport a DB outage as "connector not configured".
+		return nil, err
 	}
 
 	grant := access.AccessGrant{
@@ -173,8 +178,16 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 			Take(&existing).Error
 		switch {
 		case findErr == nil:
+			// A live grant already exists for this request (a prior attempt that
+			// committed, or a concurrent provision). Reuse it instead of inserting
+			// a duplicate. In the normal path the grant insert and the
+			// provisioned→active transitions commit together in this transaction,
+			// so the request is already active here. Reconcile defensively so the
+			// request state can never lag a materialized grant even if that
+			// atomicity is ever changed: drive a still-pending request forward to
+			// active. This is a no-op when the request is already active.
 			row = &existing
-			return nil
+			return s.reconcileToActive(ctx, tx, workspaceID, requestID, actor)
 		case errors.Is(findErr, gorm.ErrRecordNotFound):
 			// No live grant yet — fall through to materialize one.
 		default:
@@ -203,6 +216,38 @@ func (s *AccessProvisioningService) Provision(ctx context.Context, workspaceID, 
 	return row, nil
 }
 
+// reconcileToActive drives a request that already has a live grant up to
+// StateActive, walking provisioning → provisioned → active as needed. It runs
+// inside the provision idempotency guard's transaction and is a no-op when the
+// request is already active (the normal case, since the grant insert and the
+// active transition commit together) or terminal. It exists so the guard's
+// "reuse the existing grant" path can never leave the request state lagging a
+// materialized grant.
+func (s *AccessProvisioningService) reconcileToActive(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID, actor string) error {
+	var req models.AccessRequest
+	if err := forUpdate(tx.WithContext(ctx)).
+		Where("workspace_id = ? AND id = ?", workspaceID, requestID).
+		Take(&req).Error; err != nil {
+		return fmt.Errorf("lifecycle: load request for reconcile: %w", err)
+	}
+	switch req.State {
+	case StateProvisioning:
+		if _, err := s.requests.TransitionInTx(ctx, tx, workspaceID, requestID, StateProvisioned, actor, "reconcile: connector provisioned"); err != nil {
+			return err
+		}
+		if _, err := s.requests.TransitionInTx(ctx, tx, workspaceID, requestID, StateActive, actor, "reconcile: grant active"); err != nil {
+			return err
+		}
+	case StateProvisioned:
+		if _, err := s.requests.TransitionInTx(ctx, tx, workspaceID, requestID, StateActive, actor, "reconcile: grant active"); err != nil {
+			return err
+		}
+	default:
+		// active (normal case) or terminal — nothing to reconcile.
+	}
+	return nil
+}
+
 // RevokeGrant revokes a live grant on the provider and flips the grant (and its
 // originating request, if any) to revoked. It is idempotent: a grant that is
 // already revoked returns nil so the leaver kill switch can re-run cleanly.
@@ -223,7 +268,8 @@ func (s *AccessProvisioningService) RevokeGrant(ctx context.Context, workspaceID
 
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, g.ConnectorID)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+		// Preserve Resolve's classification (sentinel → 422, raw DB error → 500).
+		return err
 	}
 	grant := access.AccessGrant{
 		UserExternalID:     g.IAMCoreUserID,
@@ -259,7 +305,8 @@ func (s *AccessProvisioningService) ExpireGrant(ctx context.Context, workspaceID
 
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, g.ConnectorID)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+		// Preserve Resolve's classification (sentinel → 422, raw DB error → 500).
+		return err
 	}
 	if revErr := s.withRetry(ctx, func() error {
 		return resolved.Impl.RevokeAccess(ctx, resolved.Config, resolved.Secrets, access.AccessGrant{

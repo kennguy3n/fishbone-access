@@ -69,7 +69,8 @@ func (s *OrphanReconciler) Scan(ctx context.Context, workspaceID, connectorID uu
 	}
 	resolved, err := s.resolver.Resolve(ctx, workspaceID, connectorID)
 	if err != nil {
-		return ScanResult{}, fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+		// Preserve Resolve's classification (sentinel → 422, raw DB error → 500).
+		return ScanResult{}, err
 	}
 
 	// Build the set of external user ids that DO have a live grant.
@@ -189,7 +190,8 @@ func (s *OrphanReconciler) SetDisposition(ctx context.Context, workspaceID, orph
 	if disposition == OrphanDispositionDisable {
 		resolved, err := s.resolver.Resolve(ctx, workspaceID, orphan.ConnectorID)
 		if err != nil {
-			return fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
+			// Preserve Resolve's classification (sentinel → 422, raw DB error → 500).
+			return err
 		}
 		ents, err := resolved.Impl.ListEntitlements(ctx, resolved.Config, resolved.Secrets, orphan.ExternalUserID)
 		if err != nil {
