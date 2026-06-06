@@ -311,8 +311,10 @@ func (c *SlackAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
-	form := fmt.Sprintf("channel=%s&users=%s", grant.ResourceExternalID, grant.UserExternalID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.invite", strings.NewReader(form))
+	form := url.Values{}
+	form.Set("channel", grant.ResourceExternalID)
+	form.Set("users", grant.UserExternalID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.invite", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
@@ -343,8 +345,10 @@ func (c *SlackAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	form := fmt.Sprintf("channel=%s&user=%s", grant.ResourceExternalID, grant.UserExternalID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.kick", strings.NewReader(form))
+	form := url.Values{}
+	form.Set("channel", grant.ResourceExternalID)
+	form.Set("user", grant.UserExternalID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL()+"/conversations.kick", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}
