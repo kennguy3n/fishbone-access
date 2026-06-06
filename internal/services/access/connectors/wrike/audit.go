@@ -23,7 +23,13 @@ const (
 //
 // Endpoint:
 //
-//	GET /api/v4/audit_log?pageSize=100&nextPageToken=...
+//	GET /api/v4/audit_log?pageSize=100&eventDate={"start":<since>}&nextPageToken=...
+//
+// When a watermark is present it is pushed to the server via the
+// `eventDate` range filter (Wrike's documented audit-log date filter)
+// so only events newer than the cursor are returned, instead of paging
+// the entire account history each tick. The client-side check below is
+// retained as a safety net in case the server filter is ignored.
 //
 // The audit-log API requires Enterprise plan; non-Enterprise tokens
 // receive 401 / 403 / 404 which the connector soft-skips via
@@ -51,6 +57,17 @@ func (c *WrikeAccessConnector) FetchAccessAuditLogs(
 		q.Set("pageSize", fmt.Sprintf("%d", wrikeAuditPageSize))
 		if cursor != "" {
 			q.Set("nextPageToken", cursor)
+		} else if !since.IsZero() {
+			// Server-side watermark: only fetch events after the cursor.
+			// The page token already encodes the filter on later pages, so
+			// only send it on the first request of the sweep.
+			filter, err := json.Marshal(struct {
+				Start string `json:"start"`
+			}{Start: since.UTC().Format("2006-01-02T15:04:05Z")})
+			if err != nil {
+				return fmt.Errorf("wrike: encode eventDate filter: %w", err)
+			}
+			q.Set("eventDate", string(filter))
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, base+"?"+q.Encode())
 		if err != nil {

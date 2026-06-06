@@ -62,6 +62,52 @@ func TestWrikeFetchAccessAuditLogs_Maps(t *testing.T) {
 	}
 }
 
+// TestWrikeFetchAccessAuditLogs_SendsServerSideDateFilter guards against
+// paging the entire account audit history on every tick. When a watermark
+// (since) is present, the connector must push it to the server via Wrike's
+// `eventDate` range filter on the first request so the API only returns
+// events newer than the cursor, rather than relying solely on client-side
+// discarding. The page token carries the filter on subsequent pages, so the
+// explicit filter should appear only on the first (no-token) request.
+func TestWrikeFetchAccessAuditLogs_SendsServerSideDateFilter(t *testing.T) {
+	since := time.Date(2024, 9, 1, 10, 0, 0, 0, time.UTC)
+	var gotEventDate string
+	var sawFilter bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if v := r.URL.Query().Get("eventDate"); v != "" {
+			gotEventDate = v
+			sawFilter = true
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"kind": "audit_log",
+			"data": []map[string]interface{}{},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), wrikeAuditConfig(), wrikeAuditSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: since},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if !sawFilter {
+		t.Fatal("server never received an eventDate filter; connector paged without a server-side watermark")
+	}
+	// The filter must be a range object pinned to the watermark start.
+	var parsed struct {
+		Start string `json:"start"`
+	}
+	if err := json.Unmarshal([]byte(gotEventDate), &parsed); err != nil {
+		t.Fatalf("eventDate=%q is not a JSON range object: %v", gotEventDate, err)
+	}
+	if parsed.Start != "2024-09-01T10:00:00Z" {
+		t.Errorf("eventDate.start = %q, want %q", parsed.Start, "2024-09-01T10:00:00Z")
+	}
+}
+
 func TestWrikeFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
