@@ -77,6 +77,16 @@ var scimProvisioningScopes = []string{
 	"https://www.googleapis.com/auth/admin.directory.group.member",
 }
 
+// adminReportsScopes are required by the Admin SDK *Reports* API
+// (admin.googleapis.com/admin/reports/v1) that backs FetchAccessAuditLogs
+// and SyncIdentitiesDelta. The Reports API is a distinct surface from the
+// Directory API and is NOT authorized by any admin.directory.* scope:
+// minting the token with adminSDKScopes makes every reports call return
+// 403 Forbidden in production.
+var adminReportsScopes = []string{
+	"https://www.googleapis.com/auth/admin.reports.audit.readonly",
+}
+
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -689,6 +699,19 @@ func (c *GoogleWorkspaceAccessConnector) directoryWriteClient(ctx context.Contex
 		return c.httpClientFor(ctx, cfg, secrets)
 	}
 	return c.buildDirectoryClient(ctx, cfg, secrets, adminSDKWriteScopes)
+}
+
+// reportsClient builds the client used by the Admin SDK Reports API
+// paths (FetchAccessAuditLogs, SyncIdentitiesDelta). It mints a token
+// under adminReportsScopes — the Directory scopes used by
+// directoryClient do not authorize the Reports API, so sharing that
+// client would 403 in production. Tests inject httpClientFor, which
+// bypasses the JWT flow entirely.
+func (c *GoogleWorkspaceAccessConnector) reportsClient(ctx context.Context, cfg Config, secrets Secrets) (httpDoer, error) {
+	if c.httpClientFor != nil {
+		return c.httpClientFor(ctx, cfg, secrets)
+	}
+	return c.buildDirectoryClient(ctx, cfg, secrets, adminReportsScopes)
 }
 
 func (c *GoogleWorkspaceAccessConnector) buildDirectoryClient(ctx context.Context, cfg Config, secrets Secrets, scopes []string) (httpDoer, error) {
