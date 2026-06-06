@@ -4,31 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-const (
-	basecampAuditPageSize = 50
-	basecampAuditMaxPages = 200
-)
+// basecampAuditMaxPages bounds the rel="next" Link-header walk over
+// /events.json as defense-in-depth, mirroring basecampPeopleMaxPages.
+// The walk normally stops when the Link header has no rel="next" or once
+// it reaches events older than the cursor.
+const basecampAuditMaxPages = 200
 
 // FetchAccessAuditLogs streams Basecamp /events.json entries into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
 // Endpoint:
 //
-//	GET /events.json?page=N
+//	GET /events.json
 //
-// Basecamp returns events newest-first with a 1-indexed `page`
-// cursor. Tenants whose OAuth token lacks the `events` scope receive
-// 401 / 403, which the connector soft-skips via
-// access.ErrAuditNotAvailable.
+// Basecamp returns events newest-first and paginates via the RFC 5988
+// `Link: rel="next"` header (its documented pagination mechanism), so we
+// follow that cursor rather than guessing a page size — the same approach
+// SyncIdentities and listBasecampProjectPeople use. Tenants whose OAuth
+// token lacks the `events` scope receive 401 / 403, which the connector
+// soft-skips via access.ErrAuditNotAvailable.
 func (c *BasecampAccessConnector) FetchAccessAuditLogs(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -40,31 +41,27 @@ func (c *BasecampAccessConnector) FetchAccessAuditLogs(
 		return err
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
-	base := c.baseURL(cfg) + "/events.json"
+	next := c.baseURL(cfg) + "/events.json"
 
 	var collected []basecampAuditEvent
-	for page := 1; page <= basecampAuditMaxPages; page++ {
+	for page := 0; page < basecampAuditMaxPages && next != ""; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		q := url.Values{}
-		q.Set("page", fmt.Sprintf("%d", page))
-		req, err := c.newRequest(ctx, secrets, http.MethodGet, base+"?"+q.Encode())
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, next)
 		if err != nil {
 			return err
 		}
-		resp, err := c.client().Do(req)
+		status, body, nextLink, err := c.doRawWithLink(req)
 		if err != nil {
 			return fmt.Errorf("basecamp: audit log: %w", err)
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		_ = resp.Body.Close()
-		switch resp.StatusCode {
+		switch status {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return access.ErrAuditNotAvailable
 		}
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("basecamp: audit log: status %d: %s", resp.StatusCode, string(body))
+		if status < 200 || status >= 300 {
+			return fmt.Errorf("basecamp: audit log: status %d: %s", status, string(body))
 		}
 		var events []basecampAuditEvent
 		if err := json.Unmarshal(body, &events); err != nil {
@@ -79,9 +76,13 @@ func (c *BasecampAccessConnector) FetchAccessAuditLogs(
 			}
 			collected = append(collected, events[i])
 		}
-		if olderThanCursor || len(events) < basecampAuditPageSize {
+		// Events are newest-first, so once we cross the cursor there is
+		// nothing newer on later pages and we stop. Otherwise advance via
+		// the rel="next" Link header until it is absent.
+		if olderThanCursor {
 			break
 		}
+		next = nextLink
 	}
 
 	if len(collected) == 0 {
