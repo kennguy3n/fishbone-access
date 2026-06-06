@@ -175,7 +175,7 @@ func (c *SentryAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	probe := c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/"
+	probe := c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func (c *SentryAccessConnector) SyncIdentities(
 	}
 	nextURL := checkpoint
 	if nextURL == "" {
-		nextURL = c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/members/"
+		nextURL = c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/members/"
 	}
 	for {
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
