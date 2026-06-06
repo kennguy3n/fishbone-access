@@ -100,5 +100,11 @@ CREATE TABLE IF NOT EXISTS pam_session_commands (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at   TIMESTAMPTZ
 );
-CREATE INDEX IF NOT EXISTS idx_pam_cmds_session_seq ON pam_session_commands(workspace_id, session_id, seq DESC);
+-- Unique among live rows so the per-session monotonic counter cannot be
+-- duplicated even when two concurrent writers (e.g. multiple SSH channels on one
+-- session) read the same MAX(seq): the losing INSERT trips this constraint and
+-- LogCommand retries with a fresh seq. Partial on deleted_at IS NULL matches
+-- GORM's soft-delete query scope so deleted history never blocks a re-sequence.
+-- The (workspace_id, session_id) prefix also serves the MAX(seq) lookup.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pam_cmds_session_seq ON pam_session_commands(workspace_id, session_id, seq) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_pam_session_commands_deleted_at ON pam_session_commands(deleted_at);

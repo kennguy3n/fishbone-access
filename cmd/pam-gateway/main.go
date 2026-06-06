@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/crypto/ssh"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/config"
@@ -174,9 +175,25 @@ func buildSSHProxy(ctx context.Context, broker *pam.Broker, sessions *pam.Sessio
 		logger.Warnf(ctx, "pam-gateway: PAM_SSH_CA_KEY unset; SSH proxy uses vault credentials (no CA-signed certs)")
 	}
 
-	hostKey, err := gateway.GenerateHostKey()
-	if err != nil {
-		return nil, fmt.Errorf("ssh host key: %w", err)
+	// Prefer a stable host key (PAM_SSH_HOST_KEY, inline PEM or a file path) so
+	// the listener's fingerprint survives restarts and operators' SSH clients do
+	// not warn about a changed host key. Fall back to an ephemeral key only when
+	// none is configured (development).
+	var hostKey ssh.Signer
+	if v := os.Getenv("PAM_SSH_HOST_KEY"); v != "" {
+		loaded, lerr := gateway.LoadHostKeyFromValue(v)
+		if lerr != nil {
+			return nil, fmt.Errorf("load ssh host key: %w", lerr)
+		}
+		hostKey = loaded
+		logger.Infof(ctx, "pam-gateway: ssh host key loaded (fingerprint=%s)", ssh.FingerprintSHA256(hostKey.PublicKey()))
+	} else {
+		generated, gerr := gateway.GenerateHostKey()
+		if gerr != nil {
+			return nil, fmt.Errorf("ssh host key: %w", gerr)
+		}
+		hostKey = generated
+		logger.Warnf(ctx, "pam-gateway: PAM_SSH_HOST_KEY unset; using ephemeral host key (fingerprint changes each boot, clients TOFU)")
 	}
 
 	return gateway.NewSSHProxy(gateway.SSHProxyConfig{

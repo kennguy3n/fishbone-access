@@ -115,6 +115,9 @@ func (p *PostgresProxy) Handle(ctx context.Context, conn net.Conn) {
 	}
 	if leased.Target.Protocol != models.PAMProtocolPostgres {
 		writeFatal(backend, "08P01", "token is not for a postgres target")
+		// RedeemConnectToken already consumed the token and opened the session;
+		// reconcile it closed so it does not orphan active with no proxy.
+		reconcileOrphanSession(ctx, p.sessions, leased.Session, "pg-proxy")
 		return
 	}
 	session := leased.Session

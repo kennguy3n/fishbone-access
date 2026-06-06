@@ -6,7 +6,31 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
+
+// reconcileOrphanSession closes a session whose connect token was already
+// redeemed — RedeemConnectToken atomically consumes the one-shot token and
+// marks the session "active" — but whose proxy never started. This happens when
+// a post-auth step fails before the normal cleanup defers are registered: an
+// SSH handshake error after PasswordCallback succeeded, or a token presented to
+// the wrong protocol listener. Without it the row would stay "active" forever
+// with no proxy attached and the irreplaceable token already spent. It runs on
+// a fresh timeout context detached from ctx so it still completes if ctx was
+// already cancelled.
+func reconcileOrphanSession(ctx context.Context, sessions *pam.SessionManager, session *models.PAMSession, logPrefix string) {
+	if sessions == nil || session == nil {
+		return
+	}
+	closeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+	defer cancel()
+	if err := sessions.CloseSession(closeCtx, session.WorkspaceID, session.ID); err != nil {
+		logger.Warnf(ctx, "%s: reconcile orphaned session %s: %v", logPrefix, session.ID, err)
+	}
+}
 
 // SessionHub tracks the privileged sessions currently proxied by this gateway
 // process so an admin can take over: live-monitor the streamed I/O or terminate

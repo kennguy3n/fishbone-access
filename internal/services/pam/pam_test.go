@@ -550,6 +550,64 @@ func TestSessionManagerCloseIsIdempotentAuditOnce(t *testing.T) {
 	}
 }
 
+// TestLogCommandSeqUniqueConstraintEnforced proves the per-session monotonic
+// counter invariant is enforced at the database layer: two command rows cannot
+// share a (workspace_id, session_id, seq). This is what lets LogCommand retry a
+// concurrent seq collision (e.g. parallel SSH channels) instead of silently
+// writing a duplicate.
+func TestLogCommandSeqUniqueConstraintEnforced(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	sessionID := uuid.New()
+
+	first := &models.PAMSessionCommand{
+		WorkspaceID: ws, SessionID: sessionID, Seq: 1, Command: "a", Decision: models.PAMDecisionAllow,
+	}
+	if err := db.Create(first).Error; err != nil {
+		t.Fatalf("insert first command: %v", err)
+	}
+	dup := &models.PAMSessionCommand{
+		WorkspaceID: ws, SessionID: sessionID, Seq: 1, Command: "b", Decision: models.PAMDecisionAllow,
+	}
+	err := db.Create(dup).Error
+	if !errors.Is(err, gorm.ErrDuplicatedKey) {
+		t.Fatalf("expected gorm.ErrDuplicatedKey on duplicate (session_id, seq), got %v", err)
+	}
+}
+
+// TestLogCommandContinuesSeqAfterPriorRow verifies LogCommand reads MAX(seq) and
+// assigns the next value rather than colliding when a row already exists for the
+// session — the normal (non-racing) path that the unique constraint guards.
+func TestLogCommandContinuesSeqAfterPriorRow(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	mgr := NewSessionManager(db, nil, nil)
+	session := &models.PAMSession{
+		WorkspaceID: ws, TargetID: uuid.New(), Subject: "alice",
+		Protocol: models.PAMProtocolSSH, State: models.PAMSessionActive, StartedAt: time.Now(),
+	}
+	session.ID = uuid.New()
+
+	// Seed seq=1 directly, then let LogCommand allocate the next.
+	seed := &models.PAMSessionCommand{WorkspaceID: ws, SessionID: session.ID, Seq: 1, Command: "seed", Decision: models.PAMDecisionAllow}
+	if err := db.Create(seed).Error; err != nil {
+		t.Fatalf("seed command: %v", err)
+	}
+	if _, err := mgr.LogCommand(context.Background(), session, "whoami"); err != nil {
+		t.Fatalf("LogCommand: %v", err)
+	}
+	var rows []models.PAMSessionCommand
+	if err := db.Where("session_id = ?", session.ID).Order("seq asc").Find(&rows).Error; err != nil {
+		t.Fatalf("load commands: %v", err)
+	}
+	if len(rows) != 2 || rows[0].Seq != 1 || rows[1].Seq != 2 {
+		t.Fatalf("want seq 1,2; got %+v", rows)
+	}
+	if rows[1].Command != "whoami" {
+		t.Fatalf("unexpected second command: %q", rows[1].Command)
+	}
+}
+
 type fakeController struct{ terminated bool }
 
 func (f *fakeController) Terminate(uuid.UUID) bool { f.terminated = true; return true }

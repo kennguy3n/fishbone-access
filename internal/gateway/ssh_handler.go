@@ -104,6 +104,12 @@ func (p *SSHProxy) Handle(ctx context.Context, conn net.Conn) {
 	serverConn, chans, globalReqs, err := ssh.NewServerConn(conn, cfg)
 	if err != nil {
 		logger.Warnf(ctx, "ssh-proxy: handshake from %s failed: %v", clientAddr, err)
+		// PasswordCallback may have already redeemed the token (consumed it and
+		// marked the session active) before NewServerConn failed sending
+		// USERAUTH_SUCCESS; reconcile so the session is not orphaned active.
+		if leased != nil {
+			reconcileOrphanSession(ctx, p.sessions, leased.Session, "ssh-proxy")
+		}
 		return
 	}
 	defer func() { _ = serverConn.Close() }()
@@ -111,6 +117,14 @@ func (p *SSHProxy) Handle(ctx context.Context, conn net.Conn) {
 		return
 	}
 	session := leased.Session
+	// Reject a token minted for a non-SSH target presented to this listener,
+	// matching the MySQL/PG/K8s handlers. RedeemConnectToken already consumed
+	// the token and opened the session, so reconcile it closed before bailing.
+	if leased.Target.Protocol != models.PAMProtocolSSH {
+		logger.Warnf(ctx, "ssh-proxy: token target protocol %q is not ssh", leased.Target.Protocol)
+		reconcileOrphanSession(ctx, p.sessions, session, "ssh-proxy")
+		return
+	}
 	logger.Infof(ctx, "ssh-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
 	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
@@ -289,7 +303,14 @@ func (p *SSHProxy) forwardOperatorRequests(ctx context.Context, reqs <-chan *ssh
 			rec.Record(DirInput, []byte(cmd+"\n"))
 			decision, err := p.sessions.LogCommand(ctx, session, cmd)
 			if err != nil || !decision.Allowed() {
-				reason := "denied by command policy"
+				// Preserve the matching policy's specific reason (e.g. which rule
+				// and pattern denied the command) for the recording and audit
+				// annotation, matching the MySQL/PG handlers; fall back to a
+				// generic message only when none is set.
+				reason := decision.Reason
+				if reason == "" {
+					reason = "denied by command policy"
+				}
 				if err != nil {
 					reason = "command policy unavailable"
 				}
@@ -444,9 +465,10 @@ func decodeTargetConfig(raw datatypes.JSON) map[string]string {
 }
 
 // GenerateHostKey returns a fresh ed25519 ssh.Signer for the gateway's SSH
-// server side. Production deployments load a stable host key from disk; this is
-// the fallback used when none is configured so the listener still binds (each
-// boot presents a new key, which clients TOFU).
+// server side. Production deployments configure a stable host key via
+// PAM_SSH_HOST_KEY (see LoadHostKeyFromValue); this is the fallback used when
+// none is configured so the listener still binds (each boot presents a new key,
+// which clients TOFU).
 func GenerateHostKey() (ssh.Signer, error) {
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

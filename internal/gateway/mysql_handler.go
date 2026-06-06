@@ -123,6 +123,9 @@ func (p *MySQLProxy) Handle(ctx context.Context, conn net.Conn) {
 	}
 	if leased.Target.Protocol != models.PAMProtocolMySQL {
 		writeMySQLError(conn, opSeq, 1045, "28000", "token is not for a mysql target")
+		// RedeemConnectToken already consumed the token and opened the session;
+		// reconcile it closed so it does not orphan active with no proxy.
+		reconcileOrphanSession(ctx, p.sessions, leased.Session, "mysql-proxy")
 		return
 	}
 	session := leased.Session

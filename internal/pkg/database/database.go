@@ -27,6 +27,10 @@ import (
 func Open(dsn string) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
+		// Translate driver-specific errors (e.g. unique violations) to GORM's
+		// portable sentinels so callers can detect them with errors.Is across
+		// the Postgres and SQLite backends — used by the PAM command-seq retry.
+		TranslateError: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("database: open postgres: %w", err)
@@ -61,6 +65,9 @@ func ApplyPoolLimits(db *gorm.DB, maxOpen, maxIdle int, maxLifetime time.Duratio
 func OpenSQLite(path string) (*gorm.DB, error) {
 	db, err := gorm.Open(gormsqlite.Open(path), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
+		// Match Open: surface unique violations as gorm.ErrDuplicatedKey so the
+		// PAM command-seq retry behaves identically under the test backend.
+		TranslateError: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("database: open sqlite: %w", err)

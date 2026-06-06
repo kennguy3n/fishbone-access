@@ -79,48 +79,64 @@ func (m *SessionManager) LogCommand(ctx context.Context, session *models.PAMSess
 	}
 
 	now := m.now()
-	err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var maxSeq int64
-		// Filter on workspace_id as well so the planner can use the leading
-		// column of idx_pam_cmds_session_seq (workspace_id, session_id, seq DESC);
-		// session_id alone is unique but does not let Postgres use the index prefix.
-		if err := tx.Model(&models.PAMSessionCommand{}).
-			Where("workspace_id = ? AND session_id = ?", session.WorkspaceID, session.ID).
-			Select("COALESCE(MAX(seq), 0)").
-			Scan(&maxSeq).Error; err != nil {
-			return fmt.Errorf("pam: read command seq: %w", err)
-		}
-		row := &models.PAMSessionCommand{
-			WorkspaceID: session.WorkspaceID,
-			SessionID:   session.ID,
-			Seq:         maxSeq + 1,
-			Command:     command,
-			Decision:    decision.Effect,
-			Reason:      decision.Reason,
-		}
-		row.CreatedAt = now
-		row.UpdatedAt = now
-		if err := tx.Create(row).Error; err != nil {
-			return fmt.Errorf("pam: insert command: %w", err)
-		}
-		md, err := marshalMeta(map[string]any{
-			"session_id": session.ID.String(),
-			"seq":        row.Seq,
-			"decision":   decision.Effect,
-			"reason":     decision.Reason,
-			"command":    command,
+	// The command seq is MAX(seq)+1 read inside the transaction. The
+	// uq_pam_cmds_session_seq unique index guarantees no two rows share a
+	// (workspace_id, session_id, seq), so if two writers on the same session
+	// (e.g. concurrent SSH channels) read the same MAX(seq), one INSERT wins and
+	// the other trips the constraint. We retry the loser on a fresh MAX(seq)
+	// rather than letting a duplicate or a lost command through, preserving the
+	// per-session monotonic-counter invariant.
+	const maxSeqRetries = 5
+	var err error
+	for attempt := 0; attempt < maxSeqRetries; attempt++ {
+		err = m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var maxSeq int64
+			// Filter on workspace_id as well so the planner can use the leading
+			// columns of uq_pam_cmds_session_seq (workspace_id, session_id, seq);
+			// session_id alone is unique but does not let Postgres use the prefix.
+			if err := tx.Model(&models.PAMSessionCommand{}).
+				Where("workspace_id = ? AND session_id = ?", session.WorkspaceID, session.ID).
+				Select("COALESCE(MAX(seq), 0)").
+				Scan(&maxSeq).Error; err != nil {
+				return fmt.Errorf("pam: read command seq: %w", err)
+			}
+			row := &models.PAMSessionCommand{
+				WorkspaceID: session.WorkspaceID,
+				SessionID:   session.ID,
+				Seq:         maxSeq + 1,
+				Command:     command,
+				Decision:    decision.Effect,
+				Reason:      decision.Reason,
+			}
+			row.CreatedAt = now
+			row.UpdatedAt = now
+			if err := tx.Create(row).Error; err != nil {
+				return fmt.Errorf("pam: insert command: %w", err)
+			}
+			md, err := marshalMeta(map[string]any{
+				"session_id": session.ID.String(),
+				"seq":        row.Seq,
+				"decision":   decision.Effect,
+				"reason":     decision.Reason,
+				"command":    command,
+			})
+			if err != nil {
+				return err
+			}
+			return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
+				WorkspaceID: session.WorkspaceID,
+				Actor:       session.Subject,
+				Action:      "pam.command",
+				TargetRef:   session.TargetID.String(),
+				Metadata:    md,
+			})
 		})
-		if err != nil {
-			return err
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			// Lost a seq race; recompute MAX(seq) and try again.
+			continue
 		}
-		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
-			WorkspaceID: session.WorkspaceID,
-			Actor:       session.Subject,
-			Action:      "pam.command",
-			TargetRef:   session.TargetID.String(),
-			Metadata:    md,
-		})
-	})
+		break
+	}
 	if err != nil {
 		return Decision{}, err
 	}

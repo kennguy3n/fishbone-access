@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/pem"
 	"io"
 	"net"
 	"os"
@@ -18,6 +21,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
 
 // frame is one decoded recording frame.
@@ -524,4 +531,72 @@ func TestK8sEphemeralTLSCertUsable(t *testing.T) {
 	}
 	// Cert is usable in a tls.Config without panic.
 	_ = &tls.Config{Certificates: []tls.Certificate{cert}} //nolint:gosec
+}
+
+// --- orphan reconcile + host key tests ------------------------------------
+
+// TestReconcileOrphanSessionClosesActive verifies the shared reconcile helper
+// closes a session that was opened by RedeemConnectToken but whose proxy never
+// ran (e.g. a token presented to the wrong protocol listener, or an SSH
+// handshake that failed after auth). Without it the row would stay active
+// forever with no proxy attached.
+func TestReconcileOrphanSessionClosesActive(t *testing.T) {
+	db, err := database.OpenSQLite(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := database.AutoMigrate(db); err != nil {
+		t.Fatalf("auto-migrate: %v", err)
+	}
+	ws := &models.Workspace{Name: "tenant-a", IAMCoreTenantID: "tenant-a", Plan: "base"}
+	if err := db.Create(ws).Error; err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+	session := &models.PAMSession{
+		WorkspaceID: ws.ID, TargetID: uuid.New(), Subject: "alice",
+		Protocol: models.PAMProtocolMySQL, State: models.PAMSessionActive, StartedAt: time.Now(),
+	}
+	session.ID = uuid.New()
+	if err := db.Create(session).Error; err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+
+	sessions := pam.NewSessionManager(db, nil, nil)
+	reconcileOrphanSession(context.Background(), sessions, session, "test")
+
+	var reloaded models.PAMSession
+	if err := db.Where("id = ?", session.ID).Take(&reloaded).Error; err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	if reloaded.State != models.PAMSessionClosed {
+		t.Fatalf("orphaned session not closed: state=%q", reloaded.State)
+	}
+	if reloaded.EndedAt == nil {
+		t.Fatal("closed session should have ended_at stamped")
+	}
+}
+
+// TestLoadHostKeyFromValue parses an inline PEM host key and rejects an empty
+// value so the gateway only uses an ephemeral key when explicitly unconfigured.
+func TestLoadHostKeyFromValue(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal pkcs8: %v", err)
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+
+	signer, err := LoadHostKeyFromValue(string(pemBytes))
+	if err != nil {
+		t.Fatalf("LoadHostKeyFromValue inline PEM: %v", err)
+	}
+	if signer == nil || signer.PublicKey() == nil {
+		t.Fatal("expected a usable host-key signer")
+	}
+	if _, err := LoadHostKeyFromValue("  "); err == nil {
+		t.Fatal("expected error for empty host key value")
+	}
 }

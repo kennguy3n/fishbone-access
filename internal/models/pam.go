@@ -119,9 +119,9 @@ type PAMSession struct {
 // in the workspace audit hash chain for tamper evidence.
 type PAMSessionCommand struct {
 	Base
-	WorkspaceID uuid.UUID `gorm:"type:uuid;index;not null;index:idx_pam_cmds_session_seq,priority:1" json:"workspace_id"`
-	SessionID   uuid.UUID `gorm:"type:uuid;not null;index:idx_pam_cmds_session_seq,priority:2" json:"session_id"`
-	Seq         int64     `gorm:"not null;default:0;index:idx_pam_cmds_session_seq,priority:3,sort:desc" json:"seq"`
+	WorkspaceID uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_pam_cmds_session_seq,priority:1" json:"workspace_id"`
+	SessionID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_pam_cmds_session_seq,priority:2" json:"session_id"`
+	Seq         int64     `gorm:"not null;default:0;uniqueIndex:uq_pam_cmds_session_seq,priority:3" json:"seq"`
 	Command     string    `gorm:"not null" json:"command"`
 	Decision    string    `gorm:"not null;default:allow" json:"decision"`
 	Reason      string    `json:"reason,omitempty"`

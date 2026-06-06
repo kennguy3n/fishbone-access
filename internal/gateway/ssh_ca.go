@@ -63,6 +63,35 @@ func LoadSSHCAFromValue(valueOrPath string, validity time.Duration) (*SSHCertifi
 	return NewSSHCertificateAuthority(signer, validity), nil
 }
 
+// LoadHostKeyFromValue parses the gateway's SSH server host key from either
+// inline PEM (value begins with "-----BEGIN") or a filesystem path to a PEM
+// file, mirroring LoadSSHCAFromValue. A stable host key keeps the listener's
+// fingerprint constant across restarts so operators' SSH clients do not warn
+// about a changed key; an empty value is rejected so the caller can fall back
+// to an ephemeral key explicitly.
+func LoadHostKeyFromValue(valueOrPath string) (ssh.Signer, error) {
+	if strings.TrimSpace(valueOrPath) == "" {
+		return nil, errors.New("gateway: ssh host key is empty")
+	}
+	var pem []byte
+	if strings.HasPrefix(strings.TrimSpace(valueOrPath), "-----BEGIN") {
+		pem = []byte(strings.TrimSpace(valueOrPath))
+	} else {
+		// G304: valueOrPath is the operator-supplied path to the host key, read
+		// once at boot — not attacker-controlled input.
+		b, err := os.ReadFile(valueOrPath) // #nosec G304
+		if err != nil {
+			return nil, fmt.Errorf("gateway: read ssh host key %s: %w", valueOrPath, err)
+		}
+		pem = b
+	}
+	signer, err := ssh.ParsePrivateKey(pem)
+	if err != nil {
+		return nil, fmt.Errorf("gateway: parse ssh host key: %w", err)
+	}
+	return signer, nil
+}
+
 // Fingerprint returns the SHA-256 fingerprint of the CA public key. Operators
 // copy this into a target's TrustedUserCAKeys to trust gateway-minted certs.
 func (a *SSHCertificateAuthority) Fingerprint() string {

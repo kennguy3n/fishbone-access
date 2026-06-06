@@ -117,6 +117,9 @@ func (p *K8sExecProxy) Handle(ctx context.Context, conn net.Conn) {
 	}
 	if leased.Target.Protocol != models.PAMProtocolK8sExec {
 		writeHTTPError(tlsConn, http.StatusBadRequest, "token is not for a kubernetes target")
+		// RedeemConnectToken already consumed the token and opened the session;
+		// reconcile it closed so it does not orphan active with no proxy.
+		reconcileOrphanSession(ctx, p.sessions, leased.Session, "k8s-proxy")
 		return
 	}
 	session := leased.Session
