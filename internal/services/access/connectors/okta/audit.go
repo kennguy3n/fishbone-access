@@ -121,7 +121,15 @@ func mapOktaAuditEvent(e *oktaAuditEvent) *access.AuditLogEntry {
 	if e == nil || e.UUID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.Published)
+	// Skip events whose published timestamp is empty or unparseable:
+	// delivering a zero-timestamp audit entry would never advance the
+	// delta-sync cursor and could be mis-ordered/mis-filtered by the
+	// pipeline. This mirrors the ovhcloud auditor's behaviour.
+	ts, err := time.Parse(time.RFC3339, e.Published)
+	if err != nil || ts.IsZero() {
+		return nil
+	}
+	ts = ts.UTC()
 	var targetID, targetType string
 	if len(e.Target) > 0 {
 		targetID = e.Target[0].ID

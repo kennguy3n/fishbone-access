@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -274,7 +275,7 @@ func (c *OVHcloudAccessConnector) SyncIdentities(
 	}
 	identities := make([]*access.Identity, 0, len(logins))
 	for _, login := range logins {
-		detailURL := base + "/me/identity/user/" + login
+		detailURL := base + "/me/identity/user/" + url.PathEscape(login)
 		dreq, err := c.newRequest(ctx, secrets, http.MethodGet, detailURL, "")
 		if err != nil {
 			return err

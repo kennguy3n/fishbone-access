@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // RevokeUserSessions implements access.SessionRevoker. It calls
@@ -24,7 +25,8 @@ func (c *OktaAccessConnector) RevokeUserSessions(ctx context.Context, configRaw,
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, cfg, secrets, http.MethodDelete, "/api/v1/users/"+userExternalID+"/sessions", nil)
+	path := fmt.Sprintf("/api/v1/users/%s/sessions", url.PathEscape(userExternalID))
+	req, err := c.newRequest(ctx, cfg, secrets, http.MethodDelete, path, nil)
 	if err != nil {
 		return err
 	}

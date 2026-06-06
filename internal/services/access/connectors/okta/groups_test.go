@@ -39,6 +39,7 @@ func TestSyncGroups_HappyPathPaginates(t *testing.T) {
 
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 
 	var got []*access.Identity
 	err := c.SyncGroups(context.Background(), validConfig(), validSecrets(), "",
@@ -71,6 +72,7 @@ func TestSyncGroups_FailureSurfacesStatus(t *testing.T) {
 
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	err := c.SyncGroups(context.Background(), validConfig(), validSecrets(), "",
 		func(_ []*access.Identity, _ string) error { return nil },
 	)
@@ -99,6 +101,7 @@ func TestSyncGroupMembers_HappyPath(t *testing.T) {
 
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	var members []string
 	err := c.SyncGroupMembers(context.Background(), validConfig(), validSecrets(), "00g_a", "",
 		func(ids []string, _ string) error {
@@ -138,6 +141,7 @@ func TestCountGroups_UsesHeaderWhenAvailable(t *testing.T) {
 	t.Cleanup(server.Close)
 	c := New()
 	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
 	n, err := c.CountGroups(context.Background(), validConfig(), validSecrets())
 	if err != nil {
 		t.Fatalf("CountGroups: %v", err)

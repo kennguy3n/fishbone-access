@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // ErrNotImplemented is retained for any future capability that is not yet
@@ -440,9 +441,18 @@ func (c *OnePasswordAccessConnector) doRaw(req *http.Request) (*http.Response, e
 	if c.httpClient != nil {
 		return c.httpClient().Do(req)
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
-	return client.Do(req)
+	// Production path: route through the shared RetryClient so the
+	// 1Password SCIM bridge's 429 (rate limit) and transient CDN
+	// 502/503/504 responses are retried with Retry-After honoured.
+	return sharedRetryClient.Do(req.Context(), req)
 }
+
+// sharedRetryClient is a package-level singleton that wraps the
+// httputil.RetryClient defaults. Using a singleton (rather than a
+// fresh *http.Client per call) means the underlying connection pool
+// is reused across requests, preserving keep-alive and avoiding a
+// new TLS handshake on every SCIM call during identity syncs.
+var sharedRetryClient = httputil.NewRetryClient(30 * time.Second)
 
 func mapSCIMUsers(users []scimUser) []*access.Identity {
 	out := make([]*access.Identity, 0, len(users))

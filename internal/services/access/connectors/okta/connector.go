@@ -439,7 +439,10 @@ func (c *OktaAccessConnector) ListEntitlements(
 		if next == "" {
 			return out, nil
 		}
-		rewritten := c.rewriteForTest(next)
+		rewritten := next
+		if c.urlOverride != "" {
+			rewritten = c.rewriteForTest(next)
+		}
 		u, err := url.Parse(rewritten)
 		if err != nil {
 			return nil, err
