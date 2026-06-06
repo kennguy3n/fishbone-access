@@ -586,7 +586,7 @@ func (c *AzureAccessConnector) ListEntitlements(
 		// urlOverride so the redirected server still receives it.
 		// Mirrors FetchAccessAuditLogs in audit.go.
 		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
+			next = strings.TrimRight(c.urlOverride, "/") + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
 			next = pageResp.NextLink
 		}

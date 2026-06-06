@@ -78,14 +78,15 @@ func (c *BoxAccessConnector) FetchAccessAuditLogs(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("box: events: status %d: %s", resp.StatusCode, string(body))
 		}
-		var page boxEventPage
-		if err := json.Unmarshal(body, &page); err != nil {
+		// pageResp (not "page") so it doesn't shadow the loop counter.
+		var pageResp boxEventPage
+		if err := json.Unmarshal(body, &pageResp); err != nil {
 			return fmt.Errorf("box: decode events: %w", err)
 		}
-		batch := make([]*access.AuditLogEntry, 0, len(page.Entries))
+		batch := make([]*access.AuditLogEntry, 0, len(pageResp.Entries))
 		batchMax := cursor
-		for i := range page.Entries {
-			entry := mapBoxEvent(&page.Entries[i])
+		for i := range pageResp.Entries {
+			entry := mapBoxEvent(&pageResp.Entries[i])
 			if entry == nil {
 				continue
 			}
@@ -98,10 +99,10 @@ func (c *BoxAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		next := strings.TrimSpace(page.NextStreamPosition)
+		next := strings.TrimSpace(pageResp.NextStreamPosition)
 		// Box returns the same stream position when there are no more
 		// events; treat empty or unchanged positions as terminal.
-		if next == "" || next == streamPos || len(page.Entries) == 0 {
+		if next == "" || next == streamPos || len(pageResp.Entries) == 0 {
 			return nil
 		}
 		streamPos = next

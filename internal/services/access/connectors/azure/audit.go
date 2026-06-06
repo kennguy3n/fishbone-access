@@ -117,7 +117,7 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 		// NextLink may be absolute; in tests we re-anchor to the
 		// urlOverride so the redirected server still receives it.
 		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
+			next = strings.TrimRight(c.urlOverride, "/") + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
 			next = pageResp.NextLink
 		}
