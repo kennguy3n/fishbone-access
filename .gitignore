@@ -1,0 +1,15 @@
+# Binaries
+/bin/
+/tmp/
+*.exe
+*.test
+*.out
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+/dist/
+coverage.txt

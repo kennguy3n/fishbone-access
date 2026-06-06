@@ -1,0 +1,89 @@
+# Single-server (Tier 1) ShieldNet Access stack: Postgres + Redis + the three
+# Go services. `docker compose up --build --wait` blocks until every service
+# with a healthcheck reports healthy, so this doubles as a CI smoke test.
+#
+# iam-core is NOT part of this compose file — it is an external dependency. Set
+# IAM_CORE_ISSUER (and client credentials) in a .env file to enable
+# authenticated endpoints; without it ztna-api boots in degraded mode and the
+# authenticated API surface returns 503.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shieldnet
+      POSTGRES_PASSWORD: shieldnet
+      POSTGRES_DB: shieldnet_access
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shieldnet -d shieldnet_access"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ztna-api:
+    build: .
+    command: ["ztna-api"]
+    environment:
+      ACCESS_ENV: dev
+      ACCESS_HTTP_ADDR: ":8080"
+      ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
+      ACCESS_REDIS_URL: "redis://redis:6379/0"
+      # iam-core integration — fill these in (e.g. via .env) to enable auth.
+      IAM_CORE_ISSUER: "${IAM_CORE_ISSUER:-}"
+      IAM_CORE_CLIENT_ID: "${IAM_CORE_CLIENT_ID:-}"
+      IAM_CORE_CLIENT_SECRET: "${IAM_CORE_CLIENT_SECRET:-}"
+      IAM_CORE_AUDIENCE: "${IAM_CORE_AUDIENCE:-}"
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  access-connector-worker:
+    build: .
+    command: ["access-connector-worker"]
+    environment:
+      ACCESS_ENV: dev
+      ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
+      ACCESS_REDIS_URL: "redis://redis:6379/0"
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  pam-gateway:
+    build: .
+    command: ["pam-gateway"]
+    environment:
+      ACCESS_ENV: dev
+      ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
