@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -108,6 +109,31 @@ func TestConnect_Failure(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	if err := c.Connect(context.Background(), validConfig(), validSecrets()); err == nil || !strings.Contains(err.Error(), "401") {
 		t.Errorf("Connect err = %v; want 401", err)
+	}
+}
+
+// TestConnect_DoesNotSendPageParam pins the same contract on the Connect probe:
+// the WordPress.com /users endpoint has no `page` parameter, so the probe must
+// not send one (it previously sent ?page=1&number=1, a param the real API
+// silently ignores). The probe only needs a single record to verify auth.
+func TestConnect_DoesNotSendPageParam(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"users": []map[string]interface{}{}})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.Connect(context.Background(), validConfig(), validSecrets()); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	if gotQuery.Get("page") != "" {
+		t.Errorf("Connect probe sent unsupported `page` query param (%q); WordPress.com /users has no page param", gotQuery.Get("page"))
+	}
+	if gotQuery.Get("number") == "" {
+		t.Errorf("Connect probe should bound the result with `number`; got query %v", gotQuery)
 	}
 }
 

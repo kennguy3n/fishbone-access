@@ -1,4 +1,4 @@
-// Package wordpress implements the access.AccessConnector contract for WordPress.com REST API /rest/v1.1/sites/{site}/users with bearer auth + page/number pagination.
+// Package wordpress implements the access.AccessConnector contract for WordPress.com REST API /rest/v1.1/sites/{site}/users with bearer auth + offset/number pagination.
 package wordpress
 
 import (
@@ -154,7 +154,7 @@ func (c *WordPressAccessConnector) Connect(ctx context.Context, configRaw, secre
 		return err
 	}
 
-	probe := c.baseURL() + ("/rest/v1.1/sites/" + url.PathEscape(cfg.Site) + "/users") + "?page=1&number=1"
+	probe := c.baseURL() + ("/rest/v1.1/sites/" + url.PathEscape(cfg.Site) + "/users") + "?number=1"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
