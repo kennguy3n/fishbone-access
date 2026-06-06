@@ -112,7 +112,8 @@ func (c *SendgridAccessConnector) RevokeAccess(ctx context.Context, configRaw, s
 	if err != nil {
 		return err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.teammateURL(grant.UserExternalID), nil)
+	user := strings.TrimSpace(grant.UserExternalID)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.teammateURL(user), nil)
 	if err != nil {
 		return err
 	}
@@ -123,12 +124,84 @@ func (c *SendgridAccessConnector) RevokeAccess(ctx context.Context, configRaw, s
 	switch {
 	case status >= 200 && status < 300:
 		return nil
+	case status == http.StatusNotFound:
+		// The teammate endpoint is keyed by SendGrid's auto-assigned
+		// username, which differs from the invite email and does not
+		// exist at all until the invitee accepts. A grant referencing a
+		// still-pending invite (provisioned by email) therefore 404s
+		// here, even though access really should be revoked. Fall back
+		// to deleting the pending invite by email so revoke is correct
+		// regardless of whether the teammate has accepted yet.
+		return c.revokePendingInvite(ctx, secrets, user)
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
 		return fmt.Errorf("sendgrid: revoke transient status %d: %s", status, string(body))
 	default:
 		return fmt.Errorf("sendgrid: revoke status %d: %s", status, string(body))
+	}
+}
+
+// revokePendingInvite resolves a not-yet-accepted teammate invite by email
+// and deletes it via SendGrid's pending-invite endpoint
+// (DELETE /v3/teammates/pending/{token}). It is idempotent: if no matching
+// pending invite exists (already accepted, already deleted, or never sent)
+// it returns nil, matching the soft revoke contract.
+func (c *SendgridAccessConnector) revokePendingInvite(ctx context.Context, secrets Secrets, email string) error {
+	listReq, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/v3/teammates/pending", nil)
+	if err != nil {
+		return err
+	}
+	status, body, err := c.doRaw(listReq)
+	if err != nil {
+		return err
+	}
+	if status == http.StatusNotFound {
+		// Account/plan does not expose pending invites; nothing more we
+		// can do, so treat the original 404 as already-revoked.
+		return nil
+	}
+	if status < 200 || status >= 300 {
+		if access.IsTransientStatus(status) {
+			return fmt.Errorf("sendgrid: list pending invites transient status %d: %s", status, string(body))
+		}
+		return fmt.Errorf("sendgrid: list pending invites status %d: %s", status, string(body))
+	}
+	var pending struct {
+		Result []struct {
+			Email string `json:"email"`
+			Token string `json:"token"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &pending); err != nil {
+		return fmt.Errorf("sendgrid: decode pending invites: %w", err)
+	}
+	token := ""
+	for _, p := range pending.Result {
+		if strings.EqualFold(strings.TrimSpace(p.Email), email) {
+			token = strings.TrimSpace(p.Token)
+			break
+		}
+	}
+	if token == "" {
+		// Neither an active teammate nor a pending invite: already revoked.
+		return nil
+	}
+	delReq, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.baseURL()+"/v3/teammates/pending/"+url.PathEscape(token), nil)
+	if err != nil {
+		return err
+	}
+	delStatus, delBody, err := c.doRaw(delReq)
+	if err != nil {
+		return err
+	}
+	switch {
+	case (delStatus >= 200 && delStatus < 300) || delStatus == http.StatusNotFound:
+		return nil
+	case access.IsTransientStatus(delStatus):
+		return fmt.Errorf("sendgrid: revoke pending invite transient status %d: %s", delStatus, string(delBody))
+	default:
+		return fmt.Errorf("sendgrid: revoke pending invite status %d: %s", delStatus, string(delBody))
 	}
 }
 

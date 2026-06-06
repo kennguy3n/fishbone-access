@@ -1,7 +1,6 @@
 package snyk
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,12 +17,15 @@ import (
 //
 // Endpoint:
 //
-//	POST /rest/orgs/{org_id}/audit_logs/search?version={apiVersion}
-//	Body: {"filters":{"from":"{since}","to":"{now}"}}
+//	GET /rest/orgs/{org_id}/audit_logs/search?version={apiVersion}&from={since}&to={now}&size={n}
 //
-// Snyk paginates by `links.next`; the handler is called once per
-// provider page in chronological order so callers can persist the
-// monotonic `nextSince` cursor between runs.
+// The time window is passed as `from`/`to` query parameters on the first
+// request only. Snyk paginates by `links.next`, an opaque cursor URL that
+// already carries the original filter context, so subsequent requests
+// simply follow that URL with no re-sent filter — avoiding any risk of the
+// server treating each page as a fresh, re-filtered search. The handler is
+// called once per provider page in chronological order so callers can
+// persist the monotonic `nextSince` cursor between runs.
 func (c *SnykAccessConnector) FetchAccessAuditLogs(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -40,30 +42,21 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 	q := url.Values{}
 	q.Set("version", apiVersion)
 	q.Set("size", fmt.Sprintf("%d", pageLimit))
-	nextURL := fmt.Sprintf("%s/rest/orgs/%s/audit_logs/search?%s", c.baseURL(), url.PathEscape(cfg.OrgID), q.Encode())
-
-	payload := map[string]interface{}{}
 	if !since.IsZero() {
-		payload["filters"] = map[string]interface{}{
-			"from": since.UTC().Format(time.RFC3339),
-			"to":   time.Now().UTC().Format(time.RFC3339),
-		}
+		q.Set("from", since.UTC().Format(time.RFC3339))
+		q.Set("to", time.Now().UTC().Format(time.RFC3339))
 	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("snyk: marshal audit search: %w", err)
-	}
+	nextURL := fmt.Sprintf("%s/rest/orgs/%s/audit_logs/search?%s", c.baseURL(), url.PathEscape(cfg.OrgID), q.Encode())
 
 	for nextURL != "" {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, nextURL, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, nextURL, nil)
 		if err != nil {
 			return err
 		}
 		req.Header.Set("Accept", "application/vnd.api+json")
-		req.Header.Set("Content-Type", "application/vnd.api+json")
 		req.Header.Set("Authorization", "token "+strings.TrimSpace(secrets.APIToken))
 		respBody, status, err := snykDoRaw(c, req)
 		if err != nil {

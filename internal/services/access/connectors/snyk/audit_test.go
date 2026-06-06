@@ -21,8 +21,15 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 		if got := r.Header.Get("Authorization"); !strings.HasPrefix(got, "token ") {
 			t.Errorf("auth header = %q", got)
 		}
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
 		calls++
 		if calls == 1 {
+			// First request carries the time window as query params.
+			if r.URL.Query().Get("from") == "" || r.URL.Query().Get("to") == "" {
+				t.Errorf("first request missing from/to filter: %s", r.URL.RawQuery)
+			}
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"links": map[string]interface{}{"next": "/rest/orgs/abc-org/audit_logs/search?version=2024-08-25&page=2"},
 				"data": []map[string]interface{}{

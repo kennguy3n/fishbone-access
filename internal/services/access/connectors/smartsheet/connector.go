@@ -21,6 +21,15 @@ import (
 const (
 	ProviderName = "smartsheet"
 	pageSize     = 100
+	// maxRateLimitRetries bounds how many times a request is retried after
+	// a 429. Smartsheet enforces 300 requests/minute, and ListEntitlements
+	// fans out to one shares request per sheet, so transient rate limiting
+	// is expected on large accounts and must be absorbed rather than fail
+	// the whole sync.
+	maxRateLimitRetries = 4
+	// maxRateLimitBackoff caps the exponential backoff used when the server
+	// does not send a Retry-After header.
+	maxRateLimitBackoff = 30 * time.Second
 )
 
 var ErrNotImplemented = fmt.Errorf("smartsheet: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -120,18 +129,42 @@ func (c *SmartsheetAccessConnector) newJSONRequest(ctx context.Context, secrets 
 	return req, nil
 }
 
-func (c *SmartsheetAccessConnector) doRaw(req *http.Request) (*http.Response, error) {
-	resp, err := c.client().Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("smartsheet: %s %s: %w", req.Method, req.URL.Path, err)
+// doRequest executes req with bounded retries on HTTP 429 (Too Many
+// Requests). It honours a Retry-After header when present and otherwise
+// applies capped exponential backoff. Retries are only attempted for
+// replayable requests (no body, or one exposed via GetBody); on each retry
+// the prior response body is drained and closed so the connection can be
+// reused. The returned response (whether a success or the final 429) always
+// has an unread body for the caller to consume.
+func (c *SmartsheetAccessConnector) doRequest(req *http.Request) (*http.Response, error) {
+	for attempt := 0; ; attempt++ {
+		resp, err := c.client().Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("smartsheet: %s %s: %w", req.Method, req.URL.Path, err)
+		}
+		if resp.StatusCode != http.StatusTooManyRequests || attempt >= maxRateLimitRetries || !requestReplayable(req) {
+			return resp, nil
+		}
+		wait := smartsheetRetryAfter(resp, attempt)
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		if err := sleepCtx(req.Context(), wait); err != nil {
+			return nil, err
+		}
+		if err := resetRequestBody(req); err != nil {
+			return nil, err
+		}
 	}
-	return resp, nil
+}
+
+func (c *SmartsheetAccessConnector) doRaw(req *http.Request) (*http.Response, error) {
+	return c.doRequest(req)
 }
 
 func (c *SmartsheetAccessConnector) do(req *http.Request) ([]byte, error) {
-	resp, err := c.client().Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("smartsheet: %s %s: %w", req.Method, req.URL.Path, err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -139,6 +172,57 @@ func (c *SmartsheetAccessConnector) do(req *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("smartsheet: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 	}
 	return body, nil
+}
+
+// requestReplayable reports whether req can be safely re-sent. Bodyless
+// requests always can; requests with a body can only be replayed when
+// net/http populated GetBody (true for the bytes-backed bodies this
+// connector builds via newJSONRequest).
+func requestReplayable(req *http.Request) bool {
+	return req.Body == nil || req.GetBody != nil
+}
+
+func resetRequestBody(req *http.Request) error {
+	if req.Body == nil || req.GetBody == nil {
+		return nil
+	}
+	b, err := req.GetBody()
+	if err != nil {
+		return err
+	}
+	req.Body = b
+	return nil
+}
+
+// smartsheetRetryAfter returns how long to wait before retrying a 429,
+// preferring the server's Retry-After header (delay-seconds form) and
+// falling back to capped exponential backoff (1s, 2s, 4s, ...).
+func smartsheetRetryAfter(resp *http.Response, attempt int) time.Duration {
+	if v := strings.TrimSpace(resp.Header.Get("Retry-After")); v != "" {
+		if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+			return time.Duration(secs) * time.Second
+		}
+	}
+	d := time.Duration(1<<uint(attempt)) * time.Second
+	if d > maxRateLimitBackoff {
+		d = maxRateLimitBackoff
+	}
+	return d
+}
+
+// sleepCtx waits for d or until ctx is cancelled, whichever comes first.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
 }
 
 func (c *SmartsheetAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
@@ -463,8 +547,11 @@ func (c *SmartsheetAccessConnector) findShareIDForUser(ctx context.Context, secr
 // Cost: this issues 1 request per sheets page (page size = pageSize)
 // plus 1 request per sheet returned by that page. Smartsheet has no
 // per-user "my shared sheets" endpoint, so the per-sheet shares call is
-// the only way to derive a user's access level. The outer loop honours
-// ctx cancellation between pages and the inner loop honours it between
+// the only way to derive a user's access level. Because that fan-out can
+// approach Smartsheet's 300 req/min limit on large accounts, every request
+// goes through doRequest, which absorbs 429s with Retry-After/backoff
+// retries instead of failing the whole call. The outer loop honours ctx
+// cancellation between pages and the inner loop honours it between
 // per-sheet share lookups.
 func (c *SmartsheetAccessConnector) ListEntitlements(
 	ctx context.Context,

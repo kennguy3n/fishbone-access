@@ -56,6 +56,11 @@ func TestSendgridConnectorFlow_FullLifecycle(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"username": email, "email": email, "scopes": []string{state},
 			})
+		case r.Method == http.MethodGet && r.URL.Path == teammates+"/pending":
+			// No pending invites in this lifecycle (the teammate username
+			// equals the email here), so revoke after the teammate is gone
+			// resolves to idempotent success.
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": []interface{}{}})
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusBadRequest)
@@ -96,6 +101,78 @@ func TestSendgridConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 	if len(ents) != 0 {
 		t.Fatalf("expected empty, got %#v", ents)
+	}
+}
+
+// When a grant references a teammate that was invited by email but has not
+// accepted yet, the username-keyed DELETE /v3/teammates/{email} 404s and
+// RevokeAccess must fall back to deleting the pending invite by email.
+func TestRevokeAccess_PendingInviteByEmail(t *testing.T) {
+	const email = "bob@example.com"
+	const token = "pend-tok-123"
+	var deletedPending bool
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch {
+		case r.Method == http.MethodDelete && r.URL.Path == "/v3/teammates/"+email:
+			// No active teammate with this username yet.
+			w.WriteHeader(http.StatusNotFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/teammates/pending":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"result": []map[string]interface{}{
+					{"email": "someone-else@example.com", "token": "other"},
+					{"email": email, "token": token},
+				},
+			})
+		case r.Method == http.MethodDelete && r.URL.Path == "/v3/teammates/pending/"+token:
+			deletedPending = true
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	grant := access.AccessGrant{UserExternalID: email, ResourceExternalID: "mail.send"}
+	if err := c.RevokeAccess(context.Background(), sendgridValidConfig(), sendgridValidSecrets(), grant); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !deletedPending {
+		t.Fatal("expected pending invite to be deleted by token")
+	}
+}
+
+// Revoke is idempotent when the user is neither an active teammate nor a
+// pending invite (already removed): the username DELETE 404s and the pending
+// list contains no match, so RevokeAccess returns nil.
+func TestRevokeAccess_NoActiveOrPendingIsIdempotent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/v3/teammates/") && r.URL.Path != "/v3/teammates/pending":
+			w.WriteHeader(http.StatusNotFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/teammates/pending":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"result": []interface{}{}})
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	grant := access.AccessGrant{UserExternalID: "ghost@example.com", ResourceExternalID: "mail.send"}
+	if err := c.RevokeAccess(context.Background(), sendgridValidConfig(), sendgridValidSecrets(), grant); err != nil {
+		t.Fatalf("RevokeAccess (idempotent): %v", err)
 	}
 }
 

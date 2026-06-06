@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -239,6 +240,71 @@ func TestListEntitlements_FiltersByUser(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].ResourceExternalID != "1" || got[0].Role != "EDITOR" {
 		t.Fatalf("got = %+v", got)
+	}
+}
+
+// ListEntitlements fans out one shares request per sheet and can hit
+// Smartsheet's 300 req/min limit. A 429 with a Retry-After header must be
+// absorbed via retry rather than failing the whole call.
+func TestListEntitlements_RetriesOn429(t *testing.T) {
+	var sheetsCalls, sharesCalls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/2.0/sheets"):
+			// First sheets request is rate-limited, then succeeds.
+			if atomic.AddInt32(&sheetsCalls, 1) == 1 {
+				w.Header().Set("Retry-After", "0")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"errorCode":4003,"message":"Rate limit exceeded"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":[{"id":"1","name":"S1"}],"pageNumber":1,"totalPages":1}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/2.0/sheets/1/shares"):
+			// First shares request is rate-limited, then succeeds.
+			if atomic.AddInt32(&sharesCalls, 1) == 1 {
+				w.Header().Set("Retry-After", "0")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"errorCode":4003,"message":"Rate limit exceeded"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":[{"id":"sh1","type":"USER","email":"a@b.com","accessLevel":"EDITOR"}],"pageNumber":1,"totalPages":1}`))
+		default:
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := newAdvancedTestConnector(srv)
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "a@b.com")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "1" || ents[0].Role != "EDITOR" {
+		t.Fatalf("ents = %+v", ents)
+	}
+	if atomic.LoadInt32(&sheetsCalls) != 2 || atomic.LoadInt32(&sharesCalls) != 2 {
+		t.Fatalf("expected one retry each: sheets=%d shares=%d", sheetsCalls, sharesCalls)
+	}
+}
+
+// After exhausting retries, a persistent 429 surfaces as an error rather
+// than being silently treated as "no entitlements".
+func TestListEntitlements_PersistentRateLimitSurfacesError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/2.0/sheets") {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"errorCode":4003}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := newAdvancedTestConnector(srv)
+	_, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "a@b.com")
+	if err == nil || !strings.Contains(err.Error(), "429") {
+		t.Fatalf("expected 429 error after retries, got %v", err)
 	}
 }
 
