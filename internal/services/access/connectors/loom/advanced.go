@@ -225,7 +225,7 @@ func (c *LoomAccessConnector) resolveLoomMember(ctx context.Context, secrets Sec
 func (c *LoomAccessConnector) findLoomMemberByID(ctx context.Context, secrets Secrets, memberID string) (loomMember, bool, error) {
 	base := c.baseURL()
 	cursor := ""
-	for {
+	for pages := 0; pages < loomMaxMemberPages; pages++ {
 		path := fmt.Sprintf("%s/v1/members?limit=%d", base, pageSize)
 		if cursor != "" {
 			path += "&cursor=" + url.QueryEscape(cursor)
@@ -258,6 +258,7 @@ func (c *LoomAccessConnector) findLoomMemberByID(ctx context.Context, secrets Se
 		}
 		cursor = resp.NextCursor
 	}
+	return loomMember{}, false, fmt.Errorf("loom: member list exceeded %d pages while resolving id %s", loomMaxMemberPages, memberID)
 }
 
 func (c *LoomAccessConnector) listLoomMembersByEmail(ctx context.Context, secrets Secrets, email string) ([]loomMember, error) {

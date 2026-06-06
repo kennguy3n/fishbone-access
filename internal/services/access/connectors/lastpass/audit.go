@@ -124,6 +124,11 @@ func decodeLastPassAuditLog(body []byte) ([]lastpassAuditEvent, error) {
 }
 
 type lastpassAuditEvent struct {
+	// SeqNumber is synthetic and never decoded from the wire (json:"-"):
+	// decodeLastPassAuditLog populates it from the map key (keyed shape)
+	// or the array index (array shape) so every event has a stable
+	// EventID. The "-" tag also prevents collision with any literal
+	// "SeqNumber" field LastPass might add to the payload.
 	SeqNumber string `json:"-"`
 	Time      string `json:"Time"`
 	Username  string `json:"Username"`

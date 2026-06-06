@@ -23,7 +23,11 @@ const (
 //
 // Endpoint:
 //
-//	GET /v2/auditLogs?count=100&start=N&startTime={iso}
+//	GET /v2/auditLogs?count=100&start=N&startTime={epoch_ms}
+//
+// startTime is epoch milliseconds (LinkedIn time params are Unix ms, not
+// ISO 8601); see the since.UTC().UnixMilli() call below. Do not "correct"
+// this to an ISO string — that would silently disable the time filter.
 //
 // Audit access requires an org-admin scope on the supplied credential;
 // lower scopes surface 401 / 403 / 404 which the connector soft-skips

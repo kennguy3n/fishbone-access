@@ -157,7 +157,10 @@ func (c *KnowBe4AccessConnector) ListEntitlements(ctx context.Context, configRaw
 	// /v1/groups/{id}/members is paginated (see SyncGroupMembers); a single
 	// fetch could miss the user in a large group and wrongly report no
 	// entitlement, so page through until the user is found or the list ends.
-	for page := 1; ; page++ {
+	// Bounded by knowbe4MaxMemberPages (mirrors the audit endpoints'
+	// maxPages guard) so a degenerate API that always returns a full page
+	// cannot spin forever.
+	for page := 1; page <= knowbe4MaxMemberPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -199,6 +202,7 @@ func (c *KnowBe4AccessConnector) ListEntitlements(ctx context.Context, configRaw
 			return nil, nil
 		}
 	}
+	return nil, fmt.Errorf("knowbe4: list group members exceeded %d pages for group %s", knowbe4MaxMemberPages, groupID)
 }
 
 func knowbe4OptionalGroupID(raw map[string]interface{}) string {

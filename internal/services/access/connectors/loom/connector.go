@@ -19,6 +19,10 @@ import (
 const (
 	ProviderName = "loom"
 	pageSize     = 100
+	// loomMaxMemberPages bounds the cursor-paged by-ID member lookup so a
+	// misbehaving API that never returns an empty cursor cannot spin
+	// forever; mirrors loomAuditMaxPages.
+	loomMaxMemberPages = 200
 )
 
 var ErrNotImplemented = fmt.Errorf("loom: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)

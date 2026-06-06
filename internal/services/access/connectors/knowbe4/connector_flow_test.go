@@ -132,6 +132,36 @@ func TestListEntitlements_Paginates(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_MaxPagesGuard verifies the pagination loop is bounded:
+// a degenerate API that always returns a full page (never the user, never a
+// short page) must stop after knowbe4MaxMemberPages and surface an error
+// rather than spinning forever.
+func TestListEntitlements_MaxPagesGuard(t *testing.T) {
+	const groupID = "9"
+	var pages int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
+		members := make([]map[string]interface{}, 0, pageSize)
+		for i := 0; i < pageSize; i++ {
+			members = append(members, map[string]interface{}{"id": 1000 + i, "email": "x@example.com"})
+		}
+		_ = json.NewEncoder(w).Encode(members)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	_, err := c.ListEntitlements(context.Background(),
+		map[string]interface{}{"region": "us", "group_id": groupID},
+		map[string]interface{}{"token": "tok"}, "absent-user")
+	if err == nil || !strings.Contains(err.Error(), "exceeded") {
+		t.Fatalf("err = %v; want exceeded-pages error", err)
+	}
+	if pages != knowbe4MaxMemberPages {
+		t.Fatalf("requested %d pages; want %d (bounded)", pages, knowbe4MaxMemberPages)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

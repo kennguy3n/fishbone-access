@@ -18,6 +18,10 @@ import (
 const (
 	ProviderName = "knowbe4"
 	pageSize     = 100
+	// knowbe4MaxMemberPages bounds the ListEntitlements pagination loop so a
+	// misbehaving API that always returns a full page cannot spin forever;
+	// mirrors knowbe4AuditMaxPages.
+	knowbe4MaxMemberPages = 200
 )
 
 var ErrNotImplemented = fmt.Errorf("knowbe4: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)

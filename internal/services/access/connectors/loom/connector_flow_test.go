@@ -137,6 +137,36 @@ func TestConnectorFlow_RevokeAndListByMemberID(t *testing.T) {
 	}
 }
 
+// TestListByMemberID_MaxPagesGuard verifies the cursor-paged by-ID lookup is
+// bounded: an API that always returns a non-empty next_cursor (and never the
+// member) must stop after loomMaxMemberPages and surface an error rather than
+// paging forever.
+func TestListByMemberID_MaxPagesGuard(t *testing.T) {
+	var pages int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/v1/members" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		pages++
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data":        []map[string]interface{}{{"id": "someone-else", "email": "x@example.com", "role": "member"}},
+			"next_cursor": "more",
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	_, err := c.ListEntitlements(context.Background(),
+		map[string]interface{}{}, map[string]interface{}{"token": "tok"}, "mem-absent")
+	if err == nil || !strings.Contains(err.Error(), "exceeded") {
+		t.Fatalf("err = %v; want exceeded-pages error", err)
+	}
+	if pages != loomMaxMemberPages {
+		t.Fatalf("requested %d pages; want %d (bounded)", pages, loomMaxMemberPages)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
