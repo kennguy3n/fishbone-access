@@ -116,6 +116,35 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+// TestSyncIdentities_EscapesTenantInPath pins that cfg.Tenant is URL-path
+// escaped when building request paths (workersURL). A tenant containing a
+// path-special character such as `/` would otherwise inject an extra path
+// segment and hit the wrong endpoint. audit.go already escapes the tenant;
+// the REST paths must match.
+func TestSyncIdentities_EscapesTenantInPath(t *testing.T) {
+	const tenant = "acme/eu"
+	var gotEscapedPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotEscapedPath = r.URL.EscapedPath()
+		_, _ = w.Write([]byte(`{"total":0,"data":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{"host": "wd5-impl-services1.workday.com", "tenant": tenant}
+	err := c.SyncIdentities(context.Background(), cfg, validSecrets(), "", func(_ []*access.Identity, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if !strings.Contains(gotEscapedPath, "acme%2Feu") {
+		t.Fatalf("tenant not path-escaped: escaped path = %q, want it to contain %q", gotEscapedPath, "acme%2Feu")
+	}
+	if strings.Contains(gotEscapedPath, "/acme/eu/") {
+		t.Fatalf("tenant `/` leaked as a path separator: %q", gotEscapedPath)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

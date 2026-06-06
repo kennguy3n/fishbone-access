@@ -181,7 +181,7 @@ func (c *WorkdayAccessConnector) decodeBoth(configRaw, secretsRaw map[string]int
 }
 
 func (c *WorkdayAccessConnector) workersURL(cfg Config) string {
-	return fmt.Sprintf("%s/ccx/api/v1/%s/workers", c.baseURL(cfg), cfg.Tenant)
+	return fmt.Sprintf("%s/ccx/api/v1/%s/workers", c.baseURL(cfg), url.PathEscape(cfg.Tenant))
 }
 
 func (c *WorkdayAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
@@ -309,7 +309,7 @@ type workdayWorkerDetail struct {
 }
 
 func (c *WorkdayAccessConnector) commonURL(cfg Config, suffix string) string {
-	return fmt.Sprintf("%s/ccx/api/v1/%s/%s", c.baseURL(cfg), cfg.Tenant, suffix)
+	return fmt.Sprintf("%s/ccx/api/v1/%s/%s", c.baseURL(cfg), url.PathEscape(cfg.Tenant), suffix)
 }
 
 // ProvisionAccess assigns an organization role/security group via

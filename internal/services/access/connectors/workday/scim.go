@@ -9,6 +9,7 @@ package workday
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -42,7 +43,7 @@ func (c *WorkdayAccessConnector) scimConfig(configRaw, secretsRaw map[string]int
 	if err != nil {
 		return nil, nil, err
 	}
-	scimBaseURL := c.baseURL(cfg) + "/ccx/api/scim/v2/" + strings.TrimSpace(cfg.Tenant)
+	scimBaseURL := c.baseURL(cfg) + "/ccx/api/scim/v2/" + url.PathEscape(strings.TrimSpace(cfg.Tenant))
 	scimCfg := map[string]interface{}{
 		"scim_base_url": scimBaseURL,
 	}
