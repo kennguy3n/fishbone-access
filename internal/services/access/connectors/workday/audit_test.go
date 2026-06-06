@@ -123,6 +123,28 @@ func TestMapWorkdayActivity_DropsZeroTimestamp(t *testing.T) {
 	}
 }
 
+// TestParseWorkdayTime_NormalizesToUTC guards watermark stability: the
+// audit cursor (batchMax) is derived from parsed event timestamps, so a
+// non-UTC location would leak into the persisted watermark and could drift
+// across serialize/deserialize round-trips. Every sibling audit parser
+// normalizes to UTC; this one must too.
+func TestParseWorkdayTime_NormalizesToUTC(t *testing.T) {
+	cases := []string{
+		"2024-09-01T10:00:00+05:00",     // RFC3339 with offset
+		"2024-09-01T10:00:00.250-08:00", // RFC3339Nano with offset
+		"2024-09-01T10:00:00Z",          // already UTC
+	}
+	for _, in := range cases {
+		got := parseWorkdayTime(in)
+		if got.IsZero() {
+			t.Fatalf("parseWorkdayTime(%q) returned zero", in)
+		}
+		if got.Location() != time.UTC {
+			t.Errorf("parseWorkdayTime(%q).Location() = %v, want UTC", in, got.Location())
+		}
+	}
+}
+
 // TestFetchAccessAuditLogs_CapsPages guards against an unbounded pagination
 // loop: a misbehaving tenant whose `from` filter never advances past a full
 // data window would keep returning full pages forever. The connector must stop

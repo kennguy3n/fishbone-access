@@ -168,17 +168,19 @@ func mapWorkdayActivity(r *workdayActivityRow) *access.AuditLogEntry {
 
 // parseWorkdayTime parses Workday's activity-log timestamps, trying
 // RFC3339Nano first and falling back to plain RFC3339 (older tenants
-// emit second-precision timestamps).
+// emit second-precision timestamps). The result is normalized to UTC so
+// the watermark (batchMax) carries a stable location regardless of the
+// tenant's emitted offset, matching every sibling audit parser.
 func parseWorkdayTime(s string) time.Time {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return time.Time{}
 	}
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	return time.Time{}
 }
