@@ -390,8 +390,8 @@ func (c *DatadogAccessConnector) ListEntitlements(ctx context.Context, configRaw
 			} `json:"attributes"`
 		} `json:"data"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("datadog: decode entitlements: %w", err)
 	}
 	var out []access.Entitlement
 	for _, r := range resp.Data {
