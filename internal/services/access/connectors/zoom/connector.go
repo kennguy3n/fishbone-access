@@ -373,7 +373,11 @@ func (c *ZoomAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]string{"id": grant.UserExternalID})
+	// Zoom's POST /groups/{groupId}/members expects the user(s) wrapped in
+	// a "members" array, not a flat {"id": ...} object (see the matching
+	// "members" key in zoomGroupMembersResponse). A flat body is rejected
+	// by the real API.
+	body, _ := json.Marshal(map[string]interface{}{"members": []map[string]string{{"id": grant.UserExternalID}}})
 	urlStr := fmt.Sprintf("%s/groups/%s/members", c.baseURL(), url.PathEscape(grant.ResourceExternalID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, bytes.NewReader(body))
 	if err != nil {

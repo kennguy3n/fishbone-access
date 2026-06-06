@@ -2,6 +2,7 @@ package zoom
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -134,6 +135,18 @@ func TestGetCredentialsMetadata(t *testing.T) {
 
 func TestProvisionAccess_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Reject anything that is not the {"members":[{"id":...}]} shape
+		// Zoom requires, so this test fails if ProvisionAccess regresses
+		// to a flat {"id":...} body.
+		var got struct {
+			Members []struct {
+				ID string `json:"id"`
+			} `json:"members"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil || len(got.Members) != 1 || got.Members[0].ID != "u-1" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
 	}))
 	t.Cleanup(srv.Close)

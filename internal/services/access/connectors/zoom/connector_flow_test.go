@@ -2,6 +2,7 @@ package zoom
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,6 +21,18 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/groups/g-1/members"):
+			// Validate the request body shape: Zoom requires the user
+			// id wrapped in a "members" array. A flat {"id":...} body
+			// must be rejected so this test catches the payload bug.
+			var got struct {
+				Members []struct {
+					ID string `json:"id"`
+				} `json:"members"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&got); err != nil || len(got.Members) != 1 || got.Members[0].ID != "u-1" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			member.Store(true)
 			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/groups/g-1/members/u-1"):
