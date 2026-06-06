@@ -92,3 +92,17 @@ func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 		})
 	}
 }
+
+// An audit row with an empty or unparseable dateCreated must be dropped
+// rather than ingested with a zero Timestamp (which would corrupt cursor
+// tracking). Matches every other audit mapper in this batch.
+func TestMapSentryAuditLog_DropsZeroTimestamp(t *testing.T) {
+	for _, in := range []string{"", "not-a-date", "2024/01/01 10:00:00"} {
+		if got := mapSentryAuditLog(&sentryAuditLog{ID: "x", Event: "member.add", DateCreated: in}); got != nil {
+			t.Errorf("dateCreated=%q: got %+v; want nil", in, got)
+		}
+	}
+	if got := mapSentryAuditLog(&sentryAuditLog{ID: "y", Event: "member.add", DateCreated: "2024-01-01T10:00:00Z"}); got == nil {
+		t.Fatal("valid timestamp: got nil, want entry")
+	}
+}

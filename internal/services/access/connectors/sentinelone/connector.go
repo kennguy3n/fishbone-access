@@ -447,6 +447,9 @@ func (c *SentinelOneAccessConnector) ListEntitlements(
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
+		// Drain the (small) body so the connection can be reused by
+		// the pool before we discard the response.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 		return nil, nil
 	}
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
