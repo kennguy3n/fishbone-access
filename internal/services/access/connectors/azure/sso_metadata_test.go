@@ -87,3 +87,16 @@ func TestAzureGetSSOMetadata_WorksWithoutSubscriptionID(t *testing.T) {
 		t.Fatal("err = nil, want tenant_id required")
 	}
 }
+
+// GetSSOMetadata must apply the same tenant-format validation as every
+// other method, so a setup/validation flow can't accept a malformed
+// tenant_id here that Connect/SyncIdentities would later reject.
+func TestAzureGetSSOMetadata_RejectsMalformedTenant(t *testing.T) {
+	c := New()
+	for _, tenant := range []string{"../evil", "tenant id", "a/b", "tenant\\x"} {
+		cfg := map[string]interface{}{"tenant_id": tenant}
+		if _, err := c.GetSSOMetadata(context.Background(), cfg, nil); err == nil {
+			t.Errorf("tenant_id %q: err = nil, want rejection", tenant)
+		}
+	}
+}

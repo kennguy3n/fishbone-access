@@ -443,14 +443,16 @@ func (c *AzureAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
-	// PathEscape the subscription id before embedding it in the URL
-	// path, mirroring ListEntitlements/FetchAccessAuditLogs. Azure
-	// subscription ids are UUIDs in practice, but escaping keeps the
-	// URL well-formed if one ever carried a path-special character.
-	scope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
+	// scope is the canonical ARM scope and is the stable identity fed into
+	// armRoleAssignmentName, so it MUST be built from the raw subscription
+	// id (see that function's contract). The URL path escapes the
+	// subscription id separately so the request stays well-formed without
+	// perturbing the deterministic assignment name.
+	scope := "/subscriptions/" + cfg.SubscriptionID
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
+	escapedScope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
-		scope, url.PathEscape(name), armAPIVersion)
+		escapedScope, url.PathEscape(name), armAPIVersion)
 	payload := map[string]map[string]string{
 		"properties": {
 			"roleDefinitionId": grant.ResourceExternalID,
@@ -501,13 +503,14 @@ func (c *AzureAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	// PathEscape the subscription id (same as ProvisionAccess) so the
-	// deterministic assignment name derives from an identical scope on
-	// both sides and the DELETE URL stays well-formed.
-	scope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
+	// Build the name from the raw scope (same as ProvisionAccess) so the
+	// deterministic assignment name is byte-for-byte identical on both
+	// sides; escape the subscription id only for the DELETE URL path.
+	scope := "/subscriptions/" + cfg.SubscriptionID
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
+	escapedScope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
-		scope, url.PathEscape(name), armAPIVersion)
+		escapedScope, url.PathEscape(name), armAPIVersion)
 	client := c.armClient(ctx, cfg, secrets)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.armURL(path), nil)
 	if err != nil {
@@ -668,9 +671,19 @@ func (c *AzureAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ ma
 	// caller fetch metadata before the full RBAC config is populated,
 	// matching bamboohr's GetSSOMetadata which deliberately skips the
 	// secrets it does not need.
+	//
+	// We still enforce azureTenantPattern on the tenant id: url.PathEscape
+	// keeps the URLs built here well-formed regardless, but applying the
+	// same tenant-format check as every other method keeps validation
+	// consistent at the input boundary — a setup/validation flow that
+	// calls GetSSOMetadata first must not accept a tenant_id that Connect
+	// and SyncIdentities would later reject.
 	tenant := strings.TrimSpace(cfg.TenantID)
 	if tenant == "" {
 		return nil, errors.New("azure: tenant_id is required")
+	}
+	if !azureTenantPattern.MatchString(tenant) {
+		return nil, errors.New("azure: tenant_id must be a GUID or domain (letters, digits, '.', '-')")
 	}
 	proto := strings.ToLower(strings.TrimSpace(cfg.SSOProtocol))
 	if proto == "" {
