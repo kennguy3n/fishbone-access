@@ -127,7 +127,8 @@ type auth0AuditLogEvent struct {
 // parseAuth0Time parses an Auth0 log date, trying fractional-second precision
 // first to match the parsing pattern used by the other connectors.
 func parseAuth0Time(s string) time.Time {
-	if strings.TrimSpace(s) == "" {
+	s = strings.TrimSpace(s)
+	if s == "" {
 		return time.Time{}
 	}
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
