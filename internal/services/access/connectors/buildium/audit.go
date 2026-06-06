@@ -23,7 +23,7 @@ const (
 //
 // Endpoint:
 //
-//	GET /api/v1/audit-logs?page=N&per_page=100&since={iso}
+//	GET /v1/audit-logs?page=N&per_page=100&since={iso}
 //
 // Audit access requires a tenant-admin scope on the supplied bearer
 // token; lower scopes (or tenants on plans that do not surface the
@@ -40,7 +40,7 @@ func (c *BuildiumAccessConnector) FetchAccessAuditLogs(
 		return err
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
-	base := c.baseURL() + "/api/v1/audit-logs"
+	base := c.baseURL() + "/v1/audit-logs"
 
 	var collected []buildiumAuditEvent
 	for page := 0; page < buildiumAuditMaxPages; page++ {
