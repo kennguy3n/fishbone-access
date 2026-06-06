@@ -122,10 +122,9 @@ func (c *AzureAccessConnector) SyncGroups(
 				},
 			})
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Follow @odata.nextLink verbatim; doJSON resolves absolute
+		// URLs directly (see SyncIdentities for rationale).
+		next := resp.NextLink
 		if err := handler(identities, next); err != nil {
 			return err
 		}
@@ -178,10 +177,9 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 				memberIDs = append(memberIDs, m.ID)
 			}
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Follow @odata.nextLink verbatim; doJSON resolves absolute
+		// URLs directly (see SyncIdentities for rationale).
+		next := resp.NextLink
 		if err := handler(memberIDs, next); err != nil {
 			return err
 		}

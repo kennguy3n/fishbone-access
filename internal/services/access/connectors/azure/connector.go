@@ -196,11 +196,23 @@ func (b *bearerTransportClient) Do(req *http.Request) (*http.Response, error) {
 	return b.inner.Do(req)
 }
 
-// doJSON issues a GET/DELETE against the configured base URL and
-// returns the decoded body. ctx is the first parameter per Go
-// convention (context.Context leads the argument list).
+// doJSON issues a GET/DELETE against the Microsoft Graph API and
+// returns the decoded body. path may be either a base-relative path
+// (e.g. "/users?...") or an already-absolute URL (e.g. an
+// @odata.nextLink pagination cursor); an absolute URL is used verbatim
+// while a relative path is resolved against baseURL(). Accepting the
+// cursor as-is means SyncIdentities/SyncGroups/SyncGroupMembers can
+// hand the raw nextLink straight back without stripping baseURL, so a
+// nextLink that ever points at a different host/format (regional
+// endpoint, trailing-slash variation) is followed correctly instead of
+// being concatenated into a malformed "baseURLhttps://..." URL. ctx is
+// the first parameter per Go convention.
 func (c *AzureAccessConnector) doJSON(ctx context.Context, client httpDoer, method, path string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, nil)
+	endpoint := path
+	if !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") {
+		endpoint = c.baseURL() + path
+	}
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -318,10 +330,10 @@ func (c *AzureAccessConnector) SyncIdentities(
 				Status:      status,
 			})
 		}
-		next := ""
-		if resp.NextLink != "" {
-			next = strings.TrimPrefix(resp.NextLink, c.baseURL())
-		}
+		// Hand Graph's @odata.nextLink back verbatim; doJSON follows
+		// absolute URLs directly, so no fragile baseURL stripping is
+		// needed and an unexpected host/format cannot be mangled.
+		next := resp.NextLink
 		if err := handler(identities, next); err != nil {
 			return err
 		}
@@ -359,10 +371,20 @@ func (c *AzureAccessConnector) armClient(ctx context.Context, cfg Config, secret
 // (scope, principalID, roleDefinitionID) tuple so that retries land on the
 // same role assignment and 409 / 404 can be treated as idempotent.
 func armRoleAssignmentName(scope, principalID, roleDefinitionID string) string {
+	// Length-prefix each component before joining so the encoding is
+	// injective: two different (scope, principalID, roleDefinitionID)
+	// tuples can never hash to the same name regardless of the bytes
+	// they contain. (Azure scopes/principal/role ids never contain the
+	// old "|" separator today, but length-prefixing removes the
+	// assumption entirely.)
+	var sb strings.Builder
+	for _, part := range []string{scope, principalID, roleDefinitionID} {
+		fmt.Fprintf(&sb, "%d:%s", len(part), part)
+	}
 	// gosec G401: deterministic identifier, not a hash for
 	// integrity/auth. SHA-1 chosen so the 20-byte output trims
 	// cleanly to a 16-byte GUID-shaped name.
-	sum := sha1.Sum([]byte(scope + "|" + principalID + "|" + roleDefinitionID)) // #nosec G401
+	sum := sha1.Sum([]byte(sb.String())) // #nosec G401
 	b := sum[:16]
 	// Format as a GUID; this is just a deterministic identifier so we do
 	// not tag it as a specific UUID variant.

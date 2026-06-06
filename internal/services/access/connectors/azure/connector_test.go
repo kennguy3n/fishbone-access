@@ -114,6 +114,44 @@ func TestSync_DecodesUsersAndPaginates(t *testing.T) {
 	}
 }
 
+// TestSync_FollowsAbsoluteNextLinkOnDifferentHost guards the doJSON
+// absolute-URL handling: when Graph returns an @odata.nextLink whose
+// host/format differs from baseURL(), the connector must follow it
+// verbatim rather than mangling it. The page-1 server advertises a
+// nextLink pointing at a *second* server; the old TrimPrefix-then-
+// re-prepend logic would have produced "<baseURL><absolute nextLink>"
+// and never reached page two.
+func TestSync_FollowsAbsoluteNextLinkOnDifferentHost(t *testing.T) {
+	page2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.RequestURI(), "://") {
+			t.Errorf("page-2 request target leaked absolute URL: %q", r.URL.RequestURI())
+		}
+		_, _ = w.Write([]byte(`{"value":[{"id":"u2","displayName":"Bob","userPrincipalName":"bob@uney.com","accountEnabled":false}]}`))
+	}))
+	t.Cleanup(page2.Close)
+
+	page1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// Absolute nextLink on a DIFFERENT host than baseURL().
+		_, _ = w.Write([]byte(`{"value":[{"id":"u1","displayName":"Alice","userPrincipalName":"alice@uney.com","mail":"alice@uney.com","accountEnabled":true}],"@odata.nextLink":"` + page2.URL + `/users?$skiptoken=NEXT"}`))
+	}))
+	t.Cleanup(page1.Close)
+
+	c := New()
+	c.urlOverride = page1.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+
+	var got []*access.Identity
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 2 || got[0].ExternalID != "u1" || got[1].ExternalID != "u2" {
+		t.Fatalf("got = %+v; want both pages [u1 u2]", got)
+	}
+}
+
 func TestCount_ParsesPlainInt(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, "/users/$count") {
