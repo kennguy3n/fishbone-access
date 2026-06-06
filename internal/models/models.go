@@ -94,16 +94,39 @@ type AccessJob struct {
 
 // AccessRequest is a user's request for access to a resource, driven through
 // the request state machine (requested → approved → provisioning → ...).
+//
+// TargetUserID is the iam-core user the access is for; it defaults to
+// RequesterID for a self-service request but differs when an admin requests
+// access on behalf of another user (and for JML joiner-driven requests). The
+// provisioning service uses TargetUserID as the connector's external user id.
 type AccessRequest struct {
 	Base
-	WorkspaceID   uuid.UUID  `gorm:"type:uuid;index;not null" json:"workspace_id"`
-	RequesterID   string     `gorm:"index;not null" json:"requester_id"`
-	ResourceRef   string     `gorm:"not null" json:"resource_ref"`
-	Role          string     `json:"role"`
-	Justification string     `json:"justification"`
-	State         string     `gorm:"not null;default:requested" json:"state"`
-	RiskLevel     string     `json:"risk_level,omitempty"`
-	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	WorkspaceID   uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	RequesterID   string         `gorm:"index;not null" json:"requester_id"`
+	TargetUserID  string         `gorm:"index" json:"target_user_id,omitempty"`
+	ConnectorID   *uuid.UUID     `gorm:"type:uuid;index" json:"connector_id,omitempty"`
+	ResourceRef   string         `gorm:"not null" json:"resource_ref"`
+	Role          string         `json:"role"`
+	Justification string         `json:"justification"`
+	State         string         `gorm:"not null;default:requested" json:"state"`
+	RiskLevel     string         `json:"risk_level,omitempty"`
+	RiskFactors   datatypes.JSON `json:"risk_factors,omitempty"`
+	ExpiresAt     *time.Time     `json:"expires_at,omitempty"`
+}
+
+// AccessRequestStateHistory is one immutable transition record for an access
+// request. The AccessRequestService writes one row per FSM transition inside
+// the same transaction that mutates AccessRequest.State, so the lifecycle and
+// its audit trail can never diverge. The initial "" → requested row is written
+// at creation time.
+type AccessRequestStateHistory struct {
+	Base
+	WorkspaceID uuid.UUID `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	RequestID   uuid.UUID `gorm:"type:uuid;index;not null" json:"request_id"`
+	FromState   string    `json:"from_state"`
+	ToState     string    `gorm:"not null" json:"to_state"`
+	Actor       string    `json:"actor,omitempty"`
+	Reason      string    `json:"reason,omitempty"`
 }
 
 // AccessGrant is an active (or revoked) entitlement materialised on a provider.
@@ -118,6 +141,7 @@ type AccessGrant struct {
 	State         string     `gorm:"not null;default:active" json:"state"`
 	GrantedAt     time.Time  `json:"granted_at"`
 	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	RevokedAt     *time.Time `json:"revoked_at,omitempty"`
 }
 
 // AccessReview is an access-certification campaign over a set of grants.
@@ -125,13 +149,16 @@ type AccessReview struct {
 	Base
 	WorkspaceID uuid.UUID  `gorm:"type:uuid;index;not null" json:"workspace_id"`
 	Name        string     `gorm:"not null" json:"name"`
-	State       string     `gorm:"not null;default:draft" json:"state"`
+	State       string     `gorm:"not null;default:active" json:"state"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 // Policy is an access policy with a draft/simulate/promote lifecycle. Drafts
-// never touch the data plane.
+// never touch the data plane. Definition holds the JSON rule
+// ({action, subjects, resources}); DraftImpact caches the last Simulate output
+// while State is still "draft"; PromotedAt is stamped when a draft is promoted
+// to State "active".
 type Policy struct {
 	Base
 	WorkspaceID uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
@@ -139,13 +166,46 @@ type Policy struct {
 	State       string         `gorm:"not null;default:draft" json:"state"`
 	Version     int            `gorm:"not null;default:1" json:"version"`
 	Definition  datatypes.JSON `json:"definition"`
+	DraftImpact datatypes.JSON `json:"draft_impact,omitempty"`
+	PromotedAt  *time.Time     `json:"promoted_at,omitempty"`
+}
+
+// AccessReviewItem is one per-grant certification decision within an
+// AccessReview campaign. StartCampaign enumerates the workspace's active grants
+// into pending items; reviewers then certify / revoke / escalate each one.
+type AccessReviewItem struct {
+	Base
+	WorkspaceID uuid.UUID  `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	ReviewID    uuid.UUID  `gorm:"type:uuid;index;not null" json:"review_id"`
+	GrantID     uuid.UUID  `gorm:"type:uuid;index;not null" json:"grant_id"`
+	Decision    string     `gorm:"not null;default:pending" json:"decision"`
+	DecidedBy   string     `json:"decided_by,omitempty"`
+	DecidedAt   *time.Time `json:"decided_at,omitempty"`
+	Reason      string     `json:"reason,omitempty"`
+}
+
+// AccessOrphanAccount is an upstream provider account with no matching live
+// grant in ShieldNet Access, surfaced by the OrphanReconciler. Disposition is
+// the operator's decision (pending → ignore | disable).
+type AccessOrphanAccount struct {
+	Base
+	WorkspaceID    uuid.UUID `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	ConnectorID    uuid.UUID `gorm:"type:uuid;index;not null" json:"connector_id"`
+	ExternalUserID string    `gorm:"not null" json:"external_user_id"`
+	DisplayName    string    `json:"display_name,omitempty"`
+	Disposition    string    `gorm:"not null;default:pending" json:"disposition"`
 }
 
 // AuditEvent is a tamper-evident audit record. ChainHash links rows into a
-// per-workspace SHA-256 hash chain (PrevHash → ChainHash).
+// per-workspace SHA-256 hash chain (PrevHash → ChainHash). ChainSeq is a
+// strictly increasing per-workspace sequence used to identify the chain head
+// unambiguously, independent of wall-clock timestamps (multiple events can be
+// appended within a single transaction with the same or non-monotonic
+// created_at, so ordering by created_at is not append-order-correct).
 type AuditEvent struct {
 	Base
-	WorkspaceID uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	WorkspaceID uuid.UUID      `gorm:"type:uuid;index;not null;index:idx_audit_events_chain_seq,priority:1" json:"workspace_id"`
+	ChainSeq    int64          `gorm:"not null;default:0;index:idx_audit_events_chain_seq,priority:2,sort:desc" json:"chain_seq"`
 	Actor       string         `json:"actor"`
 	Action      string         `gorm:"not null" json:"action"`
 	TargetRef   string         `json:"target_ref,omitempty"`
@@ -178,9 +238,12 @@ func All() []any {
 		&AccessConnector{},
 		&AccessJob{},
 		&AccessRequest{},
+		&AccessRequestStateHistory{},
 		&AccessGrant{},
 		&AccessReview{},
+		&AccessReviewItem{},
 		&Policy{},
+		&AccessOrphanAccount{},
 		&AuditEvent{},
 		&AccessSyncState{},
 	}

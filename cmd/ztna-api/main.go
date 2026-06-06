@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -34,9 +35,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -88,7 +91,66 @@ func run() error {
 	} else {
 		logger.Warnf(ctx, "ztna-api: iam-core NOT configured; authenticated API returns 503")
 	}
+
+	// Credential encryptor opens connector secret envelopes for the lifecycle
+	// provisioning / JML / reconciliation services. FromKey returns a
+	// passthrough (seal-refusing) encryptor when no DEK is set, so connectors
+	// without sealed secrets still resolve in degraded dev boots.
+	enc, err := crypto.FromKey(cfg.CredentialDEK)
+	if err != nil {
+		return fmt.Errorf("credential encryptor init: %w", err)
+	}
+	deps.Encryptor = enc
+
+	// The iam-core management client disables (blocks) users for the leaver
+	// kill switch (layer 3). It is wired only when the management credentials
+	// (client id + secret) are present, since BlockUser mints a
+	// client_credentials token: gating on full management config means the
+	// layer reports "skipped" when iam-core is set up for JWT validation only,
+	// instead of a non-nil client that fails every BlockUser call (which would
+	// report the layer "failed").
+	if cfg.IAMCore.ManagementConfigured() {
+		deps.Disabler = iamcore.NewManagementClient(cfg.IAMCore, nil)
+	}
+
 	deps.Ready = ready
+
+	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily
+	// orphan-account reconciliation. Run in-process (tied to the server's
+	// signal context) so expiry is enforced even before the Session 1B durable
+	// worker queue lands. The sweeps are idempotent and workspace-scoped, so
+	// running them on every replica is safe. Only started when a DB is present.
+	if deps.DB != nil {
+		resolver := lifecycle.NewDBConnectorResolver(deps.DB, deps.Encryptor)
+		reqSvc := lifecycle.NewAccessRequestService(deps.DB)
+		prov := lifecycle.NewAccessProvisioningService(deps.DB, reqSvc, resolver)
+		sched := lifecycle.NewScheduler(
+			deps.DB,
+			lifecycle.NewExpiryEnforcer(deps.DB, prov),
+			lifecycle.NewOrphanReconciler(deps.DB, resolver),
+			lifecycle.SchedulerConfig{},
+		)
+		// Give the scheduler its own cancellable context and join it on the way
+		// out so it is guaranteed to have stopped before the deferred DB-pool
+		// close runs. The pool's close defer was registered earlier (right after
+		// setupDatabase), so this later-registered defer runs first (LIFO) — the
+		// scheduler can never issue a query against an already-closed pool. This
+		// holds on every run() exit path (signal shutdown and fatal serve error).
+		schedCtx, schedCancel := context.WithCancel(ctx)
+		var schedWG sync.WaitGroup
+		schedWG.Add(1)
+		go func() {
+			defer schedWG.Done()
+			if err := sched.Run(schedCtx); err != nil && !errors.Is(err, context.Canceled) {
+				logger.Errorf(context.Background(), "ztna-api: lifecycle scheduler exited: %v", err)
+			}
+		}()
+		defer func() {
+			schedCancel()
+			schedWG.Wait()
+		}()
+		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation)")
+	}
 
 	srv := &http.Server{
 		Handler:           handlers.NewRouter(deps),
