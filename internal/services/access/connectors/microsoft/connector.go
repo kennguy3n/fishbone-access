@@ -642,7 +642,7 @@ func (c *M365AccessConnector) findAppRoleAssignmentID(
 			_ = resp.Body.Close()
 			return "", fmt.Errorf("microsoft: list assignments status %d: %s", resp.StatusCode, string(body))
 		}
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err

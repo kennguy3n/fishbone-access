@@ -130,6 +130,9 @@ func mapMiroAuditEvent(e *miroAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseMiroTime(e.CreatedAt)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

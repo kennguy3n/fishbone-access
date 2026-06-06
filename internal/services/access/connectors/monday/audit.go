@@ -143,6 +143,9 @@ func mapMondayAuditEvent(e *mondayAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseMondayTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

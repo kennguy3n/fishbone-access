@@ -578,6 +578,21 @@ func TestDoJSON_CapsResponseBodyRead(t *testing.T) {
 	}
 }
 
+// TestFindAppRoleAssignmentID_CapsResponseBodyRead is a regression test for the
+// fourth read site in this connector: findAppRoleAssignmentID (exercised by
+// RevokeAccess on every revoke) buffered the listing body with an unbounded
+// io.ReadAll. It must use the shared maxResponseBytes cap like the other reads.
+func TestFindAppRoleAssignmentID_CapsResponseBodyRead(t *testing.T) {
+	var read int64
+	c := New()
+	_, _ = c.findAppRoleAssignmentID(context.Background(),
+		fixedBodyClient{serve: maxResponseBytes * 2, read: &read},
+		access.AccessGrant{UserExternalID: "user-1", ResourceExternalID: "res-1"})
+	if read != maxResponseBytes {
+		t.Fatalf("findAppRoleAssignmentID read %d bytes; want capped at maxResponseBytes=%d", read, maxResponseBytes)
+	}
+}
+
 // TestSyncIdentitiesDelta_CapsResponseBodyRead is the same regression for the
 // /users/delta path, which buffers the body inline rather than via doJSON. The
 // filler body is not valid JSON so the decode fails, but only after the read
