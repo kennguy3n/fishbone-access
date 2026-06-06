@@ -120,6 +120,9 @@ func mapRapid7AuditEvent(e *rapid7AuditEvent) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Date)
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

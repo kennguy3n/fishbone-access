@@ -113,3 +113,22 @@ func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 		t.Fatalf("err = ErrAuditNotAvailable; want generic error")
 	}
 }
+
+// TestMapRapid7AuditEvent_FiltersZeroTimestamp guards against emitting
+// audit entries with an unparseable (zero) timestamp. Every other audit
+// mapper in this package family drops zero-timestamp events; rapid7 must
+// do the same so the initial sync (since == zero, which skips the
+// "after cursor" filter) does not pollute the pipeline with
+// 0001-01-01T00:00:00Z entries.
+func TestMapRapid7AuditEvent_FiltersZeroTimestamp(t *testing.T) {
+	// Parseable timestamp -> entry is returned.
+	if got := mapRapid7AuditEvent(&rapid7AuditEvent{ID: "ev1", Action: "login", Date: "2024-06-01T08:00:00Z"}); got == nil {
+		t.Fatalf("expected non-nil entry for valid date")
+	}
+	// Unparseable date -> filtered out (nil) rather than a zero-ts entry.
+	for _, bad := range []string{"not-a-date", "06/01/2024", "0001-01-01T00:00:00Z"} {
+		if got := mapRapid7AuditEvent(&rapid7AuditEvent{ID: "evX", Action: "login", Date: bad}); got != nil {
+			t.Errorf("Date %q: got entry with ts %v; want nil (zero timestamp must be filtered)", bad, got.Timestamp)
+		}
+	}
+}

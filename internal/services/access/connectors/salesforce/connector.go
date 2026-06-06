@@ -155,6 +155,20 @@ func (c *SalesforceAccessConnector) do(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+// doRaw performs the request and returns the raw status code and body
+// without treating non-2xx as an error, so write paths can apply the
+// shared idempotency / transient classification helpers
+// (access.IsIdempotentProvisionStatus etc.) per docs/architecture.md §2.
+func (c *SalesforceAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
+	resp, err := c.client().Do(req)
+	if err != nil {
+		return 0, nil, fmt.Errorf("salesforce: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	return resp.StatusCode, body, nil
+}
+
 func (c *SalesforceAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
 	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
@@ -300,20 +314,25 @@ func (c *SalesforceAccessConnector) ProvisionAccess(
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
-	resp, err := c.client().Do(req)
+	status, respBody, err := c.doRaw(req)
 	if err != nil {
 		return fmt.Errorf("salesforce: provision: %w", err)
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
+	switch {
+	case status >= 200 && status < 300:
 		return nil
-	}
-	if strings.Contains(string(respBody), "DUPLICATE_VALUE") {
+	case access.IsIdempotentProvisionStatus(status, respBody):
+		// Salesforce surfaces an existing PermissionSetAssignment as
+		// HTTP 400 with errorCode DUPLICATE_VALUE, which the shared
+		// helper matches via the "duplicate" phrase.
 		return nil
+	case access.IsTransientStatus(status):
+		return fmt.Errorf("salesforce: provision transient status %d: %s", status, string(respBody))
+	default:
+		return fmt.Errorf("salesforce: provision status %d: %s", status, string(respBody))
 	}
-	return fmt.Errorf("salesforce: provision status %d: %s", resp.StatusCode, string(respBody))
 }
 
 func (c *SalesforceAccessConnector) RevokeAccess(
@@ -353,17 +372,23 @@ func (c *SalesforceAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
+	delReq.Header.Set("Accept", "application/json")
 	delReq.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
-	resp, err := c.client().Do(delReq)
+	status, respBody, err := c.doRaw(delReq)
 	if err != nil {
 		return fmt.Errorf("salesforce: revoke: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
+	switch {
+	case status >= 200 && status < 300:
 		return nil
+	case access.IsIdempotentRevokeStatus(status, respBody):
+		// 404 (assignment already gone) is idempotent success.
+		return nil
+	case access.IsTransientStatus(status):
+		return fmt.Errorf("salesforce: revoke transient status %d: %s", status, string(respBody))
+	default:
+		return fmt.Errorf("salesforce: revoke status %d: %s", status, string(respBody))
 	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("salesforce: revoke status %d: %s", resp.StatusCode, string(respBody))
 }
 
 func (c *SalesforceAccessConnector) ListEntitlements(

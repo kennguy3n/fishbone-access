@@ -178,6 +178,43 @@ func TestProvisionAccess_Failure(t *testing.T) {
 	}
 }
 
+// TestProvisionAccess_Transient verifies a 5xx is classified as a
+// transient failure (so the worker retries with backoff) via the shared
+// access.IsTransientStatus helper, matching every other connector.
+func TestProvisionAccess_Transient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"message":"upstream busy"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "uid-1", ResourceExternalID: "ps-1"})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("want transient error, got %v", err)
+	}
+}
+
+func TestRevokeAccess_Transient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"records":[{"Id":"psa-1"}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(`{"message":"bad gateway"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "uid-1", ResourceExternalID: "ps-1"})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("want transient error, got %v", err)
+	}
+}
+
 func TestRevokeAccess_HappyPath(t *testing.T) {
 	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -93,6 +93,43 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+// TestSync_EncodesCursor guards against the cursor being concatenated
+// into the query string without URL-encoding. Rippling cursors are
+// opaque and can contain reserved characters (&, =, +, /, spaces); a
+// raw concatenation would corrupt the value or inject spurious query
+// parameters, whereas url.Values round-trips it intact.
+func TestSync_EncodesCursor(t *testing.T) {
+	const rawCursor = "ab&cd=ef+gh/ij kl"
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			b, _ := json.Marshal(map[string]interface{}{
+				"results":    []map[string]interface{}{{"id": "u1", "workEmail": "a@x.com", "status": "ACTIVE"}},
+				"nextCursor": rawCursor,
+			})
+			_, _ = w.Write(b)
+			return
+		}
+		if got := r.URL.Query().Get("cursor"); got != rawCursor {
+			t.Errorf("cursor decoded = %q; want %q (raw concatenation would corrupt it)", got, rawCursor)
+		}
+		_, _ = fmt.Fprintf(w, `{"results":[],"nextCursor":""}`)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(_ []*access.Identity, _ string) error {
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("calls = %d; want 2", calls)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

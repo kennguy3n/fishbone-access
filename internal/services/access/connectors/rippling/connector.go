@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -216,10 +217,12 @@ func (c *RipplingAccessConnector) SyncIdentities(
 	cursor := checkpoint
 	base := c.baseURL()
 	for {
-		path := fmt.Sprintf("%s/platform/api/employees?limit=%d", base, pageSize)
+		q := url.Values{}
+		q.Set("limit", fmt.Sprintf("%d", pageSize))
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			q.Set("cursor", cursor)
 		}
+		path := fmt.Sprintf("%s/platform/api/employees?%s", base, q.Encode())
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
