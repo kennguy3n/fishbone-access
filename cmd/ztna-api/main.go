@@ -1,7 +1,10 @@
 // Command ztna-api is the ShieldNet Access HTTP API. It boots a Gin server
 // exposing the access-platform endpoints and validates iam-core bearer tokens.
-// Provider connectors register themselves via the access registry; the binary
-// that wires in the connectors/all aggregator populates the process-global map.
+// Provider connectors register themselves into the access registry via their
+// package init(); a binary blank-imports the connectors/all aggregate to pull
+// them in. The 200 connector packages and that aggregate import ship in the
+// stacked connectors PR, so this framework binary registers zero providers on
+// its own (the registry's behavior is exercised against mock connectors).
 //
 // When ACCESS_DATABASE_URL is set the binary opens a GORM Postgres pool and
 // applies the SQL migrations in internal/migrations. When it is unset the
