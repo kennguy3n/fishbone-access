@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -31,6 +32,7 @@ type PostgresProxy struct {
 	sessions    *pam.SessionManager
 	hub         *SessionHub
 	store       ReplayStore
+	tlsConfig   *tls.Config
 	dialTimeout time.Duration
 	recMaxBytes int
 }
@@ -41,6 +43,7 @@ type PostgresProxyConfig struct {
 	Sessions    *pam.SessionManager
 	Hub         *SessionHub
 	Store       ReplayStore
+	TLSConfig   *tls.Config
 	DialTimeout time.Duration
 	RecMaxBytes int
 }
@@ -54,11 +57,24 @@ func NewPostgresProxy(cfg PostgresProxyConfig) (*PostgresProxy, error) {
 	if dt <= 0 {
 		dt = 15 * time.Second
 	}
+	// Default to an ephemeral self-signed cert so the operator↔gateway hop is
+	// encrypted out of the box (sslmode=require). Operators that need a verified
+	// chain pass a real keypair via cfg.TLSConfig. A client that disables SSL
+	// still works: it sends no SSLRequest and we read its StartupMessage directly.
+	tlsCfg := cfg.TLSConfig
+	if tlsCfg == nil {
+		cert, err := ephemeralTLSCert()
+		if err != nil {
+			return nil, fmt.Errorf("gateway: postgres ephemeral cert: %w", err)
+		}
+		tlsCfg = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	}
 	return &PostgresProxy{
 		broker:      cfg.Broker,
 		sessions:    cfg.Sessions,
 		hub:         cfg.Hub,
 		store:       cfg.Store,
+		tlsConfig:   tlsCfg,
 		dialTimeout: dt,
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
@@ -66,11 +82,16 @@ func NewPostgresProxy(cfg PostgresProxyConfig) (*PostgresProxy, error) {
 
 // Handle implements gateway.ConnHandler.
 func (p *PostgresProxy) Handle(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+	// Close whatever conn points to at return — after a TLS upgrade this is the
+	// tls.Conn, so its Close sends close_notify and shuts the underlying socket.
+	defer func() { _ = conn.Close() }()
 	clientAddr := conn.RemoteAddr().String()
 	backend := pgproto3.NewBackend(conn, conn)
 
-	startup, err := p.readStartup(backend, conn)
+	// readStartup may upgrade the connection to TLS, returning the encrypted
+	// conn and a backend bound to it; everything after this point (auth, splice)
+	// must use the returned conn/backend, not the originals.
+	startup, conn, backend, err := p.readStartup(ctx, backend, conn)
 	if err != nil {
 		logger.Warnf(ctx, "pg-proxy: startup from %s failed: %v", clientAddr, err)
 		return
@@ -133,30 +154,57 @@ func (p *PostgresProxy) Handle(ctx context.Context, conn net.Conn) {
 	p.splice(sessCtx, conn, backend, hj, session, rec, cancel)
 }
 
-// readStartup reads the operator's startup phase, answering SSLRequest and
-// GSSEncRequest negotiations with a refusal ('N') so the client retries in
-// plaintext. It returns the StartupMessage, or nil when the client only probed
-// and hung up.
-func (p *PostgresProxy) readStartup(backend *pgproto3.Backend, conn net.Conn) (*pgproto3.StartupMessage, error) {
+// readStartup reads the operator's startup phase. On an SSLRequest it performs
+// a real TLS upgrade (responding 'S', handshaking with the gateway cert) and
+// re-creates the backend over the encrypted stream, so the connect token and
+// all session SQL are protected on the operator↔gateway hop. GSSAPI encryption
+// is not implemented, so a GSSEncRequest is refused ('N') and the client falls
+// back to SSL or plaintext. It returns the StartupMessage plus the (possibly
+// upgraded) conn and backend the caller must use from here on, or a nil
+// StartupMessage when the client only probed and hung up.
+func (p *PostgresProxy) readStartup(ctx context.Context, backend *pgproto3.Backend, conn net.Conn) (*pgproto3.StartupMessage, net.Conn, *pgproto3.Backend, error) {
 	for {
 		msg, err := backend.ReceiveStartupMessage()
 		if err != nil {
-			return nil, fmt.Errorf("receive startup: %w", err)
+			return nil, conn, backend, fmt.Errorf("receive startup: %w", err)
 		}
 		switch m := msg.(type) {
 		case *pgproto3.StartupMessage:
-			return m, nil
-		case *pgproto3.SSLRequest, *pgproto3.GSSEncRequest:
-			// Refuse encryption negotiation; the client falls back to plaintext.
+			return m, conn, backend, nil
+		case *pgproto3.SSLRequest:
+			if p.tlsConfig == nil {
+				// No server cert configured: refuse, client retries in plaintext.
+				if _, err := conn.Write([]byte("N")); err != nil {
+					return nil, conn, backend, fmt.Errorf("refuse ssl: %w", err)
+				}
+				continue
+			}
+			// Accept TLS: ack with 'S', upgrade, and rebind the backend to the
+			// encrypted conn. Per the protocol the client re-sends its startup
+			// packet after the handshake, so the loop continues.
+			if _, err := conn.Write([]byte("S")); err != nil {
+				return nil, conn, backend, fmt.Errorf("accept ssl: %w", err)
+			}
+			tlsConn := tls.Server(conn, p.tlsConfig)
+			hsCtx, hsCancel := context.WithTimeout(ctx, p.dialTimeout)
+			err := tlsConn.HandshakeContext(hsCtx)
+			hsCancel()
+			if err != nil {
+				return nil, conn, backend, fmt.Errorf("tls handshake: %w", err)
+			}
+			conn = tlsConn
+			backend = pgproto3.NewBackend(conn, conn)
+		case *pgproto3.GSSEncRequest:
+			// GSSAPI encryption unsupported; refuse so the client falls back.
 			if _, err := conn.Write([]byte("N")); err != nil {
-				return nil, fmt.Errorf("refuse ssl: %w", err)
+				return nil, conn, backend, fmt.Errorf("refuse gss: %w", err)
 			}
 		case *pgproto3.CancelRequest:
 			// A cancel request is a one-shot out-of-band connection; nothing to
 			// proxy here.
-			return nil, nil
+			return nil, conn, backend, nil
 		default:
-			return nil, fmt.Errorf("unexpected startup message %T", msg)
+			return nil, conn, backend, fmt.Errorf("unexpected startup message %T", msg)
 		}
 	}
 }

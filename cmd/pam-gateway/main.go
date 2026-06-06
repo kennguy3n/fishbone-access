@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -130,15 +131,22 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 	if err != nil {
 		return nil, err
 	}
-	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	// Optional verified keypair for the operator-facing DB/k8s listeners. When
+	// unset each proxy mints an ephemeral self-signed cert so the operator hop is
+	// still encrypted (clients connect with sslmode=require / equivalent).
+	proxyTLS, err := buildProxyTLSConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-	myProxy, err := gateway.NewMySQLProxy(gateway.MySQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
 	if err != nil {
 		return nil, err
 	}
-	k8sProxy, err := gateway.NewK8sExecProxy(gateway.K8sExecProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	myProxy, err := gateway.NewMySQLProxy(gateway.MySQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
+	if err != nil {
+		return nil, err
+	}
+	k8sProxy, err := gateway.NewK8sExecProxy(gateway.K8sExecProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +239,29 @@ func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 		logger.Infof(ctx, "pam-gateway: applied %d migration(s): %v", len(applied), applied)
 	}
 	return gdb, nil
+}
+
+// buildProxyTLSConfig loads a shared TLS keypair for the operator-facing
+// PostgreSQL/MySQL/k8s listeners from PAM_PROXY_TLS_CERT and PAM_PROXY_TLS_KEY
+// (PEM file paths). When either is unset it returns (nil, nil) and each proxy
+// falls back to an ephemeral self-signed cert. Both set or neither: a single
+// set value is a misconfiguration and fails fast.
+func buildProxyTLSConfig(ctx context.Context) (*tls.Config, error) {
+	certPath := os.Getenv("PAM_PROXY_TLS_CERT")
+	keyPath := os.Getenv("PAM_PROXY_TLS_KEY")
+	if certPath == "" && keyPath == "" {
+		logger.Warnf(ctx, "pam-gateway: PAM_PROXY_TLS_CERT/KEY unset; DB & k8s proxies use ephemeral self-signed certs")
+		return nil, nil
+	}
+	if certPath == "" || keyPath == "" {
+		return nil, fmt.Errorf("pam-gateway: PAM_PROXY_TLS_CERT and PAM_PROXY_TLS_KEY must both be set")
+	}
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("load proxy tls keypair: %w", err)
+	}
+	logger.Infof(ctx, "pam-gateway: DB & k8s proxies use configured TLS keypair (%s)", certPath)
+	return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}, nil
 }
 
 // stepUpMaxAge is the freshness window a step-up assertion must satisfy.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha1" //nolint:gosec // mysql_native_password mandates SHA-1; this is wire-protocol interop, not a security primitive choice.
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 const (
 	mysqlClientLongPassword     uint32 = 0x00000001
 	mysqlClientConnectWithDB    uint32 = 0x00000008
+	mysqlClientSSL              uint32 = 0x00000800
 	mysqlClientProtocol41       uint32 = 0x00000200
 	mysqlClientTransactions     uint32 = 0x00002000
 	mysqlClientSecureConnection uint32 = 0x00008000
@@ -50,6 +52,7 @@ type MySQLProxy struct {
 	sessions    *pam.SessionManager
 	hub         *SessionHub
 	store       ReplayStore
+	tlsConfig   *tls.Config
 	dialTimeout time.Duration
 	recMaxBytes int
 }
@@ -60,6 +63,7 @@ type MySQLProxyConfig struct {
 	Sessions    *pam.SessionManager
 	Hub         *SessionHub
 	Store       ReplayStore
+	TLSConfig   *tls.Config
 	DialTimeout time.Duration
 	RecMaxBytes int
 }
@@ -73,11 +77,25 @@ func NewMySQLProxy(cfg MySQLProxyConfig) (*MySQLProxy, error) {
 	if dt <= 0 {
 		dt = 15 * time.Second
 	}
+	// Default to an ephemeral self-signed cert so the operator↔gateway hop can
+	// be encrypted (the greeting advertises CLIENT_SSL and a TLS-capable client
+	// upgrades before sending its token). Operators needing a verified chain pass
+	// a real keypair via cfg.TLSConfig. A client that does not request SSL still
+	// works: it sends its HandshakeResponse41 in the clear and we proceed.
+	tlsCfg := cfg.TLSConfig
+	if tlsCfg == nil {
+		cert, err := ephemeralTLSCert()
+		if err != nil {
+			return nil, fmt.Errorf("gateway: mysql ephemeral cert: %w", err)
+		}
+		tlsCfg = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	}
 	return &MySQLProxy{
 		broker:      cfg.Broker,
 		sessions:    cfg.Sessions,
 		hub:         cfg.Hub,
 		store:       cfg.Store,
+		tlsConfig:   tlsCfg,
 		dialTimeout: dt,
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
@@ -85,10 +103,14 @@ func NewMySQLProxy(cfg MySQLProxyConfig) (*MySQLProxy, error) {
 
 // Handle implements gateway.ConnHandler.
 func (p *MySQLProxy) Handle(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+	// Close whatever conn points to at return — after a TLS upgrade this is the
+	// tls.Conn, so its Close shuts the encrypted stream and underlying socket.
+	defer func() { _ = conn.Close() }()
 	clientAddr := conn.RemoteAddr().String()
 
-	token, opSeq, err := p.authenticateOperator(conn)
+	// authenticateOperator may upgrade the connection to TLS; everything after
+	// (OK/ERR replies, splice) must use the returned conn.
+	conn, token, opSeq, err := p.authenticateOperator(ctx, conn)
 	if err != nil {
 		logger.Warnf(ctx, "mysql-proxy: operator auth from %s failed: %v", clientAddr, err)
 		return
@@ -142,39 +164,68 @@ func (p *MySQLProxy) Handle(ctx context.Context, conn net.Conn) {
 }
 
 // authenticateOperator runs the operator-facing handshake: greeting →
-// HandshakeResponse41 → AuthSwitchRequest(mysql_clear_password) → clear token.
-// It returns the token and the next sequence id the OK/ERR reply must use.
-func (p *MySQLProxy) authenticateOperator(conn net.Conn) (token string, nextSeq byte, err error) {
+// [optional TLS upgrade] → HandshakeResponse41 →
+// AuthSwitchRequest(mysql_clear_password) → clear token. It returns the
+// (possibly TLS-upgraded) connection, the token, and the next sequence id the
+// OK/ERR reply must use.
+func (p *MySQLProxy) authenticateOperator(ctx context.Context, conn net.Conn) (net.Conn, string, byte, error) {
 	salt := make([]byte, 20)
 	if _, err := rand.Read(salt); err != nil {
-		return "", 0, fmt.Errorf("generate salt: %w", err)
+		return conn, "", 0, fmt.Errorf("generate salt: %w", err)
 	}
-	if err := writePacket(conn, 0, buildHandshakeV10(salt)); err != nil {
-		return "", 0, fmt.Errorf("send greeting: %w", err)
+	sslOffered := p.tlsConfig != nil
+	if err := writePacket(conn, 0, buildHandshakeV10(salt, sslOffered)); err != nil {
+		return conn, "", 0, fmt.Errorf("send greeting: %w", err)
 	}
-	// HandshakeResponse41 (normally seq 1). The operator's native-password
-	// response is discarded because we switch to cleartext, but we track the
-	// sequence the client actually used and derive ours from it rather than
-	// hardcoding, so the AuthSwitchRequest always carries seq = clientSeq+1 even
-	// for a client that numbered its response differently.
-	_, hsSeq, err := readPacket(conn)
+	// Read the client's reply to the greeting (normally seq 1). The operator's
+	// native-password response is discarded because we switch to cleartext, but
+	// we track the sequence the client actually used and derive ours from it
+	// rather than hardcoding, so the AuthSwitchRequest always carries
+	// seq = clientSeq+1.
+	resp, hsSeq, err := readPacket(conn)
 	if err != nil {
-		return "", 0, fmt.Errorf("read handshake response: %w", err)
+		return conn, "", 0, fmt.Errorf("read handshake response: %w", err)
+	}
+	// If the client set CLIENT_SSL, this first reply is the abbreviated
+	// SSLRequest (32-byte header, no auth). Upgrade to TLS and read the real
+	// HandshakeResponse41 that follows over the encrypted channel; the sequence
+	// id continues from the SSLRequest (seq 1 → 2), so re-read it.
+	if sslOffered && clientCapabilities(resp)&mysqlClientSSL != 0 {
+		tlsConn := tls.Server(conn, p.tlsConfig)
+		hsCtx, hsCancel := context.WithTimeout(ctx, p.dialTimeout)
+		err := tlsConn.HandshakeContext(hsCtx)
+		hsCancel()
+		if err != nil {
+			return conn, "", 0, fmt.Errorf("tls handshake: %w", err)
+		}
+		conn = tlsConn
+		if _, hsSeq, err = readPacket(conn); err != nil {
+			return conn, "", 0, fmt.Errorf("read handshake response (tls): %w", err)
+		}
 	}
 	// AuthSwitchRequest → mysql_clear_password (seq = handshake response + 1).
 	switchPkt := append([]byte{0xfe}, []byte(mysqlClearPassword)...)
 	switchPkt = append(switchPkt, 0x00)
 	if err := writePacket(conn, hsSeq+1, switchPkt); err != nil {
-		return "", 0, fmt.Errorf("send auth switch: %w", err)
+		return conn, "", 0, fmt.Errorf("send auth switch: %w", err)
 	}
-	// Operator replies with the cleartext token (seq 3).
+	// Operator replies with the cleartext token.
 	pkt, seq, err := readPacket(conn)
 	if err != nil {
-		return "", 0, fmt.Errorf("read cleartext token: %w", err)
+		return conn, "", 0, fmt.Errorf("read cleartext token: %w", err)
 	}
 	// The cleartext plugin sends the password null-terminated.
-	token = string(trimTrailingNUL(pkt))
-	return token, seq + 1, nil
+	token := string(trimTrailingNUL(pkt))
+	return conn, token, seq + 1, nil
+}
+
+// clientCapabilities returns the 4-byte little-endian client capability flags
+// at the head of a HandshakeResponse41 / SSLRequest packet.
+func clientCapabilities(resp []byte) uint32 {
+	if len(resp) < 4 {
+		return 0
+	}
+	return binary.LittleEndian.Uint32(resp[:4])
 }
 
 // dialUpstream opens a TCP connection to the target and authenticates with
@@ -302,9 +353,14 @@ func writePacket(w io.Writer, seq byte, payload []byte) error {
 
 // buildHandshakeV10 builds the server greeting advertising
 // mysql_native_password. salt must be 20 bytes.
-func buildHandshakeV10(salt []byte) []byte {
+func buildHandshakeV10(salt []byte, sslOffered bool) []byte {
 	caps := mysqlClientLongPassword | mysqlClientConnectWithDB | mysqlClientProtocol41 |
 		mysqlClientTransactions | mysqlClientSecureConnection | mysqlClientPluginAuth
+	if sslOffered {
+		// Advertise CLIENT_SSL so a TLS-capable client may upgrade before sending
+		// its credentials.
+		caps |= mysqlClientSSL
+	}
 
 	var b []byte
 	b = append(b, 0x0a) // protocol version 10

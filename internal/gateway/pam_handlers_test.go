@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -309,12 +311,172 @@ func TestMySQLScrambleInvariants(t *testing.T) {
 	}
 }
 
+// testTLSConfig builds a tls.Config with a fresh ephemeral cert for proxy tests.
+func testTLSConfig(t *testing.T) *tls.Config {
+	t.Helper()
+	cert, err := ephemeralTLSCert()
+	if err != nil {
+		t.Fatalf("ephemeralTLSCert: %v", err)
+	}
+	return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12} //nolint:gosec
+}
+
+// TestPostgresProxyReadStartupTLSUpgrade proves that when the operator sends an
+// SSLRequest the proxy answers 'S', completes a real TLS handshake, and reads
+// the StartupMessage over the encrypted connection — i.e. the connect token and
+// SQL on the operator↔gateway hop are no longer plaintext.
+func TestPostgresProxyReadStartupTLSUpgrade(t *testing.T) {
+	p := &PostgresProxy{tlsConfig: testTLSConfig(t), dialTimeout: 5 * time.Second}
+	cConn, sConn := net.Pipe()
+	defer cConn.Close()
+
+	type result struct {
+		su   *pgproto3.StartupMessage
+		conn net.Conn
+		err  error
+	}
+	resCh := make(chan result, 1)
+	go func() {
+		backend := pgproto3.NewBackend(sConn, sConn)
+		su, conn, _, err := p.readStartup(context.Background(), backend, sConn)
+		resCh <- result{su, conn, err}
+	}()
+
+	// Client: send SSLRequest, expect the single-byte 'S' acceptance.
+	fe := pgproto3.NewFrontend(cConn, cConn)
+	fe.Send(&pgproto3.SSLRequest{})
+	if err := fe.Flush(); err != nil {
+		t.Fatalf("send SSLRequest: %v", err)
+	}
+	ack := make([]byte, 1)
+	if _, err := io.ReadFull(cConn, ack); err != nil {
+		t.Fatalf("read ssl ack: %v", err)
+	}
+	if ack[0] != 'S' {
+		t.Fatalf("ssl ack = %q, want S", ack[0])
+	}
+
+	// Upgrade the client side and send the StartupMessage over TLS.
+	tlsClient := tls.Client(cConn, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test self-signed cert
+	if err := tlsClient.Handshake(); err != nil {
+		t.Fatalf("client tls handshake: %v", err)
+	}
+	feTLS := pgproto3.NewFrontend(tlsClient, tlsClient)
+	feTLS.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersionNumber,
+		Parameters:      map[string]string{"user": "alice", "database": "app"},
+	})
+	if err := feTLS.Flush(); err != nil {
+		t.Fatalf("send startup over tls: %v", err)
+	}
+
+	res := <-resCh
+	if res.err != nil {
+		t.Fatalf("readStartup: %v", res.err)
+	}
+	if res.su == nil || res.su.Parameters["user"] != "alice" {
+		t.Fatalf("startup not received over tls: %+v", res.su)
+	}
+	if _, ok := res.conn.(*tls.Conn); !ok {
+		t.Fatalf("readStartup returned %T, want *tls.Conn", res.conn)
+	}
+}
+
+// mysqlGreetingCaps extracts the capability flags advertised in a V10 greeting.
+func mysqlGreetingCaps(g []byte) uint32 {
+	i := 1 // protocol version
+	for i < len(g) && g[i] != 0x00 {
+		i++ // server version string
+	}
+	i++    // version NUL
+	i += 4 // connection id
+	i += 8 // auth-plugin-data-part-1
+	i++    // filler
+	lower := uint32(g[i]) | uint32(g[i+1])<<8
+	i += 2 // caps lower
+	i++    // charset
+	i += 2 // status flags
+	upper := uint32(g[i]) | uint32(g[i+1])<<8
+	return lower | upper<<16
+}
+
+// TestMySQLProxyAuthenticateOperatorTLSUpgrade proves the greeting advertises
+// CLIENT_SSL and that a client SSLRequest triggers a real TLS handshake before
+// the cleartext connect token is read — closing the plaintext operator hop.
+func TestMySQLProxyAuthenticateOperatorTLSUpgrade(t *testing.T) {
+	p := &MySQLProxy{tlsConfig: testTLSConfig(t), dialTimeout: 5 * time.Second}
+	cConn, sConn := net.Pipe()
+	defer cConn.Close()
+
+	type result struct {
+		conn  net.Conn
+		token string
+		seq   byte
+		err   error
+	}
+	resCh := make(chan result, 1)
+	go func() {
+		conn, token, seq, err := p.authenticateOperator(context.Background(), sConn)
+		resCh <- result{conn, token, seq, err}
+	}()
+
+	// Read the server greeting and assert CLIENT_SSL is advertised.
+	greeting, _, err := readPacket(cConn)
+	if err != nil {
+		t.Fatalf("read greeting: %v", err)
+	}
+	if mysqlGreetingCaps(greeting)&mysqlClientSSL == 0 {
+		t.Fatal("greeting did not advertise CLIENT_SSL")
+	}
+
+	// Send the abbreviated SSLRequest (32-byte header, CLIENT_SSL set) at seq 1.
+	sslReq := make([]byte, 32)
+	binary.LittleEndian.PutUint32(sslReq[0:4], mysqlClientProtocol41|mysqlClientSSL|mysqlClientSecureConnection)
+	binary.LittleEndian.PutUint32(sslReq[4:8], 1<<24)
+	sslReq[8] = 0x21 // charset
+	if err := writePacket(cConn, 1, sslReq); err != nil {
+		t.Fatalf("send ssl request: %v", err)
+	}
+
+	// Upgrade, then send the full HandshakeResponse41 over TLS at seq 2.
+	tlsClient := tls.Client(cConn, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test self-signed cert
+	if err := tlsClient.Handshake(); err != nil {
+		t.Fatalf("client tls handshake: %v", err)
+	}
+	if err := writePacket(tlsClient, 2, buildHandshakeResponse41("alice", "", nil)); err != nil {
+		t.Fatalf("send handshake response over tls: %v", err)
+	}
+
+	// Expect AuthSwitchRequest → mysql_clear_password at seq 3, then send token.
+	sw, swSeq, err := readPacket(tlsClient)
+	if err != nil {
+		t.Fatalf("read auth switch: %v", err)
+	}
+	if len(sw) == 0 || sw[0] != 0xfe || string(trimTrailingNUL(sw[1:])) != mysqlClearPassword {
+		t.Fatalf("unexpected auth switch packet: %v", sw)
+	}
+	if err := writePacket(tlsClient, swSeq+1, append([]byte("tok-secret"), 0x00)); err != nil {
+		t.Fatalf("send token over tls: %v", err)
+	}
+
+	res := <-resCh
+	if res.err != nil {
+		t.Fatalf("authenticateOperator: %v", res.err)
+	}
+	if res.token != "tok-secret" {
+		t.Fatalf("token = %q, want tok-secret", res.token)
+	}
+	if _, ok := res.conn.(*tls.Conn); !ok {
+		t.Fatalf("authenticateOperator returned %T, want *tls.Conn", res.conn)
+	}
+}
+
 func TestMySQLHandshakeRoundTrip(t *testing.T) {
 	salt := make([]byte, 20)
 	for i := range salt {
 		salt[i] = byte(i + 1)
 	}
-	greeting := buildHandshakeV10(salt)
+	greeting := buildHandshakeV10(salt, false)
 	gotSalt, plugin, err := parseHandshakeV10(greeting)
 	if err != nil {
 		t.Fatalf("parseHandshakeV10: %v", err)
