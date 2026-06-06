@@ -76,6 +76,21 @@ func TestWhoamiWithValidator(t *testing.T) {
 	}
 }
 
+// TestWhoamiNilClaimsFailsClosed exercises whoami directly with no claims in
+// context (simulating a future reorder that mounts it without Auth). It must
+// return 401, not panic on a nil-claims dereference.
+func TestWhoamiNilClaimsFailsClosed(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+
+	whoami(c) // must not panic
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("whoami with nil claims = %d, want 401", w.Code)
+	}
+}
+
 func TestListProvidersUnauthenticated(t *testing.T) {
 	r := NewRouter(Deps{})
 	w := httptest.NewRecorder()

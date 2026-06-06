@@ -13,14 +13,23 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // Base is embedded by every model: a UUID primary key and audit timestamps.
+//
+// DeletedAt is gorm.DeletedAt (not *time.Time) so GORM v2 activates soft
+// delete: Delete emits UPDATE ... SET deleted_at = now() and every query is
+// implicitly scoped WHERE deleted_at IS NULL. With a plain *time.Time GORM
+// would hard-DELETE rows and return soft-deleted records, so the choice here is
+// load-bearing for the 1B–1E handlers that query these models. The underlying
+// column stays a nullable TIMESTAMPTZ (gorm.DeletedAt is sql.NullTime), matching
+// internal/migrations/0001_init.sql, and still marshals to null/omitted in JSON.
 type Base struct {
-	ID        uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"`
+	ID        uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 // Workspace is the top-level tenant isolation boundary. WorkspaceID == iam-core

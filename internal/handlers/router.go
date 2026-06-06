@@ -55,6 +55,14 @@ func NewRouter(deps Deps) *gin.Engine {
 // token and tenant resolution worked.
 func whoami(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
+	// Fail closed rather than panic: the Auth middleware guarantees non-nil
+	// claims today, but if the chain is ever reordered (e.g. a future session
+	// mounts whoami without Auth) a nil dereference here would 500 with a stack
+	// trace. A 401 is the correct, safe response to "no validated identity".
+	if claims == nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "no authenticated identity"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"user_id":       claims.Subject,
 		"tenant_id":     middleware.TenantFromContext(c),

@@ -50,10 +50,17 @@ type Supervisor struct {
 	listeners []Listener
 
 	mu      sync.Mutex
-	active  []net.Listener
+	active  []boundListener
 	conns   map[net.Conn]struct{}
 	closing bool
 	wg      sync.WaitGroup
+}
+
+// boundListener pairs a bound net.Listener with its protocol name so callers
+// (Addrs, closeAll) never have to correlate it back to s.listeners by index.
+type boundListener struct {
+	name string
+	ln   net.Listener
 }
 
 // NewSupervisor builds a Supervisor for the given listeners.
@@ -84,7 +91,7 @@ func (s *Supervisor) Run(ctx context.Context) error {
 			s.wg.Wait()
 			return fmt.Errorf("gateway: bind %s (%s): %w", l.Name, l.Addr, err)
 		}
-		s.track(ln)
+		s.track(l.Name, ln)
 		s.wg.Add(1)
 		go s.serve(ctx, l, ln)
 	}
@@ -96,13 +103,15 @@ func (s *Supervisor) Run(ctx context.Context) error {
 }
 
 // Addrs returns the actual bound addresses keyed by listener name. Useful for
-// tests that bind to :0 and need the OS-assigned port.
+// tests that bind to :0 and need the OS-assigned port. The name travels with
+// each bound listener (boundListener), so this does not depend on s.active and
+// s.listeners staying index-aligned.
 func (s *Supervisor) Addrs() map[string]string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make(map[string]string, len(s.active))
-	for i, ln := range s.active {
-		out[s.listeners[i].Name] = ln.Addr().String()
+	for _, b := range s.active {
+		out[b.name] = b.ln.Addr().String()
 	}
 	return out
 }
@@ -154,10 +163,10 @@ func (s *Supervisor) untrackConn(conn net.Conn) {
 	delete(s.conns, conn)
 }
 
-func (s *Supervisor) track(ln net.Listener) {
+func (s *Supervisor) track(name string, ln net.Listener) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.active = append(s.active, ln)
+	s.active = append(s.active, boundListener{name: name, ln: ln})
 }
 
 // closeAll stops accepting (closes listeners) and force-closes in-flight
@@ -168,8 +177,8 @@ func (s *Supervisor) closeAll() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.closing = true
-	for _, ln := range s.active {
-		_ = ln.Close()
+	for _, b := range s.active {
+		_ = b.ln.Close()
 	}
 	for conn := range s.conns {
 		_ = conn.Close()
