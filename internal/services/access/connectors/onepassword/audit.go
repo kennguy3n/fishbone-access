@@ -127,7 +127,11 @@ type onepasswordSigninClient struct {
 }
 
 func mapOnePasswordSigninAttempt(a *onepasswordSigninAttempt) *access.AuditLogEntry {
-	if a == nil || strings.TrimSpace(a.Timestamp) == "" {
+	// Skip entries without a UUID: EventID is derived from a.UUID and the
+	// downstream dedup pipeline keys on EventID, so an empty EventID would
+	// break de-duplication. Mirrors the UUID/ID guard in every other
+	// connector's audit mapper (okta, pagerduty, openai, paloalto, ...).
+	if a == nil || strings.TrimSpace(a.UUID) == "" || strings.TrimSpace(a.Timestamp) == "" {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339Nano, a.Timestamp)

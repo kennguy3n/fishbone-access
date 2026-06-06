@@ -67,6 +67,14 @@ type cachedToken struct {
 	expiry time.Time
 }
 
+// tokenCall represents an in-flight mint shared by every goroutine that asks
+// for the same credentials' token while one request is already outstanding.
+type tokenCall struct {
+	done  chan struct{}
+	token string
+	err   error
+}
+
 type PayPalAccessConnector struct {
 	httpClient  func() httpDoer
 	urlOverride string
@@ -77,8 +85,14 @@ type PayPalAccessConnector struct {
 	// every request. The connector is registered as a process-wide
 	// singleton shared across tenants, so the cache MUST be keyed by
 	// credentials to avoid handing one tenant's token to another.
-	tokenMu    sync.Mutex
-	tokenCache map[string]cachedToken
+	//
+	// tokenInflight deduplicates concurrent cache misses for the same key:
+	// the first goroutine mints while the rest wait on the shared result,
+	// preventing a thundering herd on /v1/oauth2/token when many syncs start
+	// at once. Both maps are guarded by tokenMu.
+	tokenMu       sync.Mutex
+	tokenCache    map[string]cachedToken
+	tokenInflight map[string]*tokenCall
 }
 
 func New() *PayPalAccessConnector { return &PayPalAccessConnector{} }
@@ -211,29 +225,49 @@ func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, sec
 		c.tokenMu.Unlock()
 		return tok, nil
 	}
+	// A mint for this key is already in flight: wait for its result instead
+	// of issuing a duplicate token request.
+	if call, ok := c.tokenInflight[key]; ok {
+		c.tokenMu.Unlock()
+		select {
+		case <-call.done:
+			return call.token, call.err
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	// Become the leader for this key.
+	call := &tokenCall{done: make(chan struct{})}
+	if c.tokenInflight == nil {
+		c.tokenInflight = make(map[string]*tokenCall)
+	}
+	c.tokenInflight[key] = call
 	c.tokenMu.Unlock()
 
 	tok, ttl, err := c.mintToken(ctx, cfg, secrets)
-	if err != nil {
-		return "", err
-	}
 
+	c.tokenMu.Lock()
 	// Only cache when PayPal reports a positive lifetime. Without a known
 	// expiry we cannot tell when the token goes stale, so we conservatively
 	// re-mint on the next call rather than risk serving an expired token.
-	if ttl > 0 {
+	if err == nil && ttl > 0 {
 		expiry := now.Add(ttl)
 		if ttl > tokenRefreshMargin {
 			expiry = now.Add(ttl - tokenRefreshMargin)
 		}
-		c.tokenMu.Lock()
 		if c.tokenCache == nil {
 			c.tokenCache = make(map[string]cachedToken)
 		}
 		c.tokenCache[key] = cachedToken{token: tok, expiry: expiry}
-		c.tokenMu.Unlock()
 	}
-	return tok, nil
+	delete(c.tokenInflight, key)
+	c.tokenMu.Unlock()
+
+	// Publish the result to any waiters, then close to release them.
+	call.token, call.err = tok, err
+	close(call.done)
+
+	return tok, err
 }
 
 // mintToken performs the OAuth2 client_credentials exchange and returns the

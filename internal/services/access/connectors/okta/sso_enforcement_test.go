@@ -8,7 +8,10 @@ import (
 	"testing"
 )
 
-func newOktaConfigSecrets(serverURL string) (map[string]interface{}, map[string]interface{}) {
+// newOktaConfigSecrets returns canonical config/secrets maps for tests. The
+// test server URL is applied separately via c.urlOverride, so this helper
+// intentionally takes no arguments.
+func newOktaConfigSecrets() (map[string]interface{}, map[string]interface{}) {
 	return map[string]interface{}{
 			"okta_domain": "dev.okta.com",
 		}, map[string]interface{}{
@@ -37,7 +40,7 @@ func TestCheckSSOEnforcement_Enforced(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	enforced, details, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err != nil {
 		t.Fatalf("CheckSSOEnforcement: %v", err)
@@ -66,7 +69,7 @@ func TestCheckSSOEnforcement_NotEnforced(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	enforced, details, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err != nil {
 		t.Fatalf("CheckSSOEnforcement: %v", err)
@@ -91,7 +94,7 @@ func TestCheckSSOEnforcement_HTTPFailure(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	_, _, err := c.CheckSSOEnforcement(context.Background(), cfg, sec)
 	if err == nil {
 		t.Fatal("err = nil; want non-nil on 500")

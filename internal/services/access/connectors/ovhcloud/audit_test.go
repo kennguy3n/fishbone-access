@@ -83,3 +83,29 @@ func TestOVHcloudFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestNewestOVHAuditIDs_KeepsNewestAscending(t *testing.T) {
+	in := []json.Number{"5", "1", "9", "3", "7"}
+	got := newestOVHAuditIDs(in, 3)
+	// Newest 3 by numeric value are 5,7,9, returned ascending.
+	want := []string{"5", "7", "9"}
+	if len(got) != len(want) {
+		t.Fatalf("len = %d; want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i].String() != want[i] {
+			t.Fatalf("got[%d] = %s; want %s (%v)", i, got[i].String(), want[i], got)
+		}
+	}
+}
+
+func TestNewestOVHAuditIDs_NoCapWhenUnderLimit(t *testing.T) {
+	in := []json.Number{"2", "10", "1"}
+	got := newestOVHAuditIDs(in, 500)
+	want := []string{"1", "2", "10"}
+	for i := range want {
+		if got[i].String() != want[i] {
+			t.Fatalf("got[%d] = %s; want %s (%v)", i, got[i].String(), want[i], got)
+		}
+	}
+}

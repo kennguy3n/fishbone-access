@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -264,5 +265,58 @@ func TestAccessToken_NotCachedWithoutExpiry(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&tokenCalls); got != 3 {
 		t.Fatalf("token minted %d times; want 3 (no expires_in => no caching)", got)
+	}
+}
+
+// TestAccessToken_DedupsConcurrentMints verifies that when many goroutines hit
+// a cold cache for the same credentials simultaneously, only one OAuth2 token
+// request is issued (the rest wait on the in-flight result).
+func TestAccessToken_DedupsConcurrentMints(t *testing.T) {
+	var tokenCalls int32
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/oauth2/token" {
+			atomic.AddInt32(&tokenCalls, 1)
+			<-release // hold the leader so the others pile up behind it
+			b, _ := json.Marshal(map[string]interface{}{"access_token": "tok-dedup", "expires_in": 3600})
+			_, _ = w.Write(b)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg, secrets, err := c.decodeBoth(validConfig(), validSecrets())
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	const n = 20
+	tokens := make([]string, n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			tokens[i], errs[i] = c.accessToken(context.Background(), cfg, secrets)
+		}(i)
+	}
+	// Give the goroutines time to register as waiters, then release the leader.
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	wg.Wait()
+
+	for i := 0; i < n; i++ {
+		if errs[i] != nil {
+			t.Fatalf("goroutine %d: %v", i, errs[i])
+		}
+		if tokens[i] != "tok-dedup" {
+			t.Fatalf("goroutine %d token = %q; want tok-dedup", i, tokens[i])
+		}
+	}
+	if got := atomic.LoadInt32(&tokenCalls); got != 1 {
+		t.Fatalf("token minted %d times; want 1 (concurrent mints should be deduplicated)", got)
 	}
 }

@@ -160,3 +160,16 @@ func TestFetchAccessAuditLogs_UsesEventsAPIBaseURL(t *testing.T) {
 		t.Fatalf("SCIM bridge received %d audit requests; want 0", scimHits)
 	}
 }
+
+func TestMapOnePasswordSigninAttempt_SkipsEmptyUUID(t *testing.T) {
+	// Valid timestamp but empty UUID must be skipped: EventID would be empty
+	// and break the dedup pipeline.
+	if e := mapOnePasswordSigninAttempt(&onepasswordSigninAttempt{Timestamp: "2026-01-02T15:04:05Z"}); e != nil {
+		t.Fatalf("expected nil for empty UUID, got %+v", e)
+	}
+	// With a UUID it should map.
+	e := mapOnePasswordSigninAttempt(&onepasswordSigninAttempt{UUID: "u1", Timestamp: "2026-01-02T15:04:05Z"})
+	if e == nil || e.EventID != "u1" {
+		t.Fatalf("expected EventID=u1, got %+v", e)
+	}
+}

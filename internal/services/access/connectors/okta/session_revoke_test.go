@@ -27,7 +27,7 @@ func TestRevokeUserSessions_HappyPath(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	if err := c.RevokeUserSessions(context.Background(), cfg, sec, "u123"); err != nil {
 		t.Fatalf("RevokeUserSessions: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestRevokeUserSessions_NotFoundIsIdempotent(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	if err := c.RevokeUserSessions(context.Background(), cfg, sec, "u123"); err != nil {
 		t.Fatalf("RevokeUserSessions on 404: %v; want nil (idempotent)", err)
 	}
@@ -64,7 +64,7 @@ func TestRevokeUserSessions_HTTPFailure(t *testing.T) {
 	c := New()
 	c.urlOverride = server.URL
 	c.httpClient = func() httpDoer { return server.Client() }
-	cfg, sec := newOktaConfigSecrets(server.URL)
+	cfg, sec := newOktaConfigSecrets()
 	if err := c.RevokeUserSessions(context.Background(), cfg, sec, "u123"); err == nil {
 		t.Fatal("err = nil; want non-nil on 500")
 	}

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,9 +73,15 @@ func (c *OVHcloudAccessConnector) FetchAccessAuditLogs(
 	if len(ids) == 0 {
 		return nil
 	}
-	if len(ids) > ovhAuditMaxIDs {
-		ids = ids[:ovhAuditMaxIDs]
-	}
+	// The list endpoint returns every retained log ID with no documented
+	// ordering, so naively keeping the first ovhAuditMaxIDs could drop the
+	// newest events (data loss) if the API happens to return oldest-first.
+	// OVH log IDs are monotonically increasing integers, so sort newest-first
+	// and keep the most recent ovhAuditMaxIDs, guaranteeing recent events are
+	// never discarded ahead of stale ones. Detail fetches below then emit them
+	// in chronological (oldest-first) order so the batchMax cursor advances
+	// monotonically.
+	ids = newestOVHAuditIDs(ids, ovhAuditMaxIDs)
 
 	var collected []ovhAuditEntry
 	for _, id := range ids {
@@ -174,6 +182,48 @@ func mapOVHAuditEntry(e *ovhAuditEntry) *access.AuditLogEntry {
 		Outcome:         outcome,
 		RawData:         rawMap,
 	}
+}
+
+// newestOVHAuditIDs returns at most n log IDs, preferring the most recent
+// ones. OVH log IDs are monotonically increasing integers, so the largest
+// values are the newest events. The result is ordered ascending (oldest
+// first) so the caller fetches and emits entries chronologically, letting the
+// audit cursor advance monotonically. If any ID is non-numeric the function
+// falls back to a lexical ordering so behaviour stays deterministic.
+func newestOVHAuditIDs(ids []json.Number, n int) []json.Number {
+	// Pair each ID with its parsed numeric value so the key travels with the
+	// value during sorting (avoids the parallel-slice desync bug).
+	type idKey struct {
+		id  json.Number
+		num int64
+	}
+	keys := make([]idKey, len(ids))
+	allNumeric := true
+	for i, id := range ids {
+		v, err := strconv.ParseInt(strings.TrimSpace(id.String()), 10, 64)
+		if err != nil {
+			allNumeric = false
+		}
+		keys[i] = idKey{id: id, num: v}
+	}
+
+	sort.SliceStable(keys, func(i, j int) bool {
+		if allNumeric {
+			return keys[i].num < keys[j].num
+		}
+		return keys[i].id.String() < keys[j].id.String()
+	})
+
+	// Keep the newest n (the tail of the ascending slice) while preserving
+	// ascending order for chronological emission.
+	if n > 0 && len(keys) > n {
+		keys = keys[len(keys)-n:]
+	}
+	out := make([]json.Number, len(keys))
+	for i := range keys {
+		out[i] = keys[i].id
+	}
+	return out
 }
 
 func parseOVHAuditTime(s string) time.Time {
