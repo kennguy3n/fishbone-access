@@ -618,7 +618,7 @@ func (c *Auth0AccessConnector) doRaw(req *http.Request) (*http.Response, error) 
 func isExpiredCursorBody(body []byte) bool {
 	s := strings.ToLower(string(body))
 	return strings.Contains(s, "expired") ||
-		strings.Contains(s, "log_id") && strings.Contains(s, "invalid") ||
+		(strings.Contains(s, "log_id") && strings.Contains(s, "invalid")) ||
 		strings.Contains(s, "out of retention")
 }
 

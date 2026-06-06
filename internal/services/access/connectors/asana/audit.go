@@ -13,6 +13,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// asanaAuditMaxPages bounds a single FetchAccessAuditLogs run, matching the
+// defensive cap used by the other connectors. The checkpoint (nextSince) is
+// persisted per page, so hitting the cap simply defers the remaining events to
+// the next sync cycle rather than looping unboundedly on a misbehaving cursor.
+const asanaAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Asana Enterprise audit-log events into
 // the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -38,7 +44,7 @@ func (c *AsanaAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	offset := ""
-	for {
+	for pageNum := 0; pageNum < asanaAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -94,6 +100,7 @@ func (c *AsanaAccessConnector) FetchAccessAuditLogs(
 		}
 		offset = next
 	}
+	return nil
 }
 
 type asanaAuditPage struct {
