@@ -164,6 +164,9 @@ func mapJiraAuditEvent(e *jiraAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseJiraTime(e.Attributes.Time)
+	if ts.IsZero() {
+		return nil
+	}
 	var targetID, targetType string
 	if len(e.Attributes.Context) > 0 {
 		targetID = e.Attributes.Context[0].ID

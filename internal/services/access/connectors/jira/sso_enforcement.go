@@ -31,7 +31,7 @@ func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw
 	if orgID == "" {
 		orgID = cfg.CloudID
 	}
-	endpoint := c.baseURL(cfg) + "/admin/v1/orgs/" + url.PathEscape(orgID) + "/authentication-policies"
+	endpoint := c.adminBaseURL() + "/admin/v1/orgs/" + url.PathEscape(orgID) + "/authentication-policies"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
 	if err != nil {
 		return false, "", err
