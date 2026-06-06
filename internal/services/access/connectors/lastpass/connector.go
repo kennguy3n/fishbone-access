@@ -264,14 +264,29 @@ func (c *LastPassAccessConnector) batchChangeGroup(
 	if err != nil {
 		return err
 	}
-	lower := strings.ToLower(string(respBody))
-	if strings.Contains(lower, `"status":"ok"`) {
+	// Decode the status field rather than substring-matching the raw body so
+	// formatting/whitespace (e.g. `"status": "OK"`) can't mask a success,
+	// matching postJSON's robustness.
+	var probe struct {
+		Status string   `json:"status"`
+		Error  string   `json:"error"`
+		Errors []string `json:"errors"`
+	}
+	_ = json.Unmarshal(respBody, &probe)
+	if strings.EqualFold(strings.TrimSpace(probe.Status), "ok") {
 		return nil
 	}
-	if op == "add" && (strings.Contains(lower, "already") || strings.Contains(lower, "alreadyinthegroup")) {
+	// LastPass reports "already in group" / "not in group" as FAIL responses;
+	// treat them as idempotent successes. Match the decoded error fields,
+	// falling back to the raw body so we stay resilient to shape changes.
+	msg := strings.ToLower(strings.Join(append(probe.Errors, probe.Error), " "))
+	if strings.TrimSpace(msg) == "" {
+		msg = strings.ToLower(string(respBody))
+	}
+	if op == "add" && strings.Contains(msg, "already") {
 		return nil
 	}
-	if op == "del" && (strings.Contains(lower, "not in") || strings.Contains(lower, "notinthegroup") || strings.Contains(lower, "notmember")) {
+	if op == "del" && (strings.Contains(msg, "not in") || strings.Contains(msg, "notinthegroup") || strings.Contains(msg, "notmember")) {
 		return nil
 	}
 	return fmt.Errorf("lastpass: %s status FAIL: %s", op, string(respBody))

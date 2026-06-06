@@ -113,12 +113,22 @@ func (c *LoomAccessConnector) RevokeAccess(ctx context.Context, configRaw, secre
 	if err != nil {
 		return err
 	}
-	id, err := c.findLoomMemberID(ctx, secrets, grant.UserExternalID)
-	if err != nil {
-		return err
-	}
-	if id == "" {
-		return nil
+	// SyncIdentities exports the member ID as the canonical ExternalID, so
+	// revoke calls from the JML pipeline normally arrive keyed by ID. Only
+	// resolve via the email lookup when the identifier actually looks like
+	// an email; otherwise treat it as the member ID and DELETE directly so
+	// we never silently no-op a real revoke (a 404 is handled as an
+	// idempotent "already revoked" below).
+	id := strings.TrimSpace(grant.UserExternalID)
+	if strings.Contains(id, "@") {
+		resolved, err := c.findLoomMemberID(ctx, secrets, id)
+		if err != nil {
+			return err
+		}
+		if resolved == "" {
+			return nil
+		}
+		id = resolved
 	}
 	endpoint := fmt.Sprintf("%s/v1/members/%s", c.baseURL(), url.PathEscape(id))
 	req, err := c.newRequestWithBody(ctx, secrets, http.MethodDelete, endpoint, nil)
@@ -150,16 +160,19 @@ func (c *LoomAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	if err != nil {
 		return nil, err
 	}
-	matches, err := c.listLoomMembersByEmail(ctx, secrets, user)
+	// Resolve by email or member ID: SyncIdentities exports the member ID
+	// as ExternalID, so entitlement lookups from the access graph arrive
+	// keyed by ID, which the ?email= filter would never match.
+	member, ok, err := c.resolveLoomMember(ctx, secrets, user)
 	if err != nil {
 		return nil, err
 	}
 	// Loom workspace members carry a single role at a time, so
-	// the first match is the authoritative entitlement.
-	if len(matches) == 0 {
+	// the resolved member is the authoritative entitlement.
+	if !ok {
 		return nil, nil
 	}
-	role := strings.TrimSpace(matches[0].Role)
+	role := strings.TrimSpace(member.Role)
 	if role == "" {
 		role = loomDefaultRole
 	}
@@ -181,6 +194,70 @@ func (c *LoomAccessConnector) findLoomMemberID(ctx context.Context, secrets Secr
 		}
 	}
 	return "", nil
+}
+
+// resolveLoomMember finds a workspace member by email (via the ?email=
+// filter) or by member ID (by paging the member list). SyncIdentities
+// exports the member ID as the canonical ExternalID, so revoke/list
+// calls from the JML pipeline arrive keyed by ID; resolving by email
+// alone would silently miss them.
+func (c *LoomAccessConnector) resolveLoomMember(ctx context.Context, secrets Secrets, identifier string) (loomMember, bool, error) {
+	id := strings.TrimSpace(identifier)
+	if id == "" {
+		return loomMember{}, false, nil
+	}
+	if strings.Contains(id, "@") {
+		matches, err := c.listLoomMembersByEmail(ctx, secrets, id)
+		if err != nil {
+			return loomMember{}, false, err
+		}
+		if len(matches) == 0 {
+			return loomMember{}, false, nil
+		}
+		return matches[0], true, nil
+	}
+	return c.findLoomMemberByID(ctx, secrets, id)
+}
+
+// findLoomMemberByID pages the member list and returns the member whose
+// ID matches. Loom's member list endpoint exposes no by-ID filter, so we
+// page (cursor) and match client-side.
+func (c *LoomAccessConnector) findLoomMemberByID(ctx context.Context, secrets Secrets, memberID string) (loomMember, bool, error) {
+	base := c.baseURL()
+	cursor := ""
+	for {
+		path := fmt.Sprintf("%s/v1/members?limit=%d", base, pageSize)
+		if cursor != "" {
+			path += "&cursor=" + url.QueryEscape(cursor)
+		}
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
+		if err != nil {
+			return loomMember{}, false, err
+		}
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return loomMember{}, false, err
+		}
+		if status == http.StatusNotFound {
+			return loomMember{}, false, nil
+		}
+		if status < 200 || status >= 300 {
+			return loomMember{}, false, fmt.Errorf("loom: list members status %d: %s", status, string(body))
+		}
+		var resp loomListResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return loomMember{}, false, fmt.Errorf("loom: decode members: %w", err)
+		}
+		for i := range resp.Data {
+			if strings.TrimSpace(resp.Data[i].ID) == memberID {
+				return resp.Data[i], true, nil
+			}
+		}
+		if resp.NextCursor == "" {
+			return loomMember{}, false, nil
+		}
+		cursor = resp.NextCursor
+	}
 }
 
 func (c *LoomAccessConnector) listLoomMembersByEmail(ctx context.Context, secrets Secrets, email string) ([]loomMember, error) {
