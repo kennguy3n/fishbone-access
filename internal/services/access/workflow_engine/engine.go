@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
@@ -23,15 +24,18 @@ type Enqueuer interface {
 	Enqueue(ctx context.Context, workspaceID, connectorID uuid.UUID, jobType string, payload []byte) (string, error)
 }
 
-// requestCreator / requestApprover / requestDenier / requestGetter are the
-// slices of the lifecycle request service the engine drives. Splitting them out
-// keeps the dependency explicit and the engine testable without the full
-// service.
+// requestService is the slice of the lifecycle request service the engine
+// drives: create + read, plus the transaction-scoped lock/transition primitives
+// it composes with the approval store to gate state changes atomically.
+// *lifecycle.AccessRequestService satisfies it.
 type requestService interface {
 	CreateRequest(ctx context.Context, in lifecycle.CreateAccessRequestInput) (*models.AccessRequest, error)
 	GetRequest(ctx context.Context, workspaceID, requestID uuid.UUID) (*models.AccessRequest, error)
-	ApproveRequest(ctx context.Context, workspaceID, requestID uuid.UUID, actor, reason string) error
-	DenyRequest(ctx context.Context, workspaceID, requestID uuid.UUID, actor, reason string) error
+	// LockRequestInTx and TransitionInTx let the engine record an approval
+	// decision and transition the request inside one transaction holding the
+	// request row lock, so concurrent Approve/Deny on the same request serialize.
+	LockRequestInTx(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID) (*models.AccessRequest, error)
+	TransitionInTx(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID, to lifecycle.RequestState, actor, reason string) (*models.AccessRequest, error)
 }
 
 // workflowRouter routes a created request to a lane (and auto-approves the
@@ -212,42 +216,65 @@ type ApproveResult struct {
 // provisioning for an already-approved request (the FSM rejects the second
 // requested → approved transition, which the engine treats as a no-op).
 func (e *Engine) Approve(ctx context.Context, in ApproveInput) (*ApproveResult, error) {
-	req, err := e.requests.GetRequest(ctx, in.WorkspaceID, in.RequestID)
-	if err != nil {
-		return nil, err
-	}
-	decision, err := lifecycle.ResolveDecision(req)
-	if err != nil {
-		return nil, err
-	}
-	required := RequiredApprovals(decision.StepType)
+	res := &ApproveResult{}
+	var enqueueProvisioning bool
 
-	if err := e.approvals.Record(ctx, in.WorkspaceID, in.RequestID, in.Approver, in.ApproverRole, ApprovalDecisionApprove, in.Reason); err != nil {
-		return nil, err
-	}
-	chain, err := e.approvals.State(ctx, in.WorkspaceID, in.RequestID, required)
-	if err != nil {
-		return nil, err
-	}
+	// Record the approval, re-derive the chain, and (if satisfied) transition the
+	// request — all inside one transaction that first takes a FOR UPDATE lock on
+	// the request row. This closes the Approve/Deny race: a concurrent Deny must
+	// also acquire that lock before it can record its decision, so it cannot slip
+	// a deny in between this Approve's chain read and its state write. Whichever
+	// transaction wins the lock commits first; the other then observes the
+	// committed decision and request state and acts correctly.
+	err := e.approvals.WithinTx(ctx, func(tx *gorm.DB) error {
+		req, err := e.requests.LockRequestInTx(ctx, tx, in.WorkspaceID, in.RequestID)
+		if err != nil {
+			return err
+		}
+		decision, err := lifecycle.ResolveDecision(req)
+		if err != nil {
+			return err
+		}
+		required := RequiredApprovals(decision.StepType)
 
-	res := &ApproveResult{Chain: chain}
-	if !chain.Satisfied() {
-		return res, nil
-	}
+		if err := e.approvals.RecordTx(ctx, tx, in.WorkspaceID, in.RequestID, in.Approver, in.ApproverRole, ApprovalDecisionApprove, in.Reason); err != nil {
+			return err
+		}
+		chain, err := e.approvals.StateTx(ctx, tx, in.WorkspaceID, in.RequestID, required)
+		if err != nil {
+			return err
+		}
+		res.Chain = chain
+		if !chain.Satisfied() {
+			// Either not enough approvals yet, or a deny already rejected the chain
+			// (a single deny is terminal). Decision is recorded; nothing to do.
+			return nil
+		}
 
-	// Chain satisfied: approve the request through the FSM. Only act when the
-	// request is still in StateRequested so a redelivered/duplicate approval
-	// does not try to re-approve (and re-provision) an already-moving request.
-	if req.State != lifecycle.StateRequested {
+		// Chain satisfied: approve through the FSM. Only act when the request is
+		// still in StateRequested so a redelivered/duplicate approval does not
+		// re-approve (and re-provision) an already-moving request.
+		if req.State != lifecycle.StateRequested {
+			res.Approved = true
+			return nil
+		}
+		if _, err := e.requests.TransitionInTx(ctx, tx, in.WorkspaceID, in.RequestID, lifecycle.StateApproved, in.Approver, "approval chain satisfied: "+in.Reason); err != nil {
+			return err
+		}
 		res.Approved = true
-		return res, nil
-	}
-	if err := e.requests.ApproveRequest(ctx, in.WorkspaceID, in.RequestID, in.Approver, "approval chain satisfied: "+in.Reason); err != nil {
+		enqueueProvisioning = true
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	res.Approved = true
+	if !enqueueProvisioning {
+		return res, nil
+	}
 
-	// Reload so the provisioning enqueue carries the post-approval state.
+	// Enqueue provisioning only after the approval transaction commits, so a
+	// rolled-back approval never leaves an orphaned provisioning job. Reload to
+	// carry the post-approval state into the job payload.
 	approved, err := e.requests.GetRequest(ctx, in.WorkspaceID, in.RequestID)
 	if err != nil {
 		return res, err
@@ -263,22 +290,28 @@ func (e *Engine) Approve(ctx context.Context, in ApproveInput) (*ApproveResult, 
 // Deny records an approver's denial and rejects the request (requested →
 // denied). A single denial is terminal regardless of prior approvals.
 func (e *Engine) Deny(ctx context.Context, in ApproveInput) error {
-	if _, err := e.requests.GetRequest(ctx, in.WorkspaceID, in.RequestID); err != nil {
-		return err
-	}
-	if err := e.approvals.Record(ctx, in.WorkspaceID, in.RequestID, in.Approver, in.ApproverRole, ApprovalDecisionDeny, in.Reason); err != nil {
-		return err
-	}
-	if err := e.requests.DenyRequest(ctx, in.WorkspaceID, in.RequestID, in.Approver, defaultReason(in.Reason, "denied by approver")); err != nil {
-		// A deny on a request that already left StateRequested is a no-op, not an
-		// error: the decision is recorded for audit and the request is terminal.
+	// Record the deny and transition the request to denied inside one transaction
+	// that first locks the request row, symmetric with Approve. Acquiring the lock
+	// before recording is what serializes a concurrent Approve/Deny: the deny can
+	// never be recorded "in flight" and then lost because an Approve evaluated the
+	// chain before it committed.
+	return e.approvals.WithinTx(ctx, func(tx *gorm.DB) error {
+		if _, err := e.requests.LockRequestInTx(ctx, tx, in.WorkspaceID, in.RequestID); err != nil {
+			return err
+		}
+		if err := e.approvals.RecordTx(ctx, tx, in.WorkspaceID, in.RequestID, in.Approver, in.ApproverRole, ApprovalDecisionDeny, in.Reason); err != nil {
+			return err
+		}
+		_, err := e.requests.TransitionInTx(ctx, tx, in.WorkspaceID, in.RequestID, lifecycle.StateDenied, in.Approver, defaultReason(in.Reason, "denied by approver"))
 		if errors.Is(err, lifecycle.ErrInvalidStateTransition) {
+			// The request already left StateRequested (e.g. an approval won the lock
+			// and committed first). The deny is still recorded for audit; the request
+			// is terminal. Not an error.
 			logger.Warnf(ctx, "workflow_engine: deny on non-pending request %s ignored: %v", in.RequestID, err)
 			return nil
 		}
 		return err
-	}
-	return nil
+	})
 }
 
 // IngestSCIMEvent enqueues a normalized SCIM event for asynchronous JML

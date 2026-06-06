@@ -375,3 +375,252 @@ func TestSubmitRequest_EnqueueFailureSurfaced(t *testing.T) {
 		t.Fatalf("expected the approved request to be returned alongside the error")
 	}
 }
+
+// transitionFailRequests wraps the real request service and fails the
+// requested→approved transition, leaving every other call (lock, read, create,
+// other transitions) delegated. It lets a test assert that the approval-decision
+// write and the request-state transition commit (or roll back) atomically.
+type transitionFailRequests struct {
+	requestService
+	failApprove bool
+}
+
+func (w transitionFailRequests) TransitionInTx(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID, to lifecycle.RequestState, actor, reason string) (*models.AccessRequest, error) {
+	if w.failApprove && to == lifecycle.StateApproved {
+		return nil, errors.New("simulated transition failure")
+	}
+	return w.requestService.TransitionInTx(ctx, tx, workspaceID, requestID, to, actor, reason)
+}
+
+// TestApprove_DecisionAndTransitionAreAtomic asserts the decision write and the
+// request transition share one transaction: when the transition fails the
+// approval decision rolls back with it (no stray decision row) and nothing is
+// provisioned. Recording the decision and the state change in the same tx (under
+// the request row lock) is what makes Approve a single serializable unit, which
+// is the property that closes the Approve/Deny race window.
+func TestApprove_DecisionAndTransitionAreAtomic(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	q := &fakeQueue{}
+	reqSvc := lifecycle.NewAccessRequestService(db)
+	store := NewApprovalStore(db)
+	eng, err := NewEngine(Deps{
+		Requests:  transitionFailRequests{requestService: reqSvc, failApprove: true},
+		Workflow:  lifecycle.NewWorkflowService(reqSvc),
+		Approvals: store,
+		Queue:     q,
+	})
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+
+	// nil AI → medium → manager_approval lane (required = 1 approval).
+	res, err := eng.SubmitRequest(context.Background(), SubmitInput{
+		WorkspaceID: ws, RequesterID: "alice", ResourceRef: "repo:payments", Role: "writer",
+	})
+	if err != nil {
+		t.Fatalf("SubmitRequest: %v", err)
+	}
+	reqID := res.Request.ID
+
+	if _, err := eng.Approve(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-1"}); err == nil {
+		t.Fatalf("expected the transition failure to surface")
+	}
+
+	// The decision must have rolled back with the failed transition.
+	decisions, err := store.Decisions(context.Background(), ws, reqID)
+	if err != nil {
+		t.Fatalf("Decisions: %v", err)
+	}
+	if len(decisions) != 0 {
+		t.Fatalf("approval decision must roll back with the failed transition; got %d rows", len(decisions))
+	}
+	// Request stays requested; nothing provisioned.
+	got, err := reqSvc.GetRequest(context.Background(), ws, reqID)
+	if err != nil {
+		t.Fatalf("GetRequest: %v", err)
+	}
+	if got.State != lifecycle.StateRequested {
+		t.Fatalf("request must remain requested after a failed approval, got %q", got.State)
+	}
+	if n := len(q.typed(JobTypeProvisionRequest)); n != 0 {
+		t.Fatalf("a failed approval must not enqueue provisioning; got %d", n)
+	}
+}
+
+// TestDeny_BlocksManagerLaneApproval proves a single deny is terminal even in
+// the manager lane where one approval would otherwise satisfy the chain: once a
+// deny is recorded, a subsequent (and count-sufficient) approval must not flip
+// the request to approved, and the deny stays recorded for audit.
+func TestDeny_BlocksManagerLaneApproval(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	q := &fakeQueue{}
+	eng := realEngine(t, db, q)
+
+	res, err := eng.SubmitRequest(context.Background(), SubmitInput{
+		WorkspaceID: ws, RequesterID: "alice", ResourceRef: "repo:payments", Role: "writer",
+	})
+	if err != nil {
+		t.Fatalf("SubmitRequest: %v", err)
+	}
+	reqID := res.Request.ID
+
+	if err := eng.Deny(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-1", Reason: "policy"}); err != nil {
+		t.Fatalf("Deny: %v", err)
+	}
+	ar, err := eng.Approve(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-2"})
+	if err != nil {
+		t.Fatalf("Approve after deny: %v", err)
+	}
+	if ar.Approved || !ar.Chain.Rejected {
+		t.Fatalf("a recorded deny must keep the chain rejected, got %+v", ar.Chain)
+	}
+	if n := len(q.typed(JobTypeProvisionRequest)); n != 0 {
+		t.Fatalf("a denied request must never provision; got %d", n)
+	}
+	got, err := eng.requests.GetRequest(context.Background(), ws, reqID)
+	if err != nil {
+		t.Fatalf("GetRequest: %v", err)
+	}
+	if got.State != lifecycle.StateDenied {
+		t.Fatalf("request must be denied, got %q", got.State)
+	}
+}
+
+// TestApproveThenDeny_RecordsDenyForAudit covers the legitimate ordering where
+// an approval completes first: a deny arriving afterward is a no-op on the
+// (already terminal) request state but is still persisted for the audit trail.
+func TestApproveThenDeny_RecordsDenyForAudit(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	q := &fakeQueue{}
+	store := NewApprovalStore(db)
+	reqSvc := lifecycle.NewAccessRequestService(db)
+	eng, err := NewEngine(Deps{
+		Requests:  reqSvc,
+		Workflow:  lifecycle.NewWorkflowService(reqSvc),
+		Approvals: store,
+		Queue:     q,
+	})
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+
+	res, err := eng.SubmitRequest(context.Background(), SubmitInput{
+		WorkspaceID: ws, RequesterID: "alice", ResourceRef: "repo:payments", Role: "writer",
+	})
+	if err != nil {
+		t.Fatalf("SubmitRequest: %v", err)
+	}
+	reqID := res.Request.ID
+
+	ar, err := eng.Approve(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-1"})
+	if err != nil {
+		t.Fatalf("Approve: %v", err)
+	}
+	if !ar.Approved || ar.ProvisionJobID == "" {
+		t.Fatalf("manager-lane approval should satisfy + provision, got %+v", ar)
+	}
+
+	// A deny arriving after approval committed is a no-op on state, not an error.
+	if err := eng.Deny(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-2", Reason: "too late"}); err != nil {
+		t.Fatalf("late Deny must not error: %v", err)
+	}
+	got, err := reqSvc.GetRequest(context.Background(), ws, reqID)
+	if err != nil {
+		t.Fatalf("GetRequest: %v", err)
+	}
+	if got.State != lifecycle.StateApproved {
+		t.Fatalf("request approved before the deny must stay approved, got %q", got.State)
+	}
+	// The late deny is still recorded for audit.
+	decisions, err := store.Decisions(context.Background(), ws, reqID)
+	if err != nil {
+		t.Fatalf("Decisions: %v", err)
+	}
+	var sawDeny bool
+	for _, d := range decisions {
+		if d.Decision == ApprovalDecisionDeny && d.Approver == "mgr-2" {
+			sawDeny = true
+		}
+	}
+	if !sawDeny {
+		t.Fatalf("the late deny must be recorded for audit; decisions=%+v", decisions)
+	}
+	if n := len(q.typed(JobTypeProvisionRequest)); n != 1 {
+		t.Fatalf("exactly one provisioning job expected, got %d", n)
+	}
+}
+
+// TestApproveDenyConcurrentStayConsistent fires Approve and Deny at the same
+// manager-lane request concurrently, across many fresh requests, and asserts the
+// committed request state and the provisioning side effect never disagree. Both
+// Approve and Deny take the request row lock BEFORE recording their decision and
+// run record→evaluate→transition as one transaction, so they serialize: the
+// winner drives the request to a single terminal state and the loser observes it
+// and no-ops (a late deny is audit-only; a deny that wins blocks the approval).
+// The invariant checked is the one the pre-fix code could violate: a request is
+// provisioned IFF it is approved, and a denied request is never provisioned. Run
+// under `go test -race` this also guards against data races in the new tx path.
+func TestApproveDenyConcurrentStayConsistent(t *testing.T) {
+	db := newTestDB(t)
+	// Shared in-memory SQLite is per-connection; pin to one connection so every
+	// goroutine sees the same data and writes serialize on SQLite's global write
+	// lock (the stand-in for the Postgres FOR UPDATE row lock this is about).
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
+	ws := seedWorkspace(t, db, "acme")
+
+	const iterations = 40
+	for i := 0; i < iterations; i++ {
+		q := &fakeQueue{}
+		eng := realEngine(t, db, q)
+		res, err := eng.SubmitRequest(context.Background(), SubmitInput{
+			WorkspaceID: ws, RequesterID: "alice", ResourceRef: "repo:payments", Role: "writer",
+		})
+		if err != nil {
+			t.Fatalf("iter %d SubmitRequest: %v", i, err)
+		}
+		reqID := res.Request.ID
+
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			if _, err := eng.Approve(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-1"}); err != nil {
+				t.Errorf("iter %d Approve: %v", i, err)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			if err := eng.Deny(context.Background(), ApproveInput{WorkspaceID: ws, RequestID: reqID, Approver: "mgr-2"}); err != nil {
+				t.Errorf("iter %d Deny: %v", i, err)
+			}
+		}()
+		close(start)
+		wg.Wait()
+
+		got, err := eng.requests.GetRequest(context.Background(), ws, reqID)
+		if err != nil {
+			t.Fatalf("iter %d GetRequest: %v", i, err)
+		}
+		provisioned := len(q.typed(JobTypeProvisionRequest))
+		switch got.State {
+		case lifecycle.StateApproved:
+			if provisioned != 1 {
+				t.Fatalf("iter %d approved request must provision exactly once, got %d", i, provisioned)
+			}
+		case lifecycle.StateDenied:
+			if provisioned != 0 {
+				t.Fatalf("iter %d denied request must never provision, got %d", i, provisioned)
+			}
+		default:
+			t.Fatalf("iter %d request must reach a terminal decision, got %q", i, got.State)
+		}
+	}
+}
