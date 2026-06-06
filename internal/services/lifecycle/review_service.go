@@ -118,63 +118,65 @@ func (s *ReviewService) StartCampaign(ctx context.Context, workspaceID uuid.UUID
 }
 
 // SubmitDecision records a certify / revoke / escalate decision on one review
-// item. A revoke decision additionally tears down the grant through the
-// GrantRevoker (outside the item-update transaction, since it performs network
-// I/O); the grant revocation is idempotent. Decisions on a completed campaign
-// are rejected.
+// item. The item load, the terminal-decision guard, and the decision write all
+// happen inside one transaction that takes a row-level FOR UPDATE lock on the
+// item (on Postgres), so two concurrent decisions on the same item serialize
+// instead of both reading "pending" and racing to write (a TOCTOU that could
+// leave a torn-down grant marked "certified"). A revoke decision then drives
+// the connector-side grant teardown AFTER the decision commits: the revoke does
+// network I/O and is idempotent, so it must not run inside the locked
+// transaction (which also serializes the grant's own write transaction on
+// SQLite). Decisions on a completed campaign are rejected.
 func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewID, itemID uuid.UUID, decision, decidedBy, reason string) error {
 	switch decision {
 	case ReviewDecisionCertify, ReviewDecisionRevoke, ReviewDecisionEscalate:
 	default:
 		return fmt.Errorf("%w: unknown review decision %q", ErrValidation, decision)
 	}
-
-	var review models.AccessReview
-	err := s.db.WithContext(ctx).
-		Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
-		Take(&review).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrReviewNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("lifecycle: load review: %w", err)
-	}
-	if review.State == ReviewStateCompleted {
-		return ErrReviewClosed
-	}
-
-	var item models.AccessReviewItem
-	err = s.db.WithContext(ctx).
-		Where("workspace_id = ? AND review_id = ? AND id = ?", workspaceID, reviewID, itemID).
-		Take(&item).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return ErrReviewNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("lifecycle: load review item: %w", err)
-	}
-	// A terminal decision (certify/revoke) is final: reject re-deciding so a
-	// destructive revoke can never be silently flipped to certify (leaving a
-	// torn-down grant marked "certified") or vice versa. An escalated or still
-	// pending item may be (re-)decided to resolve the escalation.
-	if item.Decision == ReviewDecisionCertify || item.Decision == ReviewDecisionRevoke {
-		return fmt.Errorf("%w: item %s is %s", ErrReviewItemDecided, itemID, item.Decision)
-	}
-
-	// Revoke the grant first (idempotent). Only persist the decision if the
-	// revocation succeeds, so a recorded "revoke" always reflects a torn-down
-	// grant.
-	if decision == ReviewDecisionRevoke {
-		if s.revoker == nil {
-			return fmt.Errorf("%w: review service has no grant revoker wired", ErrValidation)
-		}
-		if err := s.revoker.RevokeGrant(ctx, workspaceID, item.GrantID, decidedBy, defaultReason(reason, "revoked by access review")); err != nil {
-			return err
-		}
+	// Validate the revoker up front so we never commit a revoke decision we
+	// cannot then act on.
+	if decision == ReviewDecisionRevoke && s.revoker == nil {
+		return fmt.Errorf("%w: review service has no grant revoker wired", ErrValidation)
 	}
 
 	now := s.now()
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var grantID uuid.UUID
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var review models.AccessReview
+		if err := tx.WithContext(ctx).
+			Where("workspace_id = ? AND id = ?", workspaceID, reviewID).
+			Take(&review).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrReviewNotFound
+			}
+			return fmt.Errorf("lifecycle: load review: %w", err)
+		}
+		if review.State == ReviewStateCompleted {
+			return ErrReviewClosed
+		}
+
+		// FOR UPDATE (on Postgres) so a concurrent decision on the same item
+		// waits here, then re-reads the committed decision below and is rejected
+		// by the terminal-decision guard instead of overwriting it.
+		var item models.AccessReviewItem
+		if err := forUpdate(tx.WithContext(ctx)).
+			Where("workspace_id = ? AND review_id = ? AND id = ?", workspaceID, reviewID, itemID).
+			Take(&item).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrReviewNotFound
+			}
+			return fmt.Errorf("lifecycle: load review item: %w", err)
+		}
+		// A terminal decision (certify/revoke) is final: reject flipping it to a
+		// *different* terminal decision (e.g. revoke→certify, which would leave a
+		// torn-down grant marked "certified"). Re-submitting the SAME decision is
+		// allowed and idempotent, which is what lets a revoke whose connector
+		// teardown failed below be safely retried.
+		if (item.Decision == ReviewDecisionCertify || item.Decision == ReviewDecisionRevoke) && item.Decision != decision {
+			return fmt.Errorf("%w: item %s is %s", ErrReviewItemDecided, itemID, item.Decision)
+		}
+		grantID = item.GrantID
+
 		if err := tx.Model(&models.AccessReviewItem{}).
 			Where("workspace_id = ? AND id = ?", workspaceID, itemID).
 			Updates(map[string]any{
@@ -193,6 +195,19 @@ func (s *ReviewService) SubmitDecision(ctx context.Context, workspaceID, reviewI
 			TargetRef:   itemID.String(),
 		})
 	})
+	if err != nil {
+		return err
+	}
+
+	// Decision committed. Drive the connector-side teardown for a revoke. This
+	// is idempotent (RevokeGrant no-ops an already-revoked grant), so if it
+	// fails the caller can re-submit the same revoke decision to re-drive it.
+	if decision == ReviewDecisionRevoke {
+		if err := s.revoker.RevokeGrant(ctx, workspaceID, grantID, decidedBy, defaultReason(reason, "revoked by access review")); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CompleteCampaign closes a campaign. It is idempotent on an already-completed

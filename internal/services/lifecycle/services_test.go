@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -458,6 +459,85 @@ func TestReviewItemTerminalDecisionCannotBeOverwritten(t *testing.T) {
 	}
 }
 
+// TestSubmitDecisionConcurrentDecisionsStayConsistent fires many concurrent
+// decisions (a revoke racing several certifies) at the same review item and
+// asserts the committed decision and the grant state never disagree: the
+// terminal-decision guard now runs inside the FOR-UPDATE transaction, so the
+// first decision to commit wins and every differing decision is rejected —
+// a revoked grant can never end up marked "certified" (the TOCTOU the guard is
+// meant to prevent).
+func TestSubmitDecisionConcurrentDecisionsStayConsistent(t *testing.T) {
+	db := newTestDB(t)
+	// A shared in-memory SQLite database is per-connection, so pin the pool to a
+	// single connection: every goroutine then sees the same schema/data and
+	// writes serialize on SQLite's global write lock (the no-op stand-in for the
+	// Postgres FOR UPDATE row lock this test is really about).
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	review := NewReviewService(db, prov)
+	ctx := context.Background()
+
+	g := mustProvision(t, reqSvc, prov, ws, connID, "ext-race")
+	rev, _, err := review.StartCampaign(ctx, ws, "Q1", "auditor")
+	if err != nil {
+		t.Fatalf("StartCampaign: %v", err)
+	}
+	items, _ := review.ListItems(ctx, ws, rev.ID)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 review item, got %d", len(items))
+	}
+	itemID := items[0].ID
+
+	const n = 8
+	decisions := make([]string, n)
+	for i := range decisions {
+		if i == 0 {
+			decisions[i] = ReviewDecisionRevoke
+		} else {
+			decisions[i] = ReviewDecisionCertify
+		}
+	}
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for _, d := range decisions {
+		wg.Add(1)
+		go func(decision string) {
+			defer wg.Done()
+			<-start
+			// Errors (ErrReviewItemDecided for losers) are expected; we only
+			// assert on the final persisted state below.
+			_ = review.SubmitDecision(ctx, ws, rev.ID, itemID, decision, "auditor", "race")
+		}(d)
+	}
+	close(start)
+	wg.Wait()
+
+	var finalItem models.AccessReviewItem
+	if err := db.Where("id = ?", itemID).Take(&finalItem).Error; err != nil {
+		t.Fatalf("reload item: %v", err)
+	}
+	var finalGrant models.AccessGrant
+	if err := db.Where("id = ?", g.ID).Take(&finalGrant).Error; err != nil {
+		t.Fatalf("reload grant: %v", err)
+	}
+	// Invariant: the recorded decision and the grant state must agree.
+	revokedDecision := finalItem.Decision == ReviewDecisionRevoke
+	revokedGrant := finalGrant.State == GrantStateRevoked
+	if revokedDecision != revokedGrant {
+		t.Fatalf("inconsistent: item.Decision=%q grant.State=%q", finalItem.Decision, finalGrant.State)
+	}
+	if finalItem.Decision != ReviewDecisionRevoke && finalItem.Decision != ReviewDecisionCertify {
+		t.Fatalf("final decision must be terminal, got %q", finalItem.Decision)
+	}
+}
+
 func TestLeaverKillSwitchAllLayers(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -584,6 +664,47 @@ func TestKillSwitchConnectorResolveFailureReportsFailedNotSkipped(t *testing.T) 
 	}
 	if byLayer[LayerSCIMDeprov4] != LayerStatusFailed {
 		t.Fatalf("scim_deprovision = %q, want failed (must not be skipped)", byLayer[LayerSCIMDeprov4])
+	}
+}
+
+// TestHandleEventSurfacesLeaverResultOnFailure proves HandleEvent returns the
+// six-layer kill-switch breakdown alongside the error for the leaver lane, so a
+// partial kill-switch failure is not reduced to an opaque error with the
+// per-layer detail discarded.
+func TestHandleEventSurfacesLeaverResultOnFailure(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{revokeErr: &fakeErr{"revoke boom"}} // layer-1 grant revoke fails
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	jml := NewJMLService(db, reqSvc, nil, prov, fc, &fakeDisabler{})
+	ctx := context.Background()
+
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-leaver")
+
+	lane, leaver, err := jml.HandleEvent(ctx, ws, SCIMEvent{Method: "DELETE", UserExternalID: "ext-leaver"})
+	if err == nil {
+		t.Fatal("expected error from partial kill-switch failure")
+	}
+	if lane != JMLLeaver {
+		t.Fatalf("lane = %q, want leaver", lane)
+	}
+	if leaver == nil {
+		t.Fatal("HandleEvent dropped the LeaverResult; operator loses per-layer detail")
+	}
+	if !leaver.Errored || len(leaver.Layers) != 6 {
+		t.Fatalf("expected errored result with 6 layers, got %+v", leaver)
+	}
+
+	// The joiner/mover lanes carry no kill-switch result.
+	_, joinerRes, err := jml.HandleEvent(ctx, ws, SCIMEvent{Method: "POST", UserExternalID: "ext-joiner"})
+	if err != nil {
+		t.Fatalf("joiner HandleEvent: %v", err)
+	}
+	if joinerRes != nil {
+		t.Fatalf("joiner lane must not return a LeaverResult, got %+v", joinerRes)
 	}
 }
 

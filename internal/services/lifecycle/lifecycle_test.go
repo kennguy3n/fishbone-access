@@ -28,7 +28,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 // seedWorkspace inserts a workspace and returns its id.
 func seedWorkspace(t *testing.T, db *gorm.DB, tenant string) uuid.UUID {
 	t.Helper()
-	ws := &models.Workspace{IAMCoreTenantID: tenant, Plan: "base"}
+	ws := &models.Workspace{Name: tenant, IAMCoreTenantID: tenant, Plan: "base"}
 	if err := db.Create(ws).Error; err != nil {
 		t.Fatalf("seed workspace: %v", err)
 	}

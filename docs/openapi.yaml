@@ -408,7 +408,22 @@ paths:
                 type: object
                 properties:
                   lane: { type: string, enum: [joiner, mover, leaver] }
+                  leaver:
+                    allOf: [ { $ref: "#/components/schemas/LeaverResult" } ]
+                    description: Six-layer kill-switch breakdown; present only for the leaver lane.
         "400": { $ref: "#/components/responses/BadRequest" }
+        "500":
+          description: |
+            A leaver kill switch that completed but had one or more layers fail.
+            The body carries the per-layer breakdown so an operator can act on it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lane: { type: string, enum: [leaver] }
+                  error: { type: string }
+                  leaver: { $ref: "#/components/schemas/LeaverResult" }
 
   /connectors/{connectorID}/orphan-scan:
     parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
@@ -715,6 +730,24 @@ components:
         resource_ref: { type: string }
         role: { type: string }
         connector_id: { type: string, format: uuid, nullable: true }
+    LeaverResult:
+      type: object
+      description: Aggregated outcome of the six-layer leaver kill switch.
+      properties:
+        user_external_id: { type: string }
+        errored:
+          type: boolean
+          description: True if any layer failed; every layer is still attempted.
+        layers:
+          type: array
+          items:
+            type: object
+            properties:
+              layer:
+                type: string
+                enum: [grant_revoke, team_remove, iam_core_disable, session_revoke, scim_deprovision, identity_disable]
+              status: { type: string, enum: [done, skipped, failed] }
+              detail: { type: string }
     ScanResult:
       type: object
       properties:

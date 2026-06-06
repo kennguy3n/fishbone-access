@@ -129,21 +129,26 @@ func (s *JMLService) SetClock(now func() time.Time) {
 	}
 }
 
-// HandleEvent classifies a SCIM event and dispatches to the matching lane.
-func (s *JMLService) HandleEvent(ctx context.Context, workspaceID uuid.UUID, e SCIMEvent) (string, error) {
+// HandleEvent classifies a SCIM event and dispatches to the matching lane. For
+// the leaver lane it also returns the six-layer kill-switch result (nil for the
+// joiner/mover lanes) so callers can surface the per-layer breakdown — which
+// layers ran, which failed, and why — even when the kill switch errors. Without
+// this the structured result would be lost and a partial kill-switch failure
+// would be indistinguishable from a generic internal error.
+func (s *JMLService) HandleEvent(ctx context.Context, workspaceID uuid.UUID, e SCIMEvent) (string, *LeaverResult, error) {
 	class := ClassifyChange(e)
 	switch class {
 	case JMLJoiner:
 		_, err := s.HandleJoiner(ctx, workspaceID, e)
-		return class, err
+		return class, nil, err
 	case JMLMover:
 		_, err := s.HandleMover(ctx, workspaceID, e)
-		return class, err
+		return class, nil, err
 	case JMLLeaver:
-		_, err := s.HandleLeaver(ctx, workspaceID, e)
-		return class, err
+		res, err := s.HandleLeaver(ctx, workspaceID, e)
+		return class, res, err
 	default:
-		return class, fmt.Errorf("%w: unclassifiable SCIM event", ErrValidation)
+		return class, nil, fmt.Errorf("%w: unclassifiable SCIM event", ErrValidation)
 	}
 }
 

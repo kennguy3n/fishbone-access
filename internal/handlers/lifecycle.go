@@ -550,7 +550,7 @@ func (h *lifecycleHandlers) scimEvent(c *gin.Context) {
 	if !bind(c, &body) {
 		return
 	}
-	lane, err := h.jml.HandleEvent(c.Request.Context(), ws, lifecycle.SCIMEvent{
+	lane, leaver, err := h.jml.HandleEvent(c.Request.Context(), ws, lifecycle.SCIMEvent{
 		Method:         body.Method,
 		UserExternalID: body.UserExternalID,
 		Active:         body.Active,
@@ -562,10 +562,21 @@ func (h *lifecycleHandlers) scimEvent(c *gin.Context) {
 		ConnectorID:    body.ConnectorID,
 	})
 	if err != nil {
+		// A leaver kill switch that ran every layer but had one or more layers
+		// fail is not an opaque internal error: return the per-layer breakdown
+		// (which layers ran, which failed, and why) so an operator can act on it.
+		if leaver != nil && leaver.Errored {
+			c.JSON(http.StatusInternalServerError, gin.H{"lane": lane, "leaver": leaver, "error": err.Error()})
+			return
+		}
 		h.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"lane": lane})
+	resp := gin.H{"lane": lane}
+	if leaver != nil {
+		resp["leaver"] = leaver
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // --- orphans ---
