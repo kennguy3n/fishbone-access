@@ -114,11 +114,26 @@ type auth0AuditLogEvent struct {
 	Connection  string `json:"connection"`
 }
 
+// parseAuth0Time parses an Auth0 log date, trying fractional-second precision
+// first to match the parsing pattern used by the other connectors.
+func parseAuth0Time(s string) time.Time {
+	if strings.TrimSpace(s) == "" {
+		return time.Time{}
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return ts
+	}
+	if ts, err := time.Parse(time.RFC3339, s); err == nil {
+		return ts
+	}
+	return time.Time{}
+}
+
 func mapAuth0Log(e *auth0AuditLogEvent) *access.AuditLogEntry {
 	if e == nil || e.LogID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.Date)
+	ts := parseAuth0Time(e.Date)
 	if ts.IsZero() {
 		return nil
 	}
