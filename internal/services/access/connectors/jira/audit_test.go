@@ -165,6 +165,52 @@ func TestFetchAccessAuditLogs_MissingOrgID(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_SkipsEmptyPage is a regression guard for the
+// AccessAuditor contract: when every event on a page is filtered out (e.g. all
+// have zero/unparseable timestamps), the handler must NOT be invoked with an
+// empty batch and a stale cursor. Calling it on an empty page makes the caller
+// persist a watermark that hasn't advanced and anchors nextSince to nothing,
+// diverging from every sibling connector. The single page here contains only a
+// timestamp-less (filtered) event with no next link, so the handler must be
+// called zero times and the sweep must complete cleanly.
+func TestFetchAccessAuditLogs_SkipsEmptyPage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":   "evt-no-time",
+					"type": "audit",
+					"attributes": map[string]interface{}{
+						// No "time" -> mapJiraAuditEvent drops it -> empty batch.
+						"action": "user.invited",
+						"actor":  map[string]interface{}{"id": "actor-1"},
+					},
+				},
+			},
+			"links": map[string]interface{}{},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := validConfig()
+	cfg["org_id"] = "org-123"
+	calls := 0
+	err := c.FetchAccessAuditLogs(context.Background(), cfg, validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error {
+			calls++
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("handler calls = %d; want 0 (handler must not be called on an all-filtered page)", calls)
+	}
+}
+
 // TestMapJiraAuditEvent_DropsZeroTimestamp is a regression guard for the missing
 // zero-timestamp drop in mapJiraAuditEvent. An Atlassian audit record whose
 // `time` is absent or unparseable must be dropped rather than emitted with a

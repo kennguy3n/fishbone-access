@@ -96,10 +96,15 @@ func (c *JiraAccessConnector) FetchAccessAuditLogs(
 			}
 			batch = append(batch, entry)
 		}
-		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
-			return err
+		// Skip the handler call on an all-filtered (empty) page: there is no
+		// newest entry to anchor nextSince to, matching the sibling
+		// connectors. Pagination still advances via the Link rel=next below.
+		if len(batch) > 0 {
+			if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
+				return err
+			}
+			cursor = batchMax
 		}
-		cursor = batchMax
 		next := strings.TrimSpace(page.Links.Next)
 		if next == "" {
 			return nil
