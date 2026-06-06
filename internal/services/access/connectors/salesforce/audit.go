@@ -57,9 +57,19 @@ func (c *SalesforceAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		status, body, err := c.doRaw(req)
 		if err != nil {
 			return err
+		}
+		switch status {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			// Tenant edition doesn't expose EventLogFile; let the audit
+			// worker soft-skip instead of hard-failing, matching every
+			// other AccessAuditor connector.
+			return access.ErrAuditNotAvailable
+		}
+		if status < 200 || status >= 300 {
+			return fmt.Errorf("salesforce: event log status %d: %s", status, string(body))
 		}
 		var page sfEventLogPage
 		if err := json.Unmarshal(body, &page); err != nil {
@@ -119,6 +129,9 @@ func mapSalesforceEventLog(r *sfEventLogRecord) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := parseSalesforceTime(r.LogDate)
+	if ts.IsZero() {
+		return nil
+	}
 	return &access.AuditLogEntry{
 		EventID:   r.ID,
 		EventType: r.EventType,

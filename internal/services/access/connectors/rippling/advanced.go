@@ -143,6 +143,9 @@ func (c *RipplingAccessConnector) ListEntitlements(ctx context.Context, configRa
 	}
 	out := make([]access.Entitlement, 0, len(roles))
 	for _, r := range roles {
+		if r.ID == nil {
+			continue
+		}
 		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
 		if id == "" {
 			continue

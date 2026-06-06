@@ -92,6 +92,34 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_FiltersNullID verifies that a role entry whose
+// JSON "id" is null is dropped rather than emitted as a bogus
+// ResourceExternalID of "<nil>".
+func TestListEntitlements_FiltersNullID(t *testing.T) {
+	const userID = "emp-7"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/platform/api/employees/"+userID+"/roles" {
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{
+			{"id": nil, "name": "ghost"},
+			{"id": "role-ok", "name": "Real Role"},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), userID)
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "role-ok" {
+		t.Fatalf("got %#v, want only role-ok (null id must be filtered)", ents)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

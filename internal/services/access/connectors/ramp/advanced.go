@@ -158,6 +158,9 @@ func (c *RampAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	}
 	out := make([]access.Entitlement, 0, len(envelope.Data))
 	for _, r := range envelope.Data {
+		if r.ID == nil {
+			continue
+		}
 		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
 		if id == "" {
 			continue

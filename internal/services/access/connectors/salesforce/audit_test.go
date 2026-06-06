@@ -122,15 +122,17 @@ func TestMapSalesforceEventLog_ParsesLogDateFormats(t *testing.T) {
 	}
 }
 
-// TestMapSalesforceEventLog_EmptyOrInvalid documents the
-// already-defensive empty-input behaviour and ensures it stays
-// defensive (zero time, no panic) when fed garbage.
+// TestMapSalesforceEventLog_EmptyOrInvalid ensures records whose
+// LogDate is empty or unparseable are filtered out (return nil) rather
+// than emitted with a zero (0001-01-01) Timestamp. Every other audit
+// mapper drops zero-timestamp entries; emitting them pollutes the audit
+// pipeline and can corrupt cursor advancement.
 func TestMapSalesforceEventLog_EmptyOrInvalid(t *testing.T) {
-	if e := mapSalesforceEventLog(&sfEventLogRecord{ID: "0AT1", LogDate: ""}); e == nil || !e.Timestamp.IsZero() {
-		t.Errorf("empty LogDate: got %+v, want non-nil entry with zero Timestamp", e)
+	if e := mapSalesforceEventLog(&sfEventLogRecord{ID: "0AT1", LogDate: ""}); e != nil {
+		t.Errorf("empty LogDate: got %+v, want nil (zero timestamp must be filtered)", e)
 	}
-	if e := mapSalesforceEventLog(&sfEventLogRecord{ID: "0AT1", LogDate: "not-a-timestamp"}); e == nil || !e.Timestamp.IsZero() {
-		t.Errorf("garbage LogDate: got %+v, want non-nil entry with zero Timestamp", e)
+	if e := mapSalesforceEventLog(&sfEventLogRecord{ID: "0AT1", LogDate: "not-a-timestamp"}); e != nil {
+		t.Errorf("garbage LogDate: got %+v, want nil (zero timestamp must be filtered)", e)
 	}
 	if e := mapSalesforceEventLog(nil); e != nil {
 		t.Errorf("nil record: got %+v, want nil", e)
@@ -140,9 +142,32 @@ func TestMapSalesforceEventLog_EmptyOrInvalid(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_Failure verifies that 401/403/404 (tenant
+// edition lacks EventLogFile access) surface as access.ErrAuditNotAvailable
+// so the audit worker soft-skips, matching every other AccessAuditor.
 func TestFetchAccessAuditLogs_Failure(t *testing.T) {
+	for _, code := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(code)
+		}))
+		c := New()
+		c.urlOverride = srv.URL
+		c.httpClient = func() httpDoer { return srv.Client() }
+		err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		if err != access.ErrAuditNotAvailable {
+			t.Errorf("status %d: err = %v; want ErrAuditNotAvailable", code, err)
+		}
+		srv.Close()
+	}
+}
+
+// TestFetchAccessAuditLogs_ServerError verifies a 5xx remains a hard
+// error (not soft-skipped).
+func TestFetchAccessAuditLogs_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(srv.Close)
 	c := New()
@@ -151,7 +176,7 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
 		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
 		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
-	if err == nil {
-		t.Fatal("expected error")
+	if err == nil || err == access.ErrAuditNotAvailable {
+		t.Fatalf("err = %v; want generic hard error", err)
 	}
 }
