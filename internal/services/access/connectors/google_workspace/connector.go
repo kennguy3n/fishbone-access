@@ -156,24 +156,37 @@ func (c *GoogleWorkspaceAccessConnector) Connect(ctx context.Context, configRaw,
 	return nil
 }
 
-// VerifyPermissions checks each capability against the scope set the
-// connector was built with. only knows "sync_identity".
+// VerifyPermissions probes the provider per the AccessConnector contract
+// (types.go: "probes the provider per requested capability"). It runs the
+// same credential/scope check as Connect and reports any requested
+// capability the connector cannot service. A probe failure means the
+// service-account key, domain-wide delegation, or directory scopes are not
+// provisioned, so every requested capability is unauthorized — matching the
+// behaviour of every other API-backed connector in this package, which all
+// delegate to Connect. Capability names with no scope mapping can never be
+// satisfied and are always reported as missing.
 func (c *GoogleWorkspaceAccessConnector) VerifyPermissions(
-	_ context.Context,
-	_ map[string]interface{},
-	_ map[string]interface{},
+	ctx context.Context,
+	configRaw map[string]interface{},
+	secretsRaw map[string]interface{},
 	capabilities []string,
 ) ([]string, error) {
-	required := map[string][]string{
-		"sync_identity": {
-			"https://www.googleapis.com/auth/admin.directory.user.readonly",
-			"https://www.googleapis.com/auth/admin.directory.group.readonly",
-		},
+	known := map[string]bool{
+		"sync_identity": true,
 	}
 	var missing []string
 	for _, cap := range capabilities {
-		if _, ok := required[cap]; !ok {
+		if !known[cap] {
 			missing = append(missing, fmt.Sprintf("%s (no scope mapping)", cap))
+		}
+	}
+	// Probe the provider; an error means the known capabilities are
+	// unauthorized (bad key, missing delegation, or insufficient scopes).
+	if err := c.Connect(ctx, configRaw, secretsRaw); err != nil {
+		for _, cap := range capabilities {
+			if known[cap] {
+				missing = append(missing, fmt.Sprintf("%s (%v)", cap, err))
+			}
 		}
 	}
 	return missing, nil

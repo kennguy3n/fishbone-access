@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -202,7 +201,7 @@ func (c *GrafanaAccessConnector) findGrafanaUserID(ctx context.Context, cfg Conf
 
 func (c *GrafanaAccessConnector) listGrafanaOrgUsers(ctx context.Context, cfg Config, secrets Secrets) ([]grafanaOrgUser, error) {
 	req, err := c.newRequest(ctx, secrets, http.MethodGet,
-		c.baseURL(cfg)+"/api/org/users?"+url.Values{}.Encode())
+		c.baseURL(cfg)+"/api/org/users")
 	if err != nil {
 		return nil, err
 	}

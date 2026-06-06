@@ -191,6 +191,120 @@ func TestProvisionAccess_4xxFailsPermanently(t *testing.T) {
 	}
 }
 
+// TestVerifyPermissions_ProbesProvider verifies the contract that
+// VerifyPermissions probes the provider: a reachable, authorized provider
+// yields no missing capabilities, while a probe failure (e.g. 403) marks the
+// known capability unauthorized rather than silently reporting success.
+func TestVerifyPermissions_ProbesProvider(t *testing.T) {
+	t.Run("authorized probe -> no missing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"users":[]}`))
+		}))
+		t.Cleanup(server.Close)
+
+		c := New()
+		c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+			return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+		}
+		missing, err := c.VerifyPermissions(context.Background(), validConfig(), validSecrets(t), []string{"sync_identity"})
+		if err != nil {
+			t.Fatalf("VerifyPermissions: %v", err)
+		}
+		if len(missing) != 0 {
+			t.Fatalf("missing = %v, want empty", missing)
+		}
+	})
+
+	t.Run("forbidden probe -> capability unauthorized", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		t.Cleanup(server.Close)
+
+		c := New()
+		c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+			return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+		}
+		missing, err := c.VerifyPermissions(context.Background(), validConfig(), validSecrets(t), []string{"sync_identity"})
+		if err != nil {
+			t.Fatalf("VerifyPermissions: %v", err)
+		}
+		if len(missing) != 1 || !strings.HasPrefix(missing[0], "sync_identity") {
+			t.Fatalf("missing = %v, want [sync_identity (...)]", missing)
+		}
+	})
+
+	t.Run("unknown capability always missing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"users":[]}`))
+		}))
+		t.Cleanup(server.Close)
+
+		c := New()
+		c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+			return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+		}
+		missing, err := c.VerifyPermissions(context.Background(), validConfig(), validSecrets(t), []string{"provision_access"})
+		if err != nil {
+			t.Fatalf("VerifyPermissions: %v", err)
+		}
+		if len(missing) != 1 || !strings.Contains(missing[0], "no scope mapping") {
+			t.Fatalf("missing = %v, want [provision_access (no scope mapping)]", missing)
+		}
+	})
+}
+
+// TestLicenseProvisionRevoke exercises the license:<product>/<sku> grant
+// routing, which targets the Licensing API host (licensingBaseURL) rather
+// than the Directory host. fakeDirectoryClient rewrites by path, so a single
+// server serves both; this locks the previously-untested license code path.
+func TestLicenseProvisionRevoke(t *testing.T) {
+	var provisionPath, provisionBody, revokePath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			b, _ := io.ReadAll(r.Body)
+			provisionPath = r.URL.Path
+			provisionBody = string(b)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		case http.MethodDelete:
+			revokePath = r.URL.Path
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected method %s", r.Method)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+		return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+	}
+	grant := access.AccessGrant{
+		UserExternalID:     "alice@example.com",
+		ResourceExternalID: "ignored-for-license",
+		Role:               "license:Google-Apps/1010020020",
+	}
+	if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(t), grant); err != nil {
+		t.Fatalf("ProvisionAccess(license): %v", err)
+	}
+	if !strings.Contains(provisionPath, "/apps/licensing/v1/product/Google-Apps/sku/1010020020/user") {
+		t.Fatalf("provision path = %q, want licensing assign endpoint", provisionPath)
+	}
+	if !strings.Contains(provisionBody, `"userId":"alice@example.com"`) {
+		t.Fatalf("provision body = %q, want userId", provisionBody)
+	}
+	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(t), grant); err != nil {
+		t.Fatalf("RevokeAccess(license): %v", err)
+	}
+	if !strings.Contains(revokePath, "/apps/licensing/v1/product/Google-Apps/sku/1010020020/user/alice@example.com") {
+		t.Fatalf("revoke path = %q, want licensing unassign endpoint", revokePath)
+	}
+}
+
 func TestRevokeAccess_RemovesGroupMember(t *testing.T) {
 	cases := []struct {
 		name   string
