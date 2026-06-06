@@ -44,19 +44,27 @@ func (c *DatadogAccessConnector) SyncIdentitiesDelta(
 		return "", err
 	}
 
+	// Snapshot the wall clock once so the query window is internally
+	// consistent: filter[to] is this instant and (on a first run)
+	// filter[from] is exactly one hour earlier. Reading time.Now()
+	// separately for the lower and upper bound left a window where an
+	// event arriving between the two reads could fall outside both the
+	// current and the next poll.
+	now := time.Now().UTC()
+
 	var since time.Time
 	if strings.TrimSpace(deltaLink) != "" {
 		parsed, perr := time.Parse(time.RFC3339, strings.TrimSpace(deltaLink))
 		if perr != nil {
 			return "", fmt.Errorf("datadog: invalid deltaLink cursor %q: %w", deltaLink, perr)
 		}
-		if time.Since(parsed) > datadogAuditRetention {
+		if now.Sub(parsed) > datadogAuditRetention {
 			return "", access.ErrDeltaTokenExpired
 		}
 		since = parsed
 	} else {
 		// First run — pull the last hour so the initial batch is bounded.
-		since = time.Now().UTC().Add(-1 * time.Hour)
+		since = now.Add(-1 * time.Hour)
 	}
 
 	base := c.baseURL(cfg)
@@ -66,7 +74,7 @@ func (c *DatadogAccessConnector) SyncIdentitiesDelta(
 	q.Set("filter[query]",
 		"@evt.name:(\"User created\" OR \"User updated\" OR \"User disabled\" OR \"User invited\" OR \"User deleted\")")
 	q.Set("filter[from]", since.UTC().Format(time.RFC3339))
-	q.Set("filter[to]", time.Now().UTC().Format(time.RFC3339))
+	q.Set("filter[to]", now.Format(time.RFC3339))
 
 	requestURL := base + "/api/v2/audit/events?" + q.Encode()
 	newestSeen := since

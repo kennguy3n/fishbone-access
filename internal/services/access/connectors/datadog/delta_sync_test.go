@@ -144,6 +144,44 @@ func TestDatadog_SyncIdentitiesDelta_InvalidCursor_Rejected(t *testing.T) {
 	}
 }
 
+// TestDatadog_SyncIdentitiesDelta_ConsistentWindow pins the query
+// window on a first run. Both filter[from] and filter[to] are now
+// derived from a single time.Now() snapshot, so the bounds are
+// internally consistent: from is exactly one hour before to, and from
+// is never after to. Reading the clock twice (once per bound) made the
+// window non-deterministic and could leave a sliver of time covered by
+// neither the current nor the next poll.
+func TestDatadog_SyncIdentitiesDelta_ConsistentWindow(t *testing.T) {
+	var gotFrom, gotTo string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotFrom = r.URL.Query().Get("filter[from]")
+		gotTo = r.URL.Query().Get("filter[to]")
+		_, _ = w.Write([]byte(`{"data":[],"links":{}}`))
+	}))
+	defer srv.Close()
+	c := New()
+	c.urlOverride = srv.URL
+
+	if _, err := c.SyncIdentitiesDelta(context.Background(), datadogDeltaConfig(), datadogDeltaSecrets(), "",
+		func([]*access.Identity, []string, string) error { return nil }); err != nil {
+		t.Fatalf("SyncIdentitiesDelta: %v", err)
+	}
+	from, err := time.Parse(time.RFC3339, gotFrom)
+	if err != nil {
+		t.Fatalf("parse filter[from] %q: %v", gotFrom, err)
+	}
+	to, err := time.Parse(time.RFC3339, gotTo)
+	if err != nil {
+		t.Fatalf("parse filter[to] %q: %v", gotTo, err)
+	}
+	if to.Before(from) {
+		t.Fatalf("filter[to] %s is before filter[from] %s", gotTo, gotFrom)
+	}
+	if d := to.Sub(from); d != time.Hour {
+		t.Fatalf("first-run window = %s, want exactly 1h (from and to must share one clock snapshot)", d)
+	}
+}
+
 func TestDatadog_SatisfiesIdentityDeltaSyncerInterface(_ *testing.T) {
 	var _ access.IdentityDeltaSyncer = (*DatadogAccessConnector)(nil)
 }

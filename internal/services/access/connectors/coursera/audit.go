@@ -124,6 +124,9 @@ func mapCourseraAuditEvent(e *courseraAuditEvent) *access.AuditLogEntry {
 	if e == nil {
 		return nil
 	}
+	if strings.TrimSpace(e.ID) == "" {
+		return nil
+	}
 	ts := parseCourseraAuditTime(e.Timestamp)
 	if ts.IsZero() {
 		return nil

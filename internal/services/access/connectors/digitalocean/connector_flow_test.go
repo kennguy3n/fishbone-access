@@ -149,6 +149,81 @@ func TestListEntitlements_PaginatesTeams(t *testing.T) {
 	}
 }
 
+// TestNextPath pins the pagination-link normalization. The result is
+// re-joined onto baseURL(), so every form must come back host-rooted
+// (leading slash). A relative link without a leading slash previously
+// passed through verbatim and produced a malformed URL when concatenated
+// onto the host.
+func TestNextPath(t *testing.T) {
+	cases := []struct {
+		name string
+		next string
+		want string
+	}{
+		{"empty", "", ""},
+		{"absolute", "https://api.digitalocean.com/v2/teams?page=2&per_page=200", "/v2/teams?page=2&per_page=200"},
+		{"rooted relative", "/v2/teams?page=2", "/v2/teams?page=2"},
+		{"bare relative", "v2/teams?page=2", "/v2/teams?page=2"},
+		{"absolute no query", "https://api.digitalocean.com/v2/teams", "/v2/teams"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := nextPath(tc.next); got != tc.want {
+				t.Fatalf("nextPath(%q) = %q, want %q", tc.next, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestListEntitlements_PaginatesRelativeNextLink proves the full
+// pagination loop survives a relative next link (no scheme/host, no
+// leading slash). Without the nextPath leading-slash fix, page 2 would
+// be requested at a malformed URL and never reached.
+func TestListEntitlements_PaginatesRelativeNextLink(t *testing.T) {
+	const userEmail = "dave@example.com"
+	var page2 int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/teams" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if r.URL.Query().Get("page") == "2" {
+			page2++
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"teams": []map[string]interface{}{{
+					"id":      "team-rel",
+					"members": []map[string]string{{"email": userEmail, "uuid": "u-d"}},
+				}},
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"teams": []map[string]interface{}{{
+				"id":      "team-first",
+				"members": []map[string]string{{"email": "nobody@else.com", "uuid": "u-z"}},
+			}},
+			"links": map[string]interface{}{
+				"pages": map[string]interface{}{"next": "v2/teams?page=2&per_page=200"},
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), doValidConfig(), doValidSecrets(), userEmail)
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if page2 == 0 {
+		t.Fatalf("page 2 was never fetched via the relative next link")
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "team-rel" {
+		t.Fatalf("ents = %#v, want 1 with team-rel", ents)
+	}
+}
+
 func TestDigitalOceanConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

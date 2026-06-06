@@ -56,6 +56,52 @@ func TestCourseraFetchAccessAuditLogs_Maps(t *testing.T) {
 	}
 }
 
+// TestCourseraFetchAccessAuditLogs_SkipsEmptyEventID guards the
+// parity gap with the other audit mappers: an event with a valid
+// timestamp but a blank id must be dropped rather than emitted with an
+// empty EventID. A well-formed event in the same page must still be
+// kept so the guard doesn't over-filter.
+func TestCourseraFetchAccessAuditLogs_SkipsEmptyEventID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":        "",
+					"action":    "grant",
+					"timestamp": "2024-09-01T10:00:00Z",
+					"actor":     map[string]interface{}{"id": "u1", "email": "blank@example.com"},
+				},
+				{
+					"id":        "evt-2",
+					"action":    "revoke",
+					"timestamp": "2024-09-01T11:00:00Z",
+					"actor":     map[string]interface{}{"id": "u2", "email": "kept@example.com"},
+				},
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("collected %d entries, want 1 (empty-id event must be skipped): %+v", len(collected), collected)
+	}
+	if collected[0].EventID != "evt-2" {
+		t.Fatalf("EventID = %q, want evt-2", collected[0].EventID)
+	}
+}
+
 func TestCourseraFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

@@ -277,14 +277,24 @@ func nextPath(next string) string {
 	if next == "" {
 		return ""
 	}
-	if u, err := url.Parse(next); err == nil && u.IsAbs() {
-		p := u.Path
-		if u.RawQuery != "" {
-			p += "?" + u.RawQuery
-		}
-		return p
+	u, err := url.Parse(next)
+	if err != nil {
+		return next
 	}
-	return next
+	p := u.Path
+	if u.RawQuery != "" {
+		p += "?" + u.RawQuery
+	}
+	// Pagination links are re-joined onto baseURL(), so the result must
+	// be host-rooted. DigitalOcean returns absolute links today (whose
+	// url.Path already starts with "/"), but a relative link such as
+	// "v2/teams?page=2" would otherwise concatenate straight onto the
+	// host ("https://api.digitalocean.comv2/teams"). Force a leading
+	// slash so either form yields a valid URL.
+	if p != "" && !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return p
 }
 
 // GetSSOMetadata returns the operator-supplied SAML metadata for
