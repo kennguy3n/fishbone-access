@@ -566,7 +566,7 @@ func (h *lifecycleHandlers) scimEvent(c *gin.Context) {
 		// fail is not an opaque internal error: return the per-layer breakdown
 		// (which layers ran, which failed, and why) so an operator can act on it.
 		if leaver != nil && leaver.Errored {
-			c.JSON(http.StatusInternalServerError, gin.H{"lane": lane, "leaver": leaver, "error": err.Error()})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"lane": lane, "leaver": leaver, "error": err.Error()})
 			return
 		}
 		h.fail(c, err)
