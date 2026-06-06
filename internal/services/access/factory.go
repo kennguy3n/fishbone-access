@@ -6,19 +6,28 @@ import (
 	"sync"
 )
 
-// Process-global access-connector registry. Connector packages register
-// themselves from init() via RegisterAccessConnector; the running binary
-// blank-imports connectors/all so every init() fires. Duplicate registration
-// panics during init so a wiring bug (two connectors claiming one key) fails
-// loudly instead of silently letting one win.
+// Process-global access connector registry. Mirrors the SN360 connector
+// pattern from shieldnet360-backend/internal/services/connectors/factory.go:9-32
+// but with one defensive change: duplicate registration panics during init
+// instead of silently overwriting, so init-time wiring bugs (two connectors
+// claiming the same provider key) fail loudly.
+//
+// Tests legitimately swap registry entries; use SwapConnector from testing.go
+// which restores the previous instance via t.Cleanup.
 var (
 	registry   = make(map[string]AccessConnector)
 	registryMu sync.RWMutex
 )
 
-// RegisterAccessConnector registers connector under the lowercased snake_case
-// provider key ("microsoft", "google_workspace", "okta", "generic_oidc", ...).
-// Re-registration of an existing key panics; tests must use SwapConnector.
+// RegisterAccessConnector registers a connector instance for the given
+// provider key. Provider keys are lowercased, snake_case (per
+// docs/architecture.md §3): "microsoft", "google_workspace", "okta",
+// "generic_saml", ...
+//
+// Re-registration of an already-registered key panics. Two connectors
+// claiming the same key is always a wiring bug — silently letting one win
+// would mask it until production. Tests must use SwapConnector instead of
+// calling RegisterAccessConnector twice.
 func RegisterAccessConnector(provider string, connector AccessConnector) {
 	if provider == "" {
 		panic("access: RegisterAccessConnector called with empty provider key")
@@ -26,19 +35,24 @@ func RegisterAccessConnector(provider string, connector AccessConnector) {
 	if connector == nil {
 		panic(fmt.Sprintf("access: RegisterAccessConnector(%q) called with nil connector", provider))
 	}
+
 	registryMu.Lock()
 	defer registryMu.Unlock()
+
 	if _, exists := registry[provider]; exists {
 		panic(fmt.Sprintf("access: connector for provider %q already registered", provider))
 	}
 	registry[provider] = connector
 }
 
-// GetAccessConnector returns the connector registered for provider, or
-// ErrConnectorNotFound when no init() wired it (usually a missing blank-import).
+// GetAccessConnector returns the connector registered for the given provider
+// key, or ErrConnectorNotFound if no init() side-effect has wired it. The
+// most common cause of ErrConnectorNotFound in production is a binary that
+// forgot the blank-import for a connector package.
 func GetAccessConnector(provider string) (AccessConnector, error) {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
+
 	connector, ok := registry[provider]
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrConnectorNotFound, provider)
@@ -46,21 +60,25 @@ func GetAccessConnector(provider string) (AccessConnector, error) {
 	return connector, nil
 }
 
-// ListRegisteredProviders returns the sorted list of registered provider keys,
-// for diagnostics and the connector-count CI guard.
+// ListRegisteredProviders returns the sorted list of provider keys currently
+// in the registry. Intended for diagnostics endpoints and debug logging only —
+// not the source of truth for the provider catalogue (that lives in
+// docs/connectors.md §1).
 func ListRegisteredProviders() []string {
 	registryMu.RLock()
 	defer registryMu.RUnlock()
+
 	out := make([]string, 0, len(registry))
-	for k := range registry {
-		out = append(out, k)
+	for provider := range registry {
+		out = append(out, provider)
 	}
 	sort.Strings(out)
 	return out
 }
 
-// RegisteredCount returns the number of registered connectors. The connector
-// count test (added in Session 1B) asserts this equals the expected total.
+// RegisteredCount returns the number of connectors currently registered. The
+// connector-count guard (registry_count_test.go) asserts this equals the
+// expected total; the ztna-api /api/v1 diagnostics surface also reports it.
 func RegisteredCount() int {
 	registryMu.RLock()
 	defer registryMu.RUnlock()

@@ -153,6 +153,12 @@ func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 		}
 		return nil, err
 	}
+	// Bound the pool before doing any work on it (migrations included) so this
+	// process can never open more Postgres connections than configured.
+	if err := database.ApplyPoolLimits(gdb, cfg.DBMaxOpenConns, cfg.DBMaxIdleConns, cfg.DBConnMaxLifetime); err != nil {
+		_ = sqlDB.Close()
+		return nil, err
+	}
 	applied, err := migrations.Run(ctx, sqlDB)
 	if err != nil {
 		// Don't leak the pool if migrations fail.

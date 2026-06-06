@@ -13,6 +13,7 @@ package database
 
 import (
 	"fmt"
+	"time"
 
 	gormsqlite "github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
@@ -31,6 +32,29 @@ func Open(dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("database: open postgres: %w", err)
 	}
 	return db, nil
+}
+
+// ApplyPoolLimits configures the underlying *sql.DB connection pool. Each
+// binary owns its own pool, so bounding open/idle connections and capping
+// connection lifetime keeps a fleet of replicas from exhausting Postgres'
+// max_connections and lets long-lived workers pick up failovers. A non-positive
+// maxOpen/maxIdle leaves the database/sql default in place; a non-positive
+// maxLifetime leaves connections un-aged.
+func ApplyPoolLimits(db *gorm.DB, maxOpen, maxIdle int, maxLifetime time.Duration) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Errorf("database: resolve pool: %w", err)
+	}
+	if maxOpen > 0 {
+		sqlDB.SetMaxOpenConns(maxOpen)
+	}
+	if maxIdle > 0 {
+		sqlDB.SetMaxIdleConns(maxIdle)
+	}
+	if maxLifetime > 0 {
+		sqlDB.SetConnMaxLifetime(maxLifetime)
+	}
+	return nil
 }
 
 // OpenSQLite opens an in-process SQLite database. Pass ":memory:" for tests.
