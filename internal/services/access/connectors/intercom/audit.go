@@ -14,6 +14,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// intercomAuditMaxPages bounds the activity_logs sweep as a defense-in-depth
+// guard against a misbehaving API that returns non-empty cursors indefinitely.
+// Matches the cap used by the sibling connectors' audit implementations.
+const intercomAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Intercom admin-activity events into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -39,7 +44,7 @@ func (c *IntercomAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	startingAfter := ""
-	for {
+	for pages := 0; pages < intercomAuditMaxPages; pages++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -95,6 +100,7 @@ func (c *IntercomAccessConnector) FetchAccessAuditLogs(
 		}
 		startingAfter = next
 	}
+	return nil
 }
 
 type intercomActivityPage struct {
