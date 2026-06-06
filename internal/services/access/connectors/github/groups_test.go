@@ -103,8 +103,10 @@ func TestSyncGroupMembers_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SyncGroupMembers: %v", err)
 	}
-	if len(members) != 2 || members[0] != "101" || members[1] != "102" {
-		t.Fatalf("members = %v; want [101 102]", members)
+	// Member IDs must be logins (matching SyncIdentities' ExternalID) so
+	// group membership reconciles against identity records.
+	if len(members) != 2 || members[0] != "alice" || members[1] != "bob" {
+		t.Fatalf("members = %v; want [alice bob]", members)
 	}
 }
 

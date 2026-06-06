@@ -143,9 +143,14 @@ func (c *GitHubAccessConnector) SyncGroupMembers(
 		if err := json.Unmarshal(resp.Body, &members); err != nil {
 			return fmt.Errorf("github: decode team members: %w", err)
 		}
+		// Emit the login, matching SyncIdentities' ExternalID. The
+		// member identifiers returned here are reconciled against the
+		// identity records keyed by login, so a numeric id would never
+		// correlate. (Team ExternalIDs in SyncGroups stay numeric: teams
+		// are a different entity, tracked by a rename-stable numeric id.)
 		ids := make([]string, 0, len(members))
 		for _, m := range members {
-			ids = append(ids, fmt.Sprintf("%d", m.ID))
+			ids = append(ids, m.Login)
 		}
 		next := parseNextLink(resp.Header.Get("Link"))
 		if next != "" && c.urlOverride != "" {
