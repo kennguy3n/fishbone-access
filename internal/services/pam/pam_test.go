@@ -495,6 +495,61 @@ func TestSessionManagerTerminateInvokesController(t *testing.T) {
 	}
 }
 
+func TestSessionManagerCloseIsIdempotentAuditOnce(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	broker := NewBroker(db, v, nil)
+	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
+		WorkspaceID: ws, Name: "box", Protocol: models.PAMProtocolSSH,
+		Address: "host:22", Secret: Secret{Password: "pw"}, Actor: "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+	raw, _, err := broker.MintConnectToken(context.Background(), MintInput{WorkspaceID: ws, TargetID: target.ID, Subject: "alice", Actor: "admin"})
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	leased, err := broker.RedeemConnectToken(context.Background(), raw, "x")
+	if err != nil {
+		t.Fatalf("redeem: %v", err)
+	}
+
+	mgr := NewSessionManager(db, nil, nil)
+	// Close twice, then terminate: only the first transition should flip the
+	// row and append a chain entry; the later calls must be no-ops.
+	for i := 0; i < 2; i++ {
+		if err := mgr.CloseSession(context.Background(), ws, leased.Session.ID); err != nil {
+			t.Fatalf("CloseSession #%d: %v", i, err)
+		}
+	}
+	if err := mgr.TerminateSession(context.Background(), ws, leased.Session.ID, "admin-bob"); err != nil {
+		t.Fatalf("TerminateSession after close: %v", err)
+	}
+
+	var closedAudits int64
+	if err := db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ?", ws, "pam.session.closed").
+		Count(&closedAudits).Error; err != nil {
+		t.Fatalf("count closed audits: %v", err)
+	}
+	if closedAudits != 1 {
+		t.Fatalf("expected exactly 1 pam.session.closed audit entry, got %d", closedAudits)
+	}
+	// The terminate after close must not have produced a terminated entry,
+	// because the session was already closed (state != active).
+	var termAudits int64
+	if err := db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ?", ws, "pam.session.terminated").
+		Count(&termAudits).Error; err != nil {
+		t.Fatalf("count terminated audits: %v", err)
+	}
+	if termAudits != 0 {
+		t.Fatalf("expected 0 pam.session.terminated audit entries (already closed), got %d", termAudits)
+	}
+}
+
 type fakeController struct{ terminated bool }
 
 func (f *fakeController) Terminate(uuid.UUID) bool { f.terminated = true; return true }

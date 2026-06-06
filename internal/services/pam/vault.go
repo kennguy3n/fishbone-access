@@ -117,13 +117,17 @@ func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models
 		RequireMFA:       in.RequireMFA,
 		LeaseTTLSeconds:  int(in.LeaseTTL.Seconds()),
 	}
-	if err := v.db.WithContext(ctx).Create(row).Error; err != nil {
-		return nil, fmt.Errorf("pam: create target: %w", err)
-	}
-
-	if err := v.audit(ctx, in.WorkspaceID, in.Actor, "pam.target.created", row.ID.String(), map[string]any{
-		"protocol": row.Protocol,
-		"address":  row.Address,
+	// Create the target row and its audit record in one transaction so a sealed
+	// target can never exist without its tamper-evident chain entry (a failed
+	// audit append rolls the target back). Matches MintConnectToken.
+	if err := v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(row).Error; err != nil {
+			return fmt.Errorf("pam: create target: %w", err)
+		}
+		return v.auditTx(ctx, tx, in.WorkspaceID, in.Actor, "pam.target.created", row.ID.String(), map[string]any{
+			"protocol": row.Protocol,
+			"address":  row.Address,
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -199,19 +203,23 @@ func (v *Vault) RotateSecret(ctx context.Context, workspaceID, targetID uuid.UUI
 		return err
 	}
 	now := v.now()
-	if err := v.db.WithContext(ctx).
-		Model(&models.PAMTarget{}).
-		Where("workspace_id = ? AND id = ?", workspaceID, targetID).
-		Updates(map[string]any{
-			"secret_envelope":    envelope,
-			"secret_key_version": keyVersion,
-			"secret_rotated_at":  now,
-			"updated_at":         now,
-		}).Error; err != nil {
-		return fmt.Errorf("pam: rotate secret: %w", err)
-	}
-	return v.audit(ctx, workspaceID, actor, "pam.secret.rotated", target.ID.String(), map[string]any{
-		"key_version": keyVersion,
+	// Re-seal and audit atomically so a rotated credential is never committed
+	// without its audit record (and vice versa). Matches MintConnectToken.
+	return v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.
+			Model(&models.PAMTarget{}).
+			Where("workspace_id = ? AND id = ?", workspaceID, targetID).
+			Updates(map[string]any{
+				"secret_envelope":    envelope,
+				"secret_key_version": keyVersion,
+				"secret_rotated_at":  now,
+				"updated_at":         now,
+			}).Error; err != nil {
+			return fmt.Errorf("pam: rotate secret: %w", err)
+		}
+		return v.auditTx(ctx, tx, workspaceID, actor, "pam.secret.rotated", target.ID.String(), map[string]any{
+			"key_version": keyVersion,
+		})
 	})
 }
 

@@ -152,16 +152,19 @@ func (p *MySQLProxy) authenticateOperator(conn net.Conn) (token string, nextSeq 
 	if err := writePacket(conn, 0, buildHandshakeV10(salt)); err != nil {
 		return "", 0, fmt.Errorf("send greeting: %w", err)
 	}
-	// HandshakeResponse41 (seq 1). We only need to advance the sequence; the
-	// operator's native-password response is discarded because we switch to
-	// cleartext.
-	if _, _, err := readPacket(conn); err != nil {
+	// HandshakeResponse41 (normally seq 1). The operator's native-password
+	// response is discarded because we switch to cleartext, but we track the
+	// sequence the client actually used and derive ours from it rather than
+	// hardcoding, so the AuthSwitchRequest always carries seq = clientSeq+1 even
+	// for a client that numbered its response differently.
+	_, hsSeq, err := readPacket(conn)
+	if err != nil {
 		return "", 0, fmt.Errorf("read handshake response: %w", err)
 	}
-	// AuthSwitchRequest → mysql_clear_password (seq 2).
+	// AuthSwitchRequest → mysql_clear_password (seq = handshake response + 1).
 	switchPkt := append([]byte{0xfe}, []byte(mysqlClearPassword)...)
 	switchPkt = append(switchPkt, 0x00)
-	if err := writePacket(conn, 2, switchPkt); err != nil {
+	if err := writePacket(conn, hsSeq+1, switchPkt); err != nil {
 		return "", 0, fmt.Errorf("send auth switch: %w", err)
 	}
 	// Operator replies with the cleartext token (seq 3).

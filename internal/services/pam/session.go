@@ -170,13 +170,6 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 	if terminatedBy != "" {
 		updates["terminated_by"] = terminatedBy
 	}
-	if err := m.db.WithContext(ctx).
-		Model(&models.PAMSession{}).
-		Where("workspace_id = ? AND id = ? AND state = ?", workspaceID, sessionID, models.PAMSessionActive).
-		Updates(updates).Error; err != nil {
-		return fmt.Errorf("pam: end session: %w", err)
-	}
-
 	actor := terminatedBy
 	if actor == "" {
 		actor = session.Subject
@@ -188,12 +181,31 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 	if err != nil {
 		return err
 	}
-	return lifecycle.AppendAudit(ctx, m.db, now, lifecycle.AuditInput{
-		WorkspaceID: workspaceID,
-		Actor:       actor,
-		Action:      action,
-		TargetRef:   session.TargetID.String(),
-		Metadata:    md,
+
+	// The conditional UPDATE and its audit append run in one transaction, and
+	// the audit is gated on RowsAffected. If two callers race to end the same
+	// session (e.g. the proxy's deferred close and an admin terminate arriving
+	// together) both read state=active, but only the UPDATE that actually flips
+	// the row affects a row; the loser sees 0 rows and skips the audit append,
+	// so the chain gets exactly one end event instead of a duplicate.
+	return m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.PAMSession{}).
+			Where("workspace_id = ? AND id = ? AND state = ?", workspaceID, sessionID, models.PAMSessionActive).
+			Updates(updates)
+		if res.Error != nil {
+			return fmt.Errorf("pam: end session: %w", res.Error)
+		}
+		if res.RowsAffected == 0 {
+			// Lost the race / already ended: nothing to audit.
+			return nil
+		}
+		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
+			WorkspaceID: workspaceID,
+			Actor:       actor,
+			Action:      action,
+			TargetRef:   session.TargetID.String(),
+			Metadata:    md,
+		})
 	})
 }
 
