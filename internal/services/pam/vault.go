@@ -269,13 +269,34 @@ func (v *Vault) open(ctx context.Context, target *models.PAMTarget) (Secret, err
 	return sec, nil
 }
 
-// audit appends one PAM event to the workspace's 1C audit hash chain.
+// audit appends one PAM event to the workspace's 1C audit hash chain in its own
+// transaction. Use it for standalone events (target create, token mint) whose
+// state change has already been committed.
 func (v *Vault) audit(ctx context.Context, workspaceID uuid.UUID, actor, action, targetRef string, meta map[string]any) error {
 	md, err := marshalMeta(meta)
 	if err != nil {
 		return err
 	}
 	return lifecycle.AppendAudit(ctx, v.db, v.now(), lifecycle.AuditInput{
+		WorkspaceID: workspaceID,
+		Actor:       actor,
+		Action:      action,
+		TargetRef:   targetRef,
+		Metadata:    md,
+	})
+}
+
+// auditTx appends one PAM event within an existing transaction so the audit
+// record is atomic with the state change that produced it. Use it when the
+// event and its state change must commit together (e.g. opening a session as a
+// connect token is consumed) — never leaving a privileged action without its
+// chained audit row.
+func (v *Vault) auditTx(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID, actor, action, targetRef string, meta map[string]any) error {
+	md, err := marshalMeta(meta)
+	if err != nil {
+		return err
+	}
+	return lifecycle.AppendAuditTx(ctx, tx, v.now(), lifecycle.AuditInput{
 		WorkspaceID: workspaceID,
 		Actor:       actor,
 		Action:      action,

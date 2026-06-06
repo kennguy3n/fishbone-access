@@ -213,18 +213,22 @@ func (b *Broker) RedeemConnectToken(ctx context.Context, rawToken, clientAddr st
 		if err != nil {
 			return err
 		}
+
+		// Append the session-opened event inside the same transaction as the
+		// token consume + session create, so a privileged session can never be
+		// opened without its chained audit record (and a failed append rolls
+		// the whole redemption back, leaving the token still usable).
+		if err := b.vault.auditTx(ctx, tx, session.WorkspaceID, session.Subject, "pam.session.opened", target.ID.String(), map[string]any{
+			"session_id":  session.ID.String(),
+			"protocol":    target.Protocol,
+			"client_addr": clientAddr,
+		}); err != nil {
+			return err
+		}
 		leased = &LeasedSession{Target: &target, Secret: secret, Session: session}
 		return nil
 	})
 	if err != nil {
-		return nil, err
-	}
-
-	if err := b.vault.audit(ctx, leased.Session.WorkspaceID, leased.Session.Subject, "pam.session.opened", leased.Target.ID.String(), map[string]any{
-		"session_id":  leased.Session.ID.String(),
-		"protocol":    leased.Target.Protocol,
-		"client_addr": clientAddr,
-	}); err != nil {
 		return nil, err
 	}
 	return leased, nil

@@ -293,6 +293,15 @@ func TestConnectTokenOneShotRedemption(t *testing.T) {
 		t.Fatal("expected an active session after redemption")
 	}
 
+	// The session-opened event is appended atomically with the redemption.
+	var opened int64
+	db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ? AND target_ref = ?", ws, "pam.session.opened", target.ID.String()).
+		Count(&opened)
+	if opened != 1 {
+		t.Fatalf("want 1 pam.session.opened audit row, got %d", opened)
+	}
+
 	// Second redemption of the same token must fail (one-shot, replay-safe).
 	if _, err := broker.RedeemConnectToken(context.Background(), raw, "1.2.3.4:5556"); !errors.Is(err, ErrConnectToken) {
 		t.Fatalf("replay redeem: want ErrConnectToken, got %v", err)
