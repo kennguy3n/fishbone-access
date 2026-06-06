@@ -34,9 +34,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -88,7 +90,48 @@ func run() error {
 	} else {
 		logger.Warnf(ctx, "ztna-api: iam-core NOT configured; authenticated API returns 503")
 	}
+
+	// Credential encryptor opens connector secret envelopes for the lifecycle
+	// provisioning / JML / reconciliation services. FromKey returns a
+	// passthrough (seal-refusing) encryptor when no DEK is set, so connectors
+	// without sealed secrets still resolve in degraded dev boots.
+	enc, err := crypto.FromKey(cfg.CredentialDEK)
+	if err != nil {
+		return fmt.Errorf("credential encryptor init: %w", err)
+	}
+	deps.Encryptor = enc
+
+	// The iam-core management client disables (blocks) users for the leaver
+	// kill switch (layer 3). Without iam-core configured that layer reports
+	// "skipped" rather than failing the cascade.
+	if cfg.IAMCore.Configured() {
+		deps.Disabler = iamcore.NewManagementClient(cfg.IAMCore, nil)
+	}
+
 	deps.Ready = ready
+
+	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily
+	// orphan-account reconciliation. Run in-process (tied to the server's
+	// signal context) so expiry is enforced even before the Session 1B durable
+	// worker queue lands. The sweeps are idempotent and workspace-scoped, so
+	// running them on every replica is safe. Only started when a DB is present.
+	if deps.DB != nil {
+		resolver := lifecycle.NewDBConnectorResolver(deps.DB, deps.Encryptor)
+		reqSvc := lifecycle.NewAccessRequestService(deps.DB)
+		prov := lifecycle.NewAccessProvisioningService(deps.DB, reqSvc, resolver)
+		sched := lifecycle.NewScheduler(
+			deps.DB,
+			lifecycle.NewExpiryEnforcer(deps.DB, prov),
+			lifecycle.NewOrphanReconciler(deps.DB, resolver),
+			lifecycle.SchedulerConfig{},
+		)
+		go func() {
+			if err := sched.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				logger.Errorf(context.Background(), "ztna-api: lifecycle scheduler exited: %v", err)
+			}
+		}()
+		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation)")
+	}
 
 	srv := &http.Server{
 		Handler:           handlers.NewRouter(deps),

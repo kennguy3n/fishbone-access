@@ -15,7 +15,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
 // Deps are the runtime dependencies the router needs. Validator may be nil when
@@ -30,6 +32,14 @@ type Deps struct {
 	// pool, which is owned and closed by the ztna-api main (so it is not a
 	// leaked, never-closed pool).
 	DB *gorm.DB
+	// Encryptor opens connector secret envelopes for the provisioning /
+	// JML / reconciliation services. When nil the DBConnectorResolver still
+	// resolves connectors that have no sealed secrets.
+	Encryptor crypto.Encryptor
+	// Disabler disables (blocks) a user in iam-core for the leaver kill
+	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
+	// boots, in which case that kill-switch layer reports "skipped".
+	Disabler lifecycle.IdentityDisabler
 }
 
 // NewRouter builds the Gin engine.
@@ -54,6 +64,18 @@ func NewRouter(deps Deps) *gin.Engine {
 		api.Use(degraded)
 	}
 	api.GET("/me", whoami)
+
+	// Tenant-scoped lifecycle surface. RequireTenant maps the verified
+	// tenant_id claim to a workspace UUID and fails closed (403) when none
+	// resolves, so every handler below is guaranteed a workspace to scope by.
+	// It is only mounted when both a validator and a DB are present; without a
+	// DB the routes are absent (the /api/v1 group already 503s in degraded
+	// mode).
+	if deps.Validator != nil && deps.DB != nil {
+		scoped := api.Group("")
+		scoped.Use(middleware.RequireTenant(deps.DB))
+		newLifecycleHandlers(deps).register(scoped)
+	}
 
 	return r
 }
