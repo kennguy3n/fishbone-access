@@ -19,6 +19,15 @@ import (
 const (
 	ProviderName = "braze"
 	pageSize     = 100
+
+	// brazeSyncMaxPages bounds the startIndex pagination walk as
+	// defense-in-depth, matching azureSyncMaxPages / basecampSyncMaxPages.
+	// The loop also stops on a short page (and when fetched reaches
+	// totalResults) and honours ctx cancellation via the request context;
+	// SyncIdentities reports each page's startIndex to the handler as a
+	// checkpoint, so reaching the cap merely defers the remainder to the
+	// next sync cycle.
+	brazeSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("braze: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -256,7 +265,7 @@ func (c *BrazeAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL(cfg)
-	for {
+	for pageCount := 0; pageCount < brazeSyncMaxPages; pageCount++ {
 		q := url.Values{
 			"startIndex": []string{fmt.Sprintf("%d", startIndex)},
 			"count":      []string{fmt.Sprintf("%d", pageSize)},
@@ -318,6 +327,9 @@ func (c *BrazeAccessConnector) SyncIdentities(
 		}
 		startIndex += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // Braze SSO federation. When `sso_metadata_url` is blank the helper returns

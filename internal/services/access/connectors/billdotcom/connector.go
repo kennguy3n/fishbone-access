@@ -19,6 +19,14 @@ import (
 const (
 	ProviderName = "billdotcom"
 	pageSize     = 100
+
+	// billdotcomSyncMaxPages bounds the start/offset pagination walk as
+	// defense-in-depth, matching azureSyncMaxPages / basecampSyncMaxPages.
+	// The loop also stops on a short page and honours ctx cancellation via
+	// the request context; SyncIdentities reports each page's start offset
+	// to the handler as a checkpoint, so reaching the cap merely defers the
+	// remainder to the next sync cycle.
+	billdotcomSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("billdotcom: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -234,7 +242,7 @@ func (c *BillDotComAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < billdotcomSyncMaxPages; pageCount++ {
 		q := url.Values{
 			"start": []string{fmt.Sprintf("%d", start)},
 			"max":   []string{fmt.Sprintf("%d", pageSize)},
@@ -282,6 +290,9 @@ func (c *BillDotComAccessConnector) SyncIdentities(
 		}
 		start += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // GetSSOMetadata projects the connector's configured `sso_metadata_url` /

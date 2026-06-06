@@ -98,13 +98,21 @@ func (c *BoxAccessConnector) client() httpDoer {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+// bearerHeader normalizes the access token into an Authorization header
+// value, tolerating a token that was accidentally stored with a leading
+// "Bearer " prefix so we never emit a doubled "Bearer Bearer …". This
+// matches the prefix handling in scim.go's scimConfig.
+func bearerHeader(secrets Secrets) string {
+	return "Bearer " + strings.TrimPrefix(strings.TrimSpace(secrets.AccessToken), "Bearer ")
+}
+
 func (c *BoxAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Authorization", bearerHeader(secrets))
 	return req, nil
 }
 
@@ -115,7 +123,7 @@ func (c *BoxAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Authorization", bearerHeader(secrets))
 	return req, nil
 }
 

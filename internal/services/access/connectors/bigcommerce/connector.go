@@ -18,6 +18,14 @@ import (
 const (
 	ProviderName = "bigcommerce"
 	pageSize     = 100
+
+	// bigcommerceSyncMaxPages bounds the page pagination walk as
+	// defense-in-depth, matching azureSyncMaxPages / basecampSyncMaxPages.
+	// The loop also stops on a short page and honours ctx cancellation via
+	// the request context; SyncIdentities reports each page number to the
+	// handler as a checkpoint, so reaching the cap merely defers the
+	// remainder to the next sync cycle.
+	bigcommerceSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("bigcommerce: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -210,7 +218,7 @@ func (c *BigCommerceAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	path := base + ("/stores/" + url.PathEscape(cfg.StoreHash) + "/v2/customers")
-	for {
+	for pageCount := 0; pageCount < bigcommerceSyncMaxPages; pageCount++ {
 		q := url.Values{
 			"page":  []string{fmt.Sprintf("%d", page)},
 			"limit": []string{fmt.Sprintf("%d", pageSize)},
@@ -254,6 +262,9 @@ func (c *BigCommerceAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 func (c *BigCommerceAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {

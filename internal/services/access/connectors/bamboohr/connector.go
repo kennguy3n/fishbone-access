@@ -110,11 +110,11 @@ func (c *BambooHRAccessConnector) baseURL(cfg Config) string {
 	if c.urlOverride != "" {
 		return strings.TrimRight(c.urlOverride, "/")
 	}
-	return "https://api.bamboohr.com/api/gateway.php/" + cfg.Subdomain
+	return "https://api.bamboohr.com/api/gateway.php/" + strings.TrimSpace(cfg.Subdomain)
 }
 
 func (c *BambooHRAccessConnector) ssoBaseURL(cfg Config) string {
-	return "https://" + cfg.Subdomain + ".bamboohr.com"
+	return "https://" + strings.TrimSpace(cfg.Subdomain) + ".bamboohr.com"
 }
 
 func (c *BambooHRAccessConnector) client() httpDoer {
