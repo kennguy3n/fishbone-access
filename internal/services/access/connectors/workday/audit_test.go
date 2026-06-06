@@ -104,6 +104,23 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// TestMapWorkdayActivity_DropsZeroTimestamp guards against zero-timestamp
+// poisoning: when requestTime is missing or unparseable, parseWorkdayTime
+// returns the zero time. Emitting such an entry writes a 0001-01-01 timestamp
+// into the audit store (corrupt watermark data). The mapper must drop the
+// event — matching every sibling connector's audit mapper.
+func TestMapWorkdayActivity_DropsZeroTimestamp(t *testing.T) {
+	if got := mapWorkdayActivity(&workdayActivityRow{ID: "act-x", ActivityAction: "Sign On"}); got != nil {
+		t.Errorf("empty requestTime: got %+v, want nil", got)
+	}
+	if got := mapWorkdayActivity(&workdayActivityRow{ID: "act-y", ActivityAction: "Sign On", RequestTime: "not-a-timestamp"}); got != nil {
+		t.Errorf("unparseable requestTime: got %+v, want nil", got)
+	}
+	if got := mapWorkdayActivity(&workdayActivityRow{ID: "act-z", ActivityAction: "Sign On", RequestTime: "2024-01-01T10:00:00Z"}); got == nil {
+		t.Error("valid requestTime: got nil, want entry")
+	}
+}
+
 func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

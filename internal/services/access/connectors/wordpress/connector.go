@@ -205,19 +205,19 @@ func (c *WordPressAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
-	page := 1
+	offset := 0
 	if checkpoint != "" {
-		_, _ = fmt.Sscanf(checkpoint, "%d", &page)
-		if page < 1 {
-			page = 1
+		_, _ = fmt.Sscanf(checkpoint, "%d", &offset)
+		if offset < 0 {
+			offset = 0
 		}
 	}
 	base := c.baseURL()
 	path := base + ("/rest/v1.1/sites/" + url.PathEscape(cfg.Site) + "/users")
 	for {
 		q := url.Values{
-			"page":   []string{fmt.Sprintf("%d", page)},
 			"number": []string{fmt.Sprintf("%d", pageSize)},
+			"offset": []string{fmt.Sprintf("%d", offset)},
 		}
 		fullURL := path + "?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, fullURL)
@@ -248,7 +248,7 @@ func (c *WordPressAccessConnector) SyncIdentities(
 		}
 		next := ""
 		if len(resp.Items) == pageSize {
-			next = fmt.Sprintf("%d", page+1)
+			next = fmt.Sprintf("%d", offset+pageSize)
 		}
 		if err := handler(identities, next); err != nil {
 			return err
@@ -256,7 +256,7 @@ func (c *WordPressAccessConnector) SyncIdentities(
 		if next == "" {
 			return nil
 		}
-		page++
+		offset += pageSize
 	}
 }
 
