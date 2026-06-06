@@ -126,3 +126,49 @@ func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 		t.Fatalf("expected 403 error, got %v", err)
 	}
 }
+
+// TestListEntitlements_5xxWithFalsy404Body is a regression test: a 5xx whose
+// body embeds the text "status 404" must propagate as an error, not be
+// misread as "user has no entitlements". Previously ListEntitlements
+// string-matched on err.Error() for "status 404" and would silently return
+// (nil, nil) on this transient server failure.
+func TestListEntitlements_5xxWithFalsy404Body(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		// Upstream diagnostic that happens to embed the substring.
+		_, _ = w.Write([]byte(`{"message":"upstream proxy error: original status 404 not relevant"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), map[string]interface{}{},
+		map[string]interface{}{"access_token": "tok"}, "u-1")
+	if err == nil {
+		t.Fatalf("expected error on 5xx, got nil (ents=%#v)", ents)
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("expected 500 to propagate, got %v", err)
+	}
+}
+
+// TestListEntitlements_404ReturnsEmpty confirms a genuine 404 is still
+// treated as "user absent / no entitlements" (nil, nil).
+func TestListEntitlements_404ReturnsEmpty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":"INVALID_DATA","message":"user not found"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), map[string]interface{}{},
+		map[string]interface{}{"access_token": "tok"}, "u-1")
+	if err != nil {
+		t.Fatalf("404 should be soft (nil err), got %v", err)
+	}
+	if len(ents) != 0 {
+		t.Errorf("expected no entitlements, got %#v", ents)
+	}
+}

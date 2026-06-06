@@ -141,12 +141,20 @@ func (c *ZohoCRMAccessConnector) ListEntitlements(ctx context.Context, configRaw
 	if err != nil {
 		return nil, err
 	}
-	body, err := c.do(req)
+	status, body, err := c.doRaw(req)
 	if err != nil {
-		if strings.Contains(err.Error(), "status 404") {
-			return nil, nil
-		}
 		return nil, err
+	}
+	// Branch on the numeric status rather than matching the formatted
+	// error text. A 404 means the user is genuinely absent (no
+	// entitlements); any other non-2xx (e.g. a transient 5xx whose body
+	// might embed "status 404") must propagate so we never mistake a
+	// server failure for "user has no access".
+	if status == http.StatusNotFound {
+		return nil, nil
+	}
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("zoho_crm: list entitlements status %d: %s", status, string(body))
 	}
 	var resp zohoUserDetailResponse
 	if err := json.Unmarshal(body, &resp); err != nil {

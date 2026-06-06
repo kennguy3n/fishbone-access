@@ -210,16 +210,27 @@ func (c *ZoomAccessConnector) newRequest(ctx context.Context, token, method, pat
 }
 
 func (c *ZoomAccessConnector) do(req *http.Request) ([]byte, error) {
+	body, _, err := c.doWithStatus(req)
+	return body, err
+}
+
+// doWithStatus is do() but exposes the upstream HTTP status code as a
+// separate return value so callers (e.g. audit log fetch) can branch on
+// the numeric code instead of string-matching on the formatted error
+// message — which is fragile when an upstream 5xx body happens to embed
+// text like "status 403". On non-2xx the body is still surfaced alongside
+// the error so callers can pass through the upstream diagnostic.
+func (c *ZoomAccessConnector) doWithStatus(req *http.Request) ([]byte, int, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("zoom: %s %s: %w", req.Method, req.URL.Path, err)
+		return nil, 0, fmt.Errorf("zoom: %s %s: %w", req.Method, req.URL.Path, err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("zoom: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return body, resp.StatusCode, fmt.Errorf("zoom: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 	}
-	return body, nil
+	return body, resp.StatusCode, nil
 }
 
 func (c *ZoomAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {

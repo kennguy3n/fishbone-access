@@ -118,6 +118,34 @@ func TestMapZoomActivity_DropsUnparseableTime(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_5xxWithFalsy403Body is a regression test: a 5xx
+// whose body embeds the text "status 403" must propagate as a real error,
+// not be misclassified as ErrAuditNotAvailable (a permanent soft-skip).
+// Previously the handler string-matched err.Error() for "status 403".
+func TestFetchAccessAuditLogs_5xxWithFalsy403Body(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		// Upstream diagnostic that happens to embed the substring.
+		_, _ = w.Write([]byte(`{"message":"gateway error; upstream returned status 403 earlier"}`))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) {
+		return "tok", nil
+	}
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err == access.ErrAuditNotAvailable {
+		t.Fatal("5xx must not be misclassified as ErrAuditNotAvailable")
+	}
+	if err == nil || !strings.Contains(err.Error(), "500") {
+		t.Fatalf("expected 500 to propagate, got %v", err)
+	}
+}
+
 func TestFetchAccessAuditLogs_Unauthorized_SoftSkip(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

@@ -63,9 +63,14 @@ func (c *ZoomAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		body, status, err := c.doWithStatus(req)
 		if err != nil {
-			if strings.Contains(err.Error(), "status 403") || strings.Contains(err.Error(), "status 401") {
+			// Only a genuine auth/authorization rejection means the
+			// account's plan does not expose the activity report. Branch
+			// on the numeric status rather than matching the error text,
+			// which a 5xx body could otherwise spoof into a permanent
+			// soft-skip.
+			if status == http.StatusUnauthorized || status == http.StatusForbidden {
 				return access.ErrAuditNotAvailable
 			}
 			return err
