@@ -118,3 +118,56 @@ func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
 		}
 	}
 }
+
+// TestFetchAccessAuditLogs_SkipsUnparseableLoginTime verifies the mapper
+// drops a login whose login_time is present but unparseable instead of
+// emitting a zero-value (year 0001) timestamp. The partition is zero (a
+// first run), so a zero-timestamp entry would otherwise slip past the
+// entry.Timestamp.After(since) filter and reach downstream consumers.
+func TestFetchAccessAuditLogs_SkipsUnparseableLoginTime(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth2/token":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"access_token": "tok", "expires_in": 3600})
+		case "/user-management/queries/user-login-history/v1":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"resources": []string{"uuid-1"},
+				"meta":      map[string]interface{}{"pagination": map[string]interface{}{"offset": 0, "limit": 200, "total": 1}},
+			})
+		case "/user-management/entities/user-login-history/v1":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"resources": []map[string]interface{}{{
+					"UUID": "uuid-1", "uid": "alice@example.com",
+					"user_logins": []map[string]interface{}{
+						{"user_uuid": "uuid-1", "login_time": "not-a-timestamp", "success": true},
+						{"user_uuid": "uuid-1", "login_time": "2024-01-01T10:00:00Z", "success": true},
+					},
+				}},
+			})
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("collected %d entries, want 1 (unparseable login_time must be dropped)", len(collected))
+	}
+	if collected[0].Timestamp.IsZero() {
+		t.Fatalf("emitted entry has zero timestamp: %+v", collected[0])
+	}
+}

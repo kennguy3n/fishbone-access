@@ -53,6 +53,11 @@ func (c *DigitalOceanAccessConnector) teamMemberURL(team, user string) string {
 	return c.baseURL() + "/v2/teams/" + url.PathEscape(strings.TrimSpace(team)) + "/members/" + url.PathEscape(strings.TrimSpace(user))
 }
 
+// newJSONRequest builds a request (optionally with a JSON body) from a
+// fully-qualified URL — the helpers teamMembersURL / teamMemberURL above
+// already include c.baseURL(). This differs from connector.go's
+// newRequest, which takes a host-relative path and prepends the base URL;
+// pass a complete URL here, not a path.
 func (c *DigitalOceanAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
 	var rdr io.Reader
 	if len(body) > 0 {

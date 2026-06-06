@@ -141,6 +141,14 @@ func mapCrowdStrikeLogin(parent *csUserLoginHistory, e *csUserLogin) *access.Aud
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.LoginTime)
 	}
+	// Drop events whose login_time is present but unparseable. Without
+	// this guard a zero-value (year 0001) timestamp would flow downstream
+	// — and on a first run (since == zero) it slips past the
+	// entry.Timestamp.After(since) filter in FetchAccessAuditLogs. Every
+	// other audit mapper applies the same guard.
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

@@ -81,6 +81,10 @@ func (c *DigitalOceanAccessConnector) client() httpDoer {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+// newRequest builds a bodyless request from a host-relative PATH (e.g.
+// "/v2/team/members?per_page=50"); it prepends c.baseURL(). For requests
+// that need a body, or when you already hold a fully-qualified URL, use
+// newJSONRequest in advanced.go, which takes a complete URL instead.
 func (c *DigitalOceanAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, path string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, nil)
 	if err != nil {
