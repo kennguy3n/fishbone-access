@@ -24,10 +24,6 @@ warn_unused_ignores = false
 warn_redundant_casts = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
-# Default target is the agent source; tests are exercised by pytest and need not
-# carry full annotations (see the per-module override below).
+# Default target (when mypy is run with no args, as CI does) is the agent
+# source only; tests are exercised by pytest and are not type-checked.
 files = ["main.py", "mtls.py", "skills"]
-
-[[tool.mypy.overrides]]
-module = ["tests.*", "conftest", "test_*"]
-disallow_untyped_defs = false
