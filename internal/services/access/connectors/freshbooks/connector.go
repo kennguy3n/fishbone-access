@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -226,7 +227,7 @@ func (c *FreshBooksAccessConnector) SyncIdentities(
 	base := c.baseURL()
 	for {
 		path := fmt.Sprintf("%s/accounting/account/%s/users/staffs?page=%d&per_page=%d",
-			base, cfg.AccountID, page, pageSize)
+			base, url.PathEscape(strings.TrimSpace(cfg.AccountID)), page, pageSize)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err

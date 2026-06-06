@@ -128,3 +128,27 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 		t.Errorf("token_short = %q", short)
 	}
 }
+
+func TestSync_EscapesAccountID(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		b, _ := json.Marshal(map[string]interface{}{
+			"response": map[string]interface{}{
+				"result": map[string]interface{}{"staff": []interface{}{}, "page": 1, "pages": 1, "total": 0},
+			},
+		})
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{"account_id": "acct/12#3"}
+	if err := c.SyncIdentities(context.Background(), cfg, validSecrets(), "", func(_ []*access.Identity, _ string) error { return nil }); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if want := "/accounting/account/acct%2F12%233/users/staffs"; gotPath != want {
+		t.Errorf("escaped path = %q; want %q", gotPath, want)
+	}
+}
