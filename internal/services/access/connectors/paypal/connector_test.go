@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -142,5 +144,125 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	short2, _ := md["client_secret_short"].(string)
 	if short2 == "" || strings.Contains(short2, "CS1234") {
 		t.Errorf("client_secret_short = %q", short2)
+	}
+}
+
+// paypalMerchantPage builds a single page of the merchant-integrations list
+// response with a total large enough to force the requested number of pages.
+func paypalMerchantPage(total int) []byte {
+	b, _ := json.Marshal(map[string]interface{}{
+		"merchant_integrations": []map[string]interface{}{
+			{"merchant_id": "M1", "tracking_id": "biz-1", "primary_email": "m1@x.com", "payments_receivable": true},
+		},
+		"total_items": total,
+	})
+	return b
+}
+
+// TestAccessToken_CachedAcrossPages verifies that when PayPal reports a
+// positive expires_in, a multi-page sync mints the OAuth2 token exactly once
+// and reuses it for every subsequent page instead of re-minting per request.
+func TestAccessToken_CachedAcrossPages(t *testing.T) {
+	var tokenCalls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/oauth2/token" {
+			atomic.AddInt32(&tokenCalls, 1)
+			b, _ := json.Marshal(map[string]interface{}{"access_token": "tok-cache", "token_type": "Bearer", "expires_in": 3600})
+			_, _ = w.Write(b)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer tok-cache" {
+			t.Errorf("expected Bearer tok-cache, got %q", r.Header.Get("Authorization"))
+		}
+		// total_items forces three pages at page_size=pageSize.
+		_, _ = w.Write(paypalMerchantPage(pageSize*2 + 1))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	pages := 0
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		pages++
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if pages != 3 {
+		t.Fatalf("pages = %d; want 3", pages)
+	}
+	if got := atomic.LoadInt32(&tokenCalls); got != 1 {
+		t.Fatalf("token minted %d times; want 1 (token should be cached across pages)", got)
+	}
+}
+
+// TestAccessToken_RefreshesWhenExpired verifies that a cached token past its
+// expiry instant is discarded and a fresh token is minted on the next call.
+func TestAccessToken_RefreshesWhenExpired(t *testing.T) {
+	var tokenCalls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/oauth2/token" {
+			atomic.AddInt32(&tokenCalls, 1)
+			b, _ := json.Marshal(map[string]interface{}{"access_token": "tok-fresh", "expires_in": 3600})
+			_, _ = w.Write(b)
+			return
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	cfg, secrets, err := c.decodeBoth(validConfig(), validSecrets())
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Seed the cache with an already-expired token; accessToken must ignore it.
+	c.tokenCache = map[string]cachedToken{
+		tokenCacheKey(c.baseURL(cfg), secrets): {token: "stale", expiry: time.Now().Add(-time.Minute)},
+	}
+	tok, err := c.accessToken(context.Background(), cfg, secrets)
+	if err != nil {
+		t.Fatalf("accessToken: %v", err)
+	}
+	if tok != "tok-fresh" {
+		t.Fatalf("token = %q; want tok-fresh (expired entry should be refreshed)", tok)
+	}
+	if got := atomic.LoadInt32(&tokenCalls); got != 1 {
+		t.Fatalf("token minted %d times; want 1", got)
+	}
+}
+
+// TestAccessToken_NotCachedWithoutExpiry verifies that when PayPal omits
+// expires_in, the connector conservatively re-mints on each call rather than
+// caching a token whose lifetime is unknown.
+func TestAccessToken_NotCachedWithoutExpiry(t *testing.T) {
+	var tokenCalls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/oauth2/token" {
+			atomic.AddInt32(&tokenCalls, 1)
+			_, _ = w.Write([]byte(`{"access_token":"tok-nocache"}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg, secrets, err := c.decodeBoth(validConfig(), validSecrets())
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := c.accessToken(context.Background(), cfg, secrets); err != nil {
+			t.Fatalf("accessToken: %v", err)
+		}
+	}
+	if got := atomic.LoadInt32(&tokenCalls); got != 3 {
+		t.Fatalf("token minted %d times; want 3 (no expires_in => no caching)", got)
 	}
 }

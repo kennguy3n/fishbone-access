@@ -40,10 +40,6 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 	if err != nil {
 		return err
 	}
-	token, err := c.accessToken(ctx, cfg, secrets)
-	if err != nil {
-		return err
-	}
 	since := sincePartitions[access.DefaultAuditPartition]
 	if since.IsZero() {
 		since = time.Now().UTC().Add(-24 * time.Hour)
@@ -53,6 +49,13 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 	var collected []paypalAuditEvent
 	for page := 1; page <= paypalAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Fetch the token per page (cached) so a long audit pull refreshes
+		// the bearer as it nears expiry rather than reusing one token for
+		// the entire multi-page scan.
+		token, err := c.accessToken(ctx, cfg, secrets)
+		if err != nil {
 			return err
 		}
 		q := url.Values{}

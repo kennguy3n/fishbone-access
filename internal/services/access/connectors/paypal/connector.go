@@ -16,7 +16,9 @@ package paypal
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -33,6 +36,12 @@ import (
 const (
 	ProviderName = "paypal"
 	pageSize     = 50
+
+	// tokenRefreshMargin is subtracted from the OAuth2 token lifetime so a
+	// cached token is refreshed slightly before PayPal would reject it,
+	// avoiding a 401 on a request that races the expiry boundary (e.g. the
+	// last page of a long sync).
+	tokenRefreshMargin = 60 * time.Second
 )
 
 var ErrNotImplemented = fmt.Errorf("paypal: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -51,9 +60,25 @@ type Secrets struct {
 	ClientSecret string `json:"client_secret"`
 }
 
+// cachedToken is an OAuth2 bearer token together with the instant at which
+// it should be considered stale (the real expiry minus tokenRefreshMargin).
+type cachedToken struct {
+	token  string
+	expiry time.Time
+}
+
 type PayPalAccessConnector struct {
 	httpClient  func() httpDoer
 	urlOverride string
+
+	// tokenCache memoizes minted OAuth2 tokens keyed by (base URL +
+	// credentials) so repeated calls — including per-page calls within a
+	// single sync — reuse a live token instead of minting a new one on
+	// every request. The connector is registered as a process-wide
+	// singleton shared across tenants, so the cache MUST be keyed by
+	// credentials to avoid handing one tenant's token to another.
+	tokenMu    sync.Mutex
+	tokenCache map[string]cachedToken
 }
 
 func New() *PayPalAccessConnector { return &PayPalAccessConnector{} }
@@ -163,11 +188,61 @@ func (c *PayPalAccessConnector) decodeBoth(configRaw, secretsRaw map[string]inte
 	return cfg, s, nil
 }
 
+// tokenCacheKey derives a stable, non-reversible cache key from the base
+// URL and credentials. Hashing keeps the raw client secret out of the
+// in-memory map keys.
+func tokenCacheKey(baseURL string, s Secrets) string {
+	sum := sha256.Sum256([]byte(baseURL + "\x00" + strings.TrimSpace(s.ClientID) + "\x00" + strings.TrimSpace(s.ClientSecret)))
+	return hex.EncodeToString(sum[:])
+}
+
+// accessToken returns a valid OAuth2 bearer token, reusing a cached token
+// when one is still within its lifetime and minting a fresh one otherwise.
+// It is safe for concurrent use. Because callers invoke it per request
+// (e.g. once per page of a sync), a token that approaches expiry mid-sync
+// is transparently refreshed rather than producing a 401 partway through.
 func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, secrets Secrets) (string, error) {
+	key := tokenCacheKey(c.baseURL(cfg), secrets)
+	now := time.Now()
+
+	c.tokenMu.Lock()
+	if ct, ok := c.tokenCache[key]; ok && now.Before(ct.expiry) {
+		tok := ct.token
+		c.tokenMu.Unlock()
+		return tok, nil
+	}
+	c.tokenMu.Unlock()
+
+	tok, ttl, err := c.mintToken(ctx, cfg, secrets)
+	if err != nil {
+		return "", err
+	}
+
+	// Only cache when PayPal reports a positive lifetime. Without a known
+	// expiry we cannot tell when the token goes stale, so we conservatively
+	// re-mint on the next call rather than risk serving an expired token.
+	if ttl > 0 {
+		expiry := now.Add(ttl)
+		if ttl > tokenRefreshMargin {
+			expiry = now.Add(ttl - tokenRefreshMargin)
+		}
+		c.tokenMu.Lock()
+		if c.tokenCache == nil {
+			c.tokenCache = make(map[string]cachedToken)
+		}
+		c.tokenCache[key] = cachedToken{token: tok, expiry: expiry}
+		c.tokenMu.Unlock()
+	}
+	return tok, nil
+}
+
+// mintToken performs the OAuth2 client_credentials exchange and returns the
+// bearer token together with its lifetime (0 when PayPal omits expires_in).
+func (c *PayPalAccessConnector) mintToken(ctx context.Context, cfg Config, secrets Secrets) (string, time.Duration, error) {
 	form := url.Values{"grant_type": {"client_credentials"}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL(cfg)+"/v1/oauth2/token", strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
@@ -175,23 +250,24 @@ func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, sec
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(creds)))
 	resp, err := c.doHTTP(req)
 	if err != nil {
-		return "", fmt.Errorf("paypal: oauth2 token: %w", err)
+		return "", 0, fmt.Errorf("paypal: oauth2 token: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("paypal: oauth2 token status %d: %s", resp.StatusCode, string(body))
+		return "", 0, fmt.Errorf("paypal: oauth2 token status %d: %s", resp.StatusCode, string(body))
 	}
 	var out struct {
 		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
-		return "", fmt.Errorf("paypal: decode token: %w", err)
+		return "", 0, fmt.Errorf("paypal: decode token: %w", err)
 	}
 	if out.AccessToken == "" {
-		return "", errors.New("paypal: empty access_token in oauth2 response")
+		return "", 0, errors.New("paypal: empty access_token in oauth2 response")
 	}
-	return out.AccessToken, nil
+	return out.AccessToken, time.Duration(out.ExpiresIn) * time.Second, nil
 }
 
 func (c *PayPalAccessConnector) newRequest(ctx context.Context, token, method, fullURL string) (*http.Request, error) {
@@ -282,10 +358,6 @@ func (c *PayPalAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
-	token, err := c.accessToken(ctx, cfg, secrets)
-	if err != nil {
-		return err
-	}
 	page := 1
 	if checkpoint != "" {
 		_, _ = fmt.Sscanf(checkpoint, "%d", &page)
@@ -295,6 +367,16 @@ func (c *PayPalAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL(cfg)
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Fetch the token per page (cached) so a long, multi-page sync
+		// transparently refreshes the bearer as it approaches expiry
+		// instead of carrying one token that could go stale mid-sync.
+		token, err := c.accessToken(ctx, cfg, secrets)
+		if err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/v1/customer/partners/%s/merchant-integrations?page=%d&page_size=%d", base, url.PathEscape(strings.TrimSpace(cfg.PartnerID)), page, pageSize)
 		req, err := c.newRequest(ctx, token, http.MethodGet, path)
 		if err != nil {
