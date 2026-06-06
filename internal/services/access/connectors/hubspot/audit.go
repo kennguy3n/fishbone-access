@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,12 +53,18 @@ func (c *HubSpotAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		resp, err := c.doRaw(req)
 		if err != nil {
-			if strings.Contains(err.Error(), "status 403") {
-				return access.ErrAuditNotAvailable
-			}
 			return err
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("hubspot: audit logs: status %d: %s", resp.StatusCode, string(body))
 		}
 		var page hubspotAuditPage
 		if err := json.Unmarshal(body, &page); err != nil {

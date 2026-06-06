@@ -6,9 +6,39 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// Regression: audit soft-skip must map 401 and 404 (not only 403) to
+// access.ErrAuditNotAvailable, matching the other connectors. Before
+// the fix, only "status 403" was matched via error-string, so 401/404
+// surfaced as hard failures and triggered repeated worker retries.
+
+func TestFetchAccessAuditLogs_SoftSkipStatuses(t *testing.T) {
+	for _, status := range []int{
+		http.StatusUnauthorized, // 401
+		http.StatusForbidden,    // 403
+		http.StatusNotFound,     // 404
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			}))
+			t.Cleanup(srv.Close)
+			c := New()
+			c.urlOverride = srv.URL
+			c.httpClient = func() httpDoer { return srv.Client() }
+			err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+				map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+				func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+			if err != access.ErrAuditNotAvailable {
+				t.Fatalf("status %d: err = %v; want ErrAuditNotAvailable", status, err)
+			}
+		})
+	}
+}
 
 // Regression: SyncIdentities cursor must be URL-encoded.  Before the
 // fix, a cursor containing "&" was spliced raw, producing a malformed

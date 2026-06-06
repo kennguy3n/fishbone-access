@@ -3,7 +3,29 @@ package helpscout
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
+
+// Regression: parseHelpscoutTime must normalize parsed timestamps to
+// UTC (like every other time parser in the batch) so downstream
+// formatting/serialization is timezone-consistent. A non-UTC offset
+// input must come back with a UTC location.
+
+func TestParseHelpscoutTime_NormalizesToUTC(t *testing.T) {
+	for _, in := range []string{
+		"2024-06-01T11:00:00+07:00",
+		"2024-06-01T11:00:00.250-05:00",
+		"2024-06-01T11:00:00Z",
+	} {
+		got := parseHelpscoutTime(in)
+		if got.IsZero() {
+			t.Fatalf("parseHelpscoutTime(%q) returned zero", in)
+		}
+		if got.Location() != time.UTC {
+			t.Errorf("parseHelpscoutTime(%q) location = %v; want UTC", in, got.Location())
+		}
+	}
+}
 
 // Regression: mapHelpscoutActivity must return nil when the timestamp
 // is empty or unparseable, preventing zero-time audit entries.

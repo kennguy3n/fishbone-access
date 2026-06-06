@@ -112,6 +112,18 @@ func (c *HubSpotAccessConnector) do(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+// doRaw issues the request and returns the raw response so callers can
+// branch on the exact status code (e.g. mapping 401/403/404 to
+// access.ErrAuditNotAvailable) instead of string-matching c.do's error.
+// The caller owns closing resp.Body.
+func (c *HubSpotAccessConnector) doRaw(req *http.Request) (*http.Response, error) {
+	resp, err := c.client().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("hubspot: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	return resp, nil
+}
+
 func (c *HubSpotAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {
 	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
