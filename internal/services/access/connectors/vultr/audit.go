@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -173,27 +174,22 @@ func parseVultrAuditTime(s string) time.Time {
 	return time.Time{}
 }
 
+// readVultrAuditBody reads and bounds the audit-log response body. It must
+// propagate genuine transport read errors (e.g. connection reset /
+// io.ErrUnexpectedEOF mid-stream) rather than returning a truncated body as if
+// it were complete — a partial page silently parsed would drop audit events and
+// could still advance the watermark. io.ReadAll treats io.EOF as success and
+// surfaces every other error.
 func readVultrAuditBody(resp *http.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("vultr: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("vultr: read audit log body: %w", err)
 	}
-	return buf, nil
+	return body, nil
 }
 
 var _ access.AccessAuditor = (*VultrAccessConnector)(nil)

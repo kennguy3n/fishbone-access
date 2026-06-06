@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +13,44 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// partialErrReader yields data once, then fails with a non-EOF transport
+// error to emulate a connection reset mid-stream.
+type partialErrReader struct {
+	data []byte
+	off  int
+	err  error
+}
+
+func (r *partialErrReader) Read(p []byte) (int, error) {
+	if r.off < len(r.data) {
+		n := copy(p, r.data[r.off:])
+		r.off += n
+		return n, nil
+	}
+	return 0, r.err
+}
+
+func (r *partialErrReader) Close() error { return nil }
+
+// TestReadVultrAuditBody_PropagatesReadError guards defect class #7
+// (error swallowing): a genuine transport read failure must surface as an
+// error, not be silently treated as a complete body. Returning a truncated
+// page as success would drop audit events while still allowing the watermark
+// to advance.
+func TestReadVultrAuditBody_PropagatesReadError(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       &partialErrReader{data: []byte(`{"audit_logs":[`), err: io.ErrUnexpectedEOF},
+	}
+	body, err := readVultrAuditBody(resp)
+	if err == nil {
+		t.Fatalf("expected read error to propagate, got nil (body=%q)", string(body))
+	}
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Errorf("error = %v, want wrapped io.ErrUnexpectedEOF", err)
+	}
+}
 
 func vultrAuditSecrets() map[string]interface{} {
 	return map[string]interface{}{"api_key": "vultr-key"}
