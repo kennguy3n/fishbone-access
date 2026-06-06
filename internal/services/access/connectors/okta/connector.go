@@ -287,11 +287,13 @@ func (c *OktaAccessConnector) SyncIdentitiesDelta(
 		if err := handler(batch, removed, nextLink); err != nil {
 			return "", err
 		}
-		// On the last page, Okta returns the final since cursor in the
-		// rel="self" Link header; we reuse the request URL as the
-		// finalDeltaLink for simplicity.
+		// On the last page, reuse the canonical request URL (next) as the
+		// finalDeltaLink — never reqURL, which may have been rewritten to
+		// the httptest host under urlOverride. In production the two are
+		// identical, but persisting the canonical Okta-domain URL keeps the
+		// stored delta cursor valid regardless of test rewriting.
 		if nextLink == "" {
-			finalDeltaLink = reqURL
+			finalDeltaLink = next
 		}
 		next = nextLink
 	}
