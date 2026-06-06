@@ -161,6 +161,11 @@ func parseSophosCentralTime(s string) time.Time {
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
 		return ts.UTC()
 	}
+	// Some provider API versions emit a non-colon timezone offset
+	// (e.g. "+0000"), which RFC3339 parsing rejects; accept it too.
+	if ts, err := time.Parse("2006-01-02T15:04:05-0700", s); err == nil {
+		return ts.UTC()
+	}
 	return time.Time{}
 }
 
