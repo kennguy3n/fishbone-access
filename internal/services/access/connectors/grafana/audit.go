@@ -93,7 +93,7 @@ func (c *GrafanaAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		if len(p.Items) < auditPageSize || p.Items == nil {
+		if len(p.Items) < auditPageSize {
 			return nil
 		}
 		page++
