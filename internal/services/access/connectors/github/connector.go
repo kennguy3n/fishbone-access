@@ -262,8 +262,15 @@ func (c *GitHubAccessConnector) SyncIdentities(
 			if strings.EqualFold(m.Type, "Bot") {
 				idType = access.IdentityTypeServiceAccount
 			}
+			// ExternalID must be the login, not the numeric m.ID: it is
+			// the key every membership operation consumes — ProvisionAccess
+			// / RevokeAccess / RevokeUserSessions / ListEntitlements all
+			// address users via /orgs/{org}/.../memberships/{username},
+			// which is the login. It is also the only user identifier the
+			// audit-log delta path (SyncIdentitiesDelta) can observe, so
+			// keying on the login keeps full and delta syncs reconcilable.
 			identities = append(identities, &access.Identity{
-				ExternalID:  fmt.Sprintf("%d", m.ID),
+				ExternalID:  m.Login,
 				Type:        idType,
 				DisplayName: m.Login,
 				Email:       "",

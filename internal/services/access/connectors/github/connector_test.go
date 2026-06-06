@@ -86,6 +86,12 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("len = %d", len(got))
 	}
+	// ExternalID must be the GitHub login (not the numeric id), so it
+	// matches the delta-sync path and the /memberships/{username} key
+	// consumed by ProvisionAccess/RevokeAccess/RevokeUserSessions.
+	if got[0].ExternalID != "alice" || got[1].ExternalID != "bob" {
+		t.Errorf("ExternalID = %q,%q; want alice,bob", got[0].ExternalID, got[1].ExternalID)
+	}
 	if page < 2 {
 		t.Fatalf("expected pagination, calls = %d", page)
 	}
