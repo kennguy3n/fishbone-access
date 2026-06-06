@@ -1,0 +1,368 @@
+package gateway
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgproto3"
+
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+)
+
+// PostgresProxy is the gateway.ConnHandler for the PostgreSQL listener (:5432).
+// It terminates the operator's wire-protocol handshake at the gateway: the
+// operator presents a one-shot connect token in the password field, which the
+// proxy redeems. The proxy then connects to the upstream cluster with the
+// JIT-injected vault credential (pgconn handles SCRAM-SHA-256/MD5/TLS), hijacks
+// the authenticated connection, and splices the two protocol streams. Every
+// Simple-Query and extended-protocol Parse is gated against the 1C policy
+// engine and appended to the workspace audit hash chain before it reaches the
+// cluster.
+type PostgresProxy struct {
+	broker      *pam.Broker
+	sessions    *pam.SessionManager
+	hub         *SessionHub
+	store       ReplayStore
+	dialTimeout time.Duration
+	recMaxBytes int
+}
+
+// PostgresProxyConfig configures a PostgresProxy.
+type PostgresProxyConfig struct {
+	Broker      *pam.Broker
+	Sessions    *pam.SessionManager
+	Hub         *SessionHub
+	Store       ReplayStore
+	DialTimeout time.Duration
+	RecMaxBytes int
+}
+
+// NewPostgresProxy builds a PostgresProxy.
+func NewPostgresProxy(cfg PostgresProxyConfig) (*PostgresProxy, error) {
+	if cfg.Broker == nil || cfg.Sessions == nil {
+		return nil, errors.New("gateway: PostgresProxy requires broker and session manager")
+	}
+	dt := cfg.DialTimeout
+	if dt <= 0 {
+		dt = 15 * time.Second
+	}
+	return &PostgresProxy{
+		broker:      cfg.Broker,
+		sessions:    cfg.Sessions,
+		hub:         cfg.Hub,
+		store:       cfg.Store,
+		dialTimeout: dt,
+		recMaxBytes: cfg.RecMaxBytes,
+	}, nil
+}
+
+// Handle implements gateway.ConnHandler.
+func (p *PostgresProxy) Handle(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+	clientAddr := conn.RemoteAddr().String()
+	backend := pgproto3.NewBackend(conn, conn)
+
+	startup, err := p.readStartup(backend, conn)
+	if err != nil {
+		logger.Warnf(ctx, "pg-proxy: startup from %s failed: %v", clientAddr, err)
+		return
+	}
+	if startup == nil {
+		// Client only probed SSL/GSS and disconnected.
+		return
+	}
+
+	token, err := p.authenticate(backend)
+	if err != nil {
+		writeFatal(backend, "28P01", "connect token rejected")
+		logger.Warnf(ctx, "pg-proxy: auth from %s failed: %v", clientAddr, err)
+		return
+	}
+	leased, err := p.broker.RedeemConnectToken(ctx, token, clientAddr)
+	if err != nil {
+		writeFatal(backend, "28P01", "connect token rejected")
+		logger.Warnf(ctx, "pg-proxy: redeem from %s failed: %v", clientAddr, err)
+		return
+	}
+	if leased.Target.Protocol != models.PAMProtocolPostgres {
+		writeFatal(backend, "08P01", "token is not for a postgres target")
+		return
+	}
+	session := leased.Session
+	logger.Infof(ctx, "pg-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
+
+	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
+	sessCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if p.hub != nil {
+		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
+	}
+	defer func() {
+		flushCtx, fcancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+		defer fcancel()
+		if err := rec.Flush(flushCtx, p.store); err != nil {
+			logger.Warnf(ctx, "pg-proxy: flush replay %s: %v", session.ID, err)
+		}
+		if err := p.sessions.CloseSession(flushCtx, session.WorkspaceID, session.ID); err != nil {
+			logger.Warnf(ctx, "pg-proxy: close session %s: %v", session.ID, err)
+		}
+	}()
+
+	hj, err := p.dialUpstream(sessCtx, leased, startupDatabase(startup))
+	if err != nil {
+		writeFatal(backend, "08006", "upstream connection failed")
+		rec.Annotate(fmt.Sprintf("[upstream connect failed: %v]", err))
+		logger.Warnf(ctx, "pg-proxy: upstream %s: %v", leased.Target.Address, err)
+		return
+	}
+	defer hj.Conn.Close()
+
+	if err := p.completeOperatorAuth(backend, hj); err != nil {
+		logger.Warnf(ctx, "pg-proxy: complete operator auth: %v", err)
+		return
+	}
+
+	p.splice(sessCtx, backend, hj, session, rec, cancel)
+}
+
+// readStartup reads the operator's startup phase, answering SSLRequest and
+// GSSEncRequest negotiations with a refusal ('N') so the client retries in
+// plaintext. It returns the StartupMessage, or nil when the client only probed
+// and hung up.
+func (p *PostgresProxy) readStartup(backend *pgproto3.Backend, conn net.Conn) (*pgproto3.StartupMessage, error) {
+	for {
+		msg, err := backend.ReceiveStartupMessage()
+		if err != nil {
+			return nil, fmt.Errorf("receive startup: %w", err)
+		}
+		switch m := msg.(type) {
+		case *pgproto3.StartupMessage:
+			return m, nil
+		case *pgproto3.SSLRequest, *pgproto3.GSSEncRequest:
+			// Refuse encryption negotiation; the client falls back to plaintext.
+			if _, err := conn.Write([]byte("N")); err != nil {
+				return nil, fmt.Errorf("refuse ssl: %w", err)
+			}
+		case *pgproto3.CancelRequest:
+			// A cancel request is a one-shot out-of-band connection; nothing to
+			// proxy here.
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("unexpected startup message %T", msg)
+		}
+	}
+}
+
+// authenticate requests a cleartext password (the operator's connect token) and
+// returns it.
+func (p *PostgresProxy) authenticate(backend *pgproto3.Backend) (string, error) {
+	backend.Send(&pgproto3.AuthenticationCleartextPassword{})
+	if err := backend.Flush(); err != nil {
+		return "", fmt.Errorf("send auth request: %w", err)
+	}
+	if err := backend.SetAuthType(pgproto3.AuthTypeCleartextPassword); err != nil {
+		return "", fmt.Errorf("set auth type: %w", err)
+	}
+	msg, err := backend.Receive()
+	if err != nil {
+		return "", fmt.Errorf("receive password: %w", err)
+	}
+	pw, ok := msg.(*pgproto3.PasswordMessage)
+	if !ok {
+		return "", fmt.Errorf("expected password message, got %T", msg)
+	}
+	return pw.Password, nil
+}
+
+// dialUpstream connects to the target with the injected credential and hijacks
+// the authenticated connection for splicing.
+func (p *PostgresProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, database string) (*pgconn.HijackedConn, error) {
+	host, port, err := net.SplitHostPort(leased.Target.Address)
+	if err != nil {
+		return nil, fmt.Errorf("parse target address: %w", err)
+	}
+	user := leased.Target.Username
+	if user == "" {
+		user = leased.Secret.Username
+	}
+	if database == "" {
+		database = decodeTargetConfig(leased.Target.Config)["database"]
+	}
+	if database == "" {
+		database = user
+	}
+
+	cfg, err := pgconn.ParseConfig("")
+	if err != nil {
+		return nil, fmt.Errorf("base config: %w", err)
+	}
+	cfg.Host = host
+	cfg.Port = parsePort(port)
+	cfg.User = user
+	cfg.Password = leased.Secret.Password
+	cfg.Database = database
+	cfg.ConnectTimeout = p.dialTimeout
+	// pgconn negotiates TLS per the server's capabilities; leave TLSConfig at
+	// the parsed default (sslmode=prefer) so an encrypted upstream is used when
+	// available without failing a plaintext-only target.
+
+	dialCtx, dcancel := context.WithTimeout(ctx, p.dialTimeout)
+	defer dcancel()
+	pgConn, err := pgconn.ConnectConfig(dialCtx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("connect upstream: %w", err)
+	}
+	if err := pgConn.SyncConn(dialCtx); err != nil {
+		_ = pgConn.Close(dialCtx)
+		return nil, fmt.Errorf("sync upstream: %w", err)
+	}
+	hj, err := pgConn.Hijack()
+	if err != nil {
+		_ = pgConn.Close(dialCtx)
+		return nil, fmt.Errorf("hijack upstream: %w", err)
+	}
+	return hj, nil
+}
+
+// completeOperatorAuth tells the operator the login succeeded, replaying the
+// upstream's reported parameters and backend key so the operator's client sees
+// a normal post-authentication handshake.
+func (p *PostgresProxy) completeOperatorAuth(backend *pgproto3.Backend, hj *pgconn.HijackedConn) error {
+	backend.Send(&pgproto3.AuthenticationOk{})
+	for name, value := range hj.ParameterStatuses {
+		backend.Send(&pgproto3.ParameterStatus{Name: name, Value: value})
+	}
+	backend.Send(&pgproto3.BackendKeyData{ProcessID: hj.PID, SecretKey: hj.SecretKey})
+	backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
+	if err := backend.Flush(); err != nil {
+		return fmt.Errorf("flush operator auth-ok: %w", err)
+	}
+	return nil
+}
+
+// splice runs the two protocol-bridging loops until either side closes.
+func (p *PostgresProxy) splice(ctx context.Context, backend *pgproto3.Backend, hj *pgconn.HijackedConn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
+	frontend := hj.Frontend
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer cancel()
+		p.forwardOperatorToUpstream(ctx, backend, frontend, session, rec)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer cancel()
+		forwardUpstreamToOperator(backend, frontend, rec)
+	}()
+
+	go func() {
+		<-ctx.Done()
+		_ = hj.Conn.Close()
+	}()
+
+	wg.Wait()
+}
+
+// forwardOperatorToUpstream relays frontend messages, gating queries.
+func (p *PostgresProxy) forwardOperatorToUpstream(ctx context.Context, backend *pgproto3.Backend, frontend *pgproto3.Frontend, session *models.PAMSession, rec *IORecorder) {
+	for {
+		msg, err := backend.Receive()
+		if err != nil {
+			return
+		}
+		switch m := msg.(type) {
+		case *pgproto3.Query:
+			if !p.gate(ctx, backend, session, rec, m.String) {
+				continue
+			}
+		case *pgproto3.Parse:
+			if !p.gate(ctx, backend, session, rec, m.Query) {
+				continue
+			}
+		case *pgproto3.Terminate:
+			frontend.Send(m)
+			_ = frontend.Flush()
+			return
+		}
+		frontend.Send(msg)
+		if err := frontend.Flush(); err != nil {
+			return
+		}
+	}
+}
+
+// gate evaluates one SQL statement against policy, recording it. On deny it
+// synthesises an ErrorResponse + ReadyForQuery back to the operator (so libpq
+// stays in a healthy state) and returns false to signal "do not forward".
+func (p *PostgresProxy) gate(ctx context.Context, backend *pgproto3.Backend, session *models.PAMSession, rec *IORecorder, sql string) bool {
+	rec.Record(DirInput, []byte(sql+"\n"))
+	decision, err := p.sessions.LogCommand(ctx, session, sql)
+	if err != nil || !decision.Allowed() {
+		reason := decision.Reason
+		if reason == "" {
+			reason = "denied by command policy"
+		}
+		rec.Annotate(fmt.Sprintf("[query denied: %s]", reason))
+		backend.Send(&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42501", Message: "pam-gateway: " + reason})
+		backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
+		_ = backend.Flush()
+		return false
+	}
+	return true
+}
+
+// forwardUpstreamToOperator relays backend messages to the operator, recording
+// command tags and errors into the session transcript.
+func forwardUpstreamToOperator(backend *pgproto3.Backend, frontend *pgproto3.Frontend, rec *IORecorder) {
+	for {
+		msg, err := frontend.Receive()
+		if err != nil {
+			return
+		}
+		switch m := msg.(type) {
+		case *pgproto3.CommandComplete:
+			rec.Record(DirOutput, append([]byte("-- "), append(m.CommandTag, '\n')...))
+		case *pgproto3.ErrorResponse:
+			rec.Record(DirOutput, []byte(fmt.Sprintf("-- ERROR %s: %s\n", m.Code, m.Message)))
+		}
+		backend.Send(msg)
+		if err := backend.Flush(); err != nil {
+			return
+		}
+	}
+}
+
+// writeFatal sends a fatal ErrorResponse to the operator before disconnecting.
+func writeFatal(backend *pgproto3.Backend, code, message string) {
+	backend.Send(&pgproto3.ErrorResponse{Severity: "FATAL", Code: code, Message: "pam-gateway: " + message})
+	_ = backend.Flush()
+}
+
+// startupDatabase extracts the requested database from a startup message.
+func startupDatabase(startup *pgproto3.StartupMessage) string {
+	if startup == nil {
+		return ""
+	}
+	return strings.TrimSpace(startup.Parameters["database"])
+}
+
+// parsePort converts a port string to uint16, defaulting to 5432 on error.
+func parsePort(s string) uint16 {
+	var n int
+	if _, err := fmt.Sscanf(s, "%d", &n); err != nil || n <= 0 || n > 65535 {
+		return 5432
+	}
+	return uint16(n)
+}
