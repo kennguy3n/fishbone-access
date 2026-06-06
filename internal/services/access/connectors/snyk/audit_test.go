@@ -1,6 +1,7 @@
 package snyk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -79,6 +80,36 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 	if collected[1].TargetExternalID != "p-100" {
 		t.Errorf("entry 1 = %+v", collected[1])
+	}
+}
+
+// TestSnykDoRaw_CapsBodyAt1MB pins the io.LimitReader body cap shared by the
+// stripe/sumo_logic/tailscale audit readers. The previous manual chunked-read
+// loop broke only *after* exceeding 1 MB, overshooting by up to one 16 KB
+// buffer; LimitReader stops at exactly 1 MB.
+func TestSnykDoRaw_CapsBodyAt1MB(t *testing.T) {
+	const oversized = (1 << 20) + (1 << 16) // 1 MB + 64 KB
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(bytes.Repeat([]byte("a"), oversized))
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, status, err := snykDoRaw(c, req)
+	if err != nil {
+		t.Fatalf("snykDoRaw: %v", err)
+	}
+	if status != http.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	if len(body) != 1<<20 {
+		t.Fatalf("body len = %d; want exactly %d (1 MB LimitReader cap, no overshoot)", len(body), 1<<20)
 	}
 }
 

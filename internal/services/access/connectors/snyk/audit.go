@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -108,19 +109,13 @@ func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("snyk: %s %s: %w", req.Method, req.URL.Path, err)
 	}
 	defer resp.Body.Close()
-	body := make([]byte, 0, 1<<16)
-	buf := make([]byte, 1<<14)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			body = append(body, buf[:n]...)
-		}
-		if rerr != nil {
-			break
-		}
-		if len(body) > 1<<20 {
-			break
-		}
+	// Match the strict 1 MB cap the rest of the connector applies via
+	// io.LimitReader, keeping the audit path consistent with stripe/
+	// sumo_logic/tailscale and avoiding the up-to-16 KB overshoot of a
+	// manual chunked read.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("snyk: %s %s: read body: %w", req.Method, req.URL.Path, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, resp.StatusCode, fmt.Errorf("snyk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
