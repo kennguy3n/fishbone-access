@@ -307,21 +307,29 @@ func (c *NotionAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if err != nil {
 		return nil, err
 	}
-	body, err := c.do(req)
+	resp, err := c.client().Do(req)
 	if err != nil {
+		return nil, fmt.Errorf("notion: list entitlements: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode == http.StatusNotFound {
 		return nil, nil
 	}
-	var resp struct {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("notion: list entitlements: status %d: %s", resp.StatusCode, string(body))
+	}
+	var out struct {
 		Type string `json:"type"`
 		Name string `json:"name"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, fmt.Errorf("notion: list entitlements: decode response: %w", err)
+	}
+	if out.Type == "" {
 		return nil, nil
 	}
-	if resp.Type == "" {
-		return nil, nil
-	}
-	return []access.Entitlement{{ResourceExternalID: userExternalID, Role: resp.Type, Source: "direct"}}, nil
+	return []access.Entitlement{{ResourceExternalID: userExternalID, Role: out.Type, Source: "direct"}}, nil
 }
 
 // GetSSOMetadata returns the operator-supplied SAML metadata URL if

@@ -149,6 +149,9 @@ func mapNotionAuditEvent(e *notionAuditEvent) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseNotionTime(e.Timestamp)
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

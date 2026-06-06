@@ -104,3 +104,19 @@ func TestFetchAccessAuditLogs_ProviderError(t *testing.T) {
 		t.Fatalf("err = ErrAuditNotAvailable; want generic error")
 	}
 }
+
+func TestMapNetSuiteSystemNote_DropsUnparseableTimestamp(t *testing.T) {
+	// A non-empty but unparseable date must not produce a zero-timestamp entry.
+	got := mapNetSuiteSystemNote(&netsuiteSystemNote{ID: "n1", Type: "Create", Date: "01/02/2024 10:00", Record: "employee-7"})
+	if got != nil {
+		t.Fatalf("expected nil for unparseable timestamp, got %+v", got)
+	}
+}
+
+func TestMapNetSuiteSystemNote_DropsEmptyID(t *testing.T) {
+	// A valid date but empty id must be dropped so EventID is never empty.
+	got := mapNetSuiteSystemNote(&netsuiteSystemNote{ID: "   ", Type: "Create", Date: "2024-02-01T10:00:00Z", Record: "employee-7"})
+	if got != nil {
+		t.Fatalf("expected nil for empty event id, got %+v", got)
+	}
+}

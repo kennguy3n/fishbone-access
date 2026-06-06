@@ -107,12 +107,15 @@ type netsuiteSystemNote struct {
 }
 
 func mapNetSuiteSystemNote(n *netsuiteSystemNote) *access.AuditLogEntry {
-	if n == nil || strings.TrimSpace(n.Date) == "" {
+	if n == nil || strings.TrimSpace(n.ID) == "" {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339Nano, n.Date)
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, n.Date)
+	}
+	if ts.IsZero() {
+		return nil
 	}
 	raw, _ := json.Marshal(n)
 	rawMap := map[string]interface{}{}

@@ -230,3 +230,21 @@ func TestListEntitlements_Empty(t *testing.T) {
 		t.Fatalf("got %d, want 0", len(got))
 	}
 }
+
+func TestListEntitlements_PropagatesError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"object":"error","status":500}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), nil, validSecrets(), "u-1")
+	if err == nil {
+		t.Fatal("expected HTTP error to propagate, got nil")
+	}
+	if got != nil {
+		t.Fatalf("expected nil entitlements on error, got %+v", got)
+	}
+}

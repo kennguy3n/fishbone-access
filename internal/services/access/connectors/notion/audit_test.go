@@ -144,3 +144,11 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+func TestMapNotionAuditEvent_DropsUnparseableTimestamp(t *testing.T) {
+	// A non-empty but unparseable timestamp must not produce a zero-timestamp entry.
+	e := &notionAuditEvent{ID: "evt-1", EventType: "user.invited", Timestamp: "01/02/2024"}
+	if got := mapNotionAuditEvent(e); got != nil {
+		t.Fatalf("expected nil for unparseable timestamp, got %+v", got)
+	}
+}
