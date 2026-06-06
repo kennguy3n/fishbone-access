@@ -629,6 +629,10 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 	if len(resp.Value) > 0 && len(resp.Value[0].PasswordCredentials) > 0 {
 		creds := resp.Value[0].PasswordCredentials
 		earliest := ""
+		// Microsoft Graph always returns endDateTime as a UTC ISO 8601
+		// instant with the trailing Z (e.g. 2027-06-15T00:00:00Z), so a
+		// lexicographic min over the consistent format yields the
+		// earliest expiry without parsing.
 		for _, c := range creds {
 			if c.EndDateTime != "" && (earliest == "" || c.EndDateTime < earliest) {
 				earliest = c.EndDateTime
