@@ -695,7 +695,11 @@ func doJSON(client httpDoer, req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("google_workspace: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	// Cap the success-path read so a pathologically large response (e.g. a
+	// domain with hundreds of thousands of users) cannot drive unbounded
+	// memory allocation. 50 MiB comfortably exceeds a maxResults=500 page
+	// of Directory API JSON while still bounding worst-case usage.
+	return io.ReadAll(io.LimitReader(resp.Body, 50<<20))
 }
 
 func mapDirectoryUsers(users []directoryUser) []*access.Identity {

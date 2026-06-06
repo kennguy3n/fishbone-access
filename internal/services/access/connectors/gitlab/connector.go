@@ -379,7 +379,15 @@ func (c *GitLabAccessConnector) ListEntitlements(
 	}
 	resp, err := c.doRaw(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr // entitlement-not-found is a soft signal; surface as empty list per ListEntitlements contract
+		// 404 means the user is not a member of the group — a soft signal
+		// that maps cleanly to "no entitlements". Any other status (403,
+		// 5xx, ...) or a transport error means we could not determine
+		// membership, so surface it rather than masking a real failure as
+		// an empty list.
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var m struct {
 		AccessLevel int    `json:"access_level"`
