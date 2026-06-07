@@ -478,7 +478,9 @@ func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
 // enumerated (mirrors the audit.go re-anchor behavior).
 func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
 	var srv *httptest.Server
+	pages := 0
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
 		if r.URL.Query().Get("$skiptoken") == "PAGE2" {
 			_, _ = w.Write([]byte(`{"value":[{"id":"ra2","name":"ra2","properties":{"roleDefinitionId":"role-2","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
 			return
@@ -498,6 +500,9 @@ func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
 	}
 	if len(got) != 2 || got[0].ResourceExternalID != "role-1" || got[1].ResourceExternalID != "role-2" {
 		t.Fatalf("expected 2 roles across 2 pages, got = %+v", got)
+	}
+	if pages != 2 {
+		t.Fatalf("expected 2 paged requests, got %d", pages)
 	}
 }
 
