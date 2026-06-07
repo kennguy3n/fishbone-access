@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -93,6 +94,45 @@ func TestNetlifyMemberPathConsistency(t *testing.T) {
 		if !strings.HasPrefix(p, memberPath) {
 			t.Errorf("request path %q does not match Netlify spec member endpoint %q", p, memberPath)
 		}
+	}
+}
+
+// TestNetlifyBaseOpsEscapeSlug is a regression test for the bug where the base
+// operations (Connect/CountIdentities/SyncIdentities) concatenated the account
+// slug into the URL path raw, while the advanced/audit operations escaped it via
+// membersURL/url.PathEscape. AccountSlug is not charset-validated, so a slug
+// carrying URL-special characters produced divergent paths between base and
+// advanced ops. After the fix every callsite routes through membersPath, so the
+// slug is percent-escaped identically everywhere.
+func TestNetlifyBaseOpsEscapeSlug(t *testing.T) {
+	// A slash is the discriminator: url.Parse leaves a raw '/' as a path
+	// separator, but url.PathEscape encodes it as %2F. So the pre-fix raw
+	// concatenation and the post-fix escaped path differ structurally.
+	const slug = "ac/me"
+	wantPath := "/api/v1/" + url.PathEscape(slug) + "/members"
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{"account_slug": slug}
+	secrets := map[string]interface{}{"access_token": "netlify-token-AAAA"}
+
+	if err := c.Connect(context.Background(), cfg, secrets); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	// The base-op path must match the escaped form the advanced ops emit.
+	if gotPath != wantPath {
+		t.Errorf("base-op path = %q; want %q (slug must be PathEscaped consistently with advanced ops)", gotPath, wantPath)
+	}
+	if advanced := strings.TrimPrefix(c.membersURL(slug), c.baseURL()); advanced != wantPath {
+		t.Errorf("advanced membersURL path = %q; want %q", advanced, wantPath)
 	}
 }
 

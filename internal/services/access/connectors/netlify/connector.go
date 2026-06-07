@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -100,6 +101,17 @@ func (c *NetlifyAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// membersPath builds the account-members request path with the slug
+// percent-escaped. Both the base operations (Connect/CountIdentities/
+// SyncIdentities) and the advanced membersURL helper route through this so the
+// slug is escaped exactly once and identically everywhere — previously the base
+// ops concatenated cfg.AccountSlug raw while advanced/audit escaped it, so a
+// slug with URL-special characters produced divergent paths between the two
+// (and AccountSlug is not charset-validated).
+func (c *NetlifyAccessConnector) membersPath(slug string) string {
+	return "/api/v1/" + url.PathEscape(strings.TrimSpace(slug)) + "/members"
+}
+
 func (c *NetlifyAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
@@ -153,7 +165,7 @@ func (c *NetlifyAccessConnector) Connect(ctx context.Context, configRaw, secrets
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.membersPath(cfg.AccountSlug))
 	if err != nil {
 		return err
 	}
@@ -187,7 +199,7 @@ func (c *NetlifyAccessConnector) CountIdentities(ctx context.Context, configRaw,
 	if err != nil {
 		return 0, err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.membersPath(cfg.AccountSlug))
 	if err != nil {
 		return 0, err
 	}
@@ -212,7 +224,7 @@ func (c *NetlifyAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.membersPath(cfg.AccountSlug))
 	if err != nil {
 		return err
 	}
