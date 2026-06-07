@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 func (c *TailscaleAccessConnector) RevokeUserSessions(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) error {
@@ -75,7 +76,7 @@ func (c *TailscaleAccessConnector) RevokeUserSessions(ctx context.Context, confi
 			return nil
 		}
 	}
-	return fmt.Errorf("tailscale: session revoke: status %d: %s", resp.StatusCode, formatErrorBody(body))
+	return fmt.Errorf("tailscale: session revoke: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 }
 
 var _ access.SessionRevoker = (*TailscaleAccessConnector)(nil)

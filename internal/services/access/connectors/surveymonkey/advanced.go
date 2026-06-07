@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for surveymonkey:
@@ -96,9 +97,9 @@ func (c *SurveyMonkeyAccessConnector) ProvisionAccess(ctx context.Context, confi
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveymonkey: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("surveymonkey: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("surveymonkey: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("surveymonkey: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -124,9 +125,9 @@ func (c *SurveyMonkeyAccessConnector) RevokeAccess(ctx context.Context, configRa
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveymonkey: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("surveymonkey: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("surveymonkey: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("surveymonkey: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -151,7 +152,7 @@ func (c *SurveyMonkeyAccessConnector) ListEntitlements(ctx context.Context, conf
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("surveymonkey: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("surveymonkey: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var m struct {
 		ID    string `json:"id"`

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for Squarespace:
@@ -96,9 +97,9 @@ func (c *SquarespaceAccessConnector) ProvisionAccess(ctx context.Context, config
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("squarespace: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("squarespace: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("squarespace: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("squarespace: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -124,9 +125,9 @@ func (c *SquarespaceAccessConnector) RevokeAccess(ctx context.Context, configRaw
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("squarespace: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("squarespace: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("squarespace: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("squarespace: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -151,7 +152,7 @@ func (c *SquarespaceAccessConnector) ListEntitlements(ctx context.Context, confi
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("squarespace: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("squarespace: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var resp struct {
 		ID    string `json:"id"`

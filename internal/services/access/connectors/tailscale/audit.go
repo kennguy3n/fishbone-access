@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // FetchAccessAuditLogs streams Tailscale tailnet "configuration audit"
@@ -67,7 +68,7 @@ func (c *TailscaleAccessConnector) FetchAccessAuditLogs(
 		return access.ErrAuditNotAvailable
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("tailscale: audit log: status %d: %s", resp.StatusCode, formatErrorBody(body))
+		return fmt.Errorf("tailscale: audit log: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 	}
 	// This endpoint is not paginated (no cursor/next token), so the whole
 	// window arrives in one body. If it exceeds the read cap the JSON is

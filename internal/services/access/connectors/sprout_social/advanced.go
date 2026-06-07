@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for Sprout Social /v1/users:
@@ -96,9 +97,9 @@ func (c *SproutSocialAccessConnector) ProvisionAccess(ctx context.Context, confi
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sprout_social: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sprout_social: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("sprout_social: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sprout_social: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -124,9 +125,9 @@ func (c *SproutSocialAccessConnector) RevokeAccess(ctx context.Context, configRa
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sprout_social: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sprout_social: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("sprout_social: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sprout_social: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -151,7 +152,7 @@ func (c *SproutSocialAccessConnector) ListEntitlements(ctx context.Context, conf
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("sprout_social: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("sprout_social: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var resp struct {
 		User struct {

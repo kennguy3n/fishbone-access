@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for stripe (Connect):
@@ -108,9 +109,9 @@ func (c *StripeAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("stripe: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("stripe: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("stripe: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("stripe: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -132,9 +133,9 @@ func (c *StripeAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("stripe: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("stripe: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("stripe: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("stripe: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -160,7 +161,7 @@ func (c *StripeAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("stripe: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("stripe: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var envelope struct {
 		Data []struct {

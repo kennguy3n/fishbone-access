@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for Sumo Logic:
@@ -92,9 +93,9 @@ func (c *SumoLogicAccessConnector) ProvisionAccess(ctx context.Context, configRa
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sumo_logic: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sumo_logic: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("sumo_logic: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sumo_logic: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -124,9 +125,9 @@ func (c *SumoLogicAccessConnector) RevokeAccess(ctx context.Context, configRaw, 
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sumo_logic: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sumo_logic: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("sumo_logic: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("sumo_logic: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -153,7 +154,7 @@ func (c *SumoLogicAccessConnector) ListEntitlements(ctx context.Context, configR
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("sumo_logic: list user status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("sumo_logic: list user status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var resp struct {
 		ID      string   `json:"id"`

@@ -1,4 +1,4 @@
-package stripe
+package httputil
 
 import (
 	"fmt"
@@ -6,36 +6,40 @@ import (
 	"unicode/utf8"
 )
 
-// formatErrorBody scrubs an upstream HTTP error body before it is
-// embedded in an error message. A reverse proxy or load balancer in
-// front of the provider API can return an HTML/XML error page whose
-// body may carry sensitive metadata (trace IDs, cookie names, internal
-// hostnames). Echoing the raw body into an error string would leak that
-// metadata into operator dashboards and logs. The provider's own JSON
-// error envelope is preserved (capped and truncated on a UTF-8 rune
-// boundary), while any non-JSON payload is reduced to a kind/length
-// hint. This mirrors the Splunk connector's formatErrorBody so every
-// connector presents the same safe error surface.
+// SafeErrorBody scrubs an upstream HTTP error body before it is embedded
+// in an error message. A reverse proxy or load balancer in front of the
+// provider API can return an HTML/XML error page whose body may carry
+// sensitive metadata (trace IDs, cookie names, internal hostnames).
+// Echoing the raw body into an error string would leak that metadata
+// into operator dashboards and logs. The provider's own JSON error
+// envelope is preserved (capped and truncated on a UTF-8 rune boundary
+// so downstream log pipelines never see invalid UTF-8), while any
+// non-JSON payload is reduced to a kind/length hint.
+//
+// This is the shared implementation every connector calls; it replaces
+// the per-connector formatErrorBody copies so a change to the scrubbing
+// or kind-detection logic is made in exactly one place.
 const errorBodyJSONCap = 4 << 10
 
-func formatErrorBody(body []byte) string {
+func SafeErrorBody(body []byte) string {
 	if len(body) == 0 {
 		return "(empty)"
 	}
-	if bodyKind(body) == "json" {
+	kind := bodyKind(body)
+	if kind == "json" {
 		if len(body) > errorBodyJSONCap {
 			return truncateAtRune(body, errorBodyJSONCap) + " …(truncated)"
 		}
 		return string(body)
 	}
-	return fmt.Sprintf("(kind=%s, len=%d)", bodyKind(body), len(body))
+	return fmt.Sprintf("(kind=%s, len=%d)", kind, len(body))
 }
 
 // truncateAtRune returns the longest prefix of body of length <= max
 // that ends on a valid UTF-8 rune boundary, so a multi-byte rune split
-// by the cap never yields an invalid-UTF-8 error surface (downstream
-// log pipelines reject invalid UTF-8 strictly). When max >= len(body)
-// the whole body is returned without indexing past the slice end.
+// by the cap never yields an invalid-UTF-8 error surface. When
+// max >= len(body) the whole body is returned without indexing past the
+// slice end.
 func truncateAtRune(body []byte, max int) string {
 	if max >= len(body) {
 		return string(body)

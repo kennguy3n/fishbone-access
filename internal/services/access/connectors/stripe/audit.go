@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // stripeAuditMaxPages bounds a single sweep to ~20k events. Stripe
@@ -92,7 +93,7 @@ func (c *StripeAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("stripe: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
+			return fmt.Errorf("stripe: audit events: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 		}
 		var pageData stripeEventPage
 		if err := json.Unmarshal(body, &pageData); err != nil {

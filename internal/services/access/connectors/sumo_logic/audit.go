@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // sumoAuditMaxPages bounds a single audit sweep as a defense-in-depth
@@ -77,7 +78,7 @@ func (c *SumoLogicAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("sumo_logic: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
+			return fmt.Errorf("sumo_logic: audit events: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 		}
 		var p sumoAuditPage
 		if err := json.Unmarshal(body, &p); err != nil {

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for tailscale:
@@ -98,9 +99,9 @@ func (c *TailscaleAccessConnector) ProvisionAccess(ctx context.Context, configRa
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("tailscale: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("tailscale: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("tailscale: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("tailscale: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -128,9 +129,9 @@ func (c *TailscaleAccessConnector) RevokeAccess(ctx context.Context, configRaw, 
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("tailscale: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("tailscale: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("tailscale: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("tailscale: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -155,7 +156,7 @@ func (c *TailscaleAccessConnector) ListEntitlements(ctx context.Context, configR
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("tailscale: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("tailscale: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var envelope struct {
 		Devices []struct {

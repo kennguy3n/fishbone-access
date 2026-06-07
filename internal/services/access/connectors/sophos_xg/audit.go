@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -66,7 +67,7 @@ func (c *SophosXGAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("sophos_xg: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
+			return fmt.Errorf("sophos_xg: audit events: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 		}
 		var envelope sophosXGAuditPage
 		if err := json.Unmarshal(body, &envelope); err != nil {

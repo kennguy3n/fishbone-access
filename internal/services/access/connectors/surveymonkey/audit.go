@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -67,7 +68,7 @@ func (c *SurveyMonkeyAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("surveymonkey: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
+			return fmt.Errorf("surveymonkey: audit events: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 		}
 		var envelope surveymonkeyAuditPage
 		if err := json.Unmarshal(body, &envelope); err != nil {
