@@ -95,6 +95,12 @@ func NewReviewScheduler(engine sweepScheduler, lister workspaceLister, cfg Revie
 func (s *ReviewScheduler) Run(ctx context.Context) error {
 	ticker := time.NewTicker(s.cfg.Interval)
 	defer ticker.Stop()
+	// Honour an already-cancelled context before the immediate sweep so a
+	// shutdown that races start-up enqueues no work ("no work after
+	// cancellation"), rather than firing one best-effort round on the way down.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.runOnce(ctx)
 	for {
 		select {
