@@ -17,13 +17,18 @@ import (
 
 var (
 	scimClientOnce sync.Once
+	scimClientMu   sync.RWMutex
 	scimClient     *access.SCIMClient
 )
 
 func scim() *access.SCIMClient {
 	scimClientOnce.Do(func() {
+		scimClientMu.Lock()
 		scimClient = access.NewSCIMClient()
+		scimClientMu.Unlock()
 	})
+	scimClientMu.RLock()
+	defer scimClientMu.RUnlock()
 	return scimClient
 }
 
@@ -31,7 +36,9 @@ func scim() *access.SCIMClient {
 // the previous one so the test can restore it on cleanup.
 func SetSCIMClientForTest(c *access.SCIMClient) *access.SCIMClient {
 	prev := scim()
+	scimClientMu.Lock()
 	scimClient = c
+	scimClientMu.Unlock()
 	return prev
 }
 
