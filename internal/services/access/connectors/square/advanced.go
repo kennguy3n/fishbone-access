@@ -91,9 +91,9 @@ func (c *SquareAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("square: provision transient status %d: %s", status, string(body))
+		return fmt.Errorf("square: provision transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("square: provision status %d: %s", status, string(body))
+		return fmt.Errorf("square: provision status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -124,9 +124,9 @@ func (c *SquareAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("square: revoke transient status %d: %s", status, string(body))
+		return fmt.Errorf("square: revoke transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("square: revoke status %d: %s", status, string(body))
+		return fmt.Errorf("square: revoke status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -151,7 +151,7 @@ func (c *SquareAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("square: list entitlements status %d: %s", status, string(body))
+		return nil, fmt.Errorf("square: list entitlements status %d: %s", status, formatErrorBody(body))
 	}
 	var envelope struct {
 		TeamMember struct {

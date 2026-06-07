@@ -67,7 +67,7 @@ func (c *SurveyMonkeyAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("surveymonkey: audit events: status %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("surveymonkey: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
 		}
 		var envelope surveymonkeyAuditPage
 		if err := json.Unmarshal(body, &envelope); err != nil {

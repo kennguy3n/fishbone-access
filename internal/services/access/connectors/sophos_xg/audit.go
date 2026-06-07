@@ -66,7 +66,7 @@ func (c *SophosXGAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("sophos_xg: audit events: status %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("sophos_xg: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
 		}
 		var envelope sophosXGAuditPage
 		if err := json.Unmarshal(body, &envelope); err != nil {

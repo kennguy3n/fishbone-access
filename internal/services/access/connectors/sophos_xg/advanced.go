@@ -96,9 +96,9 @@ func (c *SophosXGAccessConnector) ProvisionAccess(ctx context.Context, configRaw
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sophos_xg: provision transient status %d: %s", status, string(body))
+		return fmt.Errorf("sophos_xg: provision transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("sophos_xg: provision status %d: %s", status, string(body))
+		return fmt.Errorf("sophos_xg: provision status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -124,9 +124,9 @@ func (c *SophosXGAccessConnector) RevokeAccess(ctx context.Context, configRaw, s
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("sophos_xg: revoke transient status %d: %s", status, string(body))
+		return fmt.Errorf("sophos_xg: revoke transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("sophos_xg: revoke status %d: %s", status, string(body))
+		return fmt.Errorf("sophos_xg: revoke status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -151,7 +151,7 @@ func (c *SophosXGAccessConnector) ListEntitlements(ctx context.Context, configRa
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("sophos_xg: list entitlements status %d: %s", status, string(body))
+		return nil, fmt.Errorf("sophos_xg: list entitlements status %d: %s", status, formatErrorBody(body))
 	}
 	var resp struct {
 		Admin struct {

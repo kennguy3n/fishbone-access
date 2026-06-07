@@ -75,7 +75,7 @@ func (c *TailscaleAccessConnector) RevokeUserSessions(ctx context.Context, confi
 			return nil
 		}
 	}
-	return fmt.Errorf("tailscale: session revoke: status %d: %s", resp.StatusCode, string(body))
+	return fmt.Errorf("tailscale: session revoke: status %d: %s", resp.StatusCode, formatErrorBody(body))
 }
 
 var _ access.SessionRevoker = (*TailscaleAccessConnector)(nil)

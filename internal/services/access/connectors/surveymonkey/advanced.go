@@ -96,9 +96,9 @@ func (c *SurveyMonkeyAccessConnector) ProvisionAccess(ctx context.Context, confi
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveymonkey: provision transient status %d: %s", status, string(body))
+		return fmt.Errorf("surveymonkey: provision transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("surveymonkey: provision status %d: %s", status, string(body))
+		return fmt.Errorf("surveymonkey: provision status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -124,9 +124,9 @@ func (c *SurveyMonkeyAccessConnector) RevokeAccess(ctx context.Context, configRa
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveymonkey: revoke transient status %d: %s", status, string(body))
+		return fmt.Errorf("surveymonkey: revoke transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("surveymonkey: revoke status %d: %s", status, string(body))
+		return fmt.Errorf("surveymonkey: revoke status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -151,7 +151,7 @@ func (c *SurveyMonkeyAccessConnector) ListEntitlements(ctx context.Context, conf
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("surveymonkey: list entitlements status %d: %s", status, string(body))
+		return nil, fmt.Errorf("surveymonkey: list entitlements status %d: %s", status, formatErrorBody(body))
 	}
 	var m struct {
 		ID    string `json:"id"`

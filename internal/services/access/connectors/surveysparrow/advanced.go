@@ -96,9 +96,9 @@ func (c *SurveysparrowAccessConnector) ProvisionAccess(ctx context.Context, conf
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveysparrow: provision transient status %d: %s", status, string(body))
+		return fmt.Errorf("surveysparrow: provision transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("surveysparrow: provision status %d: %s", status, string(body))
+		return fmt.Errorf("surveysparrow: provision status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -124,9 +124,9 @@ func (c *SurveysparrowAccessConnector) RevokeAccess(ctx context.Context, configR
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("surveysparrow: revoke transient status %d: %s", status, string(body))
+		return fmt.Errorf("surveysparrow: revoke transient status %d: %s", status, formatErrorBody(body))
 	default:
-		return fmt.Errorf("surveysparrow: revoke status %d: %s", status, string(body))
+		return fmt.Errorf("surveysparrow: revoke status %d: %s", status, formatErrorBody(body))
 	}
 }
 
@@ -151,7 +151,7 @@ func (c *SurveysparrowAccessConnector) ListEntitlements(ctx context.Context, con
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("surveysparrow: list entitlements status %d: %s", status, string(body))
+		return nil, fmt.Errorf("surveysparrow: list entitlements status %d: %s", status, formatErrorBody(body))
 	}
 	var resp struct {
 		Member struct {

@@ -120,7 +120,7 @@ func (c *SophosXGAccessConnector) do(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("sophos_xg: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return nil, fmt.Errorf("sophos_xg: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, formatErrorBody(body))
 	}
 	return body, nil
 }

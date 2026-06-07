@@ -92,7 +92,7 @@ func (c *StripeAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("stripe: audit events: status %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("stripe: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
 		}
 		var pageData stripeEventPage
 		if err := json.Unmarshal(body, &pageData); err != nil {

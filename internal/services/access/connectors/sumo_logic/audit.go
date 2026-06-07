@@ -77,7 +77,7 @@ func (c *SumoLogicAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("sumo_logic: audit events: status %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("sumo_logic: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
 		}
 		var p sumoAuditPage
 		if err := json.Unmarshal(body, &p); err != nil {
