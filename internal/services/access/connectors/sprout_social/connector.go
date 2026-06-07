@@ -208,6 +208,9 @@ func (c *SproutSocialAccessConnector) SyncIdentities(
 	base := c.baseURL()
 	pathOnly := base + ("/v1/users")
 	for pages := 0; pages < sproutSocialIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},

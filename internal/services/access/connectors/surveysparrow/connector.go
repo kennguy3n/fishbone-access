@@ -208,6 +208,9 @@ func (c *SurveysparrowAccessConnector) SyncIdentities(
 	base := c.baseURL()
 	pathOnly := base + ("/v3/team")
 	for pages := 0; pages < surveySparrowIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},

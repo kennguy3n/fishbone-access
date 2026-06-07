@@ -215,6 +215,9 @@ func (c *SquareAccessConnector) SyncIdentities(
 	base := c.baseURL()
 	path := base + "/v2/team-members/search"
 	for pages := 0; pages < squareIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		reqBody := map[string]interface{}{
 			"limit": pageSize,
 		}

@@ -210,6 +210,9 @@ func (c *SophosXGAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	for pages := 0; pages < sophosXGIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},

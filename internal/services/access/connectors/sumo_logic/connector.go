@@ -262,6 +262,9 @@ func (c *SumoLogicAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL(cfg)
 	for pages := 0; pages < sumoIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/api/v1/users?limit=%d&offset=%d", base, pageSize, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {

@@ -219,6 +219,9 @@ func (c *StripeAccessConnector) SyncIdentities(
 	cursor := checkpoint
 	base := c.baseURL()
 	for pages := 0; pages < stripeIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/v1/accounts?limit=%d", base, pageSize)
 		if cursor != "" {
 			path += "&starting_after=" + url.QueryEscape(cursor)

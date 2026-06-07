@@ -212,6 +212,9 @@ func (c *SquarespaceAccessConnector) SyncIdentities(
 	base := c.baseURL()
 	path := base + ("/1.0/commerce/profile/members")
 	for pages := 0; pages < squarespaceIdentitiesMaxPages; pages++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
