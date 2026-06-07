@@ -193,6 +193,27 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_UnauthorizedNotAvailable is a regression test for the
+// bug where ms_teams handled only 403/404 as ErrAuditNotAvailable, omitting 401.
+// An expired/invalid OAuth token yields 401 from Microsoft Graph; the worker
+// must soft-skip the tenant (ErrAuditNotAvailable) rather than hard-fail the
+// sync, matching every other audit connector in this batch.
+func TestFetchAccessAuditLogs_UnauthorizedNotAvailable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{auditPartitionTeamsSignIns: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if !errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Fatalf("err = %v, want ErrAuditNotAvailable (401 must soft-skip, not hard-fail)", err)
+	}
+}
+
 func TestFetchAccessAuditLogs_BoundedPagination(t *testing.T) {
 	// A misbehaving endpoint that always returns @odata.nextLink must not loop
 	// forever; the connector caps pagination at teamsAuditMaxPages.

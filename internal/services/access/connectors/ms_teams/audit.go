@@ -71,8 +71,11 @@ func (c *MSTeamsAccessConnector) FetchAccessAuditLogs(
 			return readErr
 		}
 		// Tenants on plans that do not include sign-in audit logs (e.g.
-		// non-AAD-Premium) get a 403; collapse to ErrAuditNotAvailable.
-		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
+		// non-AAD-Premium) get a 403, a missing endpoint gives 404, and an
+		// expired/invalid OAuth token gives 401. All three are auth/availability
+		// gates the worker must soft-skip (ErrAuditNotAvailable), not hard
+		// failures — matching every other audit connector in this batch.
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
