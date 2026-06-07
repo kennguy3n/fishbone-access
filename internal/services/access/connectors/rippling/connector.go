@@ -210,12 +210,22 @@ func (c *RipplingAccessConnector) CountIdentities(ctx context.Context, configRaw
 // next-page URL (link-style pagination). A bare token must be
 // URL-encoded into the &cursor= query parameter; a full URL must be
 // followed verbatim, since URL-encoding it would corrupt the link.
+//
+// Because newRequest unconditionally attaches the Bearer credential, a
+// full URL is only followed when it targets the same host as the
+// configured base URL. This pins the authenticated request to Rippling
+// and prevents a malformed or hostile pagination value from redirecting
+// the credential to an arbitrary host (SSRF). An off-host absolute URL
+// falls through and is treated as an opaque token (encoded, not
+// followed), which the API rejects and pagination terminates safely.
 func ripplingPageURL(base, cursor string) string {
 	if cursor == "" {
 		return fmt.Sprintf("%s/platform/api/employees?limit=%d", base, pageSize)
 	}
 	if u, err := url.Parse(cursor); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
-		return cursor
+		if bu, err := url.Parse(base); err == nil && strings.EqualFold(u.Host, bu.Host) {
+			return cursor
+		}
 	}
 	return fmt.Sprintf("%s/platform/api/employees?limit=%d&cursor=%s", base, pageSize, url.QueryEscape(cursor))
 }

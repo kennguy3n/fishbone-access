@@ -70,9 +70,14 @@ func TestRipplingPageURL(t *testing.T) {
 			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=a%2Bb%2Fc%3Dd%26e",
 		},
 		{
-			name:   "absolute https url followed verbatim",
+			name:   "absolute https url on same host followed verbatim",
 			cursor: "https://api.rippling.com/platform/api/employees?limit=100&cursor=opaque%2Btoken",
 			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=opaque%2Btoken",
+		},
+		{
+			name:   "absolute url on foreign host is NOT followed (SSRF guard)",
+			cursor: "https://evil.example.com/x?cursor=z",
+			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=https%3A%2F%2Fevil.example.com%2Fx%3Fcursor%3Dz",
 		},
 		{
 			name:   "opaque token with colon is not treated as url",
