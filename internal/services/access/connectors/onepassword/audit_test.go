@@ -217,3 +217,24 @@ func TestMapOnePasswordSigninAttempt_SkipsEmptyUUID(t *testing.T) {
 		t.Fatalf("expected EventID=u1, got %+v", e)
 	}
 }
+
+func TestNormalizeOnePasswordOutcome(t *testing.T) {
+	cases := map[string]string{
+		"":                          "success", // unknown → optimistic success
+		"success":                   "success",
+		"SUCCESS":                   "success",
+		"firewall_reported_success": "success", // success-bearing category, not a failure
+		"credentials_failed":        "failure",
+		"mfa_failed":                "failure",
+		"modern_version_failed":     "failure",
+		"firewall_failed":           "failure",
+		"firewall_prevented":        "failure",
+		"device_blocked":            "failure",
+		"some_new_category":         "success", // unrecognized → default success
+	}
+	for in, want := range cases {
+		if got := normalizeOnePasswordOutcome(in); got != want {
+			t.Errorf("normalizeOnePasswordOutcome(%q) = %q; want %q", in, got, want)
+		}
+	}
+}

@@ -460,11 +460,13 @@ func (c *OktaAccessConnector) ListEntitlements(
 		if next == "" {
 			return out, nil
 		}
-		rewritten := next
-		if c.urlOverride != "" {
-			rewritten = c.rewriteForTest(next)
-		}
-		u, err := url.Parse(rewritten)
+		// Reduce the absolute next-page URL from the Link header to its
+		// path+query and let newRequest/absURL re-prepend the base. No
+		// rewriteForTest is needed here (unlike SyncIdentities, which passes
+		// the full URL straight to http.NewRequestWithContext): RequestURI
+		// discards scheme+host anyway, so rewriting the host first was wasted
+		// work that obscured intent.
+		u, err := url.Parse(next)
 		if err != nil {
 			return nil, err
 		}

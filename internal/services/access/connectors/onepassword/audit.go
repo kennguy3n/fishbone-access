@@ -164,10 +164,7 @@ func mapOnePasswordSigninAttempt(a *onepasswordSigninAttempt) *access.AuditLogEn
 	if eventType == "" {
 		eventType = "signin_attempt"
 	}
-	outcome := "success"
-	if !strings.EqualFold(strings.TrimSpace(a.Category), "success") && strings.TrimSpace(a.Category) != "" {
-		outcome = "failure"
-	}
+	outcome := normalizeOnePasswordOutcome(a.Category)
 	return &access.AuditLogEntry{
 		EventID:         strings.TrimSpace(a.UUID),
 		EventType:       eventType,
@@ -179,6 +176,36 @@ func mapOnePasswordSigninAttempt(a *onepasswordSigninAttempt) *access.AuditLogEn
 		UserAgent:       a.Client.AppName,
 		Outcome:         outcome,
 		RawData:         rawMap,
+	}
+}
+
+// normalizeOnePasswordOutcome maps a 1Password sign-in attempt `category`
+// to the canonical success/failure vocabulary. 1Password reports a range of
+// categories — e.g. "success" and "firewall_reported_success" (both
+// successes), plus "credentials_failed", "mfa_failed", "modern_version_failed",
+// "firewall_failed", "firewall_prevented" (failures). The previous code
+// whitelisted only the literal "success", which misclassified
+// "firewall_reported_success" as a failure and would silently break if
+// 1Password introduced new success categories. We instead recognize any
+// success-bearing category, blacklist the known failure markers, and default
+// unknown/empty categories to success — mirroring paychex's
+// normalizePaychexOutcome so the whole PR shares one classification policy.
+func normalizeOnePasswordOutcome(category string) string {
+	c := strings.ToLower(strings.TrimSpace(category))
+	if c == "" || strings.Contains(c, "success") {
+		return "success"
+	}
+	switch {
+	case strings.Contains(c, "fail"),
+		strings.Contains(c, "denied"),
+		strings.Contains(c, "declined"),
+		strings.Contains(c, "blocked"),
+		strings.Contains(c, "prevented"),
+		strings.Contains(c, "rejected"),
+		strings.Contains(c, "error"):
+		return "failure"
+	default:
+		return "success"
 	}
 }
 
