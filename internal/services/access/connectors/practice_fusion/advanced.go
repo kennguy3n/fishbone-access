@@ -163,6 +163,12 @@ func (c *PracticeFusionAccessConnector) ListEntitlements(ctx context.Context, co
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("practice_fusion: decode entitlements: %w", err)
 	}
+	if !strings.EqualFold(strings.TrimSpace(resp.User.Email), user) &&
+		strings.TrimSpace(resp.User.ID) != user {
+		// Guard against the API returning a different user than requested
+		// (e.g. id aliasing or a redirect), matching sibling connectors.
+		return nil, nil
+	}
 	role := strings.TrimSpace(resp.User.Role)
 	if role == "" {
 		return []access.Entitlement{}, nil
