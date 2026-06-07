@@ -328,6 +328,46 @@ func TestSyncIdentities_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+func TestSyncIdentities_TerminatesOnEmptyPage(t *testing.T) {
+	// A misbehaving SCIM bridge advertises totalResults > 0 but returns an
+	// empty Resources page. Without the empty-page guard this would re-request
+	// the same startIndex forever; the connector must stop after one page.
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls > 5 {
+			t.Fatalf("SyncIdentities did not terminate: %d requests", calls)
+		}
+		w.Header().Set("Content-Type", "application/scim+json")
+		_ = json.NewEncoder(w).Encode(scimListResponse{
+			Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
+			TotalResults: 5,
+			StartIndex:   1,
+			ItemsPerPage: 0,
+			Resources:    nil,
+		})
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	var collected []*access.Identity
+	if err := c.SyncIdentities(context.Background(), map[string]interface{}{"account_url": server.URL}, validSecrets(), "", func(batch []*access.Identity, _ string) error {
+		collected = append(collected, batch...)
+		return nil
+	}); err != nil {
+		t.Fatalf("SyncIdentities: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("expected exactly 1 request, got %d", calls)
+	}
+	if len(collected) != 0 {
+		t.Fatalf("collected %d, want 0", len(collected))
+	}
+}
+
 func TestCountIdentities_ReadsTotalResults(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"totalResults": 17, "Resources": []}`))

@@ -168,10 +168,19 @@ func (c *OnePasswordAccessConnector) SyncIdentities(
 		}
 		batch := mapSCIMUsers(lr.Resources)
 		nextCheckpoint := ""
-		consumed := startIndex + len(lr.Resources) - 1
-		if lr.TotalResults > 0 && consumed < lr.TotalResults {
-			nextCheckpoint = strconv.Itoa(consumed + 1)
-		} else if len(lr.Resources) == count && lr.TotalResults == 0 {
+		// An empty page can never advance the offset, so it must terminate
+		// pagination. Without this guard a buggy SCIM bridge that reports
+		// totalResults > 0 but returns zero Resources at this startIndex would
+		// compute consumed = startIndex-1 and emit nextCheckpoint == startIndex,
+		// re-requesting the same page forever. Anchoring progress to rows
+		// actually returned (rather than the advertised totalResults) makes the
+		// loop self-terminating regardless of server inconsistencies.
+		switch {
+		case len(lr.Resources) == 0:
+			nextCheckpoint = ""
+		case lr.TotalResults > 0 && startIndex+len(lr.Resources)-1 < lr.TotalResults:
+			nextCheckpoint = strconv.Itoa(startIndex + len(lr.Resources))
+		case len(lr.Resources) == count && lr.TotalResults == 0:
 			// Some SCIM bridges omit totalResults — keep paging while
 			// pages stay full.
 			nextCheckpoint = strconv.Itoa(startIndex + count)
