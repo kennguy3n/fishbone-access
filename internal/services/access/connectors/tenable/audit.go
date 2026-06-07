@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,8 +35,10 @@ import (
 // so callers treat the tenant as plan- or role-gated rather than
 // failing the whole sync. (Tenable returns 404 when the audit-log
 // endpoint is not enabled for the tenant's plan tier, so it must be
-// soft-skipped like 401/403 — consistent with every other audit
-// connector in this package set.)
+// soft-skipped like 401/403.) The status is read directly off the
+// response — not parsed out of an error string — so it stays correct
+// regardless of error-formatting changes, matching every other audit
+// connector in this package set.
 func (c *TenableAccessConnector) FetchAccessAuditLogs(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -64,12 +67,21 @@ func (c *TenableAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		resp, err := c.doRaw(req)
 		if err != nil {
-			if isAuditNotAvailable(err) {
-				return access.ErrAuditNotAvailable
-			}
 			return err
+		}
+		status := resp.StatusCode
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		switch {
+		case status == http.StatusUnauthorized ||
+			status == http.StatusForbidden ||
+			status == http.StatusNotFound:
+			// Audit-log access is plan- or role-gated; soft-skip.
+			return access.ErrAuditNotAvailable
+		case status < 200 || status >= 300:
+			return fmt.Errorf("tenable: audit GET %s: status %d: %s", req.URL.Path, status, string(body))
 		}
 		var page tenableAuditPage
 		if err := json.Unmarshal(body, &page); err != nil {
@@ -185,16 +197,6 @@ func mapTenableEvent(e *tenableEvent) *access.AuditLogEntry {
 		Outcome:          outcome,
 		RawData:          rawMap,
 	}
-}
-
-func isAuditNotAvailable(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "status 401") ||
-		strings.Contains(msg, "status 403") ||
-		strings.Contains(msg, "status 404")
 }
 
 var _ access.AccessAuditor = (*TenableAccessConnector)(nil)

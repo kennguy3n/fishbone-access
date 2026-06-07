@@ -77,8 +77,9 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 // enabled for the tenant's plan tier) is soft-skipped as
 // access.ErrAuditNotAvailable rather than propagating as a hard sync failure
 // — matching the 401/403 behaviour and every other audit connector in this
-// package set. Before the fix isAuditNotAvailable only matched 401/403, so a
-// 404 surfaced as a generic "status 404" error and failed the whole sync.
+// package set. The soft-skip decision is now made by inspecting
+// resp.StatusCode directly, so it no longer depends on the error-string
+// format (404 previously fell through to a hard "status 404" sync failure).
 func TestFetchAccessAuditLogs_NotAvailableOn404(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
