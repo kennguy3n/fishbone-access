@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,9 +52,24 @@ func (c *PagerDutyAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := c.do(req)
+		resp, err := c.doHTTP(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("pagerduty: audit records: %w", err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		// The Audit Records API (/audit/records) is gated behind the
+		// PagerDuty Business / Digital Operations plan. Tenants without it
+		// receive 401/403/404; treat that as a plan-gated soft-skip
+		// (access.ErrAuditNotAvailable) like every other auditor in this
+		// PR rather than surfacing a hard error that the pipeline would
+		// treat as actionable.
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("pagerduty: audit records: status %d: %s", resp.StatusCode, string(body))
 		}
 		var page pdAuditPage
 		if err := json.Unmarshal(body, &page); err != nil {
