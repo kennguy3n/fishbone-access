@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -184,22 +185,10 @@ func readTSAuditBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("tailscale: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	// Strict byte-exact 1 MB bound; the earlier chunked read could
+	// overshoot by up to one 4 KB buffer before the post-append guard
+	// tripped. Matches readSplunkBody in splunk/audit.go.
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 var _ access.AccessAuditor = (*TailscaleAccessConnector)(nil)

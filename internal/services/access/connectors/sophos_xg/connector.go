@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "sophos_xg"
 	pageSize     = 100
+	// sophosXGIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	sophosXGIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("sophos_xg: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -204,7 +209,7 @@ func (c *SophosXGAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pages := 0; pages < sophosXGIdentitiesMaxPages; pages++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -252,6 +257,7 @@ func (c *SophosXGAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return fmt.Errorf("sophos_xg: sync identities: pagination exceeded %d pages", sophosXGIdentitiesMaxPages)
 }
 
 // GetSSOMetadata surfaces operator-supplied SAML metadata for the

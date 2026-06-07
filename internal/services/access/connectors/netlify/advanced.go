@@ -15,9 +15,9 @@ import (
 
 // advanced-capability mapping for netlify:
 //
-//   - ProvisionAccess  -> POST   /api/v1/accounts/{account_slug}/members
-//   - RevokeAccess     -> DELETE /api/v1/accounts/{account_slug}/members/{member_id}
-//   - ListEntitlements -> GET    /api/v1/accounts/{account_slug}/members
+//   - ProvisionAccess  -> POST   /api/v1/{account_slug}/members
+//   - RevokeAccess     -> DELETE /api/v1/{account_slug}/members/{member_id}
+//   - ListEntitlements -> GET    /api/v1/{account_slug}/members
 //
 // Bearer auth via connector.newRequest. Idempotent on
 // (UserExternalID, ResourceExternalID) per docs/architecture.md §2.
@@ -60,7 +60,7 @@ func (c *NetlifyAccessConnector) newJSONRequest(ctx context.Context, secrets Sec
 }
 
 func (c *NetlifyAccessConnector) membersURL(slug string) string {
-	return c.baseURL() + "/api/v1/accounts/" + url.PathEscape(strings.TrimSpace(slug)) + "/members"
+	return c.baseURL() + membersPath(slug)
 }
 
 func (c *NetlifyAccessConnector) memberURL(slug, member string) string {

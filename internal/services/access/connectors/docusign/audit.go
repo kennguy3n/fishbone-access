@@ -101,6 +101,12 @@ func mapDocuSignRequestLog(r *docusignRequestLog) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, r.CreatedDate)
 	}
+	if ts.IsZero() {
+		// An unparseable CreatedDate would emit a zero Timestamp that
+		// poisons the watermark cursor and forces an infinite re-fetch;
+		// skip the entry instead.
+		return nil
+	}
 	raw, _ := json.Marshal(r)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

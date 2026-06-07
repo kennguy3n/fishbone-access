@@ -30,6 +30,10 @@ type httpDoer interface {
 
 type Config struct {
 	AccountEnvironment string `json:"account_environment"`
+	// AccountID is the DocuSign API account GUID. Every eSignature
+	// REST call is account-scoped (/restapi/v2.1/accounts/{accountId}/...),
+	// so this is required for all user/group operations.
+	AccountID string `json:"account_id"`
 }
 
 type Secrets struct {
@@ -57,6 +61,9 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	if v, ok := raw["account_environment"].(string); ok {
 		cfg.AccountEnvironment = v
 	}
+	if v, ok := raw["account_id"].(string); ok {
+		cfg.AccountID = strings.TrimSpace(v)
+	}
 	if strings.TrimSpace(cfg.AccountEnvironment) == "" {
 		cfg.AccountEnvironment = "production"
 	}
@@ -78,6 +85,17 @@ func (c Config) validate() error {
 	env := strings.ToLower(strings.TrimSpace(c.AccountEnvironment))
 	if _, ok := allowedEnvs[env]; !ok {
 		return fmt.Errorf("docusign: account_environment must be one of production|demo, got %q", c.AccountEnvironment)
+	}
+	return nil
+}
+
+// requireAccountID guards the account-scoped eSignature user/group
+// endpoints. account_id is not required for SCIM provisioning (which is
+// keyed by scim_base_url/scim_token), so it is enforced here per-call
+// rather than in the shared Config.validate().
+func (c Config) requireAccountID() error {
+	if strings.TrimSpace(c.AccountID) == "" {
+		return errors.New("docusign: account_id is required for user/group operations")
 	}
 	return nil
 }
@@ -112,6 +130,14 @@ func (c *DocuSignAccessConnector) baseURL(cfg Config) string {
 		return "https://demo.docusign.net"
 	}
 	return "https://www.docusign.net"
+}
+
+// usersBaseURL returns the account-scoped eSignature REST base, e.g.
+// https://www.docusign.net/restapi/v2.1/accounts/{accountId}. DocuSign
+// requires the {accountId} segment on every user/group endpoint; omitting
+// it returns 404 against the real API.
+func (c *DocuSignAccessConnector) usersBaseURL(cfg Config) string {
+	return c.baseURL(cfg) + "/restapi/v2.1/accounts/" + url.PathEscape(cfg.AccountID)
 }
 
 func (c *DocuSignAccessConnector) client() httpDoer {
@@ -186,8 +212,11 @@ func (c *DocuSignAccessConnector) Connect(ctx context.Context, configRaw, secret
 	if err != nil {
 		return err
 	}
+	if err := cfg.requireAccountID(); err != nil {
+		return err
+	}
 	q := url.Values{"page": []string{"1"}, "per_page": []string{"1"}}
-	probe := c.baseURL(cfg) + "/restapi/v2.1/users?" + q.Encode()
+	probe := c.usersBaseURL(cfg) + "/users?" + q.Encode()
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -240,6 +269,9 @@ func (c *DocuSignAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
+	if err := cfg.requireAccountID(); err != nil {
+		return err
+	}
 	page := 1
 	if checkpoint != "" {
 		_, _ = fmt.Sscanf(checkpoint, "%d", &page)
@@ -247,13 +279,13 @@ func (c *DocuSignAccessConnector) SyncIdentities(
 			page = 1
 		}
 	}
-	base := c.baseURL(cfg)
+	base := c.usersBaseURL(cfg)
 	for {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
 		}
-		path := base + "/restapi/v2.1/users?" + q.Encode()
+		path := base + "/users?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -331,6 +363,9 @@ func (c *DocuSignAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
+	if err := cfg.requireAccountID(); err != nil {
+		return err
+	}
 	payload := map[string]interface{}{
 		"groups": []map[string]interface{}{{"groupId": grant.ResourceExternalID}},
 	}
@@ -338,7 +373,7 @@ func (c *DocuSignAccessConnector) ProvisionAccess(
 	if err != nil {
 		return fmt.Errorf("docusign: marshal payload: %w", err)
 	}
-	fullURL := c.baseURL(cfg) + "/restapi/v2.1/users/" + url.PathEscape(grant.UserExternalID) + "/groups"
+	fullURL := c.usersBaseURL(cfg) + "/users/" + url.PathEscape(grant.UserExternalID) + "/groups"
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodPut, fullURL, body)
 	if err != nil {
 		return err
@@ -378,6 +413,9 @@ func (c *DocuSignAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
+	if err := cfg.requireAccountID(); err != nil {
+		return err
+	}
 	payload := map[string]interface{}{
 		"groups": []map[string]interface{}{{"groupId": grant.ResourceExternalID}},
 	}
@@ -385,7 +423,7 @@ func (c *DocuSignAccessConnector) RevokeAccess(
 	if err != nil {
 		return fmt.Errorf("docusign: marshal payload: %w", err)
 	}
-	fullURL := c.baseURL(cfg) + "/restapi/v2.1/users/" + url.PathEscape(grant.UserExternalID) + "/groups"
+	fullURL := c.usersBaseURL(cfg) + "/users/" + url.PathEscape(grant.UserExternalID) + "/groups"
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, fullURL, body)
 	if err != nil {
 		return err
@@ -421,7 +459,10 @@ func (c *DocuSignAccessConnector) ListEntitlements(
 	if err != nil {
 		return nil, err
 	}
-	fullURL := c.baseURL(cfg) + "/restapi/v2.1/users/" + url.PathEscape(userExternalID) + "/groups"
+	if err := cfg.requireAccountID(); err != nil {
+		return nil, err
+	}
+	fullURL := c.usersBaseURL(cfg) + "/users/" + url.PathEscape(userExternalID) + "/groups"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, fullURL)
 	if err != nil {
 		return nil, err

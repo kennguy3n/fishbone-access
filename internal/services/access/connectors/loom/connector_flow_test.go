@@ -87,6 +87,56 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestConnectorFlow_RevokeAndListByMemberID guards the JML path where the
+// identifier is the member ID (the ExternalID SyncIdentities exports) rather
+// than an email. Revoke must DELETE the member directly and ListEntitlements
+// must resolve the role by ID — neither may silently no-op.
+func TestConnectorFlow_RevokeAndListByMemberID(t *testing.T) {
+	const memberID = "mem-99"
+	const email = "grace@example.com"
+	const role = "admin"
+	var deletedPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/members":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]interface{}{
+					{"id": memberID, "email": email, "role": role},
+				},
+			})
+		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/v1/members/"):
+			deletedPath = r.URL.Path
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{}
+	secrets := map[string]interface{}{"token": "tok"}
+
+	ents, err := c.ListEntitlements(context.Background(), cfg, secrets, memberID)
+	if err != nil {
+		t.Fatalf("ListEntitlements by id: %v", err)
+	}
+	if len(ents) != 1 || ents[0].Role != role {
+		t.Fatalf("ents = %#v", ents)
+	}
+
+	grant := access.AccessGrant{UserExternalID: memberID, ResourceExternalID: role}
+	if err := c.RevokeAccess(context.Background(), cfg, secrets, grant); err != nil {
+		t.Fatalf("RevokeAccess by id: %v", err)
+	}
+	if deletedPath != "/v1/members/"+memberID {
+		t.Fatalf("expected DELETE /v1/members/%s, got %q", memberID, deletedPath)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

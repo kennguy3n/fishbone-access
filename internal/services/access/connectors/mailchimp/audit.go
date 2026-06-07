@@ -2,6 +2,8 @@ package mailchimp
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -171,8 +173,13 @@ func mapMailchimpChatter(e *mailchimpChatter) *access.AuditLogEntry {
 		target = strings.TrimSpace(e.ListID)
 	}
 	// Mailchimp doesn't return a stable event ID on the chatter feed;
-	// derive a deterministic ID from (type, update_time, target).
-	id := fmt.Sprintf("%s/%s/%s", strings.TrimSpace(e.Type), e.UpdateTime, target)
+	// derive a deterministic ID from (type, update_time, target) plus a
+	// content hash of the full entry. Hashing title/message/url too keeps
+	// two entries that share the same type, timestamp, and target (e.g.
+	// multiple chatter items for one campaign in the same second) from
+	// collapsing onto the same EventID and being deduplicated downstream.
+	sum := sha256.Sum256(raw)
+	id := fmt.Sprintf("%s/%s/%s/%s", strings.TrimSpace(e.Type), e.UpdateTime, target, hex.EncodeToString(sum[:8]))
 	return &access.AuditLogEntry{
 		EventID:          id,
 		EventType:        strings.TrimSpace(e.Type),

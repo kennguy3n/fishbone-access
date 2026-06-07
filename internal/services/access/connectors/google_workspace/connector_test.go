@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -78,6 +79,36 @@ func TestValidate_HappyPath(t *testing.T) {
 	c := New()
 	if err := c.Validate(context.Background(), validConfig(), validSecrets(t)); err != nil {
 		t.Fatalf("Validate: %v", err)
+	}
+}
+
+// TestOAuthScopeConstants pins the exact OAuth scope strings used by each
+// token-minting path. The scope difference between the Directory API, the SCIM
+// provisioning path, and the Reports API is only exercised in production (all
+// unit tests inject httpClientFor and bypass the JWT flow), so a typo or a
+// readonly/readwrite mixup would silently pass every functional test and only
+// 403 against a live tenant. This test catches that at compile/test time.
+func TestOAuthScopeConstants(t *testing.T) {
+	// Reports API (FetchAccessAuditLogs / SyncIdentitiesDelta) requires its
+	// own scope — no admin.directory.* scope authorizes it.
+	wantReports := []string{"https://www.googleapis.com/auth/admin.reports.audit.readonly"}
+	if !reflect.DeepEqual(adminReportsScopes, wantReports) {
+		t.Errorf("adminReportsScopes = %v; want %v", adminReportsScopes, wantReports)
+	}
+	// SCIM provisioning creates/deletes users and groups, so it needs the
+	// read-WRITE directory scopes (the readonly variants would 403 on write).
+	wantSCIM := []string{
+		"https://www.googleapis.com/auth/admin.directory.user",
+		"https://www.googleapis.com/auth/admin.directory.group",
+		"https://www.googleapis.com/auth/admin.directory.group.member",
+	}
+	if !reflect.DeepEqual(scimProvisioningScopes, wantSCIM) {
+		t.Errorf("scimProvisioningScopes = %v; want %v", scimProvisioningScopes, wantSCIM)
+	}
+	for _, s := range scimProvisioningScopes {
+		if strings.HasSuffix(s, ".readonly") {
+			t.Errorf("scimProvisioningScopes must be read-write, got readonly scope %q", s)
+		}
 	}
 }
 

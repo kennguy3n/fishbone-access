@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "surveymonkey"
 	pageSize     = 50
+	// surveymonkeyIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	surveymonkeyIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("surveymonkey: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -210,7 +215,7 @@ func (c *SurveyMonkeyAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pages := 0; pages < surveymonkeyIdentitiesMaxPages; pages++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -257,6 +262,7 @@ func (c *SurveyMonkeyAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return fmt.Errorf("surveymonkey: sync identities: pagination exceeded %d pages", surveymonkeyIdentitiesMaxPages)
 }
 
 func (c *SurveyMonkeyAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {

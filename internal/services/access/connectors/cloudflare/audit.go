@@ -119,7 +119,15 @@ func mapCloudflareAuditEvent(e *cfAuditLog) *access.AuditLogEntry {
 	if e == nil || e.ID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.When)
+	ts, err := time.Parse(time.RFC3339, e.When)
+	if err != nil || ts.IsZero() {
+		// An unparseable/absent `when` cannot advance the watermark
+		// cursor and would be persisted as a bogus 0001-01-01 entry,
+		// so drop it — consistent with every other connector's audit
+		// mapper.
+		return nil
+	}
+	ts = ts.UTC()
 	outcome := "success"
 	if !e.Action.Result {
 		outcome = "failure"

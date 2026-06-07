@@ -13,6 +13,13 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// auditPageSize is the per-page count requested from the Grafana audit
+// endpoint. The pagination loop also uses it as the "last page" signal
+// (a short page means no more results), so both the query parameter and
+// the termination check must reference this single constant to stay in
+// lock-step.
+const auditPageSize = 100
+
 // FetchAccessAuditLogs streams Grafana audit-log entries into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -42,7 +49,7 @@ func (c *GrafanaAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		q := url.Values{}
-		q.Set("perPage", "100")
+		q.Set("perPage", fmt.Sprintf("%d", auditPageSize))
 		q.Set("page", fmt.Sprintf("%d", page))
 		if !since.IsZero() {
 			q.Set("from", since.UTC().Format(time.RFC3339))
@@ -86,7 +93,7 @@ func (c *GrafanaAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		if len(p.Items) < 100 || p.Items == nil {
+		if len(p.Items) < auditPageSize {
 			return nil
 		}
 		page++

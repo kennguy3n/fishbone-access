@@ -124,6 +124,13 @@ func mapZoomActivity(e *zoomActivity) *access.AuditLogEntry {
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Time)
 	}
+	// Drop events whose timestamp could not be parsed. Emitting a
+	// zero-valued Timestamp pollutes the audit stream with epoch-dated
+	// entries and never advances the watermark cursor, so the same
+	// malformed page is re-fetched and re-emitted on every poll.
+	if ts.IsZero() {
+		return nil
+	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}
 	_ = json.Unmarshal(raw, &rawMap)

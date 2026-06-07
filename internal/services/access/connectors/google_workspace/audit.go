@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -16,6 +17,14 @@ import (
 // reportsBaseURL override is needed because nextPageToken is opaque
 // and we control the full URL ourselves).
 const reportsBaseURL = "https://admin.googleapis.com/admin/reports/v1"
+
+// gwAuditMaxPages bounds a single audit sweep so a Reports API that keeps
+// returning a non-empty nextPageToken (or a server-side cursor bug) cannot
+// spin the pagination loop forever; mirrors the cap used by the other
+// paginated audit connectors in this family. Because the watermark advances
+// per page (handler is called with the batch's newest timestamp), stopping at
+// the cap simply defers the remaining pages to the next sync cycle.
+const gwAuditMaxPages = 200
 
 // FetchAccessAuditLogs streams login activities from the Admin SDK
 // Reports API back into the access audit pipeline. Implements
@@ -40,14 +49,14 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		return err
 	}
 	since := sincePartitions[access.DefaultAuditPartition]
-	client, err := c.directoryClient(ctx, cfg, secrets)
+	client, err := c.reportsClient(ctx, cfg, secrets)
 	if err != nil {
 		return err
 	}
 
 	cursor := since
 	pageToken := ""
-	for {
+	for pageNum := 0; pageNum < gwAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -69,9 +78,29 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return err
 		}
-		body, err := doJSON(client, req)
+		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("google_workspace: reports activity: %w", err)
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 50<<20))
+		_ = resp.Body.Close()
+		// 401/403 (token lacks the reports scope / caller is not an
+		// auditor) and 404 (tenant has no audit surface) are not hard
+		// failures: the AccessAuditor contract requires them to be
+		// soft-skipped so the worker drops the tenant instead of
+		// retrying forever. Every other audit connector does the same.
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return fmt.Errorf("google_workspace: reports activity: status %d: %s", resp.StatusCode, string(body))
+		}
+		// A mid-read connection drop on an otherwise-2xx response must
+		// surface as a descriptive transport error rather than be masked
+		// as a vague JSON decode failure on truncated bytes.
+		if readErr != nil {
+			return fmt.Errorf("google_workspace: read reports activity body: %w", readErr)
 		}
 		var page struct {
 			Items         []reportsActivity `json:"items"`
@@ -101,6 +130,7 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		}
 		pageToken = page.NextPageToken
 	}
+	return nil
 }
 
 type reportsActivity struct {
@@ -130,6 +160,13 @@ func mapReportsActivity(a *reportsActivity) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339, a.ID.Time)
+	if ts.IsZero() {
+		// Drop events whose timestamp cannot be parsed: a zero
+		// timestamp would not advance the watermark cursor and would
+		// be re-fetched every sync cycle. Matches the other audit
+		// mappers in this batch.
+		return nil
+	}
 	eventType := a.ID.ApplicationName
 	action := ""
 	outcome := ""

@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "surveysparrow"
 	pageSize     = 100
+	// surveySparrowIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	surveySparrowIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("surveysparrow: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -202,7 +207,7 @@ func (c *SurveysparrowAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	pathOnly := base + ("/v3/team")
-	for {
+	for pages := 0; pages < surveySparrowIdentitiesMaxPages; pages++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -246,6 +251,7 @@ func (c *SurveysparrowAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return fmt.Errorf("surveysparrow: sync identities: pagination exceeded %d pages", surveySparrowIdentitiesMaxPages)
 }
 
 // GetSSOMetadata projects the connector's configured `sso_metadata_url` /

@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "square"
 	pageSize     = 100
+	// squareIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns an
+	// empty cursor. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	squareIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("square: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -209,7 +214,7 @@ func (c *SquareAccessConnector) SyncIdentities(
 	cursor := strings.TrimSpace(checkpoint)
 	base := c.baseURL()
 	path := base + "/v2/team-members/search"
-	for {
+	for pages := 0; pages < squareIdentitiesMaxPages; pages++ {
 		reqBody := map[string]interface{}{
 			"limit": pageSize,
 		}
@@ -258,6 +263,7 @@ func (c *SquareAccessConnector) SyncIdentities(
 		}
 		cursor = next
 	}
+	return fmt.Errorf("square: sync identities: pagination exceeded %d pages", squareIdentitiesMaxPages)
 }
 
 // GetSSOMetadata surfaces operator-supplied SAML metadata for the

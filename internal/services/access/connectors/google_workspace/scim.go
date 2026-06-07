@@ -77,7 +77,7 @@ func (c *GoogleWorkspaceAccessConnector) scimBearerToken(ctx context.Context, cf
 	if c.scimBearerTokenFor != nil {
 		return c.scimBearerTokenFor(ctx, cfg, secrets)
 	}
-	jwtConfig, err := google.JWTConfigFromJSON([]byte(secrets.ServiceAccountKey), adminSDKScopes...)
+	jwtConfig, err := google.JWTConfigFromJSON([]byte(secrets.ServiceAccountKey), scimProvisioningScopes...)
 	if err != nil {
 		return "", fmt.Errorf("google_workspace: parse service account key: %w", err)
 	}

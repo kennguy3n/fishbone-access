@@ -171,9 +171,12 @@ func (c *ZscalerAccessConnector) VerifyPermissions(ctx context.Context, configRa
 // boolean enable/disable flag (`adminStatus` is not part of the documented
 // response), so identity status defaults to "active" for any admin returned.
 type zscalerUser struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	UserName string `json:"userName"`
+	// Zscaler ZIA returns adminUsers `id` as a JSON number (the same
+	// numeric id the audit report exposes), so decode it as json.Number
+	// and stringify for ExternalID rather than assuming a quoted string.
+	ID       json.Number `json:"id"`
+	Email    string      `json:"email"`
+	UserName string      `json:"userName"`
 }
 
 type zscalerListResponse struct {
@@ -232,7 +235,7 @@ func (c *ZscalerAccessConnector) SyncIdentities(
 				display = u.Email
 			}
 			identities = append(identities, &access.Identity{
-				ExternalID:  u.ID,
+				ExternalID:  u.ID.String(),
 				Type:        access.IdentityTypeUser,
 				DisplayName: display,
 				Email:       u.Email,

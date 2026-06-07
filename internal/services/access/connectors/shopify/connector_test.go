@@ -54,7 +54,8 @@ func TestRegistryIntegration(t *testing.T) {
 
 func TestSync_PaginatesUsers(t *testing.T) {
 	calls := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		if got := r.Header.Get("X-Shopify-Access-Token"); got == "" {
 			t.Errorf("expected X-Shopify-Access-Token header")
@@ -68,20 +69,23 @@ func TestSync_PaginatesUsers(t *testing.T) {
 					"first_name": fmt.Sprintf("U%d", i),
 				})
 			}
+			// Shopify advertises the next page via the RFC 5988 Link
+			// header, not a JSON body field.
+			w.Header().Set("Link", fmt.Sprintf(
+				`<%s/admin/api/2024-01/users.json?limit=%d&page_info=page2-info>; rel="next"`,
+				srv.URL, pageSize,
+			))
 		} else {
+			if got := r.URL.Query().Get("page_info"); got != "page2-info" {
+				t.Errorf("page_info = %q; want page2-info", got)
+			}
 			arr = []map[string]interface{}{{
 				"id":         9999,
 				"email":      "last@x.com",
 				"first_name": "Last",
 			}}
 		}
-		body := map[string]interface{}{
-			"users": arr,
-		}
-		if calls == 1 {
-			body["next_page_info"] = "page2-info"
-		}
-		b, _ := json.Marshal(body)
+		b, _ := json.Marshal(map[string]interface{}{"users": arr})
 		_, _ = w.Write(b)
 	}))
 	t.Cleanup(srv.Close)

@@ -125,3 +125,47 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrAuditNotAvailable", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_DropsUnparseableTimestamp guards against
+// emitting audit entries with a zero (0001-01-01) timestamp. Events
+// whose `date` is absent or unparseable must be dropped rather than
+// forwarded, otherwise they poison the watermark cursor and surface a
+// bogus timestamp downstream.
+func TestFetchAccessAuditLogs_DropsUnparseableTimestamp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"events": []map[string]interface{}{
+				{"id": "evt-good", "event_type": "WorkspaceUserInvited", "date": "2024-01-01T10:00:00Z"},
+				{"id": "evt-bad", "event_type": "WorkspaceUserInvited", "date": "not-a-timestamp"},
+				{"id": "evt-empty", "event_type": "WorkspaceUserInvited", "date": ""},
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	var collected []*access.AuditLogEntry
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(batch []*access.AuditLogEntry, _ time.Time, _ string) error {
+			collected = append(collected, batch...)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if len(collected) != 1 {
+		t.Fatalf("len = %d, want 1 (zero-timestamp events must be dropped)", len(collected))
+	}
+	if collected[0].EventID != "evt-good" {
+		t.Errorf("EventID = %s, want evt-good", collected[0].EventID)
+	}
+	for _, e := range collected {
+		if e.Timestamp.IsZero() {
+			t.Errorf("emitted entry with zero timestamp: %+v", e)
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // CheckSSOEnforcement implements access.SSOEnforcementChecker for
@@ -24,7 +25,7 @@ func (c *GitHubAccessConnector) CheckSSOEnforcement(ctx context.Context, configR
 	if err != nil {
 		return false, "", err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+cfg.Organization)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+url.PathEscape(cfg.Organization))
 	if err != nil {
 		return false, "", err
 	}

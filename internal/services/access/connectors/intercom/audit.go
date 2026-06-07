@@ -131,6 +131,9 @@ func mapIntercomActivity(e *intercomActivity) *access.AuditLogEntry {
 	if e.CreatedAt > 0 {
 		ts = time.Unix(e.CreatedAt, 0).UTC()
 	}
+	if ts.IsZero() {
+		return nil
+	}
 	rawMap := map[string]interface{}{}
 	raw, _ := json.Marshal(e)
 	_ = json.Unmarshal(raw, &rawMap)

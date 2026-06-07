@@ -161,6 +161,9 @@ func mapSlackAuditEntry(e *slackAuditEntry) *access.AuditLogEntry {
 		targetID = e.Entity.Channel.ID
 		targetType = "channel"
 	}
+	if e.DateCreate <= 0 {
+		return nil
+	}
 	return &access.AuditLogEntry{
 		EventID:          e.ID,
 		EventType:        e.Action,

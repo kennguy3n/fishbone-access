@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -65,9 +66,10 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 		req.Header.Set("Accept", "application/vnd.api+json")
 		req.Header.Set("Content-Type", "application/vnd.api+json")
 		req.Header.Set("Authorization", "token "+strings.TrimSpace(secrets.APIToken))
-		respBody, err := snykDoRaw(c, req)
+		respBody, status, err := snykDoRaw(c, req)
 		if err != nil {
-			if strings.Contains(err.Error(), "status 403") {
+			switch status {
+			case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 				return access.ErrAuditNotAvailable
 			}
 			return err
@@ -101,30 +103,24 @@ func (c *SnykAccessConnector) FetchAccessAuditLogs(
 	return nil
 }
 
-func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, error) {
+func snykDoRaw(c *SnykAccessConnector, req *http.Request) ([]byte, int, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("snyk: %s %s: %w", req.Method, req.URL.Path, err)
+		return nil, 0, fmt.Errorf("snyk: %s %s: %w", req.Method, req.URL.Path, err)
 	}
 	defer resp.Body.Close()
-	body := make([]byte, 0, 1<<16)
-	buf := make([]byte, 1<<14)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			body = append(body, buf[:n]...)
-		}
-		if rerr != nil {
-			break
-		}
-		if len(body) > 1<<20 {
-			break
-		}
+	// Match the strict 1 MB cap the rest of the connector applies via
+	// io.LimitReader, keeping the audit path consistent with stripe/
+	// sumo_logic/tailscale and avoiding the up-to-16 KB overshoot of a
+	// manual chunked read.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("snyk: %s %s: read body: %w", req.Method, req.URL.Path, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("snyk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return nil, resp.StatusCode, fmt.Errorf("snyk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 	}
-	return body, nil
+	return body, resp.StatusCode, nil
 }
 
 type snykAuditPage struct {
@@ -153,6 +149,9 @@ func mapSnykAuditEvent(e *snykAuditEvent) *access.AuditLogEntry {
 	ts, _ := time.Parse(time.RFC3339Nano, e.Attributes.CreatedAt)
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Attributes.CreatedAt)
+	}
+	if ts.IsZero() {
+		return nil
 	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}

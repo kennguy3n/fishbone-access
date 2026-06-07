@@ -129,11 +129,17 @@ func (c *GorgiasAccessConnector) baseURL(cfg Config) string {
 	return "https://" + strings.TrimSpace(cfg.Account) + ".gorgias.com"
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GorgiasAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GorgiasAccessConnector) newRequest(ctx context.Context, cfg Config, secrets Secrets, method, fullURL string) (*http.Request, error) {

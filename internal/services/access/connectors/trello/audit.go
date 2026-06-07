@@ -154,6 +154,9 @@ func mapTrelloAction(a *trelloAction) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseTrelloTime(a.Date)
+	if ts.IsZero() {
+		return nil
+	}
 	var targetID, targetType string
 	if a.Data != nil {
 		if card, ok := a.Data["card"].(map[string]interface{}); ok {

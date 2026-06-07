@@ -18,7 +18,12 @@ import (
 //
 // Endpoint:
 //
-//	GET /orgs/{org}/audit-log?phrase=created:>{since}&per_page=100&order=asc
+//	GET /orgs/{org}/audit-log?phrase=created:>={since}&per_page=100&order=asc
+//
+// The cursor filter is inclusive (created:>=) on purpose: a strict
+// created:> could drop events that share the exact second of the last
+// cursor. Re-fetching the boundary event is harmless because the audit
+// pipeline de-duplicates by EventID, so inclusive is the safe choice.
 //
 // Pagination uses RFC-5988 Link: rel="next" headers. If the
 // organization is not on a plan that exposes audit logs (e.g.
@@ -46,6 +51,9 @@ func (c *GitHubAccessConnector) FetchAccessAuditLogs(
 	cursor := since
 	for nextURL != "" {
 		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := c.assertSameHost(nextURL); err != nil {
 			return err
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)

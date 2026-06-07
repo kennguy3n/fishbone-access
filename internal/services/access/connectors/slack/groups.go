@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -73,10 +74,13 @@ func (c *SlackAccessConnector) SyncGroups(
 	}
 	cursor := checkpoint
 	for {
-		path := "/usergroups.list?include_count=true&include_disabled=false"
+		q := url.Values{}
+		q.Set("include_count", "true")
+		q.Set("include_disabled", "false")
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			q.Set("cursor", cursor)
 		}
+		path := "/usergroups.list?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -131,10 +135,12 @@ func (c *SlackAccessConnector) SyncGroupMembers(
 	}
 	cursor := checkpoint
 	for {
-		path := "/usergroups.users.list?usergroup=" + groupExternalID
+		q := url.Values{}
+		q.Set("usergroup", groupExternalID)
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			q.Set("cursor", cursor)
 		}
+		path := "/usergroups.users.list?" + q.Encode()
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err

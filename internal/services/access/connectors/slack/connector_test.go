@@ -64,6 +64,35 @@ func TestConnect_HappyPath(t *testing.T) {
 	}
 }
 
+// TestSync_EncodesCursorWithSpecialChars guards against regressing the
+// pagination cursor URL-encoding: Slack's next_cursor is base64 and can
+// contain '+', '/' and '=' which must survive the round trip intact.
+func TestSync_EncodesCursorWithSpecialChars(t *testing.T) {
+	const cursor = "dXNlcjpVMDYx+T1NL/W=="
+	page := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page++
+		if page == 1 {
+			_, _ = w.Write([]byte(`{"ok":true,"members":[{"id":"U1","name":"a","profile":{}}],"response_metadata":{"next_cursor":"` + cursor + `"}}`))
+			return
+		}
+		if got := r.URL.Query().Get("cursor"); got != cursor {
+			t.Errorf("cursor = %q; want %q", got, cursor)
+		}
+		_, _ = w.Write([]byte(`{"ok":true,"members":[],"response_metadata":{"next_cursor":""}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.SyncIdentities(context.Background(), nil, validSecrets(), "", func(_ []*access.Identity, _ string) error { return nil }); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if page != 2 {
+		t.Fatalf("pages = %d; want 2 (cursor likely corrupted)", page)
+	}
+}
+
 func TestConnect_FailureViaApiError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"ok":false,"error":"invalid_auth"}`))

@@ -45,12 +45,12 @@ func (c *MerakiAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 	return resp.StatusCode, body, nil
 }
 
-func (c *MerakiAccessConnector) adminsURL() string {
-	return c.baseURL() + "/api/v1/admins"
+func (c *MerakiAccessConnector) adminsURL(orgID string) string {
+	return c.baseURL() + "/api/v1/organizations/" + url.PathEscape(strings.TrimSpace(orgID)) + "/admins"
 }
 
-func (c *MerakiAccessConnector) adminURL(adminID string) string {
-	return c.adminsURL() + "/" + url.PathEscape(strings.TrimSpace(adminID))
+func (c *MerakiAccessConnector) adminURL(orgID, adminID string) string {
+	return c.adminsURL(orgID) + "/" + url.PathEscape(strings.TrimSpace(adminID))
 }
 
 func (c *MerakiAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
@@ -74,7 +74,7 @@ func (c *MerakiAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	if err := merakiValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (c *MerakiAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 		"email":     strings.TrimSpace(grant.UserExternalID),
 		"orgAccess": strings.TrimSpace(grant.ResourceExternalID),
 	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(), payload)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.adminsURL(cfg.OrganizationID), payload)
 	if err != nil {
 		return err
 	}
@@ -106,11 +106,11 @@ func (c *MerakiAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	if err := merakiValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(grant.UserExternalID), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.adminURL(cfg.OrganizationID, grant.UserExternalID), nil)
 	if err != nil {
 		return err
 	}
@@ -135,11 +135,11 @@ func (c *MerakiAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if user == "" {
 		return nil, errors.New("meraki: user external id is required")
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(user), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.adminURL(cfg.OrganizationID, user), nil)
 	if err != nil {
 		return nil, err
 	}

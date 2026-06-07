@@ -112,11 +112,17 @@ func (c *GitLabAccessConnector) baseURL(cfg Config) string {
 	return defaultBaseURL
 }
 
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GitLabAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GitLabAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -184,7 +190,7 @@ func (c *GitLabAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL(cfg)+"/api/v4/groups/"+cfg.GroupID)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL(cfg)+"/api/v4/groups/"+url.PathEscape(cfg.GroupID))
 	if err != nil {
 		return err
 	}
@@ -241,7 +247,7 @@ func (c *GitLabAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL(cfg)
 	for {
-		path := fmt.Sprintf("%s/api/v4/groups/%s/members/all?per_page=100&page=%d", base, cfg.GroupID, page)
+		path := fmt.Sprintf("%s/api/v4/groups/%s/members/all?per_page=100&page=%d", base, url.PathEscape(cfg.GroupID), page)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
@@ -309,7 +315,8 @@ func (c *GitLabAccessConnector) ProvisionAccess(
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("PRIVATE-TOKEN", strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("gitlab: provision: %w", err)
@@ -339,7 +346,8 @@ func (c *GitLabAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	req.Header.Set("PRIVATE-TOKEN", strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("gitlab: revoke: %w", err)
@@ -371,14 +379,22 @@ func (c *GitLabAccessConnector) ListEntitlements(
 	}
 	resp, err := c.doRaw(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr // entitlement-not-found is a soft signal; surface as empty list per ListEntitlements contract
+		// 404 means the user is not a member of the group — a soft signal
+		// that maps cleanly to "no entitlements". Any other status (403,
+		// 5xx, ...) or a transport error means we could not determine
+		// membership, so surface it rather than masking a real failure as
+		// an empty list.
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var m struct {
 		AccessLevel int    `json:"access_level"`
 		Username    string `json:"username"`
 	}
-	if json.Unmarshal(resp.Body, &m) != nil {
-		return nil, nil
+	if err := json.Unmarshal(resp.Body, &m); err != nil {
+		return nil, fmt.Errorf("gitlab: decode entitlements: %w", err)
 	}
 	return []access.Entitlement{{
 		ResourceExternalID: cfg.GroupID,
@@ -398,10 +414,11 @@ func (c *GitLabAccessConnector) GetSSOMetadata(_ context.Context, configRaw, sec
 	if cfg.BaseURL != "" {
 		base = strings.TrimRight(cfg.BaseURL, "/")
 	}
+	groupPath := url.PathEscape(cfg.GroupID)
 	return &access.SSOMetadata{
 		Protocol:    "saml",
-		MetadataURL: fmt.Sprintf("%s/groups/%s/-/saml/metadata", base, cfg.GroupID),
-		EntityID:    fmt.Sprintf("%s/groups/%s", base, cfg.GroupID),
+		MetadataURL: fmt.Sprintf("%s/groups/%s/-/saml/metadata", base, groupPath),
+		EntityID:    fmt.Sprintf("%s/groups/%s", base, groupPath),
 	}, nil
 }
 

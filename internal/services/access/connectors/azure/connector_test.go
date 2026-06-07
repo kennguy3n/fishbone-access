@@ -133,30 +133,30 @@ func TestSync_DecodesUsersAndPaginates(t *testing.T) {
 	}
 }
 
-// TestSync_FollowsAbsoluteNextLinkOnDifferentHost guards the doJSON
-// absolute-URL handling: when Graph returns an @odata.nextLink whose
-// host/format differs from baseURL(), the connector must follow it
-// verbatim rather than mangling it. The page-1 server advertises a
-// nextLink pointing at a *second* server; the old TrimPrefix-then-
-// re-prepend logic would have produced "<baseURL><absolute nextLink>"
-// and never reached page two.
-func TestSync_FollowsAbsoluteNextLinkOnDifferentHost(t *testing.T) {
-	page2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.RequestURI(), "://") {
-			t.Errorf("page-2 request target leaked absolute URL: %q", r.URL.RequestURI())
+// TestSync_FollowsAbsoluteNextLinkSameHost guards the doJSON absolute-URL
+// handling: when Graph returns an @odata.nextLink as an absolute URL on the
+// same host as baseURL(), the connector must follow it verbatim rather than
+// mangling it. The old TrimPrefix-then-re-prepend logic would have produced
+// "<baseURL><absolute nextLink>" and never reached page two.
+func TestSync_FollowsAbsoluteNextLinkSameHost(t *testing.T) {
+	var srv *httptest.Server
+	page := 0
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("$skiptoken") == "NEXT" {
+			if strings.Contains(r.URL.RequestURI(), "://") {
+				t.Errorf("page-2 request target leaked absolute URL: %q", r.URL.RequestURI())
+			}
+			_, _ = w.Write([]byte(`{"value":[{"id":"u2","displayName":"Bob","userPrincipalName":"bob@uney.com","accountEnabled":false}]}`))
+			return
 		}
-		_, _ = w.Write([]byte(`{"value":[{"id":"u2","displayName":"Bob","userPrincipalName":"bob@uney.com","accountEnabled":false}]}`))
+		page++
+		// Absolute nextLink on the SAME host as baseURL() (urlOverride).
+		_, _ = w.Write([]byte(`{"value":[{"id":"u1","displayName":"Alice","userPrincipalName":"alice@uney.com","mail":"alice@uney.com","accountEnabled":true}],"@odata.nextLink":"` + srv.URL + `/users?$skiptoken=NEXT"}`))
 	}))
-	t.Cleanup(page2.Close)
-
-	page1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		// Absolute nextLink on a DIFFERENT host than baseURL().
-		_, _ = w.Write([]byte(`{"value":[{"id":"u1","displayName":"Alice","userPrincipalName":"alice@uney.com","mail":"alice@uney.com","accountEnabled":true}],"@odata.nextLink":"` + page2.URL + `/users?$skiptoken=NEXT"}`))
-	}))
-	t.Cleanup(page1.Close)
+	t.Cleanup(srv.Close)
 
 	c := New()
-	c.urlOverride = page1.URL
+	c.urlOverride = srv.URL
 	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
 
 	var got []*access.Identity
@@ -168,6 +168,46 @@ func TestSync_FollowsAbsoluteNextLinkOnDifferentHost(t *testing.T) {
 	}
 	if len(got) != 2 || got[0].ExternalID != "u1" || got[1].ExternalID != "u2" {
 		t.Fatalf("got = %+v; want both pages [u1 u2]", got)
+	}
+}
+
+// TestSync_RejectsNextLinkOnDifferentHost pins the security guard: the bearer
+// transport attaches the Graph token to every request, so an @odata.nextLink
+// pointing at a host other than baseURL() (a Graph bug or a tampered/MITM'd
+// response) must be rejected — never followed — so the access token is not
+// leaked off-host. Graph always returns nextLinks on the request host, so this
+// rejects only anomalous cursors.
+func TestSync_RejectsNextLinkOnDifferentHost(t *testing.T) {
+	var hitPage2 bool
+	page2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hitPage2 = true
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("bearer token leaked to off-host nextLink target: %q", got)
+		}
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	}))
+	t.Cleanup(page2.Close)
+
+	page1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"value":[{"id":"u1","displayName":"Alice","userPrincipalName":"alice@uney.com","mail":"alice@uney.com","accountEnabled":true}],"@odata.nextLink":"` + page2.URL + `/users?$skiptoken=NEXT"}`))
+	}))
+	t.Cleanup(page1.Close)
+
+	c := New()
+	c.urlOverride = page1.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(_ []*access.Identity, _ string) error {
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected error rejecting off-host nextLink, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected host") {
+		t.Errorf("err = %v; want unexpected-host rejection", err)
+	}
+	if hitPage2 {
+		t.Error("connector followed nextLink to a different host (token would leak)")
 	}
 }
 
@@ -516,5 +556,29 @@ func TestListEntitlements_4xxReturnsError(t *testing.T) {
 	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
 	if _, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "principal-1"); err == nil {
 		t.Fatal("expected error on 401")
+	}
+}
+
+// TestArmRoleAssignmentName_StableEncoding pins the deterministic role-assignment
+// name to a golden value. The name is a persisted contract: ProvisionAccess
+// writes an Azure role assignment under this name and RevokeAccess must derive
+// the identical name to delete it. Changing the encoding would make RevokeAccess
+// issue DELETE against a non-existent name (404 -> idempotent "success") while
+// the real grant lingers. This golden value MUST NOT be updated to match a code
+// change — if this test fails, the encoding regressed and revocation of
+// previously-created assignments is broken.
+func TestArmRoleAssignmentName_StableEncoding(t *testing.T) {
+	const (
+		scope     = "/subscriptions/00000000-0000-0000-0000-000000000001"
+		principal = "11111111-1111-1111-1111-111111111111"
+		roleDefID = "22222222-2222-2222-2222-222222222222"
+		wantGUID  = "8b59bd6d-9357-5d05-d558-ea3de781e89f"
+	)
+	if got := armRoleAssignmentName(scope, principal, roleDefID); got != wantGUID {
+		t.Fatalf("armRoleAssignmentName encoding changed (breaks revocation of existing assignments): got %q, want %q", got, wantGUID)
+	}
+	// Determinism: same inputs -> same name across calls.
+	if a, b := armRoleAssignmentName(scope, principal, roleDefID), armRoleAssignmentName(scope, principal, roleDefID); a != b {
+		t.Fatalf("armRoleAssignmentName not deterministic: %q != %q", a, b)
 	}
 }

@@ -309,7 +309,7 @@ func (c *SnykAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 		return fmt.Errorf("snyk: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
@@ -335,7 +335,7 @@ func (c *SnykAccessConnector) RevokeAccess(ctx context.Context, configRaw, secre
 		return fmt.Errorf("snyk: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
+	if (resp.StatusCode >= 200 && resp.StatusCode < 300) || resp.StatusCode == http.StatusNotFound {
 		return nil
 	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
@@ -355,9 +355,17 @@ func (c *SnykAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	if err != nil {
 		return nil, err
 	}
-	body, err := c.do(req)
+	body, status, err := snykDoRaw(c, req)
 	if err != nil {
-		return nil, nil
+		// Member-not-found is a soft signal: the user holds no
+		// entitlements, so return an empty list per the contract.
+		// Transient/server/network failures (5xx, timeouts) must
+		// surface so the caller can retry instead of recording a
+		// false "no access" during an upstream outage.
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var resp struct {
 		Data struct {
@@ -366,8 +374,8 @@ func (c *SnykAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 			} `json:"attributes"`
 		} `json:"data"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("snyk: decode entitlements: %w", err)
 	}
 	return []access.Entitlement{{ResourceExternalID: cfg.OrgID, Role: resp.Data.Attributes.Role, Source: "direct"}}, nil
 }

@@ -125,8 +125,10 @@ func (c *LaunchDarklyAccessConnector) RevokeAccess(ctx context.Context, configRa
 	// LaunchDarkly JSON-patch remove requires the role value
 	// embedded in the path; we send a "test then remove" sequence
 	// that maps cleanly to the "does not exist" semantics when the
-	// role is absent.
-	patch := []ldPatchOp{{Op: "remove", Path: "/customRoles/" + role}}
+	// role is absent. The role becomes a single JSON Pointer reference
+	// token, so escape it per RFC 6901 (`~`->`~0`, `/`->`~1`) before
+	// interpolating it into the path.
+	patch := []ldPatchOp{{Op: "remove", Path: "/customRoles/" + escapeJSONPointerToken(role)}}
 	body, _ := json.Marshal(patch)
 	full := fmt.Sprintf("%s/api/v2/members/%s",
 		c.baseURL(), url.PathEscape(strings.TrimSpace(grant.UserExternalID)))
@@ -199,4 +201,14 @@ type ldMemberResponse struct {
 	Email       string   `json:"email"`
 	Role        string   `json:"role"`
 	CustomRoles []string `json:"customRoles"`
+}
+
+// escapeJSONPointerToken escapes a single JSON Pointer reference token
+// per RFC 6901 §3: `~` becomes `~0` and `/` becomes `~1`. The `~`
+// replacement must run first so that an escaped `/` does not get its
+// leading `~` re-escaped.
+func escapeJSONPointerToken(token string) string {
+	token = strings.ReplaceAll(token, "~", "~0")
+	token = strings.ReplaceAll(token, "/", "~1")
+	return token
 }

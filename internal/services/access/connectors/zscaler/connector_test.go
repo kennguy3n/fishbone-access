@@ -70,13 +70,14 @@ func TestSync_PaginatesUsers(t *testing.T) {
 				t.Errorf("page = %q", page)
 			}
 			for i := 0; i < pageSize; i++ {
-				arr = append(arr, map[string]interface{}{"id": fmt.Sprintf("u%d", i), "email": fmt.Sprintf("u%d@x.com", i), "userName": fmt.Sprintf("U%d", i)})
+				// Zscaler ZIA returns numeric admin ids.
+				arr = append(arr, map[string]interface{}{"id": i, "email": fmt.Sprintf("u%d@x.com", i), "userName": fmt.Sprintf("U%d", i)})
 			}
 		} else {
 			if page != "2" {
 				t.Errorf("page = %q", page)
 			}
-			arr = []map[string]interface{}{{"id": "ulast", "email": "last@x.com", "userName": "Last"}}
+			arr = []map[string]interface{}{{"id": 9999, "email": "last@x.com", "userName": "Last"}}
 		}
 		body["data"] = arr
 		b, _ := json.Marshal(body)
@@ -96,6 +97,36 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 	if len(got) != pageSize+1 || calls != 2 {
 		t.Fatalf("got=%d calls=%d", len(got), calls)
+	}
+}
+
+// TestSync_NumericIDs is a regression test for a decode bug: the real
+// Zscaler ZIA /api/v1/adminUsers endpoint returns `id` as a JSON number
+// (e.g. 7355487), not a quoted string. When zscalerUser.ID was typed as
+// `string`, json.Unmarshal failed with "cannot unmarshal number into Go
+// struct field ... of type string", aborting the entire sync. Decoding as
+// json.Number and stringifying preserves the numeric id as ExternalID.
+func TestSync_NumericIDs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[{"id":7355487,"email":"admin@x.com","userName":"Admin"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync with numeric id: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d identities, want 1", len(got))
+	}
+	if got[0].ExternalID != "7355487" {
+		t.Errorf("ExternalID = %q, want %q", got[0].ExternalID, "7355487")
 	}
 }
 

@@ -177,3 +177,5 @@ func parseSlackEnterpriseAuditTime(epoch int64) time.Time {
 	}
 	return time.Unix(epoch, 0).UTC()
 }
+
+var _ access.AccessAuditor = (*SlackEnterpriseAccessConnector)(nil)

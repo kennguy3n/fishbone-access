@@ -119,6 +119,9 @@ func mapWorkdayActivity(r *workdayActivityRow) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseWorkdayTime(r.RequestTime)
+	if ts.IsZero() {
+		return nil
+	}
 	action := strings.TrimSpace(r.ActivityAction)
 	if action == "" {
 		action = strings.TrimSpace(r.TaskDisplay)

@@ -105,6 +105,29 @@ func (c *SentryAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// assertSameHost verifies that an absolute URL we are about to follow with
+// the auth token targets the same host as baseURL(). SyncIdentities resumes
+// from a caller-supplied checkpoint and walks the rel="next" Link header, both
+// of which are absolute URLs persisted from a prior API response. Because
+// newRequest attaches the token to every request, a checkpoint (or tampered
+// Link header) pointing off-host would leak the bearer token to an unexpected
+// host. Sentry always paginates on the request host, so an off-host URL is
+// rejected rather than followed. Mirrors the azure guard.
+func (c *SentryAccessConnector) assertSameHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("sentry: parse url %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL())
+	if err != nil {
+		return fmt.Errorf("sentry: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("sentry: refusing to follow pagination URL to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
 func (c *SentryAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
@@ -175,7 +198,7 @@ func (c *SentryAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	probe := c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/"
+	probe := c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -240,9 +263,12 @@ func (c *SentryAccessConnector) SyncIdentities(
 	}
 	nextURL := checkpoint
 	if nextURL == "" {
-		nextURL = c.baseURL() + "/api/0/organizations/" + cfg.OrganizationSlug + "/members/"
+		nextURL = c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/members/"
 	}
 	for {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err
@@ -359,14 +385,22 @@ func (c *SentryAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	}
 	resp, err := c.doRaw(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr // entitlement-not-found is a soft signal; surface as empty list per ListEntitlements contract
+		// Member-not-found is a soft signal: the user simply holds no
+		// entitlements, so return an empty list per the ListEntitlements
+		// contract. Transient/server/network failures (5xx, timeouts)
+		// must surface so the caller can retry rather than recording a
+		// false "no access" during an upstream outage.
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var m struct {
 		Role  string   `json:"role"`
 		Teams []string `json:"teams"`
 	}
-	if json.Unmarshal(resp.Body, &m) != nil {
-		return nil, nil
+	if err := json.Unmarshal(resp.Body, &m); err != nil {
+		return nil, fmt.Errorf("sentry: decode entitlements: %w", err)
 	}
 	out := []access.Entitlement{{ResourceExternalID: cfg.OrganizationSlug, Role: m.Role, Source: "direct"}}
 	for _, t := range m.Teams {

@@ -10,6 +10,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// dropboxAuditMaxPages bounds a single audit sweep so a provider that
+// keeps returning has_more=true (or a server-side cursor bug) cannot
+// spin the pagination loop forever; mirrors the cap used by the other
+// paginated audit connectors in this family.
+const dropboxAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Dropbox Business team-log events into
 // the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -46,7 +52,7 @@ func (c *DropboxAccessConnector) FetchAccessAuditLogs(
 	}
 	first := true
 	pageCursor := ""
-	for {
+	for pageNum := 0; pageNum < dropboxAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -92,6 +98,7 @@ func (c *DropboxAccessConnector) FetchAccessAuditLogs(
 		}
 		pageCursor = page.Cursor
 	}
+	return nil
 }
 
 type dropboxEventsPage struct {
@@ -121,6 +128,12 @@ func mapDropboxEvent(e *dropboxEvent) *access.AuditLogEntry {
 	ts, _ := time.Parse(time.RFC3339Nano, e.Timestamp)
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.Timestamp)
+	}
+	if ts.IsZero() {
+		// An unparseable timestamp would emit a zero Timestamp that
+		// poisons the watermark cursor and forces an infinite
+		// re-fetch; skip the entry instead.
+		return nil
 	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}

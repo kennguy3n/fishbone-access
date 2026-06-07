@@ -19,6 +19,11 @@ import (
 const (
 	ProviderName = "sumo_logic"
 	pageSize     = 100
+	// sumoIdentitiesMaxPages caps SyncIdentities pagination as a
+	// defense-in-depth guard against an upstream that never returns a
+	// short final page. Mirrors splunkIdentitiesMaxPages in
+	// splunk/connector.go.
+	sumoIdentitiesMaxPages = 2000
 )
 
 var ErrNotImplemented = fmt.Errorf("sumo_logic: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -256,7 +261,7 @@ func (c *SumoLogicAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL(cfg)
-	for {
+	for pages := 0; pages < sumoIdentitiesMaxPages; pages++ {
 		path := fmt.Sprintf("%s/api/v1/users?limit=%d&offset=%d", base, pageSize, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -302,6 +307,7 @@ func (c *SumoLogicAccessConnector) SyncIdentities(
 		}
 		offset += pageSize
 	}
+	return fmt.Errorf("sumo_logic: sync identities: pagination exceeded %d pages", sumoIdentitiesMaxPages)
 }
 
 func (c *SumoLogicAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {

@@ -126,3 +126,48 @@ func TestFetchAccessAuditLogs_HardFailure(t *testing.T) {
 		t.Fatalf("err = %v, want non-nil hard error", err)
 	}
 }
+
+// TestFetchAccessAuditLogs_RejectsOffHostPagination pins the assertSameARMHost
+// guard on the activity-log pagination walk: an absolute nextLink pointing off
+// the configured ARM host must be refused rather than followed, since the loop
+// attaches the bearer token. Mirrors the doJSON same-host guard on the Graph
+// sync paths and the GitHub/Sentry audit guards. The off-host server must never
+// be contacted.
+func TestFetchAccessAuditLogs_RejectsOffHostPagination(t *testing.T) {
+	contacted := false
+	evil := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contacted = true
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("bearer token leaked off-host: %q", got)
+		}
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	}))
+	t.Cleanup(evil.Close)
+
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// First page is empty but points nextLink off-host.
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"value":    []map[string]interface{}{},
+			"nextLink": evil.URL + "/subscriptions/sub-1/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$skiptoken=p2",
+		})
+	}))
+	t.Cleanup(api.Close)
+
+	c := New()
+	c.urlOverride = api.URL
+	c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "fake-token", nil }
+	err := c.FetchAccessAuditLogs(context.Background(),
+		map[string]interface{}{"tenant_id": "tnt", "subscription_id": "sub-1"},
+		validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err == nil {
+		t.Fatal("expected error for off-host audit pagination, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected host") {
+		t.Fatalf("error = %v; want host-mismatch refusal", err)
+	}
+	if contacted {
+		t.Fatal("off-host server was contacted with the bearer token")
+	}
+}

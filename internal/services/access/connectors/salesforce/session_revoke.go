@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // RevokeUserSessions implements access.SessionRevoker for
@@ -31,7 +32,7 @@ func (c *SalesforceAccessConnector) RevokeUserSessions(ctx context.Context, conf
 	}
 	base := c.instanceBase(cfg)
 	queryURL := base + "/services/data/v59.0/query?q=" +
-		"SELECT+Id+FROM+AuthSession+WHERE+UsersId='" + userExternalID + "'+AND+SessionType='STANDARD'"
+		"SELECT+Id+FROM+AuthSession+WHERE+UsersId='" + url.QueryEscape(escapeSOQLLiteral(userExternalID)) + "'+AND+SessionType='STANDARD'"
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, queryURL)
 	if err != nil {
 		return err

@@ -66,6 +66,9 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if err := c.assertSameARMHost(next); err != nil {
+			return err
+		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, next, nil)
 		if err != nil {
 			return err

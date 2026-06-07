@@ -228,3 +228,58 @@ func TestListEntitlements_Empty(t *testing.T) {
 		t.Fatalf("got %d, want 0", len(got))
 	}
 }
+
+// A transient upstream failure (5xx) must surface as an error so the
+// caller can retry, rather than being silently swallowed as "no access".
+func TestListEntitlements_TransientErrorSurfaces(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+	if err == nil {
+		t.Fatalf("expected error on 500, got nil (entitlements=%#v)", got)
+	}
+	if got != nil {
+		t.Fatalf("expected nil entitlements on error, got %#v", got)
+	}
+}
+
+// TestSync_RejectsOffHostCheckpoint pins the assertSameHost guard: a persisted
+// checkpoint pointing off the API host must be refused rather than followed,
+// since SyncIdentities attaches the auth token to every request and would
+// otherwise leak it off-host. Mirrors the azure nextLink guard.
+func TestSync_RejectsOffHostCheckpoint(t *testing.T) {
+	contacted := false
+	evil := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contacted = true
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("auth token leaked off-host: %q", got)
+		}
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(evil.Close)
+
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(api.Close)
+
+	c := New()
+	c.urlOverride = api.URL
+	c.httpClient = func() httpDoer { return api.Client() }
+	badCheckpoint := evil.URL + "/api/0/organizations/acme/members/"
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), badCheckpoint, func(b []*access.Identity, _ string) error { return nil })
+	if err == nil {
+		t.Fatal("expected error for off-host checkpoint, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected host") {
+		t.Fatalf("error = %v; want host-mismatch refusal", err)
+	}
+	if contacted {
+		t.Fatal("off-host server was contacted with the auth token")
+	}
+}

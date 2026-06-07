@@ -27,6 +27,14 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(members)
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/groups/"+groupID+"/members":
+			// KnowBe4 user ids are numeric; the provision body must send
+			// user_id as a JSON number, not a quoted string.
+			var probe map[string]json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&probe); err != nil {
+				t.Errorf("decode provision body: %v", err)
+			} else if got := strings.TrimSpace(string(probe["user_id"])); got != "777" {
+				t.Errorf("user_id = %s; want numeric 777 (no quotes)", got)
+			}
 			if isMember {
 				w.WriteHeader(http.StatusConflict)
 				_, _ = w.Write([]byte(`{"error":"already a member"}`))

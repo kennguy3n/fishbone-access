@@ -45,16 +45,16 @@ func (c *GhostAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 	return resp.StatusCode, body, nil
 }
 
-func (c *GhostAccessConnector) invitesURL() string {
-	return c.baseURL() + "/ghost/api/admin/invites/"
+func (c *GhostAccessConnector) invitesURL(cfg Config) string {
+	return c.baseURL(cfg) + "/ghost/api/admin/invites/"
 }
 
-func (c *GhostAccessConnector) userURL(userID string) string {
-	return c.baseURL() + "/ghost/api/admin/users/" + url.PathEscape(strings.TrimSpace(userID)) + "/"
+func (c *GhostAccessConnector) userURL(cfg Config, userID string) string {
+	return c.baseURL(cfg) + "/ghost/api/admin/users/" + url.PathEscape(strings.TrimSpace(userID)) + "/"
 }
 
-func (c *GhostAccessConnector) userRolesURL(userID string) string {
-	return c.baseURL() + "/ghost/api/admin/users/" + url.PathEscape(strings.TrimSpace(userID)) + "/?include=roles"
+func (c *GhostAccessConnector) userRolesURL(cfg Config, userID string) string {
+	return c.baseURL(cfg) + "/ghost/api/admin/users/" + url.PathEscape(strings.TrimSpace(userID)) + "/?include=roles"
 }
 
 func (c *GhostAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
@@ -78,7 +78,7 @@ func (c *GhostAccessConnector) ProvisionAccess(ctx context.Context, configRaw, s
 	if err := ghostValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (c *GhostAccessConnector) ProvisionAccess(ctx context.Context, configRaw, s
 			},
 		},
 	})
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.invitesURL(), payload)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.invitesURL(cfg), payload)
 	if err != nil {
 		return err
 	}
@@ -114,11 +114,11 @@ func (c *GhostAccessConnector) RevokeAccess(ctx context.Context, configRaw, secr
 	if err := ghostValidateGrant(grant); err != nil {
 		return err
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.userURL(grant.UserExternalID), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodDelete, c.userURL(cfg, grant.UserExternalID), nil)
 	if err != nil {
 		return err
 	}
@@ -143,11 +143,11 @@ func (c *GhostAccessConnector) ListEntitlements(ctx context.Context, configRaw, 
 	if user == "" {
 		return nil, errors.New("ghost: user external id is required")
 	}
-	_, secrets, err := c.decodeBoth(configRaw, secretsRaw)
+	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.userRolesURL(user), nil)
+	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.userRolesURL(cfg, user), nil)
 	if err != nil {
 		return nil, err
 	}

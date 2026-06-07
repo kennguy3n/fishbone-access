@@ -162,7 +162,7 @@ func (c *MixpanelAccessConnector) decodeBoth(configRaw, secretsRaw map[string]in
 }
 
 func (c *MixpanelAccessConnector) buildPath(cfg Config) string {
-	return "/api/app/me/organizations/" + url.PathEscape(strings.TrimSpace(cfg.OrganizationID)) + "/members"
+	return "/api/app/organizations/" + url.PathEscape(strings.TrimSpace(cfg.OrganizationID)) + "/members"
 }
 
 func (c *MixpanelAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {

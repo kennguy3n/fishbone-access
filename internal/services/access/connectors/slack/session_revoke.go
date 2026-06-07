@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -29,9 +30,12 @@ func (c *SlackAccessConnector) RevokeUserSessions(ctx context.Context, configRaw
 	if err != nil {
 		return err
 	}
-	form := fmt.Sprintf("user_id=%s&mobile_only=false&web_only=false", userExternalID)
+	form := url.Values{}
+	form.Set("user_id", userExternalID)
+	form.Set("mobile_only", "false")
+	form.Set("web_only", "false")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL()+"/admin.users.session.reset", strings.NewReader(form))
+		c.baseURL()+"/admin.users.session.reset", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
 	}

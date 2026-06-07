@@ -21,6 +21,16 @@ import (
 const (
 	ProviderName   = "github"
 	defaultBaseURL = "https://api.github.com"
+
+	// githubIdentitiesMaxPages bounds the org-members pagination walk and
+	// githubEntitlementsMaxPages bounds the team-list walk in
+	// ListEntitlements. Link-header pagination normally terminates when
+	// rel="next" disappears; these caps are defense-in-depth so a
+	// misbehaving server that keeps emitting a next cursor cannot spin the
+	// loop forever, mirroring the caps on the sibling connectors
+	// (stripe/square/loom).
+	githubIdentitiesMaxPages   = 2000
+	githubEntitlementsMaxPages = 1000
 )
 
 var ErrNotImplemented = fmt.Errorf("github: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -103,11 +113,40 @@ func (c *GitHubAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// assertSameHost verifies that an absolute URL we are about to follow with
+// the bearer token targets the same host as baseURL(). SyncIdentities resumes
+// from a caller-supplied checkpoint and walks the rel="next" Link header, both
+// of which are absolute URLs that were ultimately persisted from a prior API
+// response. Because newRequest attaches the access token to every request, a
+// checkpoint (or tampered Link header) pointing off-host would leak the bearer
+// token to an unexpected host. GitHub always paginates on the request host, so
+// an off-host URL is rejected rather than followed. Mirrors the azure guard.
+func (c *GitHubAccessConnector) assertSameHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("github: parse url %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL())
+	if err != nil {
+		return fmt.Errorf("github: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("github: refusing to follow pagination URL to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
+// sharedHTTPClient is reused across requests so the underlying
+// http.Transport connection pool (keep-alives, TLS sessions) is shared
+// rather than rebuilt on every call. http.Client is safe for concurrent
+// use by multiple goroutines.
+var sharedHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func (c *GitHubAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return sharedHTTPClient
 }
 
 func (c *GitHubAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
@@ -176,7 +215,7 @@ func (c *GitHubAccessConnector) Connect(ctx context.Context, configRaw, secretsR
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+cfg.Organization)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/orgs/"+url.PathEscape(cfg.Organization))
 	if err != nil {
 		return err
 	}
@@ -235,9 +274,12 @@ func (c *GitHubAccessConnector) SyncIdentities(
 	}
 	nextURL := checkpoint
 	if nextURL == "" {
-		nextURL = c.baseURL() + "/orgs/" + cfg.Organization + "/members?per_page=100"
+		nextURL = c.baseURL() + "/orgs/" + url.PathEscape(cfg.Organization) + "/members?per_page=100"
 	}
-	for {
+	for page := 0; page < githubIdentitiesMaxPages; page++ {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err
@@ -279,6 +321,7 @@ func (c *GitHubAccessConnector) SyncIdentities(
 		}
 		nextURL = next
 	}
+	return fmt.Errorf("github: sync identities: pagination exceeded %d pages", githubIdentitiesMaxPages)
 }
 
 // ProvisionAccess adds a user to an org team via PUT /orgs/{org}/teams/{team_slug}/memberships/{username}.
@@ -397,7 +440,10 @@ func (c *GitHubAccessConnector) ListEntitlements(
 
 	// Team memberships
 	nextURL := fmt.Sprintf("%s/orgs/%s/teams", c.baseURL(), url.PathEscape(cfg.Organization))
-	for nextURL != "" {
+	for page := 0; nextURL != "" && page < githubEntitlementsMaxPages; page++ {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return nil, err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return nil, err
@@ -436,6 +482,9 @@ func (c *GitHubAccessConnector) ListEntitlements(
 			}
 		}
 		nextURL = parseNextLink(resp.Header.Get("Link"))
+		if nextURL != "" && c.urlOverride != "" {
+			nextURL = strings.Replace(nextURL, defaultBaseURL, strings.TrimRight(c.urlOverride, "/"), 1)
+		}
 	}
 	return out, nil
 }

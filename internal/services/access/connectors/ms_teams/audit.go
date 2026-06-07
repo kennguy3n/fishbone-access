@@ -146,6 +146,9 @@ func mapTeamsSignIn(r *teamsSignInRecord) *access.AuditLogEntry {
 		return nil
 	}
 	ts := parseTeamsTime(r.CreatedDateTime)
+	if ts.IsZero() {
+		return nil
+	}
 	outcome := "success"
 	if r.Status.ErrorCode != 0 || strings.TrimSpace(r.Status.FailureReason) != "" {
 		outcome = "failure"

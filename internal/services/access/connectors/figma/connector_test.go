@@ -87,6 +87,39 @@ func TestSync_PaginatesUsers(t *testing.T) {
 	}
 }
 
+func TestSync_EscapesOpaqueCursor(t *testing.T) {
+	// Figma's pagination cursor is an opaque token that can contain
+	// URL-reserved characters (e.g. '+', '/', '='). It must be sent as a
+	// properly percent-encoded query value so the server receives it
+	// verbatim after decoding.
+	const rawCursor = "ey+ab/cd=="
+	page := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page++
+		if page == 1 {
+			_, _ = w.Write([]byte(`{"members":[{"id":"u1","handle":"alice","email":"a@b.com"}],"cursor":{"after":"` + rawCursor + `"}}`))
+			return
+		}
+		if got := r.URL.Query().Get("cursor"); got != rawCursor {
+			t.Errorf("decoded cursor = %q; want %q (raw query: %q)", got, rawCursor, r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"members":[{"id":"u2","handle":"bob","email":"b@b.com"}],"cursor":{"after":""}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(_ []*access.Identity, _ string) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if page < 2 {
+		t.Fatalf("expected pagination, calls = %d", page)
+	}
+}
+
 func TestConnect_Failure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

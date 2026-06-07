@@ -44,14 +44,20 @@ func (c *SentryAccessConnector) FetchAccessAuditLogs(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err
 		}
 		resp, err := c.doRaw(req)
 		if err != nil {
-			if resp != nil && resp.StatusCode == http.StatusForbidden {
-				return access.ErrAuditNotAvailable
+			if resp != nil {
+				switch resp.StatusCode {
+				case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+					return access.ErrAuditNotAvailable
+				}
 			}
 			return err
 		}
@@ -122,6 +128,9 @@ func mapSentryAuditLog(e *sentryAuditLog) *access.AuditLogEntry {
 	ts, _ := time.Parse(time.RFC3339Nano, e.DateCreated)
 	if ts.IsZero() {
 		ts, _ = time.Parse(time.RFC3339, e.DateCreated)
+	}
+	if ts.IsZero() {
+		return nil
 	}
 	raw, _ := json.Marshal(e)
 	rawMap := map[string]interface{}{}

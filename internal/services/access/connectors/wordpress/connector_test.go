@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -108,6 +109,98 @@ func TestConnect_Failure(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	if err := c.Connect(context.Background(), validConfig(), validSecrets()); err == nil || !strings.Contains(err.Error(), "401") {
 		t.Errorf("Connect err = %v; want 401", err)
+	}
+}
+
+// TestConnect_DoesNotSendPageParam pins the same contract on the Connect probe:
+// the WordPress.com /users endpoint has no `page` parameter, so the probe must
+// not send one (it previously sent ?page=1&number=1, a param the real API
+// silently ignores). The probe only needs a single record to verify auth.
+func TestConnect_DoesNotSendPageParam(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"users": []map[string]interface{}{}})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.Connect(context.Background(), validConfig(), validSecrets()); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	if gotQuery.Get("page") != "" {
+		t.Errorf("Connect probe sent unsupported `page` query param (%q); WordPress.com /users has no page param", gotQuery.Get("page"))
+	}
+	if gotQuery.Get("number") == "" {
+		t.Errorf("Connect probe should bound the result with `number`; got query %v", gotQuery)
+	}
+}
+
+// TestSync_UsesOffsetPagination pins the WordPress.com /sites/$site/users
+// pagination contract: the endpoint honours `number` + `offset` and has NO
+// `page` parameter. A connector that paginates with `page` never advances the
+// offset, so every request returns the same first page — re-emitting page 1
+// forever (the loop only terminates because the server's runaway guard starts
+// returning empty pages). This server emulates the real API (offset/number
+// only) so the bug surfaces instead of being masked by a self-referential mock.
+func TestSync_UsesOffsetPagination(t *testing.T) {
+	const total = pageSize + 1
+	users := make([]map[string]interface{}, total)
+	for i := 0; i < total; i++ {
+		users[i] = map[string]interface{}{
+			"ID":    1000 + i,
+			"email": fmt.Sprintf("u%d@x.com", i),
+			"name":  fmt.Sprintf("U%d", i),
+		}
+	}
+	calls := 0
+	sawPageParam := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		q := r.URL.Query()
+		if q.Get("page") != "" {
+			sawPageParam = true
+		}
+		// Runaway guard: a connector stuck on offset 0 would loop forever.
+		// Break it so assertions fail deterministically instead of hanging.
+		if calls > 4 {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"users": []map[string]interface{}{}})
+			return
+		}
+		offset, number := 0, 0
+		_, _ = fmt.Sscanf(q.Get("offset"), "%d", &offset)
+		_, _ = fmt.Sscanf(q.Get("number"), "%d", &number)
+		page := []map[string]interface{}{}
+		if offset < len(users) {
+			end := offset + number
+			if end > len(users) {
+				end = len(users)
+			}
+			page = users[offset:end]
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"users": page})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if sawPageParam {
+		t.Errorf("connector sent unsupported `page` query param; WordPress.com /users paginates via number+offset")
+	}
+	if calls != 2 {
+		t.Fatalf("calls = %d, want 2 (offset 0 then offset %d)", calls, pageSize)
+	}
+	if len(got) != total {
+		t.Fatalf("got %d identities, want %d (offset pagination must traverse all users exactly once)", len(got), total)
 	}
 }
 

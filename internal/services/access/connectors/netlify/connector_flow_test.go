@@ -26,7 +26,7 @@ func TestNetlifyConnectorFlow_FullLifecycle(t *testing.T) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 			t.Errorf("auth missing")
 		}
-		listPath := "/api/v1/accounts/acme/members"
+		listPath := "/api/v1/acme/members"
 		delPath := listPath + "/" + email
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == listPath:
