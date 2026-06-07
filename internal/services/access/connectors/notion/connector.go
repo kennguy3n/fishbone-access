@@ -3,18 +3,16 @@
 package notion
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
-
-	"bytes"
-
-	"net/url"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -191,7 +189,7 @@ func (c *NotionAccessConnector) SyncIdentities(
 	for {
 		path := "/v1/users?page_size=100"
 		if cursor != "" {
-			path += "&start_cursor=" + cursor
+			path += "&start_cursor=" + url.QueryEscape(cursor)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
