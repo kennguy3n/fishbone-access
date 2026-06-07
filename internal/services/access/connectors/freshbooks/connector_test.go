@@ -1,0 +1,154 @@
+package freshbooks
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
+)
+
+type noNetworkRoundTripper struct{}
+
+func (noNetworkRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return nil, errors.New("network call attempted")
+}
+
+func validConfig() map[string]interface{} { return map[string]interface{}{"account_id": "abcDEF"} }
+func validSecrets() map[string]interface{} {
+	return map[string]interface{}{"access_token": "fbAAAA1234bbbbCCCC"}
+}
+
+func TestValidate_HappyPath(t *testing.T) {
+	if err := New().Validate(context.Background(), validConfig(), validSecrets()); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestValidate_RejectsMissing(t *testing.T) {
+	c := New()
+	if err := c.Validate(context.Background(), map[string]interface{}{}, validSecrets()); err == nil {
+		t.Error("missing account_id")
+	}
+	if err := c.Validate(context.Background(), validConfig(), map[string]interface{}{}); err == nil {
+		t.Error("missing token")
+	}
+}
+
+func TestValidate_PureLocal(t *testing.T) {
+	prev := http.DefaultTransport
+	http.DefaultTransport = noNetworkRoundTripper{}
+	t.Cleanup(func() { http.DefaultTransport = prev })
+	if err := New().Validate(context.Background(), validConfig(), validSecrets()); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestRegistryIntegration(t *testing.T) {
+	if got, _ := access.GetAccessConnector(ProviderName); got == nil {
+		t.Fatal("not registered")
+	}
+}
+
+func TestSync_PaginatesUsers(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			t.Errorf("expected Bearer auth")
+		}
+		page := r.URL.Query().Get("page")
+		if calls == 1 && page != "1" {
+			t.Errorf("page = %q", page)
+		}
+		if calls == 2 && page != "2" {
+			t.Errorf("page = %q", page)
+		}
+		staff := []map[string]interface{}{
+			{"id": calls*10 + 1, "fname": "First", "lname": fmt.Sprintf("L%d", calls*10+1), "email": fmt.Sprintf("a%d@x.com", calls), "active": true},
+			{"id": calls*10 + 2, "fname": "First2", "lname": "Last", "email": fmt.Sprintf("b%d@x.com", calls), "active": false},
+		}
+		b, _ := json.Marshal(map[string]interface{}{
+			"response": map[string]interface{}{
+				"result": map[string]interface{}{
+					"staff": staff,
+					"page":  calls,
+					"pages": 2,
+					"total": 4,
+				},
+			},
+		})
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("len = %d", len(got))
+	}
+	if calls != 2 {
+		t.Fatalf("calls = %d", calls)
+	}
+}
+
+func TestConnect_Failure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.Connect(context.Background(), validConfig(), validSecrets()); err == nil || !strings.Contains(err.Error(), "401") {
+		t.Errorf("Connect err = %v; want 401", err)
+	}
+}
+
+func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
+	md, err := New().GetCredentialsMetadata(context.Background(), validConfig(), validSecrets())
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	short, _ := md["token_short"].(string)
+	if short == "" || strings.Contains(short, "AAAA1234") {
+		t.Errorf("token_short = %q", short)
+	}
+}
+
+func TestSync_EscapesAccountID(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.EscapedPath()
+		b, _ := json.Marshal(map[string]interface{}{
+			"response": map[string]interface{}{
+				"result": map[string]interface{}{"staff": []interface{}{}, "page": 1, "pages": 1, "total": 0},
+			},
+		})
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{"account_id": "acct/12#3"}
+	if err := c.SyncIdentities(context.Background(), cfg, validSecrets(), "", func(_ []*access.Identity, _ string) error { return nil }); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if want := "/accounting/account/acct%2F12%233/users/staffs"; gotPath != want {
+		t.Errorf("escaped path = %q; want %q", gotPath, want)
+	}
+}
