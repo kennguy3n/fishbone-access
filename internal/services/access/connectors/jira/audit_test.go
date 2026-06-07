@@ -165,6 +165,28 @@ func TestFetchAccessAuditLogs_MissingOrgID(t *testing.T) {
 	}
 }
 
+// TestParseJiraTime_NormalizesToUTC is a regression guard ensuring parseJiraTime
+// returns UTC, matching every sibling connector's time parser. A non-UTC offset
+// from the Atlassian API must not be persisted verbatim, because the audit path
+// passes the parsed time straight through as batchMax/nextSince (audit.go) — an
+// offset-carrying cursor would be inconsistent with all other connectors.
+func TestParseJiraTime_NormalizesToUTC(t *testing.T) {
+	// 2024-01-01T15:00:00+05:00 == 2024-01-01T10:00:00Z.
+	got := parseJiraTime("2024-01-01T15:00:00+05:00")
+	if got.Location() != time.UTC {
+		t.Fatalf("location = %v; want UTC", got.Location())
+	}
+	want := time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)
+	if !got.Equal(want) || got.Hour() != 10 {
+		t.Fatalf("parseJiraTime = %s; want %s (UTC-normalized)", got, want)
+	}
+	// Nanosecond/offset variant must also normalize.
+	got = parseJiraTime("2024-01-01T15:00:00.500+05:00")
+	if got.Location() != time.UTC || got.Hour() != 10 {
+		t.Fatalf("parseJiraTime(nano) = %s (%v); want 10:00 UTC", got, got.Location())
+	}
+}
+
 // TestFetchAccessAuditLogs_SkipsEmptyPage is a regression guard for the
 // AccessAuditor contract: when every event on a page is filtered out (e.g. all
 // have zero/unparseable timestamps), the handler must NOT be invoked with an

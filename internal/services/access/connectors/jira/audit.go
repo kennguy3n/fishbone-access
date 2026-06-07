@@ -203,11 +203,15 @@ func parseJiraTime(s string) time.Time {
 	if s == "" {
 		return time.Time{}
 	}
+	// Normalize to UTC so the audit cursor (batchMax/nextSince passed to the
+	// handler) and delta-sync watermark are represented identically to every
+	// sibling connector. Without this a non-UTC offset from the Atlassian API
+	// (e.g. +05:00) would be persisted verbatim, diverging from the others.
 	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	if ts, err := time.Parse(time.RFC3339, s); err == nil {
-		return ts
+		return ts.UTC()
 	}
 	return time.Time{}
 }
