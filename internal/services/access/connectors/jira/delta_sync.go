@@ -109,7 +109,11 @@ func (c *JiraAccessConnector) SyncIdentitiesDelta(
 	nextURL := c.adminBaseURL() + "/admin/v1/orgs/" + url.PathEscape(orgID) + "/events?" + q.Encode()
 
 	newestSeen := since
-	for nextURL != "" {
+	// Bound the cursor-following loop with the shared cap (see
+	// jiraEventsMaxPages in audit.go): newestSeen advances per page and is
+	// returned as the persisted cursor, so a capped sweep just resumes from
+	// where it stopped on the next delta tick.
+	for page := 0; nextURL != "" && page < jiraEventsMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}

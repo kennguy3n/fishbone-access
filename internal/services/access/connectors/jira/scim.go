@@ -10,6 +10,7 @@ package jira
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -61,7 +62,10 @@ func (c *JiraAccessConnector) scimConfig(configRaw, secretsRaw map[string]interf
 	if c.urlOverride != "" {
 		base = strings.TrimRight(c.urlOverride, "/")
 	}
-	scimBaseURL := base + "/scim/directory/" + directoryID
+	// PathEscape the directory id: it is operator-supplied config, so even
+	// though Atlassian issues UUIDs today, escaping keeps the URL well-formed
+	// if it ever contains reserved characters (matches intercom/jfrog).
+	scimBaseURL := base + "/scim/directory/" + url.PathEscape(directoryID)
 	scimCfg := map[string]interface{}{
 		"scim_base_url": scimBaseURL,
 	}

@@ -13,6 +13,17 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// jiraEventsMaxPages bounds the Atlassian Admin events pagination loop
+// (shared by the audit sweep and delta sync). Both follow the
+// `links.next` cursor and rely on ctx cancellation for termination, but
+// a misbehaving/looping API that keeps returning a non-empty next link
+// would otherwise spin until the context is cancelled. Capping the page
+// count provides the same defense-in-depth the sibling connectors get
+// from their `…AuditMaxPages = 200` constants; the cursor advances as
+// pages are emitted, so the next sweep simply resumes where this one
+// stopped.
+const jiraEventsMaxPages = 200
+
 // FetchAccessAuditLogs streams Atlassian Admin organization audit events
 // into the access audit pipeline. Implements access.AccessAuditor.
 //
@@ -57,7 +68,7 @@ func (c *JiraAccessConnector) FetchAccessAuditLogs(
 	if encoded := q.Encode(); encoded != "" {
 		nextURL += "?" + encoded
 	}
-	for nextURL != "" {
+	for page := 0; nextURL != "" && page < jiraEventsMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

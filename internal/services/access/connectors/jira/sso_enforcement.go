@@ -47,7 +47,11 @@ func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw
 	if err != nil {
 		return false, "", fmt.Errorf("jira: sso-enforcement probe: %w", err)
 	}
-	defer resp.Body.Close()
+	// json.NewDecoder below only consumes one JSON value and leaves any
+	// trailing bytes unread, so a plain Close would prevent net/http from
+	// returning the connection to the keep-alive pool. Drain first, matching
+	// the write paths in connector.go / session_revoke.go.
+	defer drainAndClose(resp)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return false, "", fmt.Errorf("jira: sso-enforcement status %d: %s", resp.StatusCode, string(body))

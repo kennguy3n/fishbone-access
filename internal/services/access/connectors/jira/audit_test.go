@@ -258,3 +258,55 @@ func TestMapJiraAuditEvent_DropsZeroTimestamp(t *testing.T) {
 		t.Fatalf("mapJiraAuditEvent with valid time returned nil/zero ts: %+v", got)
 	}
 }
+
+// TestFetchAccessAuditLogs_CapsPages is a regression guard: a misbehaving
+// Atlassian API that always returns a non-empty links.next must not spin
+// indefinitely. The handler returns a fresh event + a next link on every
+// call, so without the jiraEventsMaxPages cap the loop only stops on ctx
+// cancellation. Asserts the sweep makes exactly jiraEventsMaxPages requests.
+func TestFetchAccessAuditLogs_CapsPages(t *testing.T) {
+	var serverURL string
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		// Always hand back another page with a strictly newer timestamp so
+		// nothing is filtered and the next link is always non-empty.
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":   fmt.Sprintf("evt-%d", calls),
+					"type": "audit",
+					"attributes": map[string]interface{}{
+						"time":   time.Date(2024, 1, 1, 0, 0, calls, 0, time.UTC).Format(time.RFC3339),
+						"action": "user.invited",
+						"actor":  map[string]interface{}{"id": "actor-1"},
+						"context": []map[string]interface{}{
+							{"id": "user-9", "type": "user"},
+						},
+					},
+				},
+			},
+			"links": map[string]interface{}{
+				"next": fmt.Sprintf("%s/admin/v1/orgs/org-123/events?from=cursor%d", serverURL, calls),
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+	serverURL = srv.URL
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := validConfig()
+	cfg["org_id"] = "org-123"
+
+	err := c.FetchAccessAuditLogs(context.Background(), cfg, validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != jiraEventsMaxPages {
+		t.Fatalf("made %d requests; want exactly jiraEventsMaxPages=%d (loop is unbounded)", calls, jiraEventsMaxPages)
+	}
+}
