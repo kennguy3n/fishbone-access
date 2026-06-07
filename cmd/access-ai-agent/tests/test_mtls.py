@@ -48,6 +48,25 @@ def test_build_context_half_configured_raises():
         build_server_ssl_context(cfg)
 
 
+def test_build_context_identity_without_mtls_raises():
+    # An identity pin set without any cert files would otherwise listen in
+    # plaintext yet install a verifier that rejects every connection. Fail closed.
+    cfg = ServerConfig(
+        server_cert_file="",
+        server_key_file="",
+        client_ca_file="",
+        expected_client_identities=("spiffe://caller",),
+    )
+    with pytest.raises(MTLSConfigError):
+        build_server_ssl_context(cfg)
+
+
+def test_build_context_no_identity_no_certs_is_plaintext():
+    # No identity pin and no cert files: plain HTTP (dev / CI), not a fatal.
+    cfg = ServerConfig(server_cert_file="", server_key_file="", client_ca_file="", expected_client_identities=())
+    assert build_server_ssl_context(cfg) is None
+
+
 def test_build_context_enabled(pki):
     cfg = ServerConfig(
         server_cert_file=pki.server_cert_file,

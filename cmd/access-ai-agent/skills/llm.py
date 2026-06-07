@@ -133,18 +133,26 @@ def assert_provider_allowed() -> None:
 
 
 def _resolve_model() -> str:
-    """Pick the model id for the current workspace tier, falling back to the
-    single-model default."""
+    """Pick the model id for the current workspace tier, degrading *down* the
+    local model ladder (8b → 4b → single-model default) when a higher tier's
+    model is not deployed. A ``local_8b`` workspace whose ``ACCESS_AI_LLM_MODEL_8B``
+    is unset therefore prefers the 4b model over the generic default rather than
+    skipping the next-best local tier entirely."""
     tier = _workspace_ai_tier.get()
+    # Ordered preference per tier: the tier's own model first, then progressively
+    # smaller local models, then the single-model default.
+    candidates: tuple[str, ...]
     if tier == "local_8b":
-        model = os.environ.get(ENV_MODEL_8B, "").strip()
+        candidates = (ENV_MODEL_8B, ENV_MODEL_4B, ENV_MODEL)
+    elif tier == "local_4b":
+        candidates = (ENV_MODEL_4B, ENV_MODEL)
+    else:
+        candidates = (ENV_MODEL,)
+    for env_name in candidates:
+        model = os.environ.get(env_name, "").strip()
         if model:
             return model
-    if tier == "local_4b":
-        model = os.environ.get(ENV_MODEL_4B, "").strip()
-        if model:
-            return model
-    return os.environ.get(ENV_MODEL, "").strip() or "local-default"
+    return "local-default"
 
 
 def call_llm(prompt: str, *, system: str | None = None, max_tokens: int = 512) -> str:

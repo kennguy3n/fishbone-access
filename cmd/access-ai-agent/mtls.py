@@ -16,7 +16,9 @@ field so both halves of the platform read symmetric configuration:
 
 When none of the three cert files is set the agent falls back to plain HTTP
 (dev / CI). A half-configured set (one or two of three) is a boot-time fatal,
-never a silent downgrade to plaintext.
+never a silent downgrade to plaintext. Likewise, pinning
+``A2A_MTLS_EXPECTED_CLIENT_IDENTITY`` without enabling mTLS is a boot-time fatal:
+an identity allowlist is meaningless in plaintext and would reject all traffic.
 """
 from __future__ import annotations
 
@@ -77,9 +79,7 @@ def parse_expected_identities(raw: str) -> tuple[str, ...]:
 def build_server_ssl_context(cfg: ServerConfig) -> ssl.SSLContext | None:
     """Build a TLS 1.3 mutual-auth SSLContext, or ``None`` when mTLS is not
     configured. Raises :class:`MTLSConfigError` on a half-configured set."""
-    if not cfg.has_any_field():
-        return None
-    if not cfg.is_enabled():
+    if cfg.has_any_field() and not cfg.is_enabled():
         missing = [
             name
             for name, val in (
@@ -94,6 +94,22 @@ def build_server_ssl_context(cfg: ServerConfig) -> ssl.SSLContext | None:
             f"{ENV_SERVER_CERT_FILE}, {ENV_SERVER_KEY_FILE}, {ENV_CLIENT_CA_FILE} together "
             f"(or none). Currently missing: {', '.join(missing)}"
         )
+    # An identity allowlist only has meaning under mTLS: it pins WHICH client
+    # certs may connect. Set without the cert files, the agent would listen in
+    # plaintext yet still install the URI-SAN verifier, which sees no peer cert
+    # and silently rejects *every* connection. Treat that as a boot-time fatal,
+    # symmetric with the half-configured cert guard above, rather than a silent
+    # black hole.
+    if cfg.expected_client_identities and not cfg.is_enabled():
+        raise MTLSConfigError(
+            f"access-ai-agent: {ENV_EXPECTED_CLIENT_IDENTITY} pins a client-identity allowlist "
+            f"but mTLS is not enabled — an identity allowlist requires mTLS. Set "
+            f"{ENV_SERVER_CERT_FILE}, {ENV_SERVER_KEY_FILE}, {ENV_CLIENT_CA_FILE} together, or "
+            f"unset {ENV_EXPECTED_CLIENT_IDENTITY}. Refusing to start in plaintext with an "
+            "identity pin that would reject all traffic."
+        )
+    if not cfg.has_any_field():
+        return None
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_3
     ctx.verify_mode = ssl.CERT_REQUIRED

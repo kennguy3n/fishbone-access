@@ -103,3 +103,34 @@ def test_resolve_model_by_tier(monkeypatch):
         assert llm._resolve_model() == "default-model"
     finally:
         llm.reset_workspace_ai_tier(token)
+
+
+def test_resolve_model_degrades_down_the_ladder(monkeypatch):
+    # 8b workspace with no 8b model deployed should prefer the next-best local
+    # tier (4b) over the generic single-model default.
+    monkeypatch.setenv(llm.ENV_MODEL, "default-model")
+    monkeypatch.setenv(llm.ENV_MODEL_4B, "model-4b")
+    monkeypatch.delenv(llm.ENV_MODEL_8B, raising=False)
+
+    token = llm.set_workspace_ai_tier("local_8b")
+    try:
+        assert llm._resolve_model() == "model-4b"
+    finally:
+        llm.reset_workspace_ai_tier(token)
+
+    # 8b with neither 8b nor 4b deployed falls through to the default model.
+    monkeypatch.delenv(llm.ENV_MODEL_4B, raising=False)
+    token = llm.set_workspace_ai_tier("local_8b")
+    try:
+        assert llm._resolve_model() == "default-model"
+    finally:
+        llm.reset_workspace_ai_tier(token)
+
+    # 4b tier never reaches into an 8b model and degrades to default when unset.
+    monkeypatch.setenv(llm.ENV_MODEL_8B, "model-8b")
+    monkeypatch.delenv(llm.ENV_MODEL_4B, raising=False)
+    token = llm.set_workspace_ai_tier("local_4b")
+    try:
+        assert llm._resolve_model() == "default-model"
+    finally:
+        llm.reset_workspace_ai_tier(token)
