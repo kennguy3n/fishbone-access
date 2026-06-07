@@ -41,6 +41,7 @@ jobs:
           go build -o /tmp/ztna-api ./cmd/ztna-api
           go build -o /tmp/access-connector-worker ./cmd/access-connector-worker
           go build -o /tmp/pam-gateway ./cmd/pam-gateway
+          go build -o /tmp/access-workflow-engine ./cmd/access-workflow-engine
 
       - name: Vet
         run: go vet ./...
@@ -70,3 +71,35 @@ jobs:
         with:
           version: v2.5.0
           args: --timeout=5m
+
+  python-agent:
+    name: access-ai-agent (ruff / mypy / pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cmd/access-ai-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: cmd/access-ai-agent/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Mypy (type-check source)
+        run: mypy
+
+      - name: Pytest
+        run: python -m pytest tests/ -q

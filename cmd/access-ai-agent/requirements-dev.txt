@@ -1,0 +1,5 @@
+-r requirements.txt
+ruff>=0.6,<0.16
+mypy>=1.10,<2
+pytest>=8,<9
+cryptography>=42

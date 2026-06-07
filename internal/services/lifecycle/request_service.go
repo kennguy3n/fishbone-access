@@ -203,6 +203,29 @@ func (s *AccessRequestService) CancelRequest(ctx context.Context, workspaceID, r
 	return s.transitionRequest(ctx, workspaceID, requestID, StateCancelled, actor, defaultReason(reason, "cancelled"))
 }
 
+// LockRequestInTx loads a request with a row-level write lock (SELECT ... FOR
+// UPDATE on Postgres) inside the supplied transaction and returns it. It lets a
+// caller serialize a multi-table read-modify-write (e.g. recording an approval
+// decision AND transitioning the request) against concurrent transitions on the
+// same request: every writer that first calls LockRequestInTx on the same row
+// blocks until the holder commits, so no writer can observe a stale snapshot of
+// the request between its decision read and its state write. Workspace-scoped so
+// a cross-tenant id is invisible. On dialects without FOR UPDATE (the SQLite
+// test path) writers serialize on the connection-level write lock instead.
+func (s *AccessRequestService) LockRequestInTx(ctx context.Context, tx *gorm.DB, workspaceID, requestID uuid.UUID) (*models.AccessRequest, error) {
+	var req models.AccessRequest
+	err := forUpdate(tx.WithContext(ctx)).
+		Where("workspace_id = ? AND id = ?", workspaceID, requestID).
+		Take(&req).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrRequestNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lifecycle: lock access_request: %w", err)
+	}
+	return &req, nil
+}
+
 // transitionRequest opens its own transaction, loads the request (workspace
 // scoped), gates the move through Transition, then writes the new state, the
 // history row, and the audit event atomically.

@@ -44,16 +44,45 @@ type PostgresQueue struct {
 	// fixed for the queue's lifetime), rather than re-probed inside each claim
 	// transaction, so the locking strategy can never be misdetected.
 	skipLocked bool
+	// jobTypes, when non-empty, scopes Claim to only these job types. It lets
+	// multiple workers drain the SAME access_jobs table without stealing each
+	// other's work: the connector worker filters to its connector job types and
+	// the workflow engine filters to its workflow types, so a job is only ever
+	// claimed by a worker that knows how to process it (an unfiltered worker
+	// would claim a foreign type and dead-letter it). Empty = claim every type
+	// (the original, backward-compatible behaviour).
+	jobTypes []string
+}
+
+// QueueOption configures a PostgresQueue at construction.
+type QueueOption func(*PostgresQueue)
+
+// WithJobTypes scopes the queue's Claim to the given job types. Passing no
+// types (or only empty strings) leaves the queue unfiltered. This is additive:
+// existing callers that do not pass the option keep claiming every type.
+func WithJobTypes(types ...string) QueueOption {
+	return func(q *PostgresQueue) {
+		filtered := make([]string, 0, len(types))
+		for _, t := range types {
+			if t != "" {
+				filtered = append(filtered, t)
+			}
+		}
+		q.jobTypes = filtered
+	}
 }
 
 // NewPostgresQueue builds a queue over the given GORM handle.
-func NewPostgresQueue(db *gorm.DB) *PostgresQueue {
+func NewPostgresQueue(db *gorm.DB, opts ...QueueOption) *PostgresQueue {
 	q := &PostgresQueue{db: db}
 	if db != nil && db.Dialector != nil {
 		// db.Name() is the dialector's Name() promoted through *Config; it is
 		// fixed for the handle's lifetime, so the SKIP LOCKED decision is made
 		// once here rather than re-probed on each claim's tx.
 		q.skipLocked = db.Name() == "postgres"
+	}
+	for _, opt := range opts {
+		opt(q)
 	}
 	return q
 }
@@ -103,6 +132,9 @@ func (q *PostgresQueue) Claim(ctx context.Context, max int) ([]Job, error) {
 			Where("status IN ? AND run_after <= ?", []string{StatusQueued, StatusRetry}, time.Now().UTC()).
 			Order("run_after").
 			Limit(max)
+		if len(q.jobTypes) > 0 {
+			sel = sel.Where("type IN ?", q.jobTypes)
+		}
 		// FOR UPDATE SKIP LOCKED is the multi-worker safety net on Postgres;
 		// SQLite rejects the clause and doesn't need it (single writer). The
 		// driver is fixed for the queue's lifetime, so this is resolved once at
