@@ -105,6 +105,29 @@ func (c *SentryAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// assertSameHost verifies that an absolute URL we are about to follow with
+// the auth token targets the same host as baseURL(). SyncIdentities resumes
+// from a caller-supplied checkpoint and walks the rel="next" Link header, both
+// of which are absolute URLs persisted from a prior API response. Because
+// newRequest attaches the token to every request, a checkpoint (or tampered
+// Link header) pointing off-host would leak the bearer token to an unexpected
+// host. Sentry always paginates on the request host, so an off-host URL is
+// rejected rather than followed. Mirrors the azure guard.
+func (c *SentryAccessConnector) assertSameHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("sentry: parse url %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL())
+	if err != nil {
+		return fmt.Errorf("sentry: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("sentry: refusing to follow pagination URL to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
 func (c *SentryAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
@@ -243,6 +266,9 @@ func (c *SentryAccessConnector) SyncIdentities(
 		nextURL = c.baseURL() + "/api/0/organizations/" + url.PathEscape(cfg.OrganizationSlug) + "/members/"
 	}
 	for {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err

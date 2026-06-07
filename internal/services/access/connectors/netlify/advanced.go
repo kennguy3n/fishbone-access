@@ -60,7 +60,7 @@ func (c *NetlifyAccessConnector) newJSONRequest(ctx context.Context, secrets Sec
 }
 
 func (c *NetlifyAccessConnector) membersURL(slug string) string {
-	return c.baseURL() + "/api/v1/" + url.PathEscape(strings.TrimSpace(slug)) + "/members"
+	return c.baseURL() + membersPath(slug)
 }
 
 func (c *NetlifyAccessConnector) memberURL(slug, member string) string {

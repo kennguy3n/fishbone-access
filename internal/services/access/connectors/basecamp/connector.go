@@ -114,6 +114,29 @@ func (c *BasecampAccessConnector) baseURL(cfg Config) string {
 	return "https://3.basecampapi.com/" + url.PathEscape(strings.TrimSpace(cfg.AccountID))
 }
 
+// assertSameHost verifies that an absolute URL we are about to follow with
+// the auth header targets the same host as baseURL(cfg). SyncIdentities resumes
+// from a caller-supplied checkpoint and walks the rel="next" Link header, both
+// of which are absolute URLs persisted from a prior API response. Because
+// newRequest attaches the token to every request, a checkpoint (or tampered
+// Link header) pointing off-host would leak the bearer token to an unexpected
+// host. Basecamp always paginates on the request host, so an off-host URL is
+// rejected rather than followed. Mirrors the azure guard.
+func (c *BasecampAccessConnector) assertSameHost(absoluteURL string, cfg Config) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("basecamp: parse url %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL(cfg))
+	if err != nil {
+		return fmt.Errorf("basecamp: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("basecamp: refusing to follow pagination URL to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
 func (c *BasecampAccessConnector) client() httpDoer {
 	if c.httpClient != nil {
 		return c.httpClient()
@@ -268,6 +291,9 @@ func (c *BasecampAccessConnector) SyncIdentities(
 	}
 	for page := 0; nextURL != "" && page < basecampSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := c.assertSameHost(nextURL, cfg); err != nil {
 			return err
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)

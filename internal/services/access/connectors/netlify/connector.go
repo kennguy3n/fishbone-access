@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -48,7 +49,10 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	}
 	var cfg Config
 	if v, ok := raw["account_slug"].(string); ok {
-		cfg.AccountSlug = v
+		// Canonicalize at decode time so the slug interpolated into every
+		// request path is the same value validate() checks and the metadata
+		// reports, and so a padded " acme " cannot survive into the URL.
+		cfg.AccountSlug = strings.TrimSpace(v)
 	}
 	return cfg, nil
 }
@@ -65,10 +69,20 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 }
 
 func (c Config) validate() error {
-	if strings.TrimSpace(c.AccountSlug) == "" {
+	if c.AccountSlug == "" {
 		return errors.New("netlify: account_slug is required")
 	}
 	return nil
+}
+
+// membersPath builds the base-relative account-members path. It is the
+// single source of truth for the account-members route shared by the
+// base operations (Connect/CountIdentities/SyncIdentities) and the
+// advanced operations (which compose it into an absolute URL via
+// membersURL). url.PathEscape guards against a slug containing '/',
+// '%', or '?' corrupting the request path.
+func membersPath(slug string) string {
+	return "/api/v1/" + url.PathEscape(strings.TrimSpace(slug)) + "/members"
 }
 
 func (s Secrets) validate() error {
@@ -153,7 +167,7 @@ func (c *NetlifyAccessConnector) Connect(ctx context.Context, configRaw, secrets
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, membersPath(cfg.AccountSlug))
 	if err != nil {
 		return err
 	}
@@ -187,7 +201,7 @@ func (c *NetlifyAccessConnector) CountIdentities(ctx context.Context, configRaw,
 	if err != nil {
 		return 0, err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, membersPath(cfg.AccountSlug))
 	if err != nil {
 		return 0, err
 	}
@@ -212,7 +226,7 @@ func (c *NetlifyAccessConnector) SyncIdentities(
 	if err != nil {
 		return err
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, "/api/v1/"+cfg.AccountSlug+"/members")
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, membersPath(cfg.AccountSlug))
 	if err != nil {
 		return err
 	}

@@ -103,6 +103,29 @@ func (c *GitHubAccessConnector) baseURL() string {
 	return defaultBaseURL
 }
 
+// assertSameHost verifies that an absolute URL we are about to follow with
+// the bearer token targets the same host as baseURL(). SyncIdentities resumes
+// from a caller-supplied checkpoint and walks the rel="next" Link header, both
+// of which are absolute URLs that were ultimately persisted from a prior API
+// response. Because newRequest attaches the access token to every request, a
+// checkpoint (or tampered Link header) pointing off-host would leak the bearer
+// token to an unexpected host. GitHub always paginates on the request host, so
+// an off-host URL is rejected rather than followed. Mirrors the azure guard.
+func (c *GitHubAccessConnector) assertSameHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("github: parse url %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.baseURL())
+	if err != nil {
+		return fmt.Errorf("github: parse base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("github: refusing to follow pagination URL to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
 // sharedHTTPClient is reused across requests so the underlying
 // http.Transport connection pool (keep-alives, TLS sessions) is shared
 // rather than rebuilt on every call. http.Client is safe for concurrent
@@ -244,6 +267,9 @@ func (c *GitHubAccessConnector) SyncIdentities(
 		nextURL = c.baseURL() + "/orgs/" + url.PathEscape(cfg.Organization) + "/members?per_page=100"
 	}
 	for {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err

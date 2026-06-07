@@ -109,3 +109,61 @@ func TestNetlifyMembersURL_NoAccountsSegment(t *testing.T) {
 		t.Fatalf("membersURL must not contain /accounts/ (Netlify spec is /api/v1/{slug}/members): %q", got)
 	}
 }
+
+// TestNetlifyBaseOps_EscapeAccountSlug is a regression test for the bug where
+// the base operations (Connect/CountIdentities/SyncIdentities) interpolated the
+// raw account_slug into the request path while the advanced operations used
+// url.PathEscape. A slug containing a path-significant character ('/', '%', '?')
+// would corrupt the base-op request path (e.g. "ac/me" splits into an extra
+// path segment) while the advanced ops stayed correct. Routing every op through
+// membersPath fixes this; the base ops must now emit the percent-escaped slug.
+// Without the fix the recorded EscapedPath would be "/api/v1/ac/me/members".
+func TestNetlifyBaseOps_EscapeAccountSlug(t *testing.T) {
+	const slug = "ac/me"
+	const wantEscaped = "/api/v1/ac%2Fme/members"
+
+	var escaped []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		escaped = append(escaped, r.URL.EscapedPath())
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := map[string]interface{}{"account_slug": slug}
+	secrets := map[string]interface{}{"access_token": "netlify-token-AAAA"}
+	ctx := context.Background()
+
+	if err := c.Connect(ctx, cfg, secrets); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	if _, err := c.CountIdentities(ctx, cfg, secrets); err != nil {
+		t.Fatalf("CountIdentities: %v", err)
+	}
+	if err := c.SyncIdentities(ctx, cfg, secrets, "", func(b []*access.Identity, _ string) error { return nil }); err != nil {
+		t.Fatalf("SyncIdentities: %v", err)
+	}
+
+	if len(escaped) != 3 {
+		t.Fatalf("expected 3 base-op requests, got %d: %v", len(escaped), escaped)
+	}
+	for _, p := range escaped {
+		if p != wantEscaped {
+			t.Errorf("base-op escaped path = %q, want %q (slug must be url.PathEscape'd)", p, wantEscaped)
+		}
+	}
+}
+
+// TestNetlifyDecodeConfig_TrimsAccountSlug pins decode-time canonicalization so
+// a padded slug cannot survive into the request path or the reported metadata.
+func TestNetlifyDecodeConfig_TrimsAccountSlug(t *testing.T) {
+	cfg, err := DecodeConfig(map[string]interface{}{"account_slug": "  acme  "})
+	if err != nil {
+		t.Fatalf("DecodeConfig: %v", err)
+	}
+	if cfg.AccountSlug != "acme" {
+		t.Fatalf("AccountSlug = %q, want %q (decode must TrimSpace)", cfg.AccountSlug, "acme")
+	}
+}
