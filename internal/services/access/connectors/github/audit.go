@@ -53,6 +53,9 @@ func (c *GitHubAccessConnector) FetchAccessAuditLogs(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if err := c.assertSameHost(nextURL); err != nil {
+			return err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return err

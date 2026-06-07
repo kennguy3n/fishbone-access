@@ -82,7 +82,7 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		if err != nil {
 			return fmt.Errorf("google_workspace: reports activity: %w", err)
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 50<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 50<<20))
 		_ = resp.Body.Close()
 		// 401/403 (token lacks the reports scope / caller is not an
 		// auditor) and 404 (tenant has no audit surface) are not hard
@@ -95,6 +95,12 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("google_workspace: reports activity: status %d: %s", resp.StatusCode, string(body))
+		}
+		// A mid-read connection drop on an otherwise-2xx response must
+		// surface as a descriptive transport error rather than be masked
+		// as a vague JSON decode failure on truncated bytes.
+		if readErr != nil {
+			return fmt.Errorf("google_workspace: read reports activity body: %w", readErr)
 		}
 		var page struct {
 			Items         []reportsActivity `json:"items"`
