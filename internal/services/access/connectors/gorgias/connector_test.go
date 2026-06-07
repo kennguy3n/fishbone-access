@@ -178,6 +178,56 @@ func TestSync_CheckpointTracksLocalCursor(t *testing.T) {
 	}
 }
 
+// TestSync_ExternalIDReconcilesWithRevoke locks the fix for the
+// identity-format mismatch: SyncIdentities must emit the email (the key
+// RevokeAccess/ListEntitlements resolve against), NOT the numeric id.
+// Emitting the numeric id silently broke revokes (the email lookup never
+// matched, so RevokeAccess returned nil without issuing a DELETE).
+func TestSync_ExternalIDReconcilesWithRevoke(t *testing.T) {
+	const email = "ada@example.com"
+	const userID = 42
+	deleted := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/users":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": []map[string]interface{}{{"id": userID, "email": email, "role": "agent", "active": true}},
+				"meta": map[string]interface{}{"next_page": 0},
+			})
+		case r.Method == http.MethodDelete && r.URL.Path == fmt.Sprintf("/api/users/%d", userID):
+			deleted = true
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	var synced []*access.Identity
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		synced = append(synced, b...)
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(synced) != 1 || synced[0].ExternalID != email {
+		t.Fatalf("ExternalID = %q, want %q", synced[0].ExternalID, email)
+	}
+	// Feed the synced ExternalID straight back into RevokeAccess — it must
+	// resolve the numeric id and issue the DELETE.
+	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(),
+		access.AccessGrant{UserExternalID: synced[0].ExternalID, ResourceExternalID: "agent"}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	if !deleted {
+		t.Fatal("RevokeAccess did not issue DELETE — synced ExternalID failed to reconcile")
+	}
+}
+
 func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	md, err := New().GetCredentialsMetadata(context.Background(), validConfig(), validSecrets())
 	if err != nil {

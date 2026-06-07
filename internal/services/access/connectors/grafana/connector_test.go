@@ -112,6 +112,55 @@ func TestConnect_Failure(t *testing.T) {
 	}
 }
 
+// TestSync_ExternalIDReconcilesWithRevoke locks the fix for the
+// identity-format mismatch: SyncIdentities must emit the login (the
+// loginOrEmail key findGrafanaUserID matches on), NOT the numeric userId.
+// Emitting the numeric userId silently broke revokes (the login/email
+// lookup never matched, so RevokeAccess returned nil without a DELETE).
+func TestSync_ExternalIDReconcilesWithRevoke(t *testing.T) {
+	const login = "ada"
+	deleted := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/org/users":
+			b, _ := json.Marshal([]map[string]interface{}{
+				{"userId": 42, "email": "ada@x.com", "login": login, "name": "Ada", "role": "Editor"},
+			})
+			_, _ = w.Write(b)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/org/users/42":
+			deleted = true
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	var synced []*access.Identity
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		synced = append(synced, b...)
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(synced) != 1 || synced[0].ExternalID != login {
+		t.Fatalf("ExternalID = %q, want %q", synced[0].ExternalID, login)
+	}
+	// Feed the synced ExternalID straight back into RevokeAccess — it must
+	// resolve the numeric userId and issue the DELETE.
+	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(),
+		access.AccessGrant{UserExternalID: synced[0].ExternalID, ResourceExternalID: "Editor"}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	if !deleted {
+		t.Fatal("RevokeAccess did not issue DELETE — synced ExternalID failed to reconcile")
+	}
+}
+
 func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	md, err := New().GetCredentialsMetadata(context.Background(), validConfig(), validSecrets())
 	if err != nil {

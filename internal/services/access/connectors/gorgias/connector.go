@@ -283,13 +283,21 @@ func (c *GorgiasAccessConnector) SyncIdentities(
 			if !u.Active {
 				status = "inactive"
 			}
+			// ExternalID must be the email, not the numeric u.ID: it is
+			// the key every membership operation consumes. ProvisionAccess
+			// POSTs {email, role}; RevokeAccess and ListEntitlements resolve
+			// the user via GET /api/users?email={id} and filter by
+			// case-insensitive email match (findGorgiasUserID /
+			// listGorgiasUsersByEmail). Keying the synced identity on the
+			// numeric id would make those lookups silently miss (no email
+			// match), turning revokes into no-ops and hiding entitlements.
 			identities = append(identities, &access.Identity{
-				ExternalID:  fmt.Sprintf("%d", u.ID),
+				ExternalID:  u.Email,
 				Type:        access.IdentityTypeUser,
 				DisplayName: display,
 				Email:       u.Email,
 				Status:      status,
-				RawData:     map[string]interface{}{"role": u.Role},
+				RawData:     map[string]interface{}{"role": u.Role, "id": u.ID},
 			})
 		}
 		// Emit the checkpoint that matches the page the loop will fetch

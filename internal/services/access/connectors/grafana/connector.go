@@ -254,13 +254,25 @@ func (c *GrafanaAccessConnector) SyncIdentities(
 		if u.IsDisabled {
 			status = "disabled"
 		}
+		// ExternalID must be the login (the loginOrEmail key), not the
+		// numeric u.UserID: it is what every membership operation consumes.
+		// ProvisionAccess POSTs {loginOrEmail, role}; RevokeAccess and
+		// ListEntitlements resolve the user via GET /api/org/users and match
+		// on Login or Email (findGrafanaUserID). Keying the synced identity
+		// on the numeric userId would make those lookups silently miss,
+		// turning revokes into no-ops and hiding entitlements. Fall back to
+		// email if a user somehow has no login so ExternalID is never empty.
+		externalID := strings.TrimSpace(u.Login)
+		if externalID == "" {
+			externalID = strings.TrimSpace(u.Email)
+		}
 		identities = append(identities, &access.Identity{
-			ExternalID:  fmt.Sprintf("%d", u.UserID),
+			ExternalID:  externalID,
 			Type:        access.IdentityTypeUser,
 			DisplayName: display,
 			Email:       u.Email,
 			Status:      status,
-			RawData:     map[string]interface{}{"role": u.Role},
+			RawData:     map[string]interface{}{"role": u.Role, "userId": u.UserID},
 		})
 	}
 	return handler(identities, "")
