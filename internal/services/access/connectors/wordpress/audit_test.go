@@ -85,6 +85,42 @@ func TestWordPressFetchAccessAuditLogs_TransientFailure(t *testing.T) {
 	}
 }
 
+// TestMapWordPressActivity_AcceptsSubsecondTimestamp pins that activity
+// entries carrying fractional-second timestamps (and non-UTC offsets) are
+// retained — not silently dropped — and are normalized to UTC. Go's
+// time.Parse accepts a fractional second after the seconds field even when
+// the RFC3339 layout omits it, so subsecond precision parses correctly.
+func TestMapWordPressActivity_AcceptsSubsecondTimestamp(t *testing.T) {
+	cases := []struct {
+		name      string
+		published string
+		wantUnix  int64
+	}{
+		{"subsecond-zulu", "2024-05-01T12:00:00.123Z", time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC).Unix()},
+		{"subsecond-offset", "2024-05-01T17:00:00.123456+05:00", time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC).Unix()},
+		{"no-subsecond", "2024-05-01T12:00:00Z", time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC).Unix()},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entry := mapWordPressActivity(&wpActivityEntry{
+				ActivityID:  "act-1",
+				Name:        "user__invited",
+				PublishedAt: tc.published,
+				Status:      "success",
+			})
+			if entry == nil {
+				t.Fatalf("entry dropped for timestamp %q (subsecond precision must be retained)", tc.published)
+			}
+			if entry.Timestamp.Location() != time.UTC {
+				t.Fatalf("timestamp location = %v; want UTC", entry.Timestamp.Location())
+			}
+			if entry.Timestamp.Unix() != tc.wantUnix {
+				t.Fatalf("timestamp = %v (unix %d); want unix %d", entry.Timestamp, entry.Timestamp.Unix(), tc.wantUnix)
+			}
+		})
+	}
+}
+
 func TestWordPressFetchAccessAuditLogs_InvalidSecrets(t *testing.T) {
 	c := New()
 	err := c.FetchAccessAuditLogs(context.Background(), validConfig(),

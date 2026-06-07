@@ -206,3 +206,5 @@ func parseWaveAuditTime(s string) time.Time {
 	}
 	return time.Time{}
 }
+
+var _ access.AccessAuditor = (*WaveAccessConnector)(nil)
