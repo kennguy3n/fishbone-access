@@ -104,6 +104,49 @@ func TestMixpanelConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestMixpanelListEntitlements_MatchesByID is a regression test ensuring
+// ListEntitlements resolves a member by the numeric id that SyncIdentities
+// emits as ExternalID (fmt.Sprintf("%d", m.ID)), not only by email. Matching
+// email alone meant a caller passing the SyncIdentities-emitted id found
+// nothing, diverging from the make/malwarebytes/midjourney/mistral peers.
+func TestMixpanelListEntitlements_MatchesByID(t *testing.T) {
+	const email = "alice@example.com"
+	const role = "admin"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/app/organizations/org-1/members" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"members": []map[string]interface{}{
+			{"id": 42, "email": email, "role": role},
+		}})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	cfg := mixpanelValidConfig()
+	secrets := mixpanelValidSecrets()
+
+	// Lookup by the numeric id SyncIdentities emits.
+	byID, err := c.ListEntitlements(context.Background(), cfg, secrets, "42")
+	if err != nil {
+		t.Fatalf("ListEntitlements by id: %v", err)
+	}
+	if len(byID) != 1 || byID[0].ResourceExternalID != role {
+		t.Fatalf("by id = %#v; want 1 with role=%s", byID, role)
+	}
+	// Lookup by email must still work.
+	byEmail, err := c.ListEntitlements(context.Background(), cfg, secrets, email)
+	if err != nil {
+		t.Fatalf("ListEntitlements by email: %v", err)
+	}
+	if len(byEmail) != 1 || byEmail[0].ResourceExternalID != role {
+		t.Fatalf("by email = %#v; want 1 with role=%s", byEmail, role)
+	}
+}
+
 func TestMixpanelConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

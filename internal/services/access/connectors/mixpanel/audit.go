@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -169,22 +170,10 @@ func readMixpanelBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("mixpanel: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	// Cap the read at 1 MiB using the standard idiom shared by every other
+	// connector in this package, which enforces the bound exactly rather than
+	// overshooting by up to one chunk.
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
 var _ access.AccessAuditor = (*MixpanelAccessConnector)(nil)

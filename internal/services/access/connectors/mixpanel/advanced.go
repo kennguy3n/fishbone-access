@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -164,7 +165,13 @@ func (c *MixpanelAccessConnector) ListEntitlements(ctx context.Context, configRa
 	}
 	out := make([]access.Entitlement, 0, len(resp.Members))
 	for _, m := range resp.Members {
-		if !strings.EqualFold(strings.TrimSpace(m.Email), user) {
+		// SyncIdentities emits the numeric member id as ExternalID, while the
+		// provisioning contract keys grants by email. Match either form so a
+		// caller can pass the id surfaced by SyncIdentities or the documented
+		// email — consistent with the make/malwarebytes/midjourney/mistral
+		// ListEntitlements, which also accept id or email.
+		if !strings.EqualFold(strings.TrimSpace(m.Email), user) &&
+			strconv.FormatInt(m.ID, 10) != user {
 			continue
 		}
 		role := strings.TrimSpace(m.Role)
