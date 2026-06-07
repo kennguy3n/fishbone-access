@@ -278,11 +278,21 @@ func (c *PagerDutyAccessConnector) ProvisionAccess(ctx context.Context, configRa
 		return fmt.Errorf("pagerduty: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("pagerduty: provision status %d: %s", resp.StatusCode, string(respBody))
+	// Classify with the shared helpers (docs/architecture.md §2) like the
+	// other connectors so a 5xx is surfaced as transient (worker retries
+	// with backoff) and a 409/"already a member" is treated as idempotent
+	// success, rather than collapsing every non-2xx into a permanent error.
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("pagerduty: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("pagerduty: provision status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *PagerDutyAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {
@@ -303,11 +313,20 @@ func (c *PagerDutyAccessConnector) RevokeAccess(ctx context.Context, configRaw, 
 		return fmt.Errorf("pagerduty: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("pagerduty: revoke status %d: %s", resp.StatusCode, string(respBody))
+	// Mirror ProvisionAccess: a 404/"not a member" is idempotent revoke
+	// success and a 5xx is transient (retryable). IsIdempotentRevokeStatus
+	// already covers the 404 case the explicit check used to handle.
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("pagerduty: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("pagerduty: revoke status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 func (c *PagerDutyAccessConnector) ListEntitlements(ctx context.Context, configRaw, secretsRaw map[string]interface{}, userExternalID string) ([]access.Entitlement, error) {

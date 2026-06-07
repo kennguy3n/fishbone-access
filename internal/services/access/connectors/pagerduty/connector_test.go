@@ -208,6 +208,48 @@ func TestRevokeAccess_Failure(t *testing.T) {
 	}
 }
 
+func TestProvisionAccess_IdempotentOn409(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":{"message":"User is already a member of the team"}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "t-1"}); err != nil {
+		t.Fatalf("ProvisionAccess 409 should be idempotent success: %v", err)
+	}
+}
+
+func TestProvisionAccess_TransientOn500(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "t-1"})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("ProvisionAccess 500 should surface a transient error, got %v", err)
+	}
+}
+
+func TestRevokeAccess_TransientOn503(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "t-1"})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("RevokeAccess 503 should surface a transient error, got %v", err)
+	}
+}
+
 func TestListEntitlements_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"user":{"teams":[{"id":"t1","role":"responder"}]}}`))

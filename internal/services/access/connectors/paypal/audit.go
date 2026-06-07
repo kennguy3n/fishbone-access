@@ -49,9 +49,18 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 	if err != nil {
 		return err
 	}
+	// Capture a single `now` up front and reuse it for both the first-run
+	// backfill start (since) and every page's end_date. PayPal's Transaction
+	// Search API rejects any start/end span longer than 31 days; computing the
+	// two bounds from separate time.Now() calls makes the first-run window
+	// strictly greater than 31d (by the elapsed token-mint + request time),
+	// which the API would reject with a 400. A single timestamp keeps the
+	// first-run window exactly paypalAuditBackfill and the end_date stable
+	// across pages.
+	now := time.Now().UTC()
 	since := sincePartitions[access.DefaultAuditPartition]
 	if since.IsZero() {
-		since = time.Now().UTC().Add(-paypalAuditBackfill)
+		since = now.Add(-paypalAuditBackfill)
 	}
 	base := c.baseURL(cfg) + "/v1/reporting/transactions"
 
@@ -71,7 +80,7 @@ func (c *PayPalAccessConnector) FetchAccessAuditLogs(
 		q.Set("page", fmt.Sprintf("%d", page))
 		q.Set("page_size", fmt.Sprintf("%d", paypalAuditPageSize))
 		q.Set("start_date", since.UTC().Format(time.RFC3339))
-		q.Set("end_date", time.Now().UTC().Format(time.RFC3339))
+		q.Set("end_date", now.Format(time.RFC3339))
 		req, err := c.newRequest(ctx, token, http.MethodGet, base+"?"+q.Encode())
 		if err != nil {
 			return err
