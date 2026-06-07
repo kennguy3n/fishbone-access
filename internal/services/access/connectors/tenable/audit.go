@@ -87,13 +87,25 @@ func (c *TenableAccessConnector) FetchAccessAuditLogs(
 		if err := handler(batch, batchMax, access.DefaultAuditPartition); err != nil {
 			return err
 		}
-		// Stop when the page is short (Tenable returned everything it had),
-		// or when the cursor didn't advance (no new events to bump past).
+		// A short page means Tenable returned everything it had — the
+		// queue is drained, so we're done.
 		if len(page.Events) < pageLimit {
 			return nil
 		}
+		// A full page that does not advance the watermark cannot be
+		// paged past: the only pagination lever is `date.gt:{received}`,
+		// so if every event on a full page mapped to a timestamp at or
+		// before the current cursor (e.g. more than pageLimit events
+		// share the same second, or all `received` values were
+		// unparseable), bumping `date.gt` would re-request this exact
+		// page forever. Returning nil here would report a false-complete
+		// drain AND persist an unchanged cursor, permanently stalling the
+		// audit stream and silently dropping every later event. Surface
+		// it as an error so the sync is retried/alerted instead.
 		if !batchMax.After(cursor) {
-			return nil
+			return fmt.Errorf(
+				"tenable: audit pagination stalled at %s: a full page of %d events did not advance the cursor",
+				cursor.UTC().Format(time.RFC3339), pageLimit)
 		}
 		cursor = batchMax
 	}

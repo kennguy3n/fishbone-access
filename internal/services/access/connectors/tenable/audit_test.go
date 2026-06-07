@@ -208,3 +208,54 @@ func TestFetchAccessAuditLogs_DropsUnparseableTimestamp(t *testing.T) {
 		}
 	}
 }
+
+// TestFetchAccessAuditLogs_StalledFullPageErrors verifies that a FULL page
+// whose events do not advance the watermark surfaces an error instead of a
+// false-complete drain. Tenable's only pagination lever is
+// `date.gt:{received}`, so when more than pageLimit events share the same
+// second (here a full page all stamped at the cursor), the cursor cannot
+// advance — returning nil would persist an unchanged cursor and permanently
+// stall the audit stream, silently dropping every later event. Before the fix
+// the loop returned nil; now it must error so the sync is retried/alerted.
+func TestFetchAccessAuditLogs_StalledFullPageErrors(t *testing.T) {
+	const fullPage = 1000
+	since := time.Date(2024, 5, 1, 10, 0, 0, 0, time.UTC)
+	stuck := make([]tenableEvent, fullPage)
+	for i := 0; i < fullPage; i++ {
+		// Every event is stamped at exactly the cursor second, so none
+		// is After(cursor) and the watermark never advances.
+		stuck[i] = tenableEvent{
+			ID:       fmt.Sprintf("stuck-%d", i),
+			Action:   "user.logged_in",
+			Received: since.Format(time.RFC3339),
+			Actor:    tenableEventActor{ID: fmt.Sprintf("u%d", i)},
+		}
+	}
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		if calls > 2 {
+			t.Errorf("connector kept requesting after a stalled page (call #%d) — possible infinite loop", calls)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(tenableAuditPage{Events: stuck})
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: since},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err == nil {
+		t.Fatal("expected a stall error on a full page that cannot advance the cursor; got nil (silent audit gap)")
+	}
+	if !strings.Contains(err.Error(), "stalled") {
+		t.Fatalf("err = %v; want a 'stalled' pagination error", err)
+	}
+	if err == access.ErrAuditNotAvailable {
+		t.Fatalf("err = ErrAuditNotAvailable; want a generic stall error")
+	}
+}
