@@ -91,14 +91,14 @@ func (c *JiraAccessConnector) FetchAccessAuditLogs(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("jira: audit events: status %d: %s", resp.StatusCode, string(body))
 		}
-		var page jiraAuditPage
-		if err := json.Unmarshal(body, &page); err != nil {
+		var evPage jiraAuditPage
+		if err := json.Unmarshal(body, &evPage); err != nil {
 			return fmt.Errorf("jira: decode audit page: %w", err)
 		}
-		batch := make([]*access.AuditLogEntry, 0, len(page.Data))
+		batch := make([]*access.AuditLogEntry, 0, len(evPage.Data))
 		batchMax := cursor
-		for i := range page.Data {
-			entry := mapJiraAuditEvent(&page.Data[i])
+		for i := range evPage.Data {
+			entry := mapJiraAuditEvent(&evPage.Data[i])
 			if entry == nil {
 				continue
 			}
@@ -116,7 +116,7 @@ func (c *JiraAccessConnector) FetchAccessAuditLogs(
 			}
 			cursor = batchMax
 		}
-		next := strings.TrimSpace(page.Links.Next)
+		next := strings.TrimSpace(evPage.Links.Next)
 		if next == "" {
 			return nil
 		}

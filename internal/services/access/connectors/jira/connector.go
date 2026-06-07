@@ -329,14 +329,22 @@ func (c *JiraAccessConnector) ProvisionAccess(
 		return fmt.Errorf("jira: provision: %w", err)
 	}
 	defer drainAndClose(resp)
-	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// Classify via the shared docs/architecture.md §2 predicates instead of an
+	// inline 400+"already" check: this also treats 409 Conflict as idempotent
+	// success and surfaces 5xx/429 as a distinguishable transient error so the
+	// worker retries with backoff rather than treating it as a permanent
+	// failure. Matches every other connector's write path.
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		return nil
-	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if resp.StatusCode == http.StatusBadRequest && strings.Contains(string(respBody), "already") {
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
 		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("jira: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("jira: provision status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return fmt.Errorf("jira: provision status %d: %s", resp.StatusCode, string(respBody))
 }
 
 // RevokeAccess removes a user from a Jira group. 404 = idempotent.
@@ -364,11 +372,21 @@ func (c *JiraAccessConnector) RevokeAccess(
 		return fmt.Errorf("jira: revoke: %w", err)
 	}
 	defer drainAndClose(resp)
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// Same shared-predicate classification as ProvisionAccess: 404 (and
+	// 410 Gone / "not a member") is idempotent success, 5xx/429 is a
+	// distinguishable transient error for worker retry, anything else is a
+	// permanent failure.
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("jira: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("jira: revoke status %d: %s", resp.StatusCode, string(respBody))
 	}
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("jira: revoke status %d: %s", resp.StatusCode, string(respBody))
 }
 
 // ListEntitlements returns the groups a user belongs to.

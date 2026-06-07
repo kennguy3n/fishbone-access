@@ -399,3 +399,56 @@ func TestRevokeAccess_DrainsBodyForConnectionReuse(t *testing.T) {
 		t.Fatal("response body not closed")
 	}
 }
+
+// TestProvisionAccess_ConflictIsIdempotent guards the migration to the
+// shared access.IsIdempotentProvisionStatus predicate: a 409 Conflict
+// (the RFC "already exists" code) must be treated as idempotent success.
+// The old inline check only matched 400+"already" and would have errored.
+func TestProvisionAccess_ConflictIsIdempotent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"errorMessages":["conflict"]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"}); err != nil {
+		t.Fatalf("ProvisionAccess 409: want nil (idempotent), got %v", err)
+	}
+}
+
+// TestProvisionAccess_TransientStatus guards that a 5xx is surfaced as a
+// distinguishable transient error (so the worker retries with backoff)
+// rather than an opaque permanent failure.
+func TestProvisionAccess_TransientStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"message":"upstream down"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"})
+	if err == nil || !strings.Contains(err.Error(), "transient") || !strings.Contains(err.Error(), "503") {
+		t.Fatalf("ProvisionAccess 503: want transient 503 error, got %v", err)
+	}
+}
+
+// TestRevokeAccess_TransientStatus mirrors the provision transient guard
+// for the revoke path.
+func TestRevokeAccess_TransientStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"message":"slow down"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"})
+	if err == nil || !strings.Contains(err.Error(), "transient") || !strings.Contains(err.Error(), "429") {
+		t.Fatalf("RevokeAccess 429: want transient 429 error, got %v", err)
+	}
+}

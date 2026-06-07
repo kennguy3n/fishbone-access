@@ -27,16 +27,11 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Config struct {
-	// SAMLMetadataURL points at the Keeper SSO Connect SAML 2.0
-	// metadata document for the customer (rendered in the Keeper
-	// Admin Console under SSO Connect settings). When set the
-	// connector advertises Keeper SAML metadata via GetSSOMetadata.
-	SAMLMetadataURL string `json:"saml_metadata_url,omitempty"`
-	// SAMLEntityID is the IdP entity ID configured for the customer.
-	// Optional — when empty the metadata URL is used as the entity ID.
-	SAMLEntityID string `json:"saml_entity_id,omitempty"`
-}
+// Config carries no Keeper-specific fields today. SSO metadata is read
+// straight from the shared `sso_*` config keys by GetSSOMetadata via
+// access.SSOMetadataFromConfig, matching every other connector, so it is
+// intentionally empty rather than declaring bespoke `saml_*` keys.
+type Config struct{}
 
 type Secrets struct {
 	Token string `json:"token"`
@@ -54,14 +49,7 @@ func DecodeConfig(raw map[string]interface{}) (Config, error) {
 	if raw == nil {
 		return Config{}, errors.New("keeper: config is nil")
 	}
-	var cfg Config
-	if v, ok := raw["saml_metadata_url"].(string); ok {
-		cfg.SAMLMetadataURL = v
-	}
-	if v, ok := raw["saml_entity_id"].(string); ok {
-		cfg.SAMLEntityID = v
-	}
-	return cfg, nil
+	return Config{}, nil
 }
 
 func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
@@ -269,29 +257,17 @@ func (c *KeeperAccessConnector) SyncIdentities(
 	}
 }
 
-// GetSSOMetadata advertises Keeper SSO Connect SAML metadata when the
-// connector is configured with a saml_metadata_url. Keeper Enterprise
-// renders the metadata document per-customer; the operator wires the
-// URL via config. Returns (nil, nil) when no metadata URL is set so
-// callers treat the connector as SSO-unsupported.
+// GetSSOMetadata projects the connector's configured `sso_metadata_url` /
+// `sso_entity_id` / `sso_login_url` / `sso_logout_url` config into the
+// platform SSOMetadata shape via the shared helper, defaulting the
+// protocol to SAML (Keeper SSO Connect is SAML 2.0). When
+// `sso_metadata_url` is blank the helper returns nil so callers treat the
+// connector as SSO-unsupported. Using the shared helper keeps Keeper's
+// operator-facing config keys identical to every other connector instead
+// of a bespoke `saml_metadata_url` key that silently ignored the standard
+// `sso_*` config an operator would supply.
 func (c *KeeperAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
-	cfg, err := DecodeConfig(configRaw)
-	if err != nil {
-		return nil, err
-	}
-	metaURL := strings.TrimSpace(cfg.SAMLMetadataURL)
-	if metaURL == "" {
-		return nil, nil
-	}
-	entity := strings.TrimSpace(cfg.SAMLEntityID)
-	if entity == "" {
-		entity = metaURL
-	}
-	return &access.SSOMetadata{
-		Protocol:    "saml",
-		MetadataURL: metaURL,
-		EntityID:    entity,
-	}, nil
+	return access.SSOMetadataFromConfig(configRaw, "saml"), nil
 }
 
 func (c *KeeperAccessConnector) GetCredentialsMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (map[string]interface{}, error) {

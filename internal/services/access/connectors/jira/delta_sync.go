@@ -142,15 +142,15 @@ func (c *JiraAccessConnector) SyncIdentitiesDelta(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return "", fmt.Errorf("jira: delta events status %d: %s", resp.StatusCode, string(body))
 		}
-		var page jiraAuditPage
-		if err := json.Unmarshal(body, &page); err != nil {
+		var evPage jiraAuditPage
+		if err := json.Unmarshal(body, &evPage); err != nil {
 			return "", fmt.Errorf("jira: decode delta page: %w", err)
 		}
 
-		batch := make([]*access.Identity, 0, len(page.Data))
+		batch := make([]*access.Identity, 0, len(evPage.Data))
 		var removed []string
-		for i := range page.Data {
-			ev := &page.Data[i]
+		for i := range evPage.Data {
+			ev := &evPage.Data[i]
 			// Advance the cursor for every event on the page, not
 			// just the user-lifecycle ones we surface to the
 			// handler. The Atlassian Admin events stream is
@@ -176,7 +176,7 @@ func (c *JiraAccessConnector) SyncIdentitiesDelta(
 			batch = append(batch, id)
 		}
 
-		next := strings.TrimSpace(page.Links.Next)
+		next := strings.TrimSpace(evPage.Links.Next)
 		// Rewrite absolute next links to the urlOverride for tests.
 		if c.urlOverride != "" && strings.HasPrefix(next, "https://api.atlassian.com") {
 			next = strings.Replace(next, "https://api.atlassian.com", strings.TrimRight(c.urlOverride, "/"), 1)

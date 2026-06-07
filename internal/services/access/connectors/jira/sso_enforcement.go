@@ -49,8 +49,10 @@ func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw
 	}
 	// json.NewDecoder below only consumes one JSON value and leaves any
 	// trailing bytes unread, so a plain Close would prevent net/http from
-	// returning the connection to the keep-alive pool. Drain first, matching
-	// the write paths in connector.go / session_revoke.go.
+	// returning the connection to the keep-alive pool. This deferred
+	// drainAndClose runs after Decode and consumes whatever the decoder left
+	// behind so the connection is reusable, matching the write paths in
+	// connector.go / session_revoke.go.
 	defer drainAndClose(resp)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
