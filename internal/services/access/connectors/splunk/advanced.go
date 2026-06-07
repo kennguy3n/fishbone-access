@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // advanced-capability mapping for Splunk Cloud:
@@ -116,9 +117,9 @@ func (c *SplunkAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 	case access.IsIdempotentProvisionStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("splunk: provision transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("splunk: provision transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("splunk: provision status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("splunk: provision status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -147,9 +148,9 @@ func (c *SplunkAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	case access.IsIdempotentRevokeStatus(status, body):
 		return nil
 	case access.IsTransientStatus(status):
-		return fmt.Errorf("splunk: revoke transient status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("splunk: revoke transient status %d: %s", status, httputil.SafeErrorBody(body))
 	default:
-		return fmt.Errorf("splunk: revoke status %d: %s", status, formatErrorBody(body))
+		return fmt.Errorf("splunk: revoke status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 }
 
@@ -176,7 +177,7 @@ func (c *SplunkAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 		return nil, nil
 	}
 	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("splunk: list entitlements status %d: %s", status, formatErrorBody(body))
+		return nil, fmt.Errorf("splunk: list entitlements status %d: %s", status, httputil.SafeErrorBody(body))
 	}
 	var resp splunkUsersResponse
 	if err := json.Unmarshal(body, &resp); err != nil {

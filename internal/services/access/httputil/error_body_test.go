@@ -97,10 +97,57 @@ func TestSafeErrorBody_TruncatesJSONAtRuneBoundary(t *testing.T) {
 	}
 }
 
-// TestTruncateAtRune_MaxBeyondLen verifies the short-circuit when the cap
-// exceeds the body length (no out-of-range index).
-func TestTruncateAtRune_MaxBeyondLen(t *testing.T) {
-	if got := truncateAtRune([]byte("abc"), 10); got != "abc" {
-		t.Errorf("truncateAtRune past end = %q; want abc", got)
+// TestTruncateAtRune_Boundaries pins the precondition guards: max beyond
+// len, max == len, max == 0, and nil/empty input must never index past
+// the slice end (an earlier per-connector copy panicked at
+// max == len(body)).
+func TestTruncateAtRune_Boundaries(t *testing.T) {
+	body := []byte("hello\u2026world") // ASCII + multi-byte rune
+	if got := truncateAtRune(body, len(body)); got != string(body) {
+		t.Errorf("truncateAtRune(body, len) = %q; want full body", got)
+	}
+	if got := truncateAtRune(body, len(body)+10); got != string(body) {
+		t.Errorf("truncateAtRune past end = %q; want full body", got)
+	}
+	if got := truncateAtRune(body, 0); got != "" {
+		t.Errorf("truncateAtRune(body, 0) = %q; want empty", got)
+	}
+	if got := truncateAtRune(nil, 8); got != "" {
+		t.Errorf("truncateAtRune(nil, 8) = %q; want empty", got)
+	}
+	if got := truncateAtRune([]byte{}, 0); got != "" {
+		t.Errorf("truncateAtRune(empty, 0) = %q; want empty", got)
+	}
+}
+
+// TestBodyKind classifies proxy/provider payloads. HTML fragments (not
+// just full <!doctype> documents) must classify as html, and
+// whitespace-only bodies as empty, so the kind/length hint operators
+// read is accurate.
+func TestBodyKind(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"full-doctype", "<!DOCTYPE html><html></html>", "html"},
+		{"html-fragment-div", "<div>maintenance in progress</div>", "html"},
+		{"html-fragment-p", "<p>503 Service Unavailable</p>", "html"},
+		{"html-fragment-h1", "<h1>Error</h1>", "html"},
+		{"xml-declaration", `<?xml version="1.0"?><response/>`, "xml"},
+		{"json-obj", `{"key":"value"}`, "json"},
+		{"json-arr", `[1,2,3]`, "json"},
+		{"plaintext", "internal server error", "text"},
+		{"empty", "", "empty"},
+		{"whitespace-only", "   \n\t  ", "empty"},
+		{"leading-whitespace-html", "  \n<div>x</div>", "html"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := BodyKind([]byte(tc.body)); got != tc.want {
+				t.Errorf("BodyKind(%q) = %q; want %q", tc.body, got, tc.want)
+			}
+		})
 	}
 }

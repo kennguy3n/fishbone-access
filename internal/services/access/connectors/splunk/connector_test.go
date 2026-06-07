@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -169,72 +168,10 @@ func TestSplunk_SyncIdentities_MaxPagesGuard(t *testing.T) {
 	}
 }
 
-// TestSplunk_FormatErrorBody_TruncatesAtRuneBoundary verifies that
-// the JSON-body truncation in formatErrorBody walks back to a UTF-8
-// rune start so the returned surface is valid UTF-8 even when the
-// 4 KB cap falls inside a multi-byte rune. Bot flagged this as an
-// edge case; downstream consumers (Datadog log pipelines, OTLP
-// exporters, JSON-serialised audit records) reject invalid UTF-8.
-func TestSplunk_FormatErrorBody_TruncatesAtRuneBoundary(t *testing.T) {
-	// Build a JSON body whose byte at index splunkErrorBodyJSONCap
-	// falls in the middle of a 3-byte rune (e.g. ELLIPSIS U+2026
-	// = 0xE2 0x80 0xA6). Pad with ASCII '{' + spaces so the kind
-	// detector classifies as JSON, then insert ellipses around
-	// the boundary.
-	const ellipsis = "\u2026"
-	prefix := "{" + strings.Repeat(" ", splunkErrorBodyJSONCap-2)
-	body := []byte(prefix + ellipsis + strings.Repeat(ellipsis, 100))
-	if !utf8.Valid(body) {
-		t.Fatalf("test fixture is not valid UTF-8")
-	}
-	if utf8.RuneStart(body[splunkErrorBodyJSONCap]) {
-		t.Fatalf("test fixture does not exercise the boundary case: byte at cap is a rune start")
-	}
-	out := formatErrorBody(body)
-	if !utf8.ValidString(out) {
-		t.Errorf("formatErrorBody output is not valid UTF-8: %q", out)
-	}
-	if !strings.HasSuffix(out, "…(truncated)") {
-		t.Errorf("formatErrorBody output missing truncation marker: %q", out[len(out)-32:])
-	}
-	// The visible payload must end on a rune boundary — drop the
-	// truncation marker and verify the remainder is valid.
-	visible := strings.TrimSuffix(out, " …(truncated)")
-	if !utf8.ValidString(visible) {
-		t.Errorf("visible prefix is not valid UTF-8: ends with bytes %x", []byte(visible)[len(visible)-4:])
-	}
-	// And the visible length must be strictly less than the cap
-	// (we walked back at least one byte to reach the rune start).
-	if len(visible) > splunkErrorBodyJSONCap {
-		t.Errorf("visible len = %d; want <= cap %d", len(visible), splunkErrorBodyJSONCap)
-	}
-}
-
-// TestSplunk_TruncateAtRune_NoPanicAtBoundary exercises the function's
-// own precondition guard. The earlier implementation clamped max but
-// then indexed body[end] where end==len(body), causing a panic when
-// max == len(body). The current call site happens to never trip this,
-// but a future caller relaxing the precondition would crash. This
-// test pins the contract.
-func TestSplunk_TruncateAtRune_NoPanicAtBoundary(t *testing.T) {
-	body := []byte("hello\u2026world") // mix of ASCII + multi-byte rune
-	// max == len(body): the entire body must round-trip.
-	if got := truncateAtRune(body, len(body)); got != string(body) {
-		t.Errorf("truncateAtRune(body, len(body)) = %q; want %q", got, string(body))
-	}
-	// max > len(body): same — must not index past end.
-	if got := truncateAtRune(body, len(body)+10); got != string(body) {
-		t.Errorf("truncateAtRune(body, len(body)+10) = %q; want %q", got, string(body))
-	}
-	// max == 0: empty prefix.
-	if got := truncateAtRune(body, 0); got != "" {
-		t.Errorf("truncateAtRune(body, 0) = %q; want empty", got)
-	}
-	// Empty body / max anything: empty prefix.
-	if got := truncateAtRune(nil, 8); got != "" {
-		t.Errorf("truncateAtRune(nil, 8) = %q; want empty", got)
-	}
-	if got := truncateAtRune([]byte{}, 0); got != "" {
-		t.Errorf("truncateAtRune(empty, 0) = %q; want empty", got)
-	}
-}
+// NOTE: the UTF-8 rune-boundary truncation and truncateAtRune
+// precondition guards previously tested here now live with the shared
+// scrubber in internal/services/access/httputil (see
+// TestSafeErrorBody_TruncatesJSONAtRuneBoundary and
+// TestTruncateAtRune_Boundaries). The connector reaches that logic via
+// httputil.SafeErrorBody; the proxy-scrubbing behaviour of the error
+// path is still exercised end-to-end in connector_flow_test.go.

@@ -353,39 +353,11 @@ func TestSplunk_CheckSSOEnforcement_ServerErrorHTMLProxyBodyScrubbed(t *testing.
 	}
 }
 
-func TestSplunk_BodyKind_HTMLFragmentClassifiedAsHTML(t *testing.T) {
-	// Reverse-proxy error pages frequently emit HTML fragments
-	// (`<div>error</div>`, `<p>maintenance</p>`) rather than
-	// full `<!doctype html>` documents. Those must classify as
-	// "html" so operators reading kind=html in the error message
-	// correctly recognize a proxy-interposition surface. Only
-	// explicit XML declarations (`<?xml ...`) classify as "xml".
-	cases := []struct {
-		name string
-		body string
-		want string
-	}{
-		{"full-doctype", "<!DOCTYPE html><html></html>", "html"},
-		{"html-fragment-div", "<div>maintenance in progress</div>", "html"},
-		{"html-fragment-p", "<p>503 Service Unavailable</p>", "html"},
-		{"html-fragment-h1", "<h1>Error</h1>", "html"},
-		{"xml-declaration", `<?xml version="1.0"?><response/>`, "xml"},
-		{"json-obj", `{"key":"value"}`, "json"},
-		{"json-arr", `[1,2,3]`, "json"},
-		{"plaintext", "internal server error", "text"},
-		{"empty", "", "empty"},
-		{"whitespace-only", "   \n\t  ", "empty"},
-		{"leading-whitespace-html", "  \n<div>x</div>", "html"},
-	}
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			if got := bodyKind([]byte(tc.body)); got != tc.want {
-				t.Errorf("bodyKind(%q) = %q; want %q", tc.body, got, tc.want)
-			}
-		})
-	}
-}
+// NOTE: payload kind-detection (HTML fragments, XML, JSON, whitespace)
+// is now tested with the shared classifier in
+// internal/services/access/httputil (see TestBodyKind). The SSO check
+// reaches it via httputil.BodyKind; the unparseable-upstream → "unknown"
+// behaviour is still exercised by the cases above.
 
 func TestSplunk_SatisfiesSSOEnforcementCheckerInterface(t *testing.T) {
 	var _ access.SSOEnforcementChecker = New()

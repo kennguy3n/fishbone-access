@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -81,7 +82,7 @@ func (c *SplunkAccessConnector) FetchAccessAuditLogs(
 			return access.ErrAuditNotAvailable
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("splunk: audit events: status %d: %s", resp.StatusCode, formatErrorBody(body))
+			return fmt.Errorf("splunk: audit events: status %d: %s", resp.StatusCode, httputil.SafeErrorBody(body))
 		}
 		var p splunkAuditPage
 		if err := json.Unmarshal(body, &p); err != nil {

@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -138,137 +138,9 @@ func (c *SplunkAccessConnector) do(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("splunk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, formatErrorBody(body))
+		return nil, fmt.Errorf("splunk: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, httputil.SafeErrorBody(body))
 	}
 	return body, nil
-}
-
-// formatErrorBody returns a safe surface for an HTTP error-response
-// body that will be embedded in an error message. Splunk's native
-// error format is JSON (e.g. `{"messages":[{"type":"ERROR","text":...}]}`)
-// and operators want to see it verbatim because it carries actionable
-// upstream detail. HTML / XML / plaintext bodies, on the other hand,
-// almost always come from an interposing reverse proxy or load
-// balancer in front of Splunk (cloud LB error pages, maintenance
-// notices, WAF blocks) — those bodies frequently embed trace IDs,
-// cookie names, internal hostnames, and stack frames that should NOT
-// land in operator dashboards or audit logs. For non-JSON bodies we
-// emit only a kind+length hint so operators can still triage the
-// upstream surface without leaking sensitive interposing-layer
-// metadata.
-//
-// formatErrorBody is the single shared scrubbing helper used by every
-// Splunk HTTP error-emitting path:
-//
-//   - do() — JSON-RPC style helpers (CountGroups / SyncGroups /
-//     SyncGroupMembers / CountIdentities / SyncIdentities /
-//     CheckSSOEnforcement).
-//   - doRaw() — advanced.go: ProvisionAccess / RevokeAccess /
-//     ListEntitlements need the status code branched explicitly
-//     (transient retry semantics) so they can't go through do(),
-//     but they call formatErrorBody at the error-message boundary.
-//   - audit.go: FetchAccessAuditLogs handles its own response so it
-//     can collapse 401/403/404 to ErrAuditNotAvailable, but the
-//     residual non-2xx error message routes through formatErrorBody
-//     too.
-//
-// Centralising the safe-surface treatment here means a future
-// proxy-error-page format never has to be remembered at multiple
-// call sites.
-const splunkErrorBodyJSONCap = 4 << 10
-
-func formatErrorBody(body []byte) string {
-	if len(body) == 0 {
-		return "(empty)"
-	}
-	kind := bodyKind(body)
-	if kind == "json" {
-		if len(body) > splunkErrorBodyJSONCap {
-			return truncateAtRune(body, splunkErrorBodyJSONCap) + " …(truncated)"
-		}
-		return string(body)
-	}
-	return fmt.Sprintf("(kind=%s, len=%d)", kind, len(body))
-}
-
-// truncateAtRune returns the longest prefix of body of length <= max
-// that ends on a valid UTF-8 rune boundary. Naive `string(body[:max])`
-// can split a multi-byte rune (e.g. a UTF-8-encoded … = 0xE2 0x80 0xA6)
-// and produce an invalid-UTF-8 surface in the error message. Splunk's
-// native JSON error envelope is overwhelmingly ASCII so the boundary
-// case is rare, but downstream consumers (Datadog log pipelines,
-// OpenTelemetry exporters, JSON-serialised audit records) reject
-// invalid UTF-8 strictly. Walking back at most utf8.UTFMax-1 = 3 bytes
-// from the cap guarantees a clean boundary in O(1).
-//
-// When max >= len(body) the whole body is returned without indexing
-// past the slice end — indexing body[len(body)] would panic. The current
-// sole call site only invokes truncateAtRune when len(body) > max, but
-// guarding inside the function future-proofs it for any caller that
-// relaxes the precondition.
-func truncateAtRune(body []byte, max int) string {
-	if max >= len(body) {
-		return string(body)
-	}
-	end := max
-	for end > 0 && !utf8.RuneStart(body[end]) {
-		end--
-	}
-	return string(body[:end])
-}
-
-// bodyKind returns a short hint about the upstream payload kind so
-// operators reading an error message can route the incident without
-// us echoing the body itself. The hints are best-effort — we look at
-// the first non-whitespace byte and at a couple of well-known
-// signatures. Anything starting with `<` defaults to "html" because
-// reverse-proxy error pages overwhelmingly emit HTML fragments
-// (`<div>…</div>`, `<p>maintenance</p>`); the explicit `<?xml`
-// prefix is the only path that returns "xml".
-//
-// We only inspect the first bodyKindPrefixBytes of the body (after
-// trimming leading whitespace). do() caps body reads at 1MB, so
-// without this bound, the unparseable-body error path would allocate
-// ~3MB just to check a 14-byte prefix every time a reverse proxy
-// returns a verbose HTML page. Stack traces / error pages routinely
-// exceed 100KB; the first 64 bytes are more than enough to identify
-// HTML / XML / JSON / text.
-const bodyKindPrefixBytes = 64
-
-func bodyKind(body []byte) string {
-	start := 0
-	for start < len(body) {
-		switch body[start] {
-		case ' ', '\t', '\n', '\r', '\v', '\f':
-			start++
-			continue
-		}
-		break
-	}
-	if start >= len(body) {
-		return "empty"
-	}
-	end := start + bodyKindPrefixBytes
-	if end > len(body) {
-		end = len(body)
-	}
-	prefix := strings.ToLower(string(body[start:end]))
-	switch {
-	case strings.HasPrefix(prefix, "<?xml"):
-		return "xml"
-	case strings.HasPrefix(prefix, "<"):
-		// Default angle-bracketed payloads to "html" — HTML
-		// fragments from proxies / load balancers /
-		// maintenance pages are far more common than raw XML
-		// in the wild, and operators reading kind=html will
-		// correctly recognize a proxy-interposition surface.
-		return "html"
-	case strings.HasPrefix(prefix, "{"),
-		strings.HasPrefix(prefix, "["):
-		return "json"
-	default:
-		return "text"
-	}
 }
 
 func (c *SplunkAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {

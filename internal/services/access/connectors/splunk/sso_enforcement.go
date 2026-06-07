@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 type splunkAuthTypeResponse struct {
@@ -120,7 +121,7 @@ func (c *SplunkAccessConnector) CheckSSOEnforcement(
 		} else {
 			return false, "", fmt.Errorf(
 				"splunk: sso check: upstream returned unparseable authType response (kind=%s, len=%d)",
-				bodyKind(body),
+				httputil.BodyKind(body),
 				len(body),
 			)
 		}

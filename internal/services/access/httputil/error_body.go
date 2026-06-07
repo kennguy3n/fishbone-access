@@ -25,7 +25,7 @@ func SafeErrorBody(body []byte) string {
 	if len(body) == 0 {
 		return "(empty)"
 	}
-	kind := bodyKind(body)
+	kind := BodyKind(body)
 	if kind == "json" {
 		if len(body) > errorBodyJSONCap {
 			return truncateAtRune(body, errorBodyJSONCap) + " …(truncated)"
@@ -51,16 +51,19 @@ func truncateAtRune(body []byte, max int) string {
 	return string(body[:end])
 }
 
-// bodyKind returns a short hint about the upstream payload kind from its
+// BodyKind returns a short hint about the upstream payload kind from its
 // first non-whitespace bytes, so operators can route an incident without
 // us echoing a possibly sensitive non-JSON body. Angle-bracketed
 // payloads default to "html" because proxy error pages are
 // overwhelmingly HTML fragments; an explicit <?xml prefix returns "xml".
 // Only the first bodyKindPrefixBytes are inspected so a multi-MB proxy
-// page is not re-scanned in full just to classify it.
+// page is not re-scanned in full just to classify it. It is exported so
+// callers that need only the classification (e.g. splunk's SSO check,
+// which embeds a kind/length hint without echoing the body) share the
+// same single implementation as SafeErrorBody.
 const bodyKindPrefixBytes = 64
 
-func bodyKind(body []byte) string {
+func BodyKind(body []byte) string {
 	start := 0
 	for start < len(body) {
 		switch body[start] {
