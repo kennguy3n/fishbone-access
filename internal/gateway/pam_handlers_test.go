@@ -1,0 +1,602 @@
+package gateway
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/pem"
+	"io"
+	"net"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"golang.org/x/crypto/ssh"
+
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+)
+
+// frame is one decoded recording frame.
+type frame struct {
+	dir     Direction
+	at      time.Time
+	payload []byte
+}
+
+// parseFrames decodes the recorder's framed byte stream so tests can assert on
+// direction ordering and payload content.
+func parseFrames(t *testing.T, b []byte) []frame {
+	t.Helper()
+	var out []frame
+	for len(b) > 0 {
+		if len(b) < frameHeaderLen {
+			t.Fatalf("truncated frame header: %d bytes left", len(b))
+		}
+		dir := Direction(b[0])
+		nanos := binary.BigEndian.Uint64(b[1:9])
+		n := binary.BigEndian.Uint32(b[9:13])
+		b = b[frameHeaderLen:]
+		if uint32(len(b)) < n {
+			t.Fatalf("truncated frame payload: want %d, have %d", n, len(b))
+		}
+		out = append(out, frame{dir: dir, at: time.Unix(0, int64(nanos)), payload: append([]byte(nil), b[:n]...)})
+		b = b[n:]
+	}
+	return out
+}
+
+// --- recorder tests -------------------------------------------------------
+
+func TestRecorderFramesBothDirections(t *testing.T) {
+	rec := NewIORecorder("sess-1", 0)
+	rec.Record(DirInput, []byte("whoami\n"))
+	rec.Record(DirOutput, []byte("root\n"))
+	rec.Annotate("policy: allow")
+	rec.Record(DirInput, nil) // ignored
+
+	frames := parseFrames(t, rec.Bytes())
+	if len(frames) != 3 {
+		t.Fatalf("want 3 frames, got %d", len(frames))
+	}
+	if frames[0].dir != DirInput || string(frames[0].payload) != "whoami\n" {
+		t.Fatalf("frame0 bad: %c %q", frames[0].dir, frames[0].payload)
+	}
+	if frames[1].dir != DirOutput || string(frames[1].payload) != "root\n" {
+		t.Fatalf("frame1 bad: %c %q", frames[1].dir, frames[1].payload)
+	}
+	if frames[2].dir != DirControl || string(frames[2].payload) != "policy: allow" {
+		t.Fatalf("frame2 bad: %c %q", frames[2].dir, frames[2].payload)
+	}
+}
+
+func TestRecorderTeeReaderPassesThrough(t *testing.T) {
+	rec := NewIORecorder("sess-tee", 0)
+	src := bytes.NewReader([]byte("hello world"))
+	tee := rec.TeeReader(DirInput, src)
+	got := make([]byte, 11)
+	n, _ := tee.Read(got)
+	if string(got[:n]) != "hello world" {
+		t.Fatalf("tee altered bytes: %q", got[:n])
+	}
+	frames := parseFrames(t, rec.Bytes())
+	if len(frames) != 1 || string(frames[0].payload) != "hello world" {
+		t.Fatalf("tee did not record passthrough: %+v", frames)
+	}
+}
+
+func TestRecorderTruncationCap(t *testing.T) {
+	// Cap small so the second write trips truncation.
+	rec := NewIORecorder("sess-trunc", frameHeaderLen+4)
+	rec.Record(DirOutput, []byte("aaaa"))
+	rec.Record(DirOutput, []byte("bbbb")) // exceeds cap
+	if !rec.Truncated() {
+		t.Fatal("expected recorder to mark truncated")
+	}
+	frames := parseFrames(t, rec.Bytes())
+	// First payload + a control truncation note.
+	if len(frames) != 2 || frames[1].dir != DirControl {
+		t.Fatalf("unexpected frames after truncation: %+v", frames)
+	}
+}
+
+func TestRecorderLiveMonitorFanOut(t *testing.T) {
+	rec := NewIORecorder("sess-mon", 0)
+	mon := &captureMonitor{}
+	remove := rec.AddMonitor(mon)
+	rec.Record(DirOutput, []byte("first"))
+	remove()
+	rec.Record(DirOutput, []byte("second")) // after detach, not seen
+
+	mon.mu.Lock()
+	defer mon.mu.Unlock()
+	if len(mon.frames) != 1 || string(mon.frames[0]) != "first" {
+		t.Fatalf("monitor saw %d frames: %v", len(mon.frames), mon.frames)
+	}
+}
+
+func TestRecorderFlushToStore(t *testing.T) {
+	rec := NewIORecorder("sess-flush", 0)
+	rec.Record(DirInput, []byte("data"))
+	store := &memStore{put: map[string][]byte{}}
+	if err := rec.Flush(context.Background(), store); err != nil {
+		t.Fatalf("Flush: %v", err)
+	}
+	// Flush is idempotent and subsequent records are ignored.
+	rec.Record(DirInput, []byte("after-close"))
+	if err := rec.Flush(context.Background(), store); err != nil {
+		t.Fatalf("second Flush: %v", err)
+	}
+	if _, ok := store.put["sess-flush"]; !ok {
+		t.Fatal("store did not receive the recording")
+	}
+}
+
+type captureMonitor struct {
+	mu     sync.Mutex
+	frames [][]byte
+}
+
+func (m *captureMonitor) OnFrame(_ Direction, _ time.Time, payload []byte) {
+	m.mu.Lock()
+	m.frames = append(m.frames, append([]byte(nil), payload...))
+	m.mu.Unlock()
+}
+
+type memStore struct {
+	mu  sync.Mutex
+	put map[string][]byte
+}
+
+func (s *memStore) PutReplay(_ context.Context, sessionID string, r io.Reader) error {
+	buf := new(bytes.Buffer)
+	if _, err := io.Copy(buf, r); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.put[sessionID] = buf.Bytes()
+	s.mu.Unlock()
+	return nil
+}
+
+// --- session hub tests ----------------------------------------------------
+
+func TestSessionHubTerminateAndMonitor(t *testing.T) {
+	hub := NewSessionHub()
+	sessionID := uuid.New()
+	ws := uuid.New()
+	rec := NewIORecorder(sessionID.String(), 0)
+
+	terminated := false
+	deregister := hub.Register(sessionID, ws, "alice", rec, func() { terminated = true })
+
+	// Monitor attaches to the live recorder.
+	mon := &captureMonitor{}
+	detach, ok := hub.Monitor(sessionID, mon)
+	if !ok {
+		t.Fatal("Monitor did not find live session")
+	}
+	rec.Record(DirOutput, []byte("live"))
+	detach()
+
+	// Active listing is workspace-scoped.
+	if got := hub.ActiveInWorkspace(ws); len(got) != 1 || got[0].SessionID != sessionID {
+		t.Fatalf("ActiveInWorkspace wrong: %+v", got)
+	}
+	if got := hub.ActiveInWorkspace(uuid.New()); len(got) != 0 {
+		t.Fatalf("cross-workspace listing leaked %d sessions", len(got))
+	}
+
+	// Terminate invokes the cancel func.
+	if !hub.Terminate(sessionID) {
+		t.Fatal("Terminate returned false for active session")
+	}
+	if !terminated {
+		t.Fatal("cancel func not invoked on terminate")
+	}
+
+	deregister()
+	if hub.Terminate(sessionID) {
+		t.Fatal("Terminate should return false after deregister")
+	}
+
+	mon.mu.Lock()
+	defer mon.mu.Unlock()
+	if len(mon.frames) != 1 || string(mon.frames[0]) != "live" {
+		t.Fatalf("monitor frames: %v", mon.frames)
+	}
+}
+
+// --- filesystem replay store tests ---------------------------------------
+
+func TestFilesystemReplayStoreRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewFilesystemReplayStore(dir)
+	if err != nil {
+		t.Fatalf("NewFilesystemReplayStore: %v", err)
+	}
+	payload := []byte("recorded-bytes")
+	if err := store.PutReplay(context.Background(), "sess-fs", bytes.NewReader(payload)); err != nil {
+		t.Fatalf("PutReplay: %v", err)
+	}
+	want := filepath.Join(dir, ReplayKey("sess-fs"))
+	got, err := os.ReadFile(want)
+	if err != nil {
+		t.Fatalf("read replay file: %v", err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("replay file mismatch: %q", got)
+	}
+}
+
+// --- SSH CA tests ---------------------------------------------------------
+
+func TestSSHCAMintsValidCert(t *testing.T) {
+	_, caPriv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatalf("gen ca key: %v", err)
+	}
+	caSigner, err := ssh.NewSignerFromKey(caPriv)
+	if err != nil {
+		t.Fatalf("ca signer: %v", err)
+	}
+	ca := NewSSHCertificateAuthority(caSigner, 5*time.Minute)
+	if ca.Fingerprint() == "" {
+		t.Fatal("empty CA fingerprint")
+	}
+
+	signer, err := ca.MintEphemeralCert("alice")
+	if err != nil {
+		t.Fatalf("MintEphemeralCert: %v", err)
+	}
+	cert, ok := signer.PublicKey().(*ssh.Certificate)
+	if !ok {
+		t.Fatalf("minted key is not a certificate: %T", signer.PublicKey())
+	}
+	if cert.CertType != ssh.UserCert {
+		t.Fatalf("want user cert, got type %d", cert.CertType)
+	}
+	if len(cert.ValidPrincipals) != 1 || cert.ValidPrincipals[0] != "alice" {
+		t.Fatalf("principals wrong: %v", cert.ValidPrincipals)
+	}
+	if _, ok := cert.Extensions["permit-pty"]; !ok {
+		t.Fatal("expected permit-pty extension")
+	}
+	// Validity window is bounded (not a static key).
+	window := time.Unix(int64(cert.ValidBefore), 0).Sub(time.Unix(int64(cert.ValidAfter), 0))
+	if window <= 0 || window > 10*time.Minute {
+		t.Fatalf("unexpected validity window: %s", window)
+	}
+
+	// Cert verifies against the CA via a checker.
+	checker := &ssh.CertChecker{IsUserAuthority: func(k ssh.PublicKey) bool {
+		return bytes.Equal(k.Marshal(), caSigner.PublicKey().Marshal())
+	}}
+	if err := checker.CheckCert("alice", cert); err != nil {
+		t.Fatalf("cert failed CA verification: %v", err)
+	}
+}
+
+func TestSSHCAEmptyPrincipalRejected(t *testing.T) {
+	_, caPriv, _ := ed25519.GenerateKey(nil)
+	caSigner, _ := ssh.NewSignerFromKey(caPriv)
+	ca := NewSSHCertificateAuthority(caSigner, time.Minute)
+	if _, err := ca.MintEphemeralCert(""); err == nil {
+		t.Fatal("expected error for empty principal")
+	}
+}
+
+// --- MySQL wire-protocol helper tests -------------------------------------
+
+func TestMySQLScrambleInvariants(t *testing.T) {
+	salt := bytes.Repeat([]byte{0x42}, 20)
+	if got := scrambleNativePassword(nil, salt); got != nil {
+		t.Fatalf("empty password must scramble to nil, got %v", got)
+	}
+	s1 := scrambleNativePassword([]byte("hunter2"), salt)
+	if len(s1) != 20 {
+		t.Fatalf("scramble must be 20 bytes, got %d", len(s1))
+	}
+	// Deterministic for the same inputs.
+	if !bytes.Equal(s1, scrambleNativePassword([]byte("hunter2"), salt)) {
+		t.Fatal("scramble not deterministic")
+	}
+	// Different salt → different scramble (no static reuse).
+	salt2 := bytes.Repeat([]byte{0x43}, 20)
+	if bytes.Equal(s1, scrambleNativePassword([]byte("hunter2"), salt2)) {
+		t.Fatal("scramble must depend on salt")
+	}
+}
+
+// testTLSConfig builds a tls.Config with a fresh ephemeral cert for proxy tests.
+func testTLSConfig(t *testing.T) *tls.Config {
+	t.Helper()
+	cert, err := ephemeralTLSCert()
+	if err != nil {
+		t.Fatalf("ephemeralTLSCert: %v", err)
+	}
+	return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12} //nolint:gosec
+}
+
+// TestPostgresProxyReadStartupTLSUpgrade proves that when the operator sends an
+// SSLRequest the proxy answers 'S', completes a real TLS handshake, and reads
+// the StartupMessage over the encrypted connection — i.e. the connect token and
+// SQL on the operator↔gateway hop are no longer plaintext.
+func TestPostgresProxyReadStartupTLSUpgrade(t *testing.T) {
+	p := &PostgresProxy{tlsConfig: testTLSConfig(t), dialTimeout: 5 * time.Second}
+	cConn, sConn := net.Pipe()
+	defer cConn.Close()
+
+	type result struct {
+		su   *pgproto3.StartupMessage
+		conn net.Conn
+		err  error
+	}
+	resCh := make(chan result, 1)
+	go func() {
+		backend := pgproto3.NewBackend(sConn, sConn)
+		su, conn, _, err := p.readStartup(context.Background(), backend, sConn)
+		resCh <- result{su, conn, err}
+	}()
+
+	// Client: send SSLRequest, expect the single-byte 'S' acceptance.
+	fe := pgproto3.NewFrontend(cConn, cConn)
+	fe.Send(&pgproto3.SSLRequest{})
+	if err := fe.Flush(); err != nil {
+		t.Fatalf("send SSLRequest: %v", err)
+	}
+	ack := make([]byte, 1)
+	if _, err := io.ReadFull(cConn, ack); err != nil {
+		t.Fatalf("read ssl ack: %v", err)
+	}
+	if ack[0] != 'S' {
+		t.Fatalf("ssl ack = %q, want S", ack[0])
+	}
+
+	// Upgrade the client side and send the StartupMessage over TLS.
+	tlsClient := tls.Client(cConn, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test self-signed cert
+	if err := tlsClient.Handshake(); err != nil {
+		t.Fatalf("client tls handshake: %v", err)
+	}
+	feTLS := pgproto3.NewFrontend(tlsClient, tlsClient)
+	feTLS.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersionNumber,
+		Parameters:      map[string]string{"user": "alice", "database": "app"},
+	})
+	if err := feTLS.Flush(); err != nil {
+		t.Fatalf("send startup over tls: %v", err)
+	}
+
+	res := <-resCh
+	if res.err != nil {
+		t.Fatalf("readStartup: %v", res.err)
+	}
+	if res.su == nil || res.su.Parameters["user"] != "alice" {
+		t.Fatalf("startup not received over tls: %+v", res.su)
+	}
+	if _, ok := res.conn.(*tls.Conn); !ok {
+		t.Fatalf("readStartup returned %T, want *tls.Conn", res.conn)
+	}
+}
+
+// mysqlGreetingCaps extracts the capability flags advertised in a V10 greeting.
+func mysqlGreetingCaps(g []byte) uint32 {
+	i := 1 // protocol version
+	for i < len(g) && g[i] != 0x00 {
+		i++ // server version string
+	}
+	i++    // version NUL
+	i += 4 // connection id
+	i += 8 // auth-plugin-data-part-1
+	i++    // filler
+	lower := uint32(g[i]) | uint32(g[i+1])<<8
+	i += 2 // caps lower
+	i++    // charset
+	i += 2 // status flags
+	upper := uint32(g[i]) | uint32(g[i+1])<<8
+	return lower | upper<<16
+}
+
+// TestMySQLProxyAuthenticateOperatorTLSUpgrade proves the greeting advertises
+// CLIENT_SSL and that a client SSLRequest triggers a real TLS handshake before
+// the cleartext connect token is read — closing the plaintext operator hop.
+func TestMySQLProxyAuthenticateOperatorTLSUpgrade(t *testing.T) {
+	p := &MySQLProxy{tlsConfig: testTLSConfig(t), dialTimeout: 5 * time.Second}
+	cConn, sConn := net.Pipe()
+	defer cConn.Close()
+
+	type result struct {
+		conn  net.Conn
+		token string
+		seq   byte
+		err   error
+	}
+	resCh := make(chan result, 1)
+	go func() {
+		conn, token, seq, err := p.authenticateOperator(context.Background(), sConn)
+		resCh <- result{conn, token, seq, err}
+	}()
+
+	// Read the server greeting and assert CLIENT_SSL is advertised.
+	greeting, _, err := readPacket(cConn)
+	if err != nil {
+		t.Fatalf("read greeting: %v", err)
+	}
+	if mysqlGreetingCaps(greeting)&mysqlClientSSL == 0 {
+		t.Fatal("greeting did not advertise CLIENT_SSL")
+	}
+
+	// Send the abbreviated SSLRequest (32-byte header, CLIENT_SSL set) at seq 1.
+	sslReq := make([]byte, 32)
+	binary.LittleEndian.PutUint32(sslReq[0:4], mysqlClientProtocol41|mysqlClientSSL|mysqlClientSecureConnection)
+	binary.LittleEndian.PutUint32(sslReq[4:8], 1<<24)
+	sslReq[8] = 0x21 // charset
+	if err := writePacket(cConn, 1, sslReq); err != nil {
+		t.Fatalf("send ssl request: %v", err)
+	}
+
+	// Upgrade, then send the full HandshakeResponse41 over TLS at seq 2.
+	tlsClient := tls.Client(cConn, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test self-signed cert
+	if err := tlsClient.Handshake(); err != nil {
+		t.Fatalf("client tls handshake: %v", err)
+	}
+	if err := writePacket(tlsClient, 2, buildHandshakeResponse41("alice", "", nil)); err != nil {
+		t.Fatalf("send handshake response over tls: %v", err)
+	}
+
+	// Expect AuthSwitchRequest → mysql_clear_password at seq 3, then send token.
+	sw, swSeq, err := readPacket(tlsClient)
+	if err != nil {
+		t.Fatalf("read auth switch: %v", err)
+	}
+	if len(sw) == 0 || sw[0] != 0xfe || string(trimTrailingNUL(sw[1:])) != mysqlClearPassword {
+		t.Fatalf("unexpected auth switch packet: %v", sw)
+	}
+	if err := writePacket(tlsClient, swSeq+1, append([]byte("tok-secret"), 0x00)); err != nil {
+		t.Fatalf("send token over tls: %v", err)
+	}
+
+	res := <-resCh
+	if res.err != nil {
+		t.Fatalf("authenticateOperator: %v", res.err)
+	}
+	if res.token != "tok-secret" {
+		t.Fatalf("token = %q, want tok-secret", res.token)
+	}
+	if _, ok := res.conn.(*tls.Conn); !ok {
+		t.Fatalf("authenticateOperator returned %T, want *tls.Conn", res.conn)
+	}
+}
+
+func TestMySQLHandshakeRoundTrip(t *testing.T) {
+	salt := make([]byte, 20)
+	for i := range salt {
+		salt[i] = byte(i + 1)
+	}
+	greeting := buildHandshakeV10(salt, false)
+	gotSalt, plugin, err := parseHandshakeV10(greeting)
+	if err != nil {
+		t.Fatalf("parseHandshakeV10: %v", err)
+	}
+	if plugin != "mysql_native_password" {
+		t.Fatalf("plugin = %q", plugin)
+	}
+	if !bytes.Equal(gotSalt, salt) {
+		t.Fatalf("salt round-trip mismatch: got %v want %v", gotSalt, salt)
+	}
+}
+
+// --- k8s helper tests -----------------------------------------------------
+
+func TestK8sBearerTokenExtraction(t *testing.T) {
+	cases := map[string]string{
+		"Bearer abc.def":  "abc.def",
+		"bearer xyz":      "xyz",
+		"Basic abc":       "",
+		"":                "",
+		"Bearer   spaced": "spaced",
+	}
+	for header, want := range cases {
+		if got := bearerToken(header); got != want {
+			t.Errorf("bearerToken(%q) = %q, want %q", header, got, want)
+		}
+	}
+}
+
+func TestK8sBasicAuthEncoding(t *testing.T) {
+	got := basicAuth("user", "pass")
+	want := base64.StdEncoding.EncodeToString([]byte("user:pass"))
+	if got != want {
+		t.Fatalf("basicAuth = %q, want %q", got, want)
+	}
+}
+
+func TestK8sEphemeralTLSCertUsable(t *testing.T) {
+	cert, err := ephemeralTLSCert()
+	if err != nil {
+		t.Fatalf("ephemeralTLSCert: %v", err)
+	}
+	if len(cert.Certificate) == 0 {
+		t.Fatal("no certificate bytes")
+	}
+	// Cert is usable in a tls.Config without panic.
+	_ = &tls.Config{Certificates: []tls.Certificate{cert}} //nolint:gosec
+}
+
+// --- orphan reconcile + host key tests ------------------------------------
+
+// TestReconcileOrphanSessionClosesActive verifies the shared reconcile helper
+// closes a session that was opened by RedeemConnectToken but whose proxy never
+// ran (e.g. a token presented to the wrong protocol listener, or an SSH
+// handshake that failed after auth). Without it the row would stay active
+// forever with no proxy attached.
+func TestReconcileOrphanSessionClosesActive(t *testing.T) {
+	db, err := database.OpenSQLite(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := database.AutoMigrate(db); err != nil {
+		t.Fatalf("auto-migrate: %v", err)
+	}
+	ws := &models.Workspace{Name: "tenant-a", IAMCoreTenantID: "tenant-a", Plan: "base"}
+	if err := db.Create(ws).Error; err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+	session := &models.PAMSession{
+		WorkspaceID: ws.ID, TargetID: uuid.New(), Subject: "alice",
+		Protocol: models.PAMProtocolMySQL, State: models.PAMSessionActive, StartedAt: time.Now(),
+	}
+	session.ID = uuid.New()
+	if err := db.Create(session).Error; err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+
+	sessions := pam.NewSessionManager(db, nil, nil)
+	reconcileOrphanSession(context.Background(), sessions, session, "test")
+
+	var reloaded models.PAMSession
+	if err := db.Where("id = ?", session.ID).Take(&reloaded).Error; err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	if reloaded.State != models.PAMSessionClosed {
+		t.Fatalf("orphaned session not closed: state=%q", reloaded.State)
+	}
+	if reloaded.EndedAt == nil {
+		t.Fatal("closed session should have ended_at stamped")
+	}
+}
+
+// TestLoadHostKeyFromValue parses an inline PEM host key and rejects an empty
+// value so the gateway only uses an ephemeral key when explicitly unconfigured.
+func TestLoadHostKeyFromValue(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal pkcs8: %v", err)
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+
+	signer, err := LoadHostKeyFromValue(string(pemBytes))
+	if err != nil {
+		t.Fatalf("LoadHostKeyFromValue inline PEM: %v", err)
+	}
+	if signer == nil || signer.PublicKey() == nil {
+		t.Fatal("expected a usable host-key signer")
+	}
+	if _, err := LoadHostKeyFromValue("  "); err == nil {
+		t.Fatal("expected error for empty host key value")
+	}
+}

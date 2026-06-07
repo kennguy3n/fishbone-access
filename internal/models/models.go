@@ -246,5 +246,9 @@ func All() []any {
 		&AccessOrphanAccount{},
 		&AuditEvent{},
 		&AccessSyncState{},
+		&PAMTarget{},
+		&PAMConnectToken{},
+		&PAMSession{},
+		&PAMSessionCommand{},
 	}
 }

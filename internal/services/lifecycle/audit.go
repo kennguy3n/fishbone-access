@@ -62,6 +62,44 @@ type auditEntry struct {
 	Metadata    datatypes.JSON
 }
 
+// AuditInput is the stable, cross-package description of an action to append to
+// a workspace's tamper-evident audit hash chain. It is the public face of the
+// internal auditEntry so other services (e.g. the Session 1D PAM gateway) write
+// into the SAME per-workspace chain — same audit_events table, same SHA-256
+// linking, same per-workspace advisory lock — rather than inventing a parallel
+// one. The chain bookkeeping (prev/chain hash, sequence, timestamps, id) is
+// filled in by the appender.
+type AuditInput struct {
+	WorkspaceID uuid.UUID
+	Actor       string
+	Action      string
+	TargetRef   string
+	Metadata    datatypes.JSON
+}
+
+// AppendAuditTx appends one audit event to the workspace's hash chain inside an
+// existing transaction. Callers that mutate other rows in the same tx use this
+// so the state change and its audit record commit atomically (the 1C services
+// do this via the internal appendAudit; PAM uses this exported entrypoint).
+func AppendAuditTx(ctx context.Context, tx *gorm.DB, now time.Time, in AuditInput) error {
+	return appendAudit(ctx, tx, now, auditEntry(in))
+}
+
+// AppendAudit opens its own transaction and appends one audit event to the
+// workspace's hash chain. It is the convenience entrypoint for callers (e.g.
+// the PAM gateway recording a session lifecycle event) that have no other
+// writes to bundle into the same transaction. The transaction boundary keeps
+// the chain-head read and the row insert atomic so concurrent appends cannot
+// fork the chain.
+func AppendAudit(ctx context.Context, db *gorm.DB, now time.Time, in AuditInput) error {
+	if db == nil {
+		return fmt.Errorf("%w: audit append requires a database handle", ErrValidation)
+	}
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return appendAudit(ctx, tx, now, auditEntry(in))
+	})
+}
+
 // appendAudit writes one tamper-evident AuditEvent inside the supplied
 // transaction, linking it into the workspace's SHA-256 hash chain
 // (prev_hash → chain_hash). It must run inside a transaction so the read of the
