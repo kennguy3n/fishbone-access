@@ -21,6 +21,16 @@ import (
 const (
 	ProviderName   = "github"
 	defaultBaseURL = "https://api.github.com"
+
+	// githubIdentitiesMaxPages bounds the org-members pagination walk and
+	// githubEntitlementsMaxPages bounds the team-list walk in
+	// ListEntitlements. Link-header pagination normally terminates when
+	// rel="next" disappears; these caps are defense-in-depth so a
+	// misbehaving server that keeps emitting a next cursor cannot spin the
+	// loop forever, mirroring the caps on the sibling connectors
+	// (stripe/square/loom).
+	githubIdentitiesMaxPages   = 2000
+	githubEntitlementsMaxPages = 1000
 )
 
 var ErrNotImplemented = fmt.Errorf("github: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -266,7 +276,7 @@ func (c *GitHubAccessConnector) SyncIdentities(
 	if nextURL == "" {
 		nextURL = c.baseURL() + "/orgs/" + url.PathEscape(cfg.Organization) + "/members?per_page=100"
 	}
-	for {
+	for page := 0; page < githubIdentitiesMaxPages; page++ {
 		if err := c.assertSameHost(nextURL); err != nil {
 			return err
 		}
@@ -311,6 +321,7 @@ func (c *GitHubAccessConnector) SyncIdentities(
 		}
 		nextURL = next
 	}
+	return fmt.Errorf("github: sync identities: pagination exceeded %d pages", githubIdentitiesMaxPages)
 }
 
 // ProvisionAccess adds a user to an org team via PUT /orgs/{org}/teams/{team_slug}/memberships/{username}.
@@ -429,7 +440,7 @@ func (c *GitHubAccessConnector) ListEntitlements(
 
 	// Team memberships
 	nextURL := fmt.Sprintf("%s/orgs/%s/teams", c.baseURL(), url.PathEscape(cfg.Organization))
-	for nextURL != "" {
+	for page := 0; nextURL != "" && page < githubEntitlementsMaxPages; page++ {
 		if err := c.assertSameHost(nextURL); err != nil {
 			return nil, err
 		}

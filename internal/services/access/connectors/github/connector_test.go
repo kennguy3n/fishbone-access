@@ -365,3 +365,32 @@ func TestListEntitlements_RejectsOffHostTeamPagination(t *testing.T) {
 		t.Fatal("off-host server was contacted with the bearer token")
 	}
 }
+
+// TestSyncIdentities_BoundedByMaxPages pins the defense-in-depth page cap on
+// the org-members pagination walk: a server that always emits a rel="next"
+// cursor must not spin forever — the loop stops at githubIdentitiesMaxPages
+// and returns a pagination-exceeded error. Mirrors the stripe/square/loom caps.
+func TestSyncIdentities_BoundedByMaxPages(t *testing.T) {
+	var srv *httptest.Server
+	calls := 0
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		// Always advertise another page so the loop only terminates at the cap.
+		w.Header().Set("Link", fmt.Sprintf("<%s/orgs/acme/members?per_page=100&page=next>; rel=\"next\"", srv.URL))
+		_, _ = w.Write([]byte(`[{"id":1,"login":"alice","type":"User"}]`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(_ []*access.Identity, _ string) error { return nil })
+	if err == nil {
+		t.Fatal("expected pagination-cap error, got nil")
+	}
+	if !strings.Contains(err.Error(), "pagination exceeded") {
+		t.Fatalf("err = %v; want pagination-cap error", err)
+	}
+	if calls != githubIdentitiesMaxPages {
+		t.Fatalf("calls = %d; want %d (capped)", calls, githubIdentitiesMaxPages)
+	}
+}
