@@ -84,3 +84,40 @@ func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
 		t.Fatalf("ProvisionAccess: want 403, got %v", err)
 	}
 }
+
+// TestConnectorFlow_ProvisionTransient locks that a 5xx from GitLab is
+// classified as transient (via access.IsTransientStatus) so the worker
+// retries it, rather than surfacing as an unlabeled hard failure.
+func TestConnectorFlow_ProvisionTransient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{
+		UserExternalID: "42", ResourceExternalID: "12345", Role: "30",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("ProvisionAccess: want transient error, got %v", err)
+	}
+}
+
+// TestConnectorFlow_RevokeTransient is the revoke-path counterpart of
+// TestConnectorFlow_ProvisionTransient.
+func TestConnectorFlow_RevokeTransient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{
+		UserExternalID: "42", ResourceExternalID: "12345", Role: "30",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("RevokeAccess: want transient error, got %v", err)
+	}
+}

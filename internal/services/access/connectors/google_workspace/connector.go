@@ -457,13 +457,19 @@ func (c *GoogleWorkspaceAccessConnector) ProvisionAccess(
 		return fmt.Errorf("google_workspace: provision request: %w", err)
 	}
 	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusCreated:
+	rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	// 200/201 = added, 409 = already a member (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 (which the Admin SDK throws
+	// aggressively when rate-limiting directory mutations) surfaces as a
+	// transient error the worker will retry.
+	switch {
+	case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated:
 		return nil
-	case http.StatusConflict:
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, rb):
 		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("google_workspace: provision transient status %d: %s", resp.StatusCode, string(rb))
 	default:
-		rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return fmt.Errorf("google_workspace: provision status %d: %s", resp.StatusCode, string(rb))
 	}
 }
@@ -511,13 +517,18 @@ func (c *GoogleWorkspaceAccessConnector) RevokeAccess(
 		return fmt.Errorf("google_workspace: revoke request: %w", err)
 	}
 	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusNoContent:
+	rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	// 200/204 = removed, 404 = already absent (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 surfaces as a transient
+	// error the worker will retry.
+	switch {
+	case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent:
 		return nil
-	case http.StatusNotFound:
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, rb):
 		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("google_workspace: revoke transient status %d: %s", resp.StatusCode, string(rb))
 	default:
-		rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return fmt.Errorf("google_workspace: revoke status %d: %s", resp.StatusCode, string(rb))
 	}
 }
@@ -623,11 +634,18 @@ func provisionLicense(ctx context.Context, client httpDoer, productID, skuID, us
 		return fmt.Errorf("google_workspace: license assign request: %w", err)
 	}
 	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusCreated, http.StatusConflict:
+	rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	// 200/201 = assigned, 409 = already assigned (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 surfaces as a transient
+	// error the worker will retry.
+	switch {
+	case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated:
 		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, rb):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("google_workspace: license assign transient status %d: %s", resp.StatusCode, string(rb))
 	default:
-		rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return fmt.Errorf("google_workspace: license assign status %d: %s", resp.StatusCode, string(rb))
 	}
 }

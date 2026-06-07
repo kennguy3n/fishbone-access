@@ -33,14 +33,15 @@ func (c *GitHubAccessConnector) RevokeUserSessions(ctx context.Context, configRa
 		return err
 	}
 	resp, err := c.doRaw(req)
-	if err == nil && (resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK) {
+	// doRaw returns a nil error for any 2xx, so err == nil already means
+	// the removal propagated (covers the documented 204 as well as any
+	// other 2xx such as 202 Accepted). 404 means the user was already
+	// gone — idempotent success per the leaver contract.
+	if err == nil {
 		return nil
 	}
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		return nil
 	}
-	if err != nil {
-		return fmt.Errorf("github: session revoke: %w", err)
-	}
-	return fmt.Errorf("github: session revoke status %d", resp.StatusCode)
+	return fmt.Errorf("github: session revoke: %w", err)
 }

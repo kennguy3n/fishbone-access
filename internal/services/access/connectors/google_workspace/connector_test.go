@@ -191,6 +191,48 @@ func TestProvisionAccess_4xxFailsPermanently(t *testing.T) {
 	}
 }
 
+// TestProvisionAccess_5xxIsTransient locks that a 5xx from the Admin SDK is
+// classified as transient (via access.IsTransientStatus) so the worker retries
+// it with backoff, rather than failing permanently like a 4xx. The Admin SDK
+// aggressively rate-limits directory mutations, so this matters in production.
+func TestProvisionAccess_5xxIsTransient(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+		return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+	}
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(t), access.AccessGrant{
+		UserExternalID: "alice@example.com", ResourceExternalID: "engineering@example.com", Role: "MEMBER",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("expected transient error, got %v", err)
+	}
+}
+
+// TestRevokeAccess_5xxIsTransient is the revoke-path counterpart of
+// TestProvisionAccess_5xxIsTransient.
+func TestRevokeAccess_5xxIsTransient(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	t.Cleanup(server.Close)
+
+	c := New()
+	c.httpClientFor = func(_ context.Context, _ Config, _ Secrets) (httpDoer, error) {
+		return &fakeDirectoryClient{base: server.URL, c: server.Client()}, nil
+	}
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(t), access.AccessGrant{
+		UserExternalID: "alice@example.com", ResourceExternalID: "engineering@example.com", Role: "MEMBER",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("expected transient error, got %v", err)
+	}
+}
+
 // TestVerifyPermissions_ProbesProvider verifies the contract that
 // VerifyPermissions probes the provider: a reachable, authorized provider
 // yields no missing capabilities, while a probe failure (e.g. 403) marks the

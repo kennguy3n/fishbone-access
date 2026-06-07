@@ -322,11 +322,20 @@ func (c *GitLabAccessConnector) ProvisionAccess(
 		return fmt.Errorf("gitlab: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusConflict {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("gitlab: provision status %d: %s", resp.StatusCode, string(respBody))
+	// 201/200 = added, 409 = already a member (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 surfaces as a transient
+	// error the worker will retry, matching the other connectors.
+	switch {
+	case resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK:
+		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("gitlab: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("gitlab: provision status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 // RevokeAccess removes a user from a GitLab group. 404 = idempotent.
@@ -353,11 +362,20 @@ func (c *GitLabAccessConnector) RevokeAccess(
 		return fmt.Errorf("gitlab: revoke: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("gitlab: revoke status %d: %s", resp.StatusCode, string(respBody))
+	// 204/200 = removed, 404 = already absent (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 surfaces as a transient
+	// error the worker will retry.
+	switch {
+	case resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK:
+		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("gitlab: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("gitlab: revoke status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 // ListEntitlements returns the user's access level in a GitLab group.
