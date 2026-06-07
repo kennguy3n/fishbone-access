@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -307,13 +306,29 @@ func shortToken(t string) string {
 	return t[:4] + "..." + t[len(t)-4:]
 }
 
-var hostPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)*$`)
-
 func isHost(s string) bool {
 	if s == "" || len(s) > 253 {
 		return false
 	}
-	return hostPattern.MatchString(s)
+	for _, label := range strings.Split(s, ".") {
+		if label == "" || len(label) > 63 {
+			return false
+		}
+		if label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			switch {
+			case r >= 'a' && r <= 'z':
+			case r >= 'A' && r <= 'Z':
+			case r >= '0' && r <= '9':
+			case r == '-':
+			default:
+				return false
+			}
+		}
+	}
+	return true
 }
 
 var _ access.AccessConnector = (*WooCommerceAccessConnector)(nil)

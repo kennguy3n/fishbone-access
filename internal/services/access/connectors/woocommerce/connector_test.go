@@ -48,6 +48,45 @@ func TestValidate_PureLocal(t *testing.T) {
 	}
 }
 
+// TestIsHost_RejectsInvalidDNSLabels pins that the endpoint host validator
+// rejects RFC 952/1123-invalid labels (leading/trailing hyphen, empty, or
+// over-63-character labels), matching the wazuh/wrike sibling validators. The
+// prior regex permitted trailing hyphens (e.g. "shop-test-.example.com") and
+// did not enforce the 63-char label cap.
+func TestIsHost_RejectsInvalidDNSLabels(t *testing.T) {
+	longLabel := strings.Repeat("a", 64)
+	cases := []struct {
+		host string
+		want bool
+	}{
+		{"example.com", true},
+		{"shop.example.co.uk", true},
+		{"a-b.example.com", true},
+		{"shop-test-.example.com", false}, // trailing hyphen
+		{"-shop.example.com", false},      // leading hyphen
+		{"abc-.example.com", false},       // trailing hyphen
+		{"example-.com", false},
+		{longLabel + ".example.com", false}, // label > 63 chars
+		{"foo..example.com", false},         // empty label
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := isHost(tc.host); got != tc.want {
+			t.Errorf("isHost(%q) = %v; want %v", tc.host, got, tc.want)
+		}
+	}
+}
+
+func TestValidate_RejectsInvalidHostLabel(t *testing.T) {
+	prev := http.DefaultTransport
+	http.DefaultTransport = noNetworkRoundTripper{}
+	t.Cleanup(func() { http.DefaultTransport = prev })
+	cfg := map[string]interface{}{"endpoint": "https://shop-test-.example.com"}
+	if err := New().Validate(context.Background(), cfg, validSecrets()); err == nil {
+		t.Fatal("expected Validate to reject endpoint host with trailing-hyphen label")
+	}
+}
+
 func TestRegistryIntegration(t *testing.T) {
 	if got, _ := access.GetAccessConnector(ProviderName); got == nil {
 		t.Fatal("not registered")
