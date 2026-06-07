@@ -106,3 +106,43 @@ func TestMapSentryAuditLog_DropsZeroTimestamp(t *testing.T) {
 		t.Fatal("valid timestamp: got nil, want entry")
 	}
 }
+
+// TestFetchAccessAuditLogs_RejectsOffHostPagination pins the assertSameHost
+// guard on the audit pagination loop: a rel="next" Link header pointing off
+// the API host must be refused rather than followed, since the loop attaches
+// the bearer token via newRequest. Mirrors the SyncIdentities guard and the
+// GitHub audit guard. The off-host server must never be contacted.
+func TestFetchAccessAuditLogs_RejectsOffHostPagination(t *testing.T) {
+	contacted := false
+	evil := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contacted = true
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("bearer token leaked off-host: %q", got)
+		}
+		_, _ = w.Write([]byte(`{"rows":[]}`))
+	}))
+	t.Cleanup(evil.Close)
+
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// First page is empty but points "next" off-host.
+		w.Header().Set("Link", `<`+evil.URL+`/api/0/organizations/acme/audit-logs/?cursor=0:100:0>; rel="next"; results="true"`)
+		_, _ = w.Write([]byte(`{"rows":[]}`))
+	}))
+	t.Cleanup(api.Close)
+
+	c := New()
+	c.urlOverride = api.URL
+	c.httpClient = func() httpDoer { return api.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err == nil {
+		t.Fatal("expected error for off-host audit pagination, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected host") {
+		t.Fatalf("error = %v; want host-mismatch refusal", err)
+	}
+	if contacted {
+		t.Fatal("off-host server was contacted with the bearer token")
+	}
+}
