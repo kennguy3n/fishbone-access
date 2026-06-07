@@ -145,6 +145,13 @@ func mapReportsActivity(a *reportsActivity) *access.AuditLogEntry {
 		return nil
 	}
 	ts, _ := time.Parse(time.RFC3339, a.ID.Time)
+	if ts.IsZero() {
+		// Drop events whose timestamp cannot be parsed: a zero
+		// timestamp would not advance the watermark cursor and would
+		// be re-fetched every sync cycle. Matches the other audit
+		// mappers in this batch.
+		return nil
+	}
 	eventType := a.ID.ApplicationName
 	action := ""
 	outcome := ""

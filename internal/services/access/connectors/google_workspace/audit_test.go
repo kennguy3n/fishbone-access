@@ -91,6 +91,41 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
+// TestMapReportsActivity_DropsUnparseableTimestamp pins the
+// zero-timestamp guard: an activity whose id.time cannot be parsed must
+// be dropped (nil) rather than emitted with a 0001-01-01 timestamp, which
+// would never advance the max-based watermark cursor and would re-fetch
+// the same window every sync cycle. Matches every other audit mapper in
+// this batch. A well-formed timestamp must still map through.
+func TestMapReportsActivity_DropsUnparseableTimestamp(t *testing.T) {
+	bad := &reportsActivity{}
+	bad.ID.UniqueQualifier = "act-bad"
+	bad.ID.ApplicationName = "login"
+	bad.ID.Time = "not-a-timestamp"
+	if got := mapReportsActivity(bad); got != nil {
+		t.Fatalf("expected nil for unparseable timestamp, got %+v", got)
+	}
+
+	empty := &reportsActivity{}
+	empty.ID.UniqueQualifier = "act-empty"
+	empty.ID.Time = ""
+	if got := mapReportsActivity(empty); got != nil {
+		t.Fatalf("expected nil for empty timestamp, got %+v", got)
+	}
+
+	good := &reportsActivity{}
+	good.ID.UniqueQualifier = "act-ok"
+	good.ID.ApplicationName = "login"
+	good.ID.Time = "2024-01-01T10:00:00Z"
+	got := mapReportsActivity(good)
+	if got == nil {
+		t.Fatal("expected entry for valid timestamp, got nil")
+	}
+	if got.Timestamp.IsZero() || !got.Timestamp.Equal(time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)) {
+		t.Errorf("Timestamp = %v; want 2024-01-01T10:00:00Z", got.Timestamp)
+	}
+}
+
 func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
