@@ -36,6 +36,13 @@ func gorgiasValidateGrant(g access.AccessGrant) error {
 	return nil
 }
 
+// gorgiasRole resolves the role to assign. Gorgias has no separate
+// resource to grant against — a user's single workspace role *is* the
+// entitlement — so ResourceExternalID carries the role here (see the
+// AccessGrant mapping above). This deliberately differs from the other
+// connectors, where ResourceExternalID identifies a resource (group /
+// team / job). Precedence: explicit Role, then ResourceExternalID, then
+// the default "agent".
 func gorgiasRole(g access.AccessGrant) string {
 	if r := strings.TrimSpace(g.Role); r != "" {
 		return r

@@ -12,10 +12,12 @@ import (
 // Google Workspace. It probes /admin/directory/v1/customer/{my_customer}/sso
 // (a stable Admin SDK endpoint that mirrors the Admin Console
 // "Set up single sign-on for SAML applications" panel) and reports
-// enforced=true when the SSO profile is both `enabled` AND the
-// `useDomainSpecificIssuer` discriminator is set — i.e. the
-// customer has configured a real federated IdP, not just toggled
-// the placeholder.
+// enforced=true when the SSO profile is both `enableSSO` AND has a
+// non-empty `signInPage` — i.e. the customer has configured a real
+// federated IdP sign-in URL, not just toggled the placeholder. (The
+// `useDomainSpecificIssuer` flag only controls the issuer format and
+// is not a reliable "IdP wired" signal, so it is intentionally not
+// part of the decision.)
 //
 // The "enforced" label here is a coarse "SSO is wired" signal —
 // stronger guarantees (e.g. password sign-in fully disabled) live
@@ -46,9 +48,8 @@ func (c *GoogleWorkspaceAccessConnector) CheckSSOEnforcement(ctx context.Context
 		return false, "", fmt.Errorf("google_workspace: sso-enforcement status %d: %s", resp.StatusCode, string(body))
 	}
 	var payload struct {
-		Enabled                 bool   `json:"enableSSO"`
-		UseDomainSpecificIssuer bool   `json:"useDomainSpecificIssuer"`
-		SignInPage              string `json:"signInPage"`
+		Enabled    bool   `json:"enableSSO"`
+		SignInPage string `json:"signInPage"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return false, "", fmt.Errorf("google_workspace: decode sso profile: %w", err)

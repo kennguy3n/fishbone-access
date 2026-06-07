@@ -13,8 +13,12 @@ import (
 // which invalidates every active web session, refresh token, and
 // OAuth-issued access token for the supplied user.
 //
-// userExternalID is the user's primary email address (the
-// SyncIdentities-emitted external_id for this connector). A 200 /
+// userExternalID is the SyncIdentities-emitted external_id for this
+// connector, which is the immutable numeric Google user id (see
+// mapDirectoryUsers: ExternalID = directoryUser.ID). The Admin SDK
+// accepts either the numeric id or the primary email as the {userKey}
+// path segment, so callers may also pass an email, but the canonical
+// key flowing through the leaver pipeline is the numeric id. A 200 /
 // 204 from Google means "sign-out propagated"; a 404 means the
 // user is already gone and is treated as success (idempotent kill
 // switch per the leaver contract). Any other status returns a non-nil err so
