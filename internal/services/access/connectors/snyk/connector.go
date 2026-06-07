@@ -297,7 +297,7 @@ func (c *SnykAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 		role = "collaborator"
 	}
 	body, _ := json.Marshal(map[string]interface{}{"data": map[string]interface{}{"attributes": map[string]string{"role": role}, "type": "org-membership"}})
-	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(grant.UserExternalID))
+	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s?version=%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(grant.UserExternalID), apiVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, urlStr, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func (c *SnykAccessConnector) RevokeAccess(ctx context.Context, configRaw, secre
 	if err != nil {
 		return err
 	}
-	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(grant.UserExternalID))
+	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s?version=%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(grant.UserExternalID), apiVersion)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, urlStr, nil)
 	if err != nil {
 		return err
@@ -350,7 +350,7 @@ func (c *SnykAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 	if err != nil {
 		return nil, err
 	}
-	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(userExternalID))
+	urlStr := fmt.Sprintf("%s/rest/orgs/%s/members/%s?version=%s", c.baseURL(), url.PathEscape(cfg.OrgID), url.PathEscape(userExternalID), apiVersion)
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, urlStr)
 	if err != nil {
 		return nil, err

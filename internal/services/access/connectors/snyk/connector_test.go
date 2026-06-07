@@ -250,6 +250,46 @@ func TestListEntitlements_TransientErrorSurfaces(t *testing.T) {
 	}
 }
 
+// The Snyk REST API rejects any request to /rest/ that omits the
+// `version` query parameter, so every advanced capability must send it
+// (matching Connect/SyncIdentities/FetchAccessAuditLogs).
+func TestAdvancedCapabilities_SendVersionParam(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(c *SnykAccessConnector) error
+	}{
+		{"provision", func(c *SnykAccessConnector) error {
+			return c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "m-1"})
+		}},
+		{"revoke", func(c *SnykAccessConnector) error {
+			return c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "m-1"})
+		}},
+		{"list", func(c *SnykAccessConnector) error {
+			_, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "u-1")
+			return err
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotVersion string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotVersion = r.URL.Query().Get("version")
+				_, _ = w.Write([]byte(`{"data":{"attributes":{"role":"admin"}}}`))
+			}))
+			t.Cleanup(srv.Close)
+			c := New()
+			c.urlOverride = srv.URL
+			c.httpClient = func() httpDoer { return srv.Client() }
+			if err := tc.call(c); err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if gotVersion != apiVersion {
+				t.Errorf("%s: version param = %q, want %q", tc.name, gotVersion, apiVersion)
+			}
+		})
+	}
+}
+
 // PATCH provisioning commonly returns 204/201; any 2xx is success.
 func TestProvisionAccess_Accepts2xx(t *testing.T) {
 	for _, code := range []int{http.StatusCreated, http.StatusNoContent} {
