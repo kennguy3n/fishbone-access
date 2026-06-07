@@ -47,16 +47,23 @@ func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw
 	if err != nil {
 		return false, "", fmt.Errorf("jira: sso-enforcement probe: %w", err)
 	}
-	// json.NewDecoder below only consumes one JSON value and leaves any
-	// trailing bytes unread, so a plain Close would prevent net/http from
-	// returning the connection to the keep-alive pool. This deferred
-	// drainAndClose runs after Decode and consumes whatever the decoder left
-	// behind so the connection is reusable, matching the write paths in
-	// connector.go / session_revoke.go.
+	// The deferred drainAndClose consumes any bytes beyond what we read and
+	// closes the body so net/http can return the connection to the keep-alive
+	// pool, matching the write paths in connector.go / session_revoke.go.
 	defer drainAndClose(resp)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return false, "", fmt.Errorf("jira: sso-enforcement status %d: %s", resp.StatusCode, string(body))
+	}
+	// Read the success body through io.LimitReader (1MiB cap) before
+	// unmarshalling instead of json.NewDecoder(resp.Body) directly: a bare
+	// decoder reads the whole top-level JSON value unbounded, so a misbehaving
+	// admin gateway returning a huge `data` array could read it all into
+	// memory. The 1MiB cap matches every other response read in this package
+	// (do/readLimited) and the authentication-policies payload is tiny.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return false, "", fmt.Errorf("jira: sso-enforcement read body: %w", err)
 	}
 	var payload struct {
 		Data []struct {
@@ -67,7 +74,7 @@ func (c *JiraAccessConnector) CheckSSOEnforcement(ctx context.Context, configRaw
 			} `json:"attributes"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return false, "", fmt.Errorf("jira: decode authentication-policies: %w", err)
 	}
 	for _, p := range payload.Data {
