@@ -73,6 +73,11 @@ func (c *PersonioAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("personio: decode audit log: %w", err)
 		}
+		// Personio's attendances endpoint returns records in updated_at order,
+		// so once a page contains an event at or before the cursor we can stop
+		// paginating. This assumes that ordering; if Personio ever returns
+		// out-of-order pages (e.g. a bulk update reshuffling updated_at), newer
+		// events on later pages could be missed.
 		olderThanCursor := false
 		for i := range envelope.Data {
 			ts := parsePersonioAuditTime(envelope.Data[i].Attributes.UpdatedAt)
@@ -145,6 +150,8 @@ func mapPersonioAuditEvent(e *personioAuditEvent) *access.AuditLogEntry {
 		RawData:          rawMap,
 	}
 }
+
+var _ access.AccessAuditor = (*PersonioAccessConnector)(nil)
 
 func parsePersonioAuditTime(s string) time.Time {
 	s = strings.TrimSpace(s)

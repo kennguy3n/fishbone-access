@@ -233,18 +233,21 @@ func attrString(emp personioEmployee, key string) string {
 	return ""
 }
 
-func attrInt(emp personioEmployee, key string) int {
+// attrInt extracts an integer attribute. The bool reports whether a numeric
+// value was actually present and parsed; callers must not treat a missing or
+// non-numeric attribute as the zero value.
+func attrInt(emp personioEmployee, key string) (int, bool) {
 	wrapped, ok := emp.Attributes[key]
 	if !ok {
-		return 0
+		return 0, false
 	}
 	switch v := wrapped.Value.(type) {
 	case float64:
-		return int(v)
+		return int(v), true
 	case int:
-		return v
+		return v, true
 	}
-	return 0
+	return 0, false
 }
 
 func (c *PersonioAccessConnector) CountIdentities(ctx context.Context, configRaw, secretsRaw map[string]interface{}) (int, error) {
@@ -294,7 +297,13 @@ func (c *PersonioAccessConnector) SyncIdentities(
 		}
 		identities := make([]*access.Identity, 0, len(resp.Data))
 		for _, e := range resp.Data {
-			id := fmt.Sprintf("%d", attrInt(e, "id"))
+			numericID, ok := attrInt(e, "id")
+			if !ok || numericID <= 0 {
+				// Skip records lacking a valid numeric Personio id rather than
+				// collapsing them all onto ExternalID "0" in the identity store.
+				continue
+			}
+			id := fmt.Sprintf("%d", numericID)
 			email := attrString(e, "email")
 			first := attrString(e, "first_name")
 			last := attrString(e, "last_name")

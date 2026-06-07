@@ -21,20 +21,28 @@ import (
 
 var (
 	scimClientOnce sync.Once
+	scimClientMu   sync.RWMutex
 	scimClient     *access.SCIMClient
 )
 
 func scim() *access.SCIMClient {
 	scimClientOnce.Do(func() {
+		scimClientMu.Lock()
 		scimClient = access.NewSCIMClient()
+		scimClientMu.Unlock()
 	})
+	scimClientMu.RLock()
+	defer scimClientMu.RUnlock()
 	return scimClient
 }
 
-// SetSCIMClientForTest swaps the package-level SCIMClient.
+// SetSCIMClientForTest swaps the package-level SCIMClient. The write is
+// synchronized so concurrent scim() readers don't race on the pointer.
 func SetSCIMClientForTest(c *access.SCIMClient) *access.SCIMClient {
 	prev := scim()
+	scimClientMu.Lock()
 	scimClient = c
+	scimClientMu.Unlock()
 	return prev
 }
 
