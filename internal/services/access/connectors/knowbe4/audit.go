@@ -154,3 +154,5 @@ func parseKnowBe4AuditTime(s string) time.Time {
 	}
 	return time.Time{}
 }
+
+var _ access.AccessAuditor = (*KnowBe4AccessConnector)(nil)

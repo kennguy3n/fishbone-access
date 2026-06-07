@@ -2,6 +2,8 @@ package magento
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -40,6 +42,30 @@ func TestMagentoConnectorFlow_FullLifecycle(t *testing.T) {
 				_, _ = w.Write([]byte(`{"message":"A customer with the same email already exists"}`))
 				return
 			}
+			// Validate the create body the way the real Magento API would:
+			// the group must arrive as snake_case "group_id" and email /
+			// firstname / lastname are mandatory.
+			var reqBody struct {
+				Customer struct {
+					Email     string      `json:"email"`
+					Firstname string      `json:"firstname"`
+					Lastname  string      `json:"lastname"`
+					GroupID   json.Number `json:"group_id"`
+				} `json:"customer"`
+			}
+			raw, _ := io.ReadAll(r.Body)
+			if err := json.Unmarshal(raw, &reqBody); err != nil {
+				t.Errorf("decode provision body: %v (%s)", err, raw)
+			}
+			if strings.Contains(string(raw), "groupId") {
+				t.Errorf("provision body uses camelCase groupId, want snake_case group_id: %s", raw)
+			}
+			if reqBody.Customer.GroupID.String() != groupID {
+				t.Errorf("group_id = %q, want %q (body=%s)", reqBody.Customer.GroupID.String(), groupID, raw)
+			}
+			if reqBody.Customer.Email == "" || reqBody.Customer.Firstname == "" || reqBody.Customer.Lastname == "" {
+				t.Errorf("missing required customer fields: %s", raw)
+			}
 			state = groupID
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"id":` + userID + `,"email":"` + userEmail + `","group_id":` + groupID + `}`))
@@ -69,7 +95,15 @@ func TestMagentoConnectorFlow_FullLifecycle(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	cfg := magentoFlowConfig()
 	secrets := magentoFlowSecrets()
-	grant := access.AccessGrant{UserExternalID: userID, ResourceExternalID: groupID}
+	grant := access.AccessGrant{
+		UserExternalID:     userID,
+		ResourceExternalID: groupID,
+		Scope: map[string]interface{}{
+			"email":     userEmail,
+			"firstname": "Alice",
+			"lastname":  "Smith",
+		},
+	}
 
 	if err := c.Validate(context.Background(), cfg, secrets); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -110,8 +144,55 @@ func TestMagentoConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	c.httpClient = func() httpDoer { return srv.Client() }
 	err := c.ProvisionAccess(context.Background(),
 		magentoFlowConfig(), magentoFlowSecrets(),
-		access.AccessGrant{UserExternalID: "alice@example.com", ResourceExternalID: "1"})
+		access.AccessGrant{
+			UserExternalID:     "alice@example.com",
+			ResourceExternalID: "1",
+			Scope: map[string]interface{}{
+				"firstname": "Alice",
+				"lastname":  "Smith",
+			},
+		})
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// TestMagentoProvision_RequiresCustomerFields verifies the connector fails
+// loud (before issuing any HTTP request) when the data Magento requires to
+// create a customer — a valid email plus firstname/lastname — is missing,
+// rather than POSTing an incomplete body the real API would reject with a 400.
+func TestMagentoProvision_RequiresCustomerFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s; provision should fail before calling the API", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	cases := []struct {
+		name  string
+		grant access.AccessGrant
+		want  string
+	}{
+		{
+			name:  "non-email id without scope email",
+			grant: access.AccessGrant{UserExternalID: "555", ResourceExternalID: "3", Scope: map[string]interface{}{"firstname": "Alice", "lastname": "Smith"}},
+			want:  "email is required",
+		},
+		{
+			name:  "email but missing names",
+			grant: access.AccessGrant{UserExternalID: "alice@example.com", ResourceExternalID: "3"},
+			want:  "firstname and lastname are required",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := c.ProvisionAccess(context.Background(), magentoFlowConfig(), magentoFlowSecrets(), tc.grant)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want containing %q", err, tc.want)
+			}
+		})
 	}
 }

@@ -35,6 +35,47 @@ func magentoValidateGrant(g access.AccessGrant) error {
 	return nil
 }
 
+func magentoScopeString(scope map[string]interface{}, key string) string {
+	if v, ok := scope[key].(string); ok {
+		return strings.TrimSpace(v)
+	}
+	return ""
+}
+
+// magentoResolveCustomer builds the customer object for the
+// POST /rest/V1/customers create body. Magento's Customer data interface
+// serializes the group as "group_id" (snake_case) and requires email,
+// firstname, and lastname; omitting any of them — or sending the camelCase
+// "groupId" — makes the API drop the field (assigning the default group) or
+// reject the request with a 400. The email defaults to an email-form
+// UserExternalID (SyncIdentities can export either a numeric id or an email)
+// and is overridable via grant.Scope["email"]; firstname/lastname arrive
+// out-of-band via grant.Scope because the access grant carries no display
+// name. The connector fails loud rather than silently provisioning an
+// incomplete customer that the real API would reject.
+func magentoResolveCustomer(grant access.AccessGrant, groupID int) (map[string]interface{}, error) {
+	email := magentoScopeString(grant.Scope, "email")
+	if email == "" {
+		if id := strings.TrimSpace(grant.UserExternalID); strings.Contains(id, "@") {
+			email = id
+		}
+	}
+	firstname := magentoScopeString(grant.Scope, "firstname")
+	lastname := magentoScopeString(grant.Scope, "lastname")
+	if email == "" {
+		return nil, errors.New(`magento: an email is required to create a customer; supply grant.Scope["email"] or an email-form UserExternalID`)
+	}
+	if firstname == "" || lastname == "" {
+		return nil, errors.New(`magento: firstname and lastname are required to create a customer; supply grant.Scope["firstname"] and grant.Scope["lastname"]`)
+	}
+	return map[string]interface{}{
+		"email":     email,
+		"firstname": firstname,
+		"lastname":  lastname,
+		"group_id":  groupID,
+	}, nil
+}
+
 func (c *MagentoAccessConnector) doRaw(req *http.Request) (int, []byte, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
@@ -82,11 +123,12 @@ func (c *MagentoAccessConnector) ProvisionAccess(ctx context.Context, configRaw,
 	if parseErr != nil {
 		return parseErr
 	}
+	customer, resolveErr := magentoResolveCustomer(grant, groupID)
+	if resolveErr != nil {
+		return resolveErr
+	}
 	payload, _ := json.Marshal(map[string]interface{}{
-		"customer": map[string]interface{}{
-			"email":   strings.TrimSpace(grant.UserExternalID),
-			"groupId": groupID,
-		},
+		"customer": customer,
 	})
 	req, err := c.newJSONRequest(ctx, secrets, http.MethodPost, c.customersURL(cfg), payload)
 	if err != nil {
