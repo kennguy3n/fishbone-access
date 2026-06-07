@@ -18,6 +18,14 @@ import (
 // and we control the full URL ourselves).
 const reportsBaseURL = "https://admin.googleapis.com/admin/reports/v1"
 
+// gwAuditMaxPages bounds a single audit sweep so a Reports API that keeps
+// returning a non-empty nextPageToken (or a server-side cursor bug) cannot
+// spin the pagination loop forever; mirrors the cap used by the other
+// paginated audit connectors in this family. Because the watermark advances
+// per page (handler is called with the batch's newest timestamp), stopping at
+// the cap simply defers the remaining pages to the next sync cycle.
+const gwAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams login activities from the Admin SDK
 // Reports API back into the access audit pipeline. Implements
 // access.AccessAuditor.
@@ -48,7 +56,7 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 
 	cursor := since
 	pageToken := ""
-	for {
+	for pageNum := 0; pageNum < gwAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -116,6 +124,7 @@ func (c *GoogleWorkspaceAccessConnector) FetchAccessAuditLogs(
 		}
 		pageToken = page.NextPageToken
 	}
+	return nil
 }
 
 type reportsActivity struct {

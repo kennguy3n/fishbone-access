@@ -430,6 +430,9 @@ func (c *GitHubAccessConnector) ListEntitlements(
 	// Team memberships
 	nextURL := fmt.Sprintf("%s/orgs/%s/teams", c.baseURL(), url.PathEscape(cfg.Organization))
 	for nextURL != "" {
+		if err := c.assertSameHost(nextURL); err != nil {
+			return nil, err
+		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
 		if err != nil {
 			return nil, err
