@@ -414,6 +414,12 @@ func (c *OktaAccessConnector) ListEntitlements(
 	path := fmt.Sprintf("/api/v1/users/%s/appLinks", url.PathEscape(userExternalID))
 	var out []access.Entitlement
 	for {
+		// Honor cancellation at the loop boundary so a cancelled context
+		// returns immediately rather than after the next network round-trip,
+		// matching SyncIdentities/SyncGroups/FetchAccessAuditLogs.
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		req, err := c.newRequest(ctx, cfg, secrets, http.MethodGet, path, nil)
 		if err != nil {
 			return nil, err
