@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -366,4 +367,54 @@ func TestProvisionAndRevoke_RejectMissingUser(t *testing.T) {
 	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), grant); err == nil {
 		t.Error("revoke should reject missing UserExternalID")
 	}
+}
+
+// TestBaseOpsEscapeTeamID is a regression test for the bug where the base ops
+// (Connect/SyncIdentities) concatenated cfg.TeamID into the URL path raw while
+// the advanced ops escaped it. TeamID is not charset-validated, so a value with
+// URL-special characters must be percent-escaped identically everywhere. The
+// "/" in the team id is the discriminator: url.PathEscape encodes it as %2F,
+// whereas raw concatenation leaves it as a path separator.
+func TestBaseOpsEscapeTeamID(t *testing.T) {
+	const teamID = "te/am"
+	wantPath := "/teams/" + url.PathEscape(teamID) // "/teams/te%2Fam"
+	cfg := map[string]interface{}{"tenant_id": "tenant-1", "team_id": teamID}
+
+	t.Run("Connect", func(t *testing.T) {
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.EscapedPath()
+			_, _ = w.Write([]byte(`{"id":"x","displayName":"Team"}`))
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+		if err := c.Connect(context.Background(), cfg, validSecrets()); err != nil {
+			t.Fatalf("Connect: %v", err)
+		}
+		if gotPath != wantPath {
+			t.Errorf("Connect path = %q; want %q (TeamID must be PathEscaped)", gotPath, wantPath)
+		}
+	})
+
+	t.Run("SyncIdentities", func(t *testing.T) {
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.EscapedPath()
+			_, _ = w.Write([]byte(`{"value":[]}`))
+		}))
+		t.Cleanup(srv.Close)
+		c := New()
+		c.urlOverride = srv.URL
+		c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "tok", nil }
+		err := c.SyncIdentities(context.Background(), cfg, validSecrets(), "",
+			func(_ []*access.Identity, _ string) error { return nil })
+		if err != nil {
+			t.Fatalf("SyncIdentities: %v", err)
+		}
+		if gotPath != wantPath+"/members" {
+			t.Errorf("SyncIdentities path = %q; want %q (TeamID must be PathEscaped)", gotPath, wantPath+"/members")
+		}
+	})
 }

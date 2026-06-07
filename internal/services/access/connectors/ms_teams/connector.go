@@ -229,7 +229,7 @@ func (c *MSTeamsAccessConnector) Connect(ctx context.Context, configRaw, secrets
 		return err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	if _, err := c.doJSON(client, ctx, http.MethodGet, "/teams/"+cfg.TeamID); err != nil {
+	if _, err := c.doJSON(client, ctx, http.MethodGet, teamPath(cfg.TeamID)); err != nil {
 		return fmt.Errorf("ms_teams: connect probe: %w", err)
 	}
 	return nil
@@ -280,7 +280,7 @@ func (c *MSTeamsAccessConnector) SyncIdentities(
 		return err
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	path := "/teams/" + cfg.TeamID + "/members"
+	path := teamMembersPath(cfg.TeamID)
 	if checkpoint != "" {
 		// Allow callers to resume from a relative path (without host).
 		path = checkpoint
@@ -339,6 +339,23 @@ func odataEscapeLiteral(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }
 
+// teamPath builds the /teams/{id} request path with the team id
+// percent-escaped. Both the base operations (Connect/SyncIdentities) and the
+// advanced ops (findMembershipIDForUser/ProvisionAccess/RevokeAccess) route
+// through this (and teamMembersPath) so the id is escaped exactly once and
+// identically everywhere — previously the base ops concatenated cfg.TeamID raw
+// while the advanced ops escaped it, so a team id with URL-special characters
+// produced divergent paths (and TeamID is not charset-validated).
+func teamPath(teamID string) string {
+	return "/teams/" + url.PathEscape(strings.TrimSpace(teamID))
+}
+
+// teamMembersPath builds the /teams/{id}/members request path, escaping the
+// team id via teamPath.
+func teamMembersPath(teamID string) string {
+	return teamPath(teamID) + "/members"
+}
+
 // targetTeamID picks the team to operate on. Grants may carry a
 // ResourceExternalID, in which case it wins; otherwise the connector
 // falls back to the Config-bound team. This lets a single connector
@@ -360,7 +377,7 @@ func (c *MSTeamsAccessConnector) findMembershipIDForUser(ctx context.Context, cl
 	if userExternalID == "" {
 		return "", nil
 	}
-	path := "/teams/" + url.PathEscape(teamID) + "/members"
+	path := teamMembersPath(teamID)
 	for {
 		body, err := c.doJSON(client, ctx, http.MethodGet, path)
 		if err != nil {
@@ -417,7 +434,7 @@ func (c *MSTeamsAccessConnector) ProvisionAccess(
 		return fmt.Errorf("ms_teams: marshal provision payload: %w", err)
 	}
 	client := c.graphClient(ctx, cfg, secrets)
-	resp, err := c.doRaw(client, ctx, http.MethodPost, "/teams/"+url.PathEscape(teamID)+"/members", body)
+	resp, err := c.doRaw(client, ctx, http.MethodPost, teamMembersPath(teamID), body)
 	if err != nil {
 		return fmt.Errorf("ms_teams: provision request: %w", err)
 	}
@@ -469,7 +486,7 @@ func (c *MSTeamsAccessConnector) RevokeAccess(
 	if membershipID == "" {
 		return nil
 	}
-	resp, err := c.doRaw(client, ctx, http.MethodDelete, "/teams/"+url.PathEscape(teamID)+"/members/"+url.PathEscape(membershipID), nil)
+	resp, err := c.doRaw(client, ctx, http.MethodDelete, teamMembersPath(teamID)+"/"+url.PathEscape(membershipID), nil)
 	if err != nil {
 		return fmt.Errorf("ms_teams: revoke request: %w", err)
 	}
