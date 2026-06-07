@@ -23,7 +23,6 @@ import (
 	"net/url"
 	"strings"
 
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -835,6 +834,4 @@ type directoryMemberAdd struct {
 var (
 	_ access.AccessConnector = (*GoogleWorkspaceAccessConnector)(nil)
 	_ access.GroupSyncer     = (*GoogleWorkspaceAccessConnector)(nil)
-
-	_ oauth2.Config = oauth2.Config{}
 )

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -159,7 +160,7 @@ func (c *GustoAccessConnector) Connect(ctx context.Context, configRaw, secretsRa
 	if err != nil {
 		return err
 	}
-	probe := fmt.Sprintf("%s/v1/companies/%s", c.baseURL(), cfg.CompanyID)
+	probe := fmt.Sprintf("%s/v1/companies/%s", c.baseURL(), url.PathEscape(strings.TrimSpace(cfg.CompanyID)))
 	req, err := c.newRequest(ctx, secrets, http.MethodGet, probe)
 	if err != nil {
 		return err
@@ -217,7 +218,7 @@ func (c *GustoAccessConnector) SyncIdentities(
 	}
 	base := c.baseURL()
 	for {
-		path := fmt.Sprintf("%s/v1/companies/%s/employees?page=%d&per=%d", base, cfg.CompanyID, page, pageSize)
+		path := fmt.Sprintf("%s/v1/companies/%s/employees?page=%d&per=%d", base, url.PathEscape(strings.TrimSpace(cfg.CompanyID)), page, pageSize)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err

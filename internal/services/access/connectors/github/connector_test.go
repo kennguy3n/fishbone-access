@@ -132,6 +132,15 @@ func TestGetSSOMetadata(t *testing.T) {
 	if !strings.Contains(md.MetadataURL, "/organizations/acme/saml/metadata") {
 		t.Errorf("metadata URL = %q", md.MetadataURL)
 	}
+	// SSO metadata is derived purely from config — it must resolve even
+	// when no secret is supplied (e.g. an admin-UI preview).
+	mdNoSecret, err := New().GetSSOMetadata(context.Background(), validConfig(), nil)
+	if err != nil {
+		t.Fatalf("GetSSOMetadata with nil secrets: %v", err)
+	}
+	if mdNoSecret == nil || mdNoSecret.MetadataURL != md.MetadataURL {
+		t.Fatalf("nil-secret metadata = %+v, want same as %+v", mdNoSecret, md)
+	}
 }
 
 // ---------- advanced capability tests ----------
@@ -187,6 +196,45 @@ func TestProvisionAccess_Idempotent(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("ProvisionAccess idempotent: %v", err)
+	}
+}
+
+// TestProvisionAccess_Transient locks that a 5xx from GitHub is classified
+// as transient (via the shared access.IsTransientStatus helper) so the
+// worker retries it, rather than surfacing an unlabeled hard failure.
+func TestProvisionAccess_Transient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(`{"message":"upstream"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{
+		UserExternalID: "alice", ResourceExternalID: "engineering",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("want transient error, got %v", err)
+	}
+}
+
+// TestRevokeAccess_Transient is the revoke-path counterpart of
+// TestProvisionAccess_Transient.
+func TestRevokeAccess_Transient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"message":"unavailable"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(), access.AccessGrant{
+		UserExternalID: "alice", ResourceExternalID: "engineering",
+	})
+	if err == nil || !strings.Contains(err.Error(), "transient") {
+		t.Fatalf("want transient error, got %v", err)
 	}
 }
 

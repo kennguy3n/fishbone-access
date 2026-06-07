@@ -35,6 +35,21 @@ func TestGitLabGetSSOMetadata_UsesDefaultBaseURL(t *testing.T) {
 	}
 }
 
+// TestGitLabGetSSOMetadata_NilSecrets locks that SSO metadata resolves
+// from config alone — it must not require a secret, since the URLs are
+// derived purely from the group path / base URL.
+func TestGitLabGetSSOMetadata_NilSecrets(t *testing.T) {
+	got, err := New().GetSSOMetadata(context.Background(), map[string]interface{}{
+		"group_id": "acme",
+	}, nil)
+	if err != nil {
+		t.Fatalf("GetSSOMetadata with nil secrets: %v", err)
+	}
+	if got == nil || !strings.HasPrefix(got.MetadataURL, "https://gitlab.com/groups/acme/-/saml/metadata") {
+		t.Fatalf("MetadataURL = %+v", got)
+	}
+}
+
 func TestGitLabGetSSOMetadata_SelfHostedBaseURL(t *testing.T) {
 	c := New()
 	got, err := c.GetSSOMetadata(context.Background(), map[string]interface{}{

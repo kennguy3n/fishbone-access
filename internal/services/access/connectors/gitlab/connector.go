@@ -405,9 +405,17 @@ func (c *GitLabAccessConnector) ListEntitlements(
 
 // GetSSOMetadata returns the GitLab group SAML SSO metadata URL. GitLab
 // groups expose SAML metadata at `/groups/{group}/-/saml/metadata`.
-func (c *GitLabAccessConnector) GetSSOMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (*access.SSOMetadata, error) {
-	cfg, _, err := c.decodeBoth(configRaw, secretsRaw)
+func (c *GitLabAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	// The metadata/entity URLs are derived purely from config (the group
+	// path / base URL); this method never calls the API. Decode and validate
+	// only the config so an admin-UI preview that has the group but no secret
+	// can still resolve the SSO URLs — requiring secrets here would be a
+	// needless coupling that makes GetSSOMetadata(cfg, nil) fail.
+	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	base := defaultBaseURL

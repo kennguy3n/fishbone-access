@@ -330,10 +330,20 @@ func (c *GitHubAccessConnector) ProvisionAccess(
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+	// PUT membership is inherently idempotent (200/201 for both new and
+	// existing). Classify the rest with the shared helpers so a 5xx/429
+	// surfaces as a transient error the worker will retry, matching the
+	// other connectors in this package.
+	switch {
+	case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated:
 		return nil
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("github: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("github: provision status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return fmt.Errorf("github: provision status %d: %s", resp.StatusCode, string(respBody))
 }
 
 // RevokeAccess removes a user from an org team. 404 = idempotent.
@@ -365,11 +375,20 @@ func (c *GitHubAccessConnector) RevokeAccess(
 		return fmt.Errorf("github: revoke request: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
-		return nil
-	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	return fmt.Errorf("github: revoke status %d: %s", resp.StatusCode, string(respBody))
+	// 204/200 = removed, 404 = already absent (idempotent). Classify the
+	// rest with the shared helpers so a 5xx/429 surfaces as a transient
+	// error the worker will retry.
+	switch {
+	case resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound:
+		return nil
+	case access.IsIdempotentRevokeStatus(resp.StatusCode, respBody):
+		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("github: revoke transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("github: revoke status %d: %s", resp.StatusCode, string(respBody))
+	}
 }
 
 // ListEntitlements returns org membership + team memberships for a user.
@@ -468,9 +487,17 @@ func (c *GitHubAccessConnector) ListEntitlements(
 // GetSSOMetadata returns the SAML SSO metadata URL for GitHub Enterprise
 // Cloud organisations. GitHub publishes metadata at
 // `https://github.com/organizations/{org}/saml/metadata`.
-func (c *GitHubAccessConnector) GetSSOMetadata(_ context.Context, configRaw, secretsRaw map[string]interface{}) (*access.SSOMetadata, error) {
-	cfg, _, err := c.decodeBoth(configRaw, secretsRaw)
+func (c *GitHubAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	// The metadata/entity URLs are derived purely from config (the org
+	// slug); this method never calls the API. Decode and validate only the
+	// config so an admin-UI preview that has the org but no secret can still
+	// resolve the SSO URLs — requiring secrets here would be a needless
+	// coupling that makes GetSSOMetadata(cfg, nil) fail.
+	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
+		return nil, err
+	}
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	org := url.PathEscape(cfg.Organization)
