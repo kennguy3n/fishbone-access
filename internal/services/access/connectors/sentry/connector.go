@@ -308,14 +308,20 @@ func (c *SentryAccessConnector) ProvisionAccess(ctx context.Context, configRaw, 
 		return fmt.Errorf("sentry: provision: %w", err)
 	}
 	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
 		return nil
-	}
-	if strings.Contains(string(respBody), "already") {
+	case access.IsIdempotentProvisionStatus(resp.StatusCode, respBody):
+		// Member already invited/added: case-folded body match via the
+		// shared helper, consistent with the other connectors in this
+		// batch (handles "Already exists" as well as "already").
 		return nil
+	case access.IsTransientStatus(resp.StatusCode):
+		return fmt.Errorf("sentry: provision transient status %d: %s", resp.StatusCode, string(respBody))
+	default:
+		return fmt.Errorf("sentry: provision status %d: %s", resp.StatusCode, string(respBody))
 	}
-	return fmt.Errorf("sentry: provision status %d: %s", resp.StatusCode, string(respBody))
 }
 
 func (c *SentryAccessConnector) RevokeAccess(ctx context.Context, configRaw, secretsRaw map[string]interface{}, grant access.AccessGrant) error {

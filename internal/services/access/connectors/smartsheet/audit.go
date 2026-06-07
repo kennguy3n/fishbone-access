@@ -14,6 +14,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// smartsheetAuditMaxPages bounds the audit-log pagination loop so an
+// always-true moreAvailable / never-empty nextStreamPosition (API
+// bug/change) cannot drive unbounded HTTP requests, matching the safety
+// guard used by the other audit connectors in this batch.
+const smartsheetAuditMaxPages = 200
+
 // FetchAccessAuditLogs streams Smartsheet event-stream entries into the
 // access audit pipeline. Implements access.AccessAuditor.
 //
@@ -38,7 +44,7 @@ func (c *SmartsheetAccessConnector) FetchAccessAuditLogs(
 	since := sincePartitions[access.DefaultAuditPartition]
 	cursor := since
 	streamPos := ""
-	for {
+	for pageNum := 0; pageNum < smartsheetAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -93,6 +99,10 @@ func (c *SmartsheetAccessConnector) FetchAccessAuditLogs(
 			return nil
 		}
 	}
+	// Page budget exhausted while the API still reports more events; stop
+	// rather than loop unbounded. The persisted cursor lets the next run
+	// resume where this one left off.
+	return nil
 }
 
 type smartsheetEventPage struct {

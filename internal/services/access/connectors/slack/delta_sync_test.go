@@ -141,6 +141,40 @@ func TestSyncIdentitiesDelta_PreservesCursorWhenNoNewEvents(t *testing.T) {
 	}
 }
 
+// A workspace whose audit API always returns a non-empty next_cursor must
+// not loop forever: slackAuditMaxPages bounds the request count and the
+// delta sync returns the latest cursor so the next run resumes.
+func TestSyncIdentitiesDelta_MaxPagesGuard(t *testing.T) {
+	var mu sync.Mutex
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls++
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok":                true,
+			"entries":           []map[string]interface{}{},
+			"response_metadata": map[string]interface{}{"next_cursor": "always-more"},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	_, err := c.SyncIdentitiesDelta(context.Background(), nil, validSecrets(), "1704000000",
+		func(_ []*access.Identity, _ []string, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("SyncIdentitiesDelta: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if calls != slackAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, slackAuditMaxPages)
+	}
+}
+
 func TestSyncIdentitiesDelta_SatisfiesInterface(t *testing.T) {
 	var _ access.IdentityDeltaSyncer = New()
 }

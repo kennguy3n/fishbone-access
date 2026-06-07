@@ -67,7 +67,12 @@ func (c *SlackAccessConnector) SyncIdentitiesDelta(
 	cursorMax := since
 	pageCursor := ""
 
-	for {
+	// Bound the pagination loop with the same guard as the audit fetch
+	// (both poll /audit/v1/logs as background jobs): a never-empty
+	// next_cursor (API bug/change) must not drive unbounded HTTP
+	// requests. When the budget is exhausted we fall through and persist
+	// the latest cursor so the next run resumes where this one left off.
+	for pageNum := 0; pageNum < slackAuditMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}

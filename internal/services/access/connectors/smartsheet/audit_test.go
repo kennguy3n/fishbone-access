@@ -123,6 +123,34 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+// A tenant whose events API always reports moreAvailable with a fresh
+// nextStreamPosition must not loop forever: smartsheetAuditMaxPages bounds
+// the request count and the fetch returns nil so the persisted cursor lets
+// the next run resume.
+func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"data":               []map[string]interface{}{},
+			"moreAvailable":      true,
+			"nextStreamPosition": "always-more",
+		})
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(), nil,
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != nil {
+		t.Fatalf("FetchAccessAuditLogs: %v", err)
+	}
+	if calls != smartsheetAuditMaxPages {
+		t.Errorf("calls = %d; want %d (bounded by guard)", calls, smartsheetAuditMaxPages)
+	}
+}
+
 // An event with an empty/unparseable eventTimestamp must be dropped
 // rather than emitted with a zero Timestamp (which corrupts cursor
 // tracking), matching every other audit mapper in this batch.
