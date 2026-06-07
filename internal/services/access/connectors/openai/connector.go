@@ -284,6 +284,14 @@ func (c *OpenAIAccessConnector) SyncIdentities(
 // metadata URL is set so callers treat the connector as
 // SSO-unsupported.
 func (c *OpenAIAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ map[string]interface{}) (*access.SSOMetadata, error) {
+	// Prefer the shared sso_* convention used by every other connector in this
+	// package — it also honors sso_login_url / sso_logout_url / sso_protocol,
+	// which the connector-local decode silently ignored. Fall back to the
+	// legacy saml_metadata_url / saml_entity_id keys so any operator who
+	// already configured OpenAI SSO with the old keys keeps working.
+	if md := access.SSOMetadataFromConfig(configRaw, "saml"); md != nil {
+		return md, nil
+	}
 	cfg, err := DecodeConfig(configRaw)
 	if err != nil {
 		return nil, err

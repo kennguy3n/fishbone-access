@@ -29,7 +29,7 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 			} else {
 				_, _ = w.Write([]byte(`[]`))
 			}
-		case strings.HasPrefix(r.URL.Path, "/api/v1/apps/app-1/users/u-1") && r.Method == http.MethodPut:
+		case r.URL.Path == "/api/v1/apps/app-1/users" && r.Method == http.MethodPost:
 			assigned = true
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{}`))

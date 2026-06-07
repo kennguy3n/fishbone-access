@@ -128,10 +128,10 @@ func TestProvisionAccess_AssignsAppUser(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ProvisionAccess: %v", err)
 			}
-			if seenMethod != http.MethodPut {
-				t.Fatalf("method = %q, want PUT", seenMethod)
+			if seenMethod != http.MethodPost {
+				t.Fatalf("method = %q, want POST", seenMethod)
 			}
-			if seenPath != "/api/v1/apps/app-1/users/u-1" {
+			if seenPath != "/api/v1/apps/app-1/users" {
 				t.Fatalf("path = %q", seenPath)
 			}
 			var body oktaAppUserAssignment

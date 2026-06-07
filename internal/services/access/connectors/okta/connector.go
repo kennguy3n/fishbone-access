@@ -337,11 +337,18 @@ func (c *OktaAccessConnector) ProvisionAccess(
 	if err != nil {
 		return fmt.Errorf("okta: marshal assignment: %w", err)
 	}
-	path := fmt.Sprintf("/api/v1/apps/%s/users/%s",
+	// Assign via POST /api/v1/apps/{appId}/users with the user id in the body
+	// — this is Okta's documented "Assign User to Application for SSO &
+	// Provisioning" endpoint and creates the assignment when none exists.
+	// PUT /api/v1/apps/{appId}/users/{userId} is NOT an assignment verb: that
+	// path only supports POST (update the profile of an *already assigned*
+	// user) and DELETE (unassign), so a PUT first-provision would fail. The
+	// request body shape (id/scope/profile) is identical, so only the verb and
+	// path change.
+	path := fmt.Sprintf("/api/v1/apps/%s/users",
 		url.PathEscape(grant.ResourceExternalID),
-		url.PathEscape(grant.UserExternalID),
 	)
-	req, err := c.newRequest(ctx, cfg, secrets, http.MethodPut, path, bytes.NewReader(body))
+	req, err := c.newRequest(ctx, cfg, secrets, http.MethodPost, path, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
