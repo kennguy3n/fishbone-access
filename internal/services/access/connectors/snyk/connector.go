@@ -303,6 +303,7 @@ func (c *SnykAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 		return err
 	}
 	req.Header.Set("Content-Type", "application/vnd.api+json")
+	req.Header.Set("Accept", "application/vnd.api+json")
 	req.Header.Set("Authorization", "token "+strings.TrimSpace(secrets.APIToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
@@ -329,6 +330,7 @@ func (c *SnykAccessConnector) RevokeAccess(ctx context.Context, configRaw, secre
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Accept", "application/vnd.api+json")
 	req.Header.Set("Authorization", "token "+strings.TrimSpace(secrets.APIToken))
 	resp, err := c.client().Do(req)
 	if err != nil {

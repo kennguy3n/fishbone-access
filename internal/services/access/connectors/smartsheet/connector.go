@@ -21,6 +21,11 @@ import (
 const (
 	ProviderName = "smartsheet"
 	pageSize     = 100
+	// smartsheetMaxPages bounds every page-number pagination loop so a
+	// misbehaving API that reports inconsistent totalPages/pageNumber
+	// values cannot drive unbounded HTTP requests, matching the guard
+	// used by FetchAccessAuditLogs and the other connectors in this batch.
+	smartsheetMaxPages = 200
 	// maxRateLimitRetries bounds how many times a request is retried after
 	// a 429. Smartsheet enforces 300 requests/minute, and ListEntitlements
 	// fans out to one shares request per sheet, so transient rate limiting
@@ -314,7 +319,7 @@ func (c *SmartsheetAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for iter := 0; iter < smartsheetMaxPages; iter++ {
 		path := fmt.Sprintf("%s/2.0/users?page=%d&pageSize=%d", base, page, pageSize)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -361,6 +366,7 @@ func (c *SmartsheetAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	return nil
 }
 
 // ---------- advanced capabilities ----------
@@ -505,7 +511,7 @@ func (c *SmartsheetAccessConnector) RevokeAccess(
 func (c *SmartsheetAccessConnector) findShareIDForUser(ctx context.Context, secrets Secrets, sheetID, email string) (string, error) {
 	page := 1
 	emailLower := strings.ToLower(strings.TrimSpace(email))
-	for {
+	for iter := 0; iter < smartsheetMaxPages; iter++ {
 		fullURL := c.baseURL() + "/2.0/sheets/" + url.PathEscape(sheetID) + "/shares?pageSize=" + strconv.Itoa(pageSize) + "&page=" + strconv.Itoa(page)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, fullURL)
 		if err != nil {
@@ -537,6 +543,7 @@ func (c *SmartsheetAccessConnector) findShareIDForUser(ctx context.Context, secr
 		}
 		page = list.PageNumber + 1
 	}
+	return "", nil
 }
 
 // ListEntitlements paginates GET /2.0/sheets, then for each sheet
@@ -569,7 +576,7 @@ func (c *SmartsheetAccessConnector) ListEntitlements(
 	emailLower := strings.ToLower(userExternalID)
 	var out []access.Entitlement
 	page := 1
-	for {
+	for iter := 0; iter < smartsheetMaxPages; iter++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -612,6 +619,7 @@ func (c *SmartsheetAccessConnector) ListEntitlements(
 		}
 		page = resp.PageNumber + 1
 	}
+	return out, nil
 }
 
 // lookupAccessLevelForUser paginates through /2.0/sheets/{sheetId}/shares
@@ -621,7 +629,7 @@ func (c *SmartsheetAccessConnector) ListEntitlements(
 // not silently dropped. ctx cancellation is honoured between pages.
 func (c *SmartsheetAccessConnector) lookupAccessLevelForUser(ctx context.Context, secrets Secrets, sheetID, emailLower string) (string, error) {
 	page := 1
-	for {
+	for iter := 0; iter < smartsheetMaxPages; iter++ {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
@@ -656,6 +664,7 @@ func (c *SmartsheetAccessConnector) lookupAccessLevelForUser(ctx context.Context
 		}
 		page = list.PageNumber + 1
 	}
+	return "", nil
 }
 
 // GetSSOMetadata returns Smartsheet SAML federation metadata when the

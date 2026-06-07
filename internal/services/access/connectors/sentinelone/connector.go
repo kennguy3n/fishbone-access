@@ -154,9 +154,24 @@ func (c *SentinelOneAccessConnector) do(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("sentinelone: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+		return nil, &httpStatusError{method: req.Method, path: req.URL.Path, status: resp.StatusCode, body: string(body)}
 	}
 	return body, nil
+}
+
+// httpStatusError carries the HTTP status code of a non-2xx response so
+// callers can branch on the code (e.g. the audit soft-skip) via errors.As
+// instead of string-matching the formatted message. Its Error() string is
+// unchanged from the previous fmt.Errorf form for log/message compatibility.
+type httpStatusError struct {
+	method string
+	path   string
+	status int
+	body   string
+}
+
+func (e *httpStatusError) Error() string {
+	return fmt.Sprintf("sentinelone: %s %s: status %d: %s", e.method, e.path, e.status, e.body)
 }
 
 func (c *SentinelOneAccessConnector) decodeBoth(configRaw, secretsRaw map[string]interface{}) (Config, Secrets, error) {

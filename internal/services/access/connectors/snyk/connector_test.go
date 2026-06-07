@@ -271,9 +271,10 @@ func TestAdvancedCapabilities_SendVersionParam(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotVersion string
+			var gotVersion, gotAccept string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotVersion = r.URL.Query().Get("version")
+				gotAccept = r.Header.Get("Accept")
 				_, _ = w.Write([]byte(`{"data":{"attributes":{"role":"admin"}}}`))
 			}))
 			t.Cleanup(srv.Close)
@@ -285,6 +286,11 @@ func TestAdvancedCapabilities_SendVersionParam(t *testing.T) {
 			}
 			if gotVersion != apiVersion {
 				t.Errorf("%s: version param = %q, want %q", tc.name, gotVersion, apiVersion)
+			}
+			// All three methods hit the JSON:API surface and must send the
+			// JSON:API Accept header so the API returns the documented shape.
+			if gotAccept != "application/vnd.api+json" {
+				t.Errorf("%s: Accept = %q, want application/vnd.api+json", tc.name, gotAccept)
 			}
 		})
 	}

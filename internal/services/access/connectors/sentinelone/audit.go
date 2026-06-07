@@ -2,6 +2,7 @@ package sentinelone
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -148,12 +149,20 @@ func mapSentineloneActivity(a *sentineloneActivity) *access.AuditLogEntry {
 	}
 }
 
+// isAuditNotAvailable reports whether err represents an auth / plan-gating
+// failure (HTTP 401 or 403) that should soft-skip the tenant via
+// access.ErrAuditNotAvailable. It inspects the typed status carried by
+// httpStatusError rather than string-matching the message, so it stays
+// correct if the error format ever changes.
 func isAuditNotAvailable(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := err.Error()
-	return strings.Contains(msg, "status 401") || strings.Contains(msg, "status 403")
+	var se *httpStatusError
+	if errors.As(err, &se) {
+		return se.status == http.StatusUnauthorized || se.status == http.StatusForbidden
+	}
+	return false
 }
 
 var _ access.AccessAuditor = (*SentinelOneAccessConnector)(nil)

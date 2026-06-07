@@ -122,19 +122,25 @@ func TestFetchAccessAuditLogs_MaxPagesGuard(t *testing.T) {
 }
 
 func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"errors":[{"detail":"insufficient scope"}]}`))
-	}))
-	t.Cleanup(server.Close)
-	c := New()
-	c.urlOverride = server.URL
-	c.httpClient = func() httpDoer { return server.Client() }
-	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
-		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
-		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
-	if err != access.ErrAuditNotAvailable {
-		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
+	// Both 401 (expired/invalid token) and 403 (insufficient scope) must
+	// soft-skip the tenant via the typed-status path, not string matching.
+	for _, code := range []int{http.StatusUnauthorized, http.StatusForbidden} {
+		t.Run(http.StatusText(code), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(code)
+				_, _ = w.Write([]byte(`{"errors":[{"detail":"insufficient scope"}]}`))
+			}))
+			t.Cleanup(server.Close)
+			c := New()
+			c.urlOverride = server.URL
+			c.httpClient = func() httpDoer { return server.Client() }
+			err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+				map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+				func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+			if err != access.ErrAuditNotAvailable {
+				t.Fatalf("status %d: err = %v; want ErrAuditNotAvailable", code, err)
+			}
+		})
 	}
 }
 
