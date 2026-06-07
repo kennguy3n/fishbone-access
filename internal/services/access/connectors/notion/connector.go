@@ -3,18 +3,16 @@
 package notion
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
-
-	"bytes"
-
-	"net/url"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )

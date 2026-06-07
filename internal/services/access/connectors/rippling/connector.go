@@ -204,6 +204,22 @@ func (c *RipplingAccessConnector) CountIdentities(ctx context.Context, configRaw
 	return count, err
 }
 
+// ripplingPageURL builds the employees page request URL for a given
+// pagination value. Rippling's pagination token (NextCursor / Next) is
+// usually a bare opaque cursor, but the `next` field can also be a full
+// next-page URL (link-style pagination). A bare token must be
+// URL-encoded into the &cursor= query parameter; a full URL must be
+// followed verbatim, since URL-encoding it would corrupt the link.
+func ripplingPageURL(base, cursor string) string {
+	if cursor == "" {
+		return fmt.Sprintf("%s/platform/api/employees?limit=%d", base, pageSize)
+	}
+	if u, err := url.Parse(cursor); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+		return cursor
+	}
+	return fmt.Sprintf("%s/platform/api/employees?limit=%d&cursor=%s", base, pageSize, url.QueryEscape(cursor))
+}
+
 func (c *RipplingAccessConnector) SyncIdentities(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -217,10 +233,7 @@ func (c *RipplingAccessConnector) SyncIdentities(
 	cursor := checkpoint
 	base := c.baseURL()
 	for {
-		path := fmt.Sprintf("%s/platform/api/employees?limit=%d", base, pageSize)
-		if cursor != "" {
-			path += "&cursor=" + url.QueryEscape(cursor)
-		}
+		path := ripplingPageURL(base, cursor)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
 			return err
