@@ -53,6 +53,13 @@ type commandRule struct {
 	allSubject bool
 }
 
+// defaultMaxCacheEntries caps the per-workspace rule cache so a gateway serving
+// a very large number of distinct workspaces within one TTL window cannot grow
+// the map without bound (each entry holds compiled rules — string slices and
+// subject maps). TTL eviction alone bounds the map only by workspaces active
+// within one window; this adds a hard ceiling with LRU eviction on top.
+const defaultMaxCacheEntries = 4096
+
 // CommandPolicyEvaluator decides allow/deny for SSH commands and SQL statements
 // by consulting the workspace's active 1C policies. It caches the compiled deny
 // rules per workspace for a short TTL so per-command evaluation does not hit the
@@ -64,13 +71,17 @@ type CommandPolicyEvaluator struct {
 	ttl time.Duration
 	now func() time.Time
 
-	mu    sync.Mutex
-	cache map[uuid.UUID]cachedRules
+	mu         sync.Mutex
+	cache      map[uuid.UUID]cachedRules
+	maxEntries int
 }
 
 type cachedRules struct {
 	rules     []commandRule
 	expiresAt time.Time
+	// lastUsed tracks the most recent read/refresh so the size-cap eviction can
+	// drop the least-recently-used entry rather than an arbitrary one.
+	lastUsed time.Time
 }
 
 // NewCommandPolicyEvaluator wires an evaluator. ttl <= 0 selects 5s, short
@@ -80,10 +91,11 @@ func NewCommandPolicyEvaluator(db *gorm.DB, ttl time.Duration) *CommandPolicyEva
 		ttl = 5 * time.Second
 	}
 	return &CommandPolicyEvaluator{
-		db:    db,
-		ttl:   ttl,
-		now:   time.Now,
-		cache: make(map[uuid.UUID]cachedRules),
+		db:         db,
+		ttl:        ttl,
+		now:        time.Now,
+		cache:      make(map[uuid.UUID]cachedRules),
+		maxEntries: defaultMaxCacheEntries,
 	}
 }
 
@@ -134,6 +146,8 @@ func (e *CommandPolicyEvaluator) rulesFor(ctx context.Context, workspaceID uuid.
 	now := e.now()
 	e.mu.Lock()
 	if c, ok := e.cache[workspaceID]; ok && now.Before(c.expiresAt) {
+		c.lastUsed = now
+		e.cache[workspaceID] = c
 		e.mu.Unlock()
 		return c.rules, nil
 	}
@@ -152,7 +166,25 @@ func (e *CommandPolicyEvaluator) rulesFor(ctx context.Context, workspaceID uuid.
 			delete(e.cache, id)
 		}
 	}
-	e.cache[workspaceID] = cachedRules{rules: rules, expiresAt: now.Add(e.ttl)}
+	// Hard ceiling: if every cached workspace is still live within the TTL
+	// window, expiry eviction frees nothing, so evict least-recently-used
+	// entries until there is room for the new one. This bounds memory even
+	// under a burst of many concurrent distinct workspaces.
+	for e.maxEntries > 0 && len(e.cache) >= e.maxEntries {
+		if _, ok := e.cache[workspaceID]; ok {
+			break // refreshing an existing entry: no new slot needed.
+		}
+		var lruID uuid.UUID
+		var lruAt time.Time
+		first := true
+		for id, c := range e.cache {
+			if first || c.lastUsed.Before(lruAt) {
+				lruID, lruAt, first = id, c.lastUsed, false
+			}
+		}
+		delete(e.cache, lruID)
+	}
+	e.cache[workspaceID] = cachedRules{rules: rules, expiresAt: now.Add(e.ttl), lastUsed: now}
 	e.mu.Unlock()
 	return rules, nil
 }

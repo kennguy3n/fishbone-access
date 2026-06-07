@@ -403,6 +403,49 @@ func TestCommandPolicyEmptyCommandAllowed(t *testing.T) {
 	}
 }
 
+// TestCommandPolicyCacheSizeBoundedLRU verifies the rule cache enforces a hard
+// entry cap by evicting the least-recently-used workspace, so a gateway serving
+// many concurrent distinct workspaces within one TTL window cannot grow the
+// cache without bound.
+func TestCommandPolicyCacheSizeBoundedLRU(t *testing.T) {
+	db := newTestDB(t)
+	// Long TTL so nothing expires during the test: this forces the size-cap
+	// LRU path rather than the expiry-eviction path.
+	eval := NewCommandPolicyEvaluator(db, time.Hour)
+	eval.maxEntries = 3
+
+	clk := time.Unix(0, 0)
+	eval.SetClock(func() time.Time { return clk })
+
+	ws1, ws2, ws3, ws4 := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	advanceEval := func(ws uuid.UUID) {
+		clk = clk.Add(time.Second)
+		if _, err := eval.Evaluate(context.Background(), ws, "alice", "SELECT 1;"); err != nil {
+			t.Fatalf("Evaluate: %v", err)
+		}
+	}
+
+	advanceEval(ws1) // fill
+	advanceEval(ws2)
+	advanceEval(ws3) // cache now full at the cap
+	advanceEval(ws1) // touch ws1 so ws2 is the LRU
+	advanceEval(ws4) // miss → must evict LRU (ws2) to stay at the cap
+
+	eval.mu.Lock()
+	defer eval.mu.Unlock()
+	if len(eval.cache) != 3 {
+		t.Fatalf("cache size = %d, want hard cap of 3", len(eval.cache))
+	}
+	if _, ok := eval.cache[ws2]; ok {
+		t.Fatal("ws2 should have been evicted as least-recently-used")
+	}
+	for _, ws := range []uuid.UUID{ws1, ws3, ws4} {
+		if _, ok := eval.cache[ws]; !ok {
+			t.Fatalf("expected workspace %s to remain cached", ws)
+		}
+	}
+}
+
 // --- session-manager tests ------------------------------------------------
 
 func TestSessionManagerLogsCommandAndDecision(t *testing.T) {
