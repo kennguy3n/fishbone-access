@@ -30,9 +30,12 @@ import (
 // chronological order so callers can persist `nextSince` (the newest
 // `received` timestamp) as a monotonic cursor.
 //
-// On HTTP 401/403 the connector returns access.ErrAuditNotAvailable
+// On HTTP 401/403/404 the connector returns access.ErrAuditNotAvailable
 // so callers treat the tenant as plan- or role-gated rather than
-// failing the whole sync.
+// failing the whole sync. (Tenable returns 404 when the audit-log
+// endpoint is not enabled for the tenant's plan tier, so it must be
+// soft-skipped like 401/403 — consistent with every other audit
+// connector in this package set.)
 func (c *TenableAccessConnector) FetchAccessAuditLogs(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -189,7 +192,9 @@ func isAuditNotAvailable(err error) bool {
 		return false
 	}
 	msg := err.Error()
-	return strings.Contains(msg, "status 401") || strings.Contains(msg, "status 403")
+	return strings.Contains(msg, "status 401") ||
+		strings.Contains(msg, "status 403") ||
+		strings.Contains(msg, "status 404")
 }
 
 var _ access.AccessAuditor = (*TenableAccessConnector)(nil)

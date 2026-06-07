@@ -8,16 +8,36 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
+// typeformWorkspace models the workspace resource returned by
+// GET /workspaces. Membership (email + role) lives in the nested `members`
+// array — Typeform exposes no top-level per-user role field and no
+// `/me/workspaces` route.
+type typeformWorkspaceMember struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+type typeformWorkspace struct {
+	ID      string                    `json:"id"`
+	Members []typeformWorkspaceMember `json:"members"`
+}
+
+type typeformWorkspaceListResponse struct {
+	Items     []typeformWorkspace `json:"items"`
+	PageCount int                 `json:"page_count"`
+}
+
 // advanced-capability mapping for typeform:
 //
 //   - ProvisionAccess  -> POST   /workspaces/{workspace_id}/members
 //   - RevokeAccess     -> DELETE /workspaces/{workspace_id}/members/{member_id}
-//   - ListEntitlements -> GET    /workspaces/{workspace_id}/members/{member_id}
+//   - ListEntitlements -> GET    /workspaces (paginated; match nested members[])
 //
 // AccessGrant maps:
 //   - grant.UserExternalID     -> Typeform member email or ID
@@ -156,48 +176,74 @@ func (c *TypeformAccessConnector) ListEntitlements(ctx context.Context, configRa
 	if err != nil {
 		return nil, err
 	}
-	// Without a workspace context we cannot disambiguate; iterate over configured workspace
-	// from /me to surface workspace memberships. For our purposes, fetch /me and report
-	// any workspace memberships returned by the API for the user.
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet,
-		c.baseURL()+"/me/workspaces?email="+url.QueryEscape(user), nil)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("typeform: list entitlements status %d: %s", status, string(body))
-	}
-	var resp struct {
-		Items []struct {
-			ID    string `json:"id"`
-			Role  string `json:"role"`
-			Email string `json:"email"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("typeform: decode entitlements: %w", err)
-	}
-	out := make([]access.Entitlement, 0, len(resp.Items))
-	for _, m := range resp.Items {
-		if !strings.EqualFold(strings.TrimSpace(m.Email), user) {
-			continue
+	// Typeform has no "list one user's memberships" endpoint and no
+	// `/me/workspaces` route — the authoritative source of a user's
+	// workspace roles is the workspace resource itself, whose nested
+	// `members` array carries each member's email + role (GET /workspaces).
+	// Enumerate every workspace the token can see (paginated via
+	// page/page_size) and collect the requested user's role in each. The
+	// previous implementation hit a non-existent `/me/workspaces?email=`
+	// path and read top-level `items[].email`/`items[].role`, which never
+	// match real payloads (membership is nested), so it silently returned an
+	// empty (false "no access") result for every user on the live API.
+	const (
+		pageSize           = 200
+		maxEntitlementPage = 1000
+	)
+	var out []access.Entitlement
+	for page := 1; page <= maxEntitlementPage; page++ {
+		q := url.Values{}
+		q.Set("page", strconv.Itoa(page))
+		q.Set("page_size", strconv.Itoa(pageSize))
+		req, err := c.newJSONRequest(ctx, secrets, http.MethodGet,
+			c.baseURL()+"/workspaces?"+q.Encode(), nil)
+		if err != nil {
+			return nil, err
 		}
-		role := strings.TrimSpace(m.Role)
-		if role == "" {
-			role = "member"
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, access.Entitlement{
-			ResourceExternalID: strings.TrimSpace(m.ID) + ":" + role,
-			Role:               role,
-			Source:             "direct",
-		})
+		if status == http.StatusNotFound {
+			return out, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("typeform: list entitlements status %d: %s", status, string(body))
+		}
+		var resp typeformWorkspaceListResponse
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("typeform: decode entitlements: %w", err)
+		}
+		for i := range resp.Items {
+			ws := &resp.Items[i]
+			for _, m := range ws.Members {
+				if !strings.EqualFold(strings.TrimSpace(m.Email), user) {
+					continue
+				}
+				role := strings.TrimSpace(m.Role)
+				if role == "" {
+					role = "member"
+				}
+				out = append(out, access.Entitlement{
+					ResourceExternalID: strings.TrimSpace(ws.ID) + ":" + role,
+					Role:               role,
+					Source:             "direct",
+				})
+				break // a user holds at most one membership per workspace
+			}
+		}
+		// Stop at the last page. page_count is authoritative when the API
+		// supplies it; otherwise fall back to the short-page heuristic.
+		if len(resp.Items) == 0 {
+			break
+		}
+		if resp.PageCount > 0 {
+			if page >= resp.PageCount {
+				break
+			}
+		} else if len(resp.Items) < pageSize {
+			break
+		}
 	}
 	return out, nil
 }

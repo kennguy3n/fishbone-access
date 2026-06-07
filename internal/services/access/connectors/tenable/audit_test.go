@@ -72,6 +72,29 @@ func TestFetchAccessAuditLogs_NotAvailable(t *testing.T) {
 	}
 }
 
+// TestFetchAccessAuditLogs_NotAvailableOn404 verifies that an HTTP 404 from
+// the audit-log endpoint (Tenable returns this when the endpoint is not
+// enabled for the tenant's plan tier) is soft-skipped as
+// access.ErrAuditNotAvailable rather than propagating as a hard sync failure
+// — matching the 401/403 behaviour and every other audit connector in this
+// package set. Before the fix isAuditNotAvailable only matched 401/403, so a
+// 404 surfaced as a generic "status 404" error and failed the whole sync.
+func TestFetchAccessAuditLogs_NotAvailableOn404(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+	c := New()
+	c.urlOverride = server.URL
+	c.httpClient = func() httpDoer { return server.Client() }
+	err := c.FetchAccessAuditLogs(context.Background(), validConfig(), validSecrets(),
+		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+	if err != access.ErrAuditNotAvailable {
+		t.Fatalf("err = %v; want ErrAuditNotAvailable", err)
+	}
+}
+
 // TestFetchAccessAuditLogs_DrainsMultiplePages exercises the Tenable
 // `sort=received_asc` + `date.gt` advancement loop. The previous
 // single-shot implementation silently capped each sync at the 1000-
