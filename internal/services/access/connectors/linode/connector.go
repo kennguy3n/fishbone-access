@@ -18,6 +18,9 @@ import (
 const (
 	ProviderName = "linode"
 	pageSize     = 100
+	// linodeMaxUserPages bounds the ListEntitlements pagination loop so a
+	// misbehaving API that always returns a full page cannot spin forever.
+	linodeMaxUserPages = 200
 )
 
 var ErrNotImplemented = fmt.Errorf("linode: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)

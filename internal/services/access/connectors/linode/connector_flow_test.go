@@ -174,3 +174,55 @@ func TestLinodeProvision_EmailResolution(t *testing.T) {
 		t.Fatalf("derived (username=%q,email=%q); want (carol, carol@example.com)", gotUser, gotEmail)
 	}
 }
+
+// TestLinodeListEntitlements_PaginatesToLaterPage verifies ListEntitlements
+// walks every page of GET /v4/account/users — a user that sits on a later page
+// must be found rather than wrongly reported as having no entitlements.
+func TestLinodeListEntitlements_PaginatesToLaterPage(t *testing.T) {
+	const target = "zoe"
+	var pagesRequested []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/v4/account/users" {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		page := r.URL.Query().Get("page")
+		pagesRequested = append(pagesRequested, page)
+		// Page 1 is a full page of decoys; the target only appears on page 2.
+		switch page {
+		case "1":
+			data := make([]map[string]interface{}, 0, pageSize)
+			for i := 0; i < pageSize; i++ {
+				data = append(data, map[string]interface{}{
+					"username": "decoy", "email": "decoy@example.com", "restricted": false,
+				})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": data, "page": 1, "pages": 2})
+		case "2":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"data":  []map[string]interface{}{{"username": target, "email": "zoe@example.com", "restricted": true}},
+				"page":  2,
+				"pages": 2,
+			})
+		default:
+			t.Errorf("requested unexpected page %q", page)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": []map[string]interface{}{}, "page": 99, "pages": 2})
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), linodeValidConfig(), linodeValidSecrets(), target)
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "restricted" {
+		t.Fatalf("ents = %#v, want 1 with role=restricted (found on page 2)", ents)
+	}
+	if len(pagesRequested) < 2 {
+		t.Fatalf("expected the loop to fetch page 2, only requested pages %v", pagesRequested)
+	}
+}

@@ -122,12 +122,13 @@ func (c *LaunchDarklyAccessConnector) RevokeAccess(ctx context.Context, configRa
 		return err
 	}
 	role := strings.TrimSpace(grant.ResourceExternalID)
-	// LaunchDarkly JSON-patch remove requires the role value
-	// embedded in the path; we send a "test then remove" sequence
-	// that maps cleanly to the "does not exist" semantics when the
-	// role is absent. The role becomes a single JSON Pointer reference
-	// token, so escape it per RFC 6901 (`~`->`~0`, `/`->`~1`) before
-	// interpolating it into the path.
+	// LaunchDarkly's PATCH /api/v2/members is a *semantic* patch, NOT RFC 6902
+	// JSON Patch: a custom role is removed by embedding its key in the path
+	// (`/customRoles/{role}`) rather than by array index. We therefore send a
+	// single remove op; removing a role that isn't present returns 400 "does
+	// not exist", which IsIdempotentRevokeStatus maps to success. The role key
+	// becomes a single JSON Pointer reference token, so escape it per RFC 6901
+	// (`~`->`~0`, `/`->`~1`) before interpolating it into the path.
 	patch := []ldPatchOp{{Op: "remove", Path: "/customRoles/" + escapeJSONPointerToken(role)}}
 	body, _ := json.Marshal(patch)
 	full := fmt.Sprintf("%s/api/v2/members/%s",

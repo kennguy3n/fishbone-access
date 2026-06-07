@@ -169,44 +169,64 @@ func (c *LinodeAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if err != nil {
 		return nil, err
 	}
-	req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, c.baseURL()+"/v4/account/users", nil)
-	if err != nil {
-		return nil, err
-	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("linode: list entitlements status %d: %s", status, string(body))
-	}
-	var envelope struct {
-		Data []struct {
-			Username   string `json:"username"`
-			Email      string `json:"email"`
-			Restricted bool   `json:"restricted"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, fmt.Errorf("linode: decode entitlements: %w", err)
-	}
-	out := make([]access.Entitlement, 0)
-	for _, u := range envelope.Data {
-		if !strings.EqualFold(u.Username, user) && !strings.EqualFold(u.Email, user) {
-			continue
+	// GET /v4/account/users is paginated. SyncIdentities exports the username
+	// as the ExternalID, so the target normally arrives keyed by username, but
+	// we also tolerate matching by email; either way the user can sit on a
+	// later page, so we must walk every page rather than inspecting only the
+	// first one (which would wrongly report "no entitlements" for large
+	// accounts). The loop is bounded by linodeMaxUserPages so a degenerate API
+	// that always returns a full page cannot spin forever.
+	base := c.baseURL()
+	for page := 1; page <= linodeMaxUserPages; page++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
-		role := "unrestricted"
-		if u.Restricted {
-			role = "restricted"
+		path := fmt.Sprintf("%s/v4/account/users?page=%d&page_size=%d", base, page, pageSize)
+		req, err := c.newJSONRequest(ctx, secrets, http.MethodGet, path, nil)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, access.Entitlement{
-			ResourceExternalID: role,
-			Role:               role,
-			Source:             "direct",
-		})
+		status, body, err := c.doRaw(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("linode: list entitlements status %d: %s", status, string(body))
+		}
+		var envelope struct {
+			Data []struct {
+				Username   string `json:"username"`
+				Email      string `json:"email"`
+				Restricted bool   `json:"restricted"`
+			} `json:"data"`
+			Pages int `json:"pages"`
+		}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			return nil, fmt.Errorf("linode: decode entitlements: %w", err)
+		}
+		for _, u := range envelope.Data {
+			if !strings.EqualFold(u.Username, user) && !strings.EqualFold(u.Email, user) {
+				continue
+			}
+			role := "unrestricted"
+			if u.Restricted {
+				role = "restricted"
+			}
+			return []access.Entitlement{{
+				ResourceExternalID: role,
+				Role:               role,
+				Source:             "direct",
+			}}, nil
+		}
+		if envelope.Pages > 0 && page >= envelope.Pages {
+			break
+		}
+		if len(envelope.Data) < pageSize {
+			break
+		}
 	}
-	return out, nil
+	return []access.Entitlement{}, nil
 }
