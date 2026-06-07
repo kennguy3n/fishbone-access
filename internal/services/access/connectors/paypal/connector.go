@@ -260,12 +260,16 @@ func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, sec
 		}
 		c.tokenCache[key] = cachedToken{token: tok, expiry: expiry}
 	}
-	delete(c.tokenInflight, key)
-	c.tokenMu.Unlock()
-
-	// Publish the result to any waiters, then close to release them.
+	// Publish the result, release waiters, and clear the in-flight marker
+	// all under the same lock. Doing this atomically closes the window where
+	// a newcomer could observe neither a cached token (mint failed, so none
+	// stored) nor an in-flight entry (already deleted) and spuriously start a
+	// second mint. Closing the channel while holding tokenMu is safe because
+	// waiters always release the lock before selecting on call.done.
 	call.token, call.err = tok, err
 	close(call.done)
+	delete(c.tokenInflight, key)
+	c.tokenMu.Unlock()
 
 	return tok, err
 }
