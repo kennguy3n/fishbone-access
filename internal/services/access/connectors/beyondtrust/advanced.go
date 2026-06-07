@@ -1,6 +1,7 @@
 package beyondtrust
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -56,7 +57,7 @@ func (c *BeyondTrustAccessConnector) userURL(userID string) string {
 func (c *BeyondTrustAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
 	var rdr io.Reader
 	if len(body) > 0 {
-		rdr = strings.NewReader(string(body))
+		rdr = bytes.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {

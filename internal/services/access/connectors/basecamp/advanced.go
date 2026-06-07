@@ -193,28 +193,64 @@ func (c *BasecampAccessConnector) findBasecampPersonID(ctx context.Context, cfg 
 	return "", nil
 }
 
+// doRawWithLink mirrors doRaw but also returns the rel="next" URL parsed
+// from the RFC 5988 Link header, so paginated collection endpoints can be
+// fully walked while preserving the raw status code (callers special-case
+// 404 as "not found -> empty").
+func (c *BasecampAccessConnector) doRawWithLink(req *http.Request) (int, []byte, string, error) {
+	resp, err := c.client().Do(req)
+	if err != nil {
+		return 0, nil, "", fmt.Errorf("basecamp: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	return resp.StatusCode, body, nextLinkFromHeader(resp.Header.Get("Link")), nil
+}
+
+// basecampPeopleMaxPages bounds the rel="next" Link-header walk in
+// listBasecampProjectPeople as defense-in-depth, mirroring
+// basecampAuditMaxPages and the audit caps elsewhere in this batch. The
+// loop also stops naturally when no next link is returned and checks
+// ctx.Err() each iteration; the cap only guards against a misbehaving
+// proxy/upstream that keeps issuing next links, which would otherwise
+// grow `all` without bound.
+const basecampPeopleMaxPages = 200
+
 func (c *BasecampAccessConnector) listBasecampProjectPeople(ctx context.Context, cfg Config, secrets Secrets, projectID string) ([]basecampPerson, error) {
-	endpoint := fmt.Sprintf("%s/projects/%s/people.json",
+	// Basecamp paginates /projects/{id}/people.json via the RFC 5988
+	// Link header. A single GET truncates large project rosters, which
+	// would make RevokeAccess/findBasecampPersonID silently miss users on
+	// later pages (returning idempotent-success without revoking). Follow
+	// rel="next" until absent so the full roster is enumerated.
+	nextURL := fmt.Sprintf("%s/projects/%s/people.json",
 		c.baseURL(cfg), url.PathEscape(strings.TrimSpace(projectID)))
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, endpoint)
-	if err != nil {
-		return nil, err
+	var all []basecampPerson
+	for page := 0; nextURL != "" && page < basecampPeopleMaxPages; page++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		req, err := c.newRequest(ctx, secrets, http.MethodGet, nextURL)
+		if err != nil {
+			return nil, err
+		}
+		status, body, next, err := c.doRawWithLink(req)
+		if err != nil {
+			return nil, err
+		}
+		if status == http.StatusNotFound {
+			return nil, nil
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("basecamp: list project people status %d: %s", status, string(body))
+		}
+		var people []basecampPerson
+		if err := json.Unmarshal(body, &people); err != nil {
+			return nil, fmt.Errorf("basecamp: decode people: %w", err)
+		}
+		all = append(all, people...)
+		nextURL = next
 	}
-	status, body, err := c.doRaw(req)
-	if err != nil {
-		return nil, err
-	}
-	if status == http.StatusNotFound {
-		return nil, nil
-	}
-	if status < 200 || status >= 300 {
-		return nil, fmt.Errorf("basecamp: list project people status %d: %s", status, string(body))
-	}
-	var people []basecampPerson
-	if err := json.Unmarshal(body, &people); err != nil {
-		return nil, fmt.Errorf("basecamp: decode people: %w", err)
-	}
-	return people, nil
+	return all, nil
 }
 
 // basecampOptionalProjectID reads project_id from the raw config map

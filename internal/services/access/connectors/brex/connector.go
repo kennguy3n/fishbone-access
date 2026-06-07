@@ -19,6 +19,14 @@ import (
 const (
 	ProviderName = "brex"
 	pageSize     = 100
+
+	// brexSyncMaxPages bounds the page pagination walk as defense-in-depth,
+	// matching azureSyncMaxPages / basecampSyncMaxPages. The loop also
+	// stops on a short page and honours ctx cancellation via the request
+	// context; SyncIdentities reports each page number to the handler as a
+	// checkpoint, so reaching the cap merely defers the remainder to the
+	// next sync cycle.
+	brexSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("brex: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -205,7 +213,7 @@ func (c *BrexAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < brexSyncMaxPages; pageCount++ {
 		q := url.Values{
 			"page":     []string{fmt.Sprintf("%d", page)},
 			"per_page": []string{fmt.Sprintf("%d", pageSize)},
@@ -253,6 +261,9 @@ func (c *BrexAccessConnector) SyncIdentities(
 		}
 		page++
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // GetSSOMetadata surfaces operator-supplied SAML metadata for the Brex

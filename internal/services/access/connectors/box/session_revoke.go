@@ -6,7 +6,15 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// Compile-time assertion that the connector satisfies the optional
+// SessionRevoker capability, matching azure/session_revoke.go and
+// bamboohr/session_revoke.go. If access.SessionRevoker gains a method,
+// this fails the build here rather than silently dropping the capability.
+var _ access.SessionRevoker = (*BoxAccessConnector)(nil)
 
 // RevokeUserSessions implements access.SessionRevoker. Box exposes
 // DELETE /2.0/users/{id}/sessions which terminates every active

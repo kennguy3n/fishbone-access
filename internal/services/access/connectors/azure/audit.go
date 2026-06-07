@@ -15,6 +15,15 @@ import (
 
 const activityLogAPIVersion = "2015-04-01"
 
+// azureAuditMaxPages bounds the nextLink pagination walk as
+// defense-in-depth: cursor pagination normally terminates when nextLink
+// is empty, but this cap guarantees the loop cannot spin forever if a
+// misbehaving upstream keeps issuing fresh nextLink cursors. Mirrors the
+// explicit per-connector audit caps elsewhere in this batch and
+// boxCollaborationsMaxPages. 1000 pages is far beyond any real activity
+// log window.
+const azureAuditMaxPages = 1000
+
 // FetchAccessAuditLogs streams Azure Monitor Activity Log management
 // events into the access audit pipeline. Implements
 // access.AccessAuditor.
@@ -52,7 +61,8 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 	}
 
 	cursor := since
-	for next := c.armURL(path); next != ""; {
+	next := c.armURL(path)
+	for page := 0; next != "" && page < azureAuditMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -67,17 +77,28 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 		_ = resp.Body.Close()
+		// Soft-skip the tenant when the service principal lacks the
+		// Microsoft.Insights activity-log permission (403), the creds
+		// were rotated/revoked (401), or the endpoint isn't available
+		// (404). Collapsing to ErrAuditNotAvailable lets the audit
+		// pipeline fall back to its no-op path instead of hard-failing
+		// the worker — matching every other AccessAuditor in this batch
+		// (see box/audit.go).
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
+			return access.ErrAuditNotAvailable
+		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return fmt.Errorf("azure: activity log status %d: %s", resp.StatusCode, string(body))
 		}
-		var page azureActivityLogResponse
-		if err := json.Unmarshal(body, &page); err != nil {
+		var pageResp azureActivityLogResponse
+		if err := json.Unmarshal(body, &pageResp); err != nil {
 			return fmt.Errorf("azure: decode activity log page: %w", err)
 		}
-		batch := make([]*access.AuditLogEntry, 0, len(page.Value))
+		batch := make([]*access.AuditLogEntry, 0, len(pageResp.Value))
 		batchMax := cursor
-		for i := range page.Value {
-			entry := mapAzureActivityEvent(&page.Value[i])
+		for i := range pageResp.Value {
+			entry := mapAzureActivityEvent(&pageResp.Value[i])
 			if entry == nil {
 				continue
 			}
@@ -90,15 +111,15 @@ func (c *AzureAccessConnector) FetchAccessAuditLogs(
 			return err
 		}
 		cursor = batchMax
-		if page.NextLink == "" {
+		if pageResp.NextLink == "" {
 			return nil
 		}
 		// NextLink may be absolute; in tests we re-anchor to the
 		// urlOverride so the redirected server still receives it.
-		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
+			next = strings.TrimRight(c.urlOverride, "/") + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
-			next = page.NextLink
+			next = pageResp.NextLink
 		}
 	}
 	return nil
@@ -136,7 +157,14 @@ func mapAzureActivityEvent(e *azureActivityEvent) *access.AuditLogEntry {
 	if e == nil || e.EventDataID == "" {
 		return nil
 	}
-	ts, _ := time.Parse(time.RFC3339, e.EventTimestamp)
+	ts := parseAzureTime(e.EventTimestamp)
+	if ts.IsZero() {
+		// Drop events whose timestamp cannot be parsed: a zero
+		// timestamp would not advance the watermark cursor and would
+		// be re-fetched every sync cycle. Matches the other audit
+		// mappers in this package set.
+		return nil
+	}
 	outcome := strings.ToLower(strings.TrimSpace(e.Status.Value))
 	if outcome == "" {
 		outcome = "unknown"
@@ -160,6 +188,26 @@ func mapAzureActivityEvent(e *azureActivityEvent) *access.AuditLogEntry {
 		Outcome:          outcome,
 		RawData:          rawMap,
 	}
+}
+
+// parseAzureTime parses Azure activity-log timestamps, trying
+// RFC3339Nano (fractional seconds) before RFC3339, matching the
+// parseXxxTime helpers in the other connectors of this batch. RFC3339
+// alone already tolerates fractional seconds on input, so this is a
+// consistency wrapper; it returns the zero time when the input is empty
+// or unparseable so callers can drop the event.
+func parseAzureTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return ts
+	}
+	if ts, err := time.Parse(time.RFC3339, s); err == nil {
+		return ts
+	}
+	return time.Time{}
 }
 
 var _ access.AccessAuditor = (*AzureAccessConnector)(nil)

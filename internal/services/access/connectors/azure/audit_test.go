@@ -3,6 +3,7 @@ package azure
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -82,9 +83,35 @@ func TestFetchAccessAuditLogs_PaginatesAndMaps(t *testing.T) {
 	}
 }
 
-func TestFetchAccessAuditLogs_Failure(t *testing.T) {
+// TestFetchAccessAuditLogs_SoftSkip verifies that the permission/availability
+// statuses collapse to access.ErrAuditNotAvailable so the audit pipeline
+// soft-skips the tenant instead of hard-failing the worker — matching every
+// other AccessAuditor in this batch.
+func TestFetchAccessAuditLogs_SoftSkip(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+		}))
+		c := New()
+		c.urlOverride = srv.URL
+		c.tokenOverride = func(_ context.Context, _ Config, _ Secrets) (string, error) { return "fake-token", nil }
+		err := c.FetchAccessAuditLogs(context.Background(),
+			map[string]interface{}{"tenant_id": "tnt", "subscription_id": "sub-1"},
+			validSecrets(),
+			map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
+			func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
+		srv.Close()
+		if !errors.Is(err, access.ErrAuditNotAvailable) {
+			t.Fatalf("status %d: err = %v, want ErrAuditNotAvailable", status, err)
+		}
+	}
+}
+
+// TestFetchAccessAuditLogs_HardFailure verifies that a genuine server error
+// (500) still surfaces as a hard error rather than being soft-skipped.
+func TestFetchAccessAuditLogs_HardFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	t.Cleanup(srv.Close)
 	c := New()
@@ -95,7 +122,7 @@ func TestFetchAccessAuditLogs_Failure(t *testing.T) {
 		validSecrets(),
 		map[string]time.Time{access.DefaultAuditPartition: time.Now().Add(-time.Hour)},
 		func(_ []*access.AuditLogEntry, _ time.Time, _ string) error { return nil })
-	if err == nil {
-		t.Fatal("expected error")
+	if err == nil || errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Fatalf("err = %v, want non-nil hard error", err)
 	}
 }

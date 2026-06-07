@@ -10,7 +10,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// Compile-time assertion that the connector satisfies the optional
+// SessionRevoker capability, mirroring the azure connector. If the
+// interface changes this fails to build rather than silently
+// dropping the capability at registration time.
+var _ access.SessionRevoker = (*BambooHRAccessConnector)(nil)
 
 // RevokeUserSessions implements access.SessionRevoker for
 // BambooHR. The employee-termination endpoint
