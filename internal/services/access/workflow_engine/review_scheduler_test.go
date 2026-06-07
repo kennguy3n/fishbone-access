@@ -90,8 +90,13 @@ func TestReviewScheduler_RunStopsOnContextCancel(t *testing.T) {
 		t.Fatalf("NewReviewScheduler: %v", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // cancel before Run so it does one immediate sweep then exits
+	cancel() // cancel before Run so it returns immediately without sweeping
 	if rerr := s.Run(ctx); !errors.Is(rerr, context.Canceled) {
 		t.Fatalf("Run should return context.Canceled, got %v", rerr)
+	}
+	// An already-cancelled context must enqueue no work: Run honours the
+	// cancellation before the immediate sweep round.
+	if len(eng.calls) != 0 {
+		t.Fatalf("no sweeps should be enqueued when ctx is cancelled before Run; got %d", len(eng.calls))
 	}
 }

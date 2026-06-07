@@ -50,6 +50,9 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
     elevated = tags & ELEVATED_TAGS
     if elevated:
         factors.append("elevated_resource:" + ",".join(sorted(elevated)))
+        # Bump the score up one band for an elevated resource tag: low→medium,
+        # medium→high, high→high (already capped). The ternary picks the next
+        # band's floor and _max_score keeps the higher of the two.
         score = _max_score(score, "high" if score != "low" else "medium")
 
     duration = payload.get("duration_hours")
