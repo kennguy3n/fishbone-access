@@ -286,6 +286,26 @@ func (c *AzureAccessConnector) assertSameHost(absoluteURL string) error {
 	return nil
 }
 
+// assertSameARMHost is the ARM-endpoint analogue of assertSameHost for the
+// activity-log (audit) pagination walk, which runs against management.azure.com
+// (armURL) rather than the Graph baseURL(). It refuses to follow an absolute
+// nextLink that points off the configured ARM host before the bearer token is
+// attached, keeping the credential on-host.
+func (c *AzureAccessConnector) assertSameARMHost(absoluteURL string) error {
+	u, err := url.Parse(absoluteURL)
+	if err != nil {
+		return fmt.Errorf("azure: parse nextLink %q: %w", absoluteURL, err)
+	}
+	base, err := url.Parse(c.armURL(""))
+	if err != nil {
+		return fmt.Errorf("azure: parse arm base url: %w", err)
+	}
+	if !strings.EqualFold(u.Host, base.Host) {
+		return fmt.Errorf("azure: refusing to follow nextLink to unexpected host %q (expected %q)", u.Host, base.Host)
+	}
+	return nil
+}
+
 func (c *AzureAccessConnector) Connect(ctx context.Context, configRaw, secretsRaw map[string]interface{}) error {
 	cfg, secrets, err := c.decodeBoth(configRaw, secretsRaw)
 	if err != nil {
