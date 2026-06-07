@@ -80,6 +80,11 @@ func TestRipplingPageURL(t *testing.T) {
 			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=https%3A%2F%2Fevil.example.com%2Fx%3Fcursor%3Dz",
 		},
 		{
+			name:   "same host but http downgrade is NOT followed (cleartext guard)",
+			cursor: "http://api.rippling.com/platform/api/employees?limit=100&cursor=tok",
+			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=http%3A%2F%2Fapi.rippling.com%2Fplatform%2Fapi%2Femployees%3Flimit%3D100%26cursor%3Dtok",
+		},
+		{
 			name:   "opaque token with colon is not treated as url",
 			cursor: "2024:abc",
 			want:   "https://api.rippling.com/platform/api/employees?limit=100&cursor=2024%3Aabc",

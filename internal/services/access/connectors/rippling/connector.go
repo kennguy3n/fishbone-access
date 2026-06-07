@@ -212,18 +212,20 @@ func (c *RipplingAccessConnector) CountIdentities(ctx context.Context, configRaw
 // followed verbatim, since URL-encoding it would corrupt the link.
 //
 // Because newRequest unconditionally attaches the Bearer credential, a
-// full URL is only followed when it targets the same host as the
-// configured base URL. This pins the authenticated request to Rippling
-// and prevents a malformed or hostile pagination value from redirecting
-// the credential to an arbitrary host (SSRF). An off-host absolute URL
-// falls through and is treated as an opaque token (encoded, not
-// followed), which the API rejects and pagination terminates safely.
+// full URL is only followed when it matches both the scheme AND host of
+// the configured base URL. This pins the authenticated request to
+// Rippling and prevents a malformed or hostile pagination value from
+// redirecting the credential to an arbitrary host (SSRF) or downgrading
+// it to cleartext http (which would leak the Bearer token on the wire).
+// An off-host or scheme-mismatched absolute URL falls through and is
+// treated as an opaque token (encoded, not followed), which the API
+// rejects and pagination terminates safely.
 func ripplingPageURL(base, cursor string) string {
 	if cursor == "" {
 		return fmt.Sprintf("%s/platform/api/employees?limit=%d", base, pageSize)
 	}
 	if u, err := url.Parse(cursor); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
-		if bu, err := url.Parse(base); err == nil && strings.EqualFold(u.Host, bu.Host) {
+		if bu, err := url.Parse(base); err == nil && strings.EqualFold(u.Host, bu.Host) && strings.EqualFold(u.Scheme, bu.Scheme) {
 			return cursor
 		}
 	}
