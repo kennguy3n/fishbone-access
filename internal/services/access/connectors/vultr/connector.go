@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -203,7 +204,7 @@ func (c *VultrAccessConnector) SyncIdentities(
 	for {
 		path := fmt.Sprintf("%s/v2/users?per_page=%d", base, pageSize)
 		if cursor != "" {
-			path += "&cursor=" + cursor
+			path += "&cursor=" + url.QueryEscape(cursor)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {

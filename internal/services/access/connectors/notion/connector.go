@@ -191,7 +191,7 @@ func (c *NotionAccessConnector) SyncIdentities(
 	for {
 		path := "/v1/users?page_size=100"
 		if cursor != "" {
-			path += "&start_cursor=" + cursor
+			path += "&start_cursor=" + url.QueryEscape(cursor)
 		}
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
