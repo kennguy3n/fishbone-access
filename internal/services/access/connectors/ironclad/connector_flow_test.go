@@ -96,6 +96,34 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_SkipsNullID is a regression guard: the Ironclad API can
+// return an entitlement with "id": null, which unmarshals into the interface{}
+// field as Go nil and renders via fmt.Sprintf("%v", nil) as the literal
+// "<nil>". Without the "<nil>" guard, that bogus string would leak through as a
+// ResourceExternalID. Entries with a real id must still be returned.
+func TestListEntitlements_SkipsNullID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[{"id":null,"name":"ghost"},{"id":"role-7","name":"Engineers"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "user-42")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	for _, e := range ents {
+		if e.ResourceExternalID == "<nil>" || e.ResourceExternalID == "" {
+			t.Fatalf("null id leaked as ResourceExternalID=%q", e.ResourceExternalID)
+		}
+	}
+	if len(ents) != 1 || ents[0].ResourceExternalID != "role-7" {
+		t.Fatalf("got %#v; want exactly [role-7]", ents)
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

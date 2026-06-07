@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -69,5 +70,25 @@ func TestRevokeUserSessions_ValidationEmptyID(t *testing.T) {
 	c := New()
 	if err := c.RevokeUserSessions(context.Background(), nil, nil, ""); err == nil {
 		t.Fatal("err = nil; want validation error on empty userExternalID")
+	}
+}
+
+// TestRevokeUserSessions_DrainsBodyForConnectionReuse guards that the success
+// path drains the response body (via drainAndClose) so net/http can reuse the
+// keep-alive connection, consistent with the provision/revoke write paths.
+// Fails if the handler only Close()s without draining.
+func TestRevokeUserSessions_DrainsBodyForConnectionReuse(t *testing.T) {
+	body := &trackingBody{r: bytes.NewReader([]byte(`{}`))}
+	c := New()
+	c.urlOverride = "https://api.atlassian.test"
+	c.httpClient = func() httpDoer { return &fakeDoer{status: http.StatusOK, body: body} }
+	if err := c.RevokeUserSessions(context.Background(), validConfig(), validSecrets(), "557058:abc-1"); err != nil {
+		t.Fatalf("RevokeUserSessions: %v", err)
+	}
+	if !body.drained {
+		t.Fatal("response body not drained on success path; net/http cannot reuse the keep-alive connection")
+	}
+	if !body.closed {
+		t.Fatal("response body not closed")
 	}
 }

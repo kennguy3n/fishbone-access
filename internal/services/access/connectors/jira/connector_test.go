@@ -309,6 +309,56 @@ func (d *fakeDoer) Do(_ *http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: d.status, Body: d.body, Header: make(http.Header)}, nil
 }
 
+// capturingDoer records the outgoing Authorization header so a test can assert
+// the write paths trim credentials consistently with the rest of the connector.
+type capturingDoer struct {
+	status  int
+	gotAuth string
+}
+
+func (d *capturingDoer) Do(req *http.Request) (*http.Response, error) {
+	d.gotAuth = req.Header.Get("Authorization")
+	return &http.Response{StatusCode: d.status, Body: &trackingBody{r: bytes.NewReader([]byte(`{}`))}, Header: make(http.Header)}, nil
+}
+
+// TestProvisionAccess_TrimsAuthCredentials is a regression guard: the write
+// paths must produce the same TrimSpace'd Basic auth header as every other
+// method (which go through basicAuthHeader via newRequest). req.SetBasicAuth
+// does NOT trim, so a secret with stray whitespace would 401 only on
+// provision/revoke while reads succeed. Fails if SetBasicAuth is used.
+func TestProvisionAccess_TrimsAuthCredentials(t *testing.T) {
+	d := &capturingDoer{status: http.StatusCreated}
+	c := New()
+	c.urlOverride = "https://jira.example"
+	c.httpClient = func() httpDoer { return d }
+	secrets := map[string]interface{}{"api_token": "  ATATT_aaaaBBBB1234ZZZZ  ", "email": "  ops@acme.com  "}
+	if err := c.ProvisionAccess(context.Background(), validConfig(), secrets,
+		access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"}); err != nil {
+		t.Fatalf("ProvisionAccess: %v", err)
+	}
+	want := basicAuthHeader("ops@acme.com", "ATATT_aaaaBBBB1234ZZZZ")
+	if d.gotAuth != want {
+		t.Fatalf("Authorization header = %q; want trimmed %q (SetBasicAuth would not trim)", d.gotAuth, want)
+	}
+}
+
+// TestRevokeAccess_TrimsAuthCredentials mirrors the provision guard for DELETE.
+func TestRevokeAccess_TrimsAuthCredentials(t *testing.T) {
+	d := &capturingDoer{status: http.StatusNoContent}
+	c := New()
+	c.urlOverride = "https://jira.example"
+	c.httpClient = func() httpDoer { return d }
+	secrets := map[string]interface{}{"api_token": "  ATATT_aaaaBBBB1234ZZZZ  ", "email": "  ops@acme.com  "}
+	if err := c.RevokeAccess(context.Background(), validConfig(), secrets,
+		access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	want := basicAuthHeader("ops@acme.com", "ATATT_aaaaBBBB1234ZZZZ")
+	if d.gotAuth != want {
+		t.Fatalf("Authorization header = %q; want trimmed %q (SetBasicAuth would not trim)", d.gotAuth, want)
+	}
+}
+
 // TestProvisionAccess_DrainsBodyForConnectionReuse is a regression guard: the
 // success path must read the response body to completion (not just Close it),
 // otherwise net/http cannot reuse the keep-alive TCP connection and high

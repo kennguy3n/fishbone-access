@@ -47,7 +47,10 @@ func (c *JiraAccessConnector) RevokeUserSessions(ctx context.Context, configRaw,
 	if err != nil {
 		return fmt.Errorf("jira: session revoke: %w", err)
 	}
-	defer resp.Body.Close()
+	// Drain on every return path (the success cases below return without
+	// reading the body) so net/http can reuse the keep-alive connection,
+	// matching the provision/revoke write paths in connector.go.
+	defer drainAndClose(resp)
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusNoContent, http.StatusNotFound:
 		return nil

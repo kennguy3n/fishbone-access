@@ -319,7 +319,11 @@ func (c *JiraAccessConnector) ProvisionAccess(
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(secrets.Email, secrets.APIToken)
+	// Use basicAuthHeader (TrimSpace'd) rather than req.SetBasicAuth so the
+	// auth header is byte-identical to every other method in this connector;
+	// SetBasicAuth does not trim, so a secret with stray whitespace would make
+	// only the write paths 401 while reads succeed — a confusing split-brain.
+	req.Header.Set("Authorization", basicAuthHeader(secrets.Email, secrets.APIToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("jira: provision: %w", err)
@@ -352,7 +356,9 @@ func (c *JiraAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(secrets.Email, secrets.APIToken)
+	// Match basicAuthHeader's TrimSpace semantics (see ProvisionAccess) so the
+	// revoke path's auth header is identical to the rest of the connector.
+	req.Header.Set("Authorization", basicAuthHeader(secrets.Email, secrets.APIToken))
 	resp, err := c.client().Do(req)
 	if err != nil {
 		return fmt.Errorf("jira: revoke: %w", err)

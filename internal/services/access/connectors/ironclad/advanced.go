@@ -159,7 +159,11 @@ func (c *IroncladAccessConnector) ListEntitlements(ctx context.Context, configRa
 	out := make([]access.Entitlement, 0, len(envelope.Data))
 	for _, r := range envelope.Data {
 		id := strings.TrimSpace(fmt.Sprintf("%v", r.ID))
-		if id == "" {
+		// r.ID is interface{}, so a JSON null unmarshals to a Go nil and
+		// fmt.Sprintf("%v", nil) yields the literal "<nil>" — guard it
+		// alongside the empty case so a null id never leaks through as a
+		// bogus ResourceExternalID (matches insightly/advanced.go).
+		if id == "" || id == "<nil>" {
 			continue
 		}
 		out = append(out, access.Entitlement{
