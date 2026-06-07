@@ -146,6 +146,18 @@ func (c *JiraAccessConnector) newRequest(ctx context.Context, secrets Secrets, m
 	return req, nil
 }
 
+// drainAndClose fully consumes (up to 1MiB) and then closes resp.Body. Reading
+// the body to completion is what lets net/http's Transport return the
+// keep-alive TCP connection to its pool; returning on a success status without
+// draining (as the provision/revoke write paths did) forces a fresh connection
+// per call and can exhaust the pool under provisioning load. The read-side
+// helpers (do/readLimited) already drain fully — this gives the write paths the
+// same guarantee on every return path via defer.
+func drainAndClose(resp *http.Response) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	_ = resp.Body.Close()
+}
+
 func (c *JiraAccessConnector) do(req *http.Request) ([]byte, error) {
 	resp, err := c.client().Do(req)
 	if err != nil {
@@ -312,7 +324,7 @@ func (c *JiraAccessConnector) ProvisionAccess(
 	if err != nil {
 		return fmt.Errorf("jira: provision: %w", err)
 	}
-	defer resp.Body.Close()
+	defer drainAndClose(resp)
 	if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
 		return nil
 	}
@@ -345,7 +357,7 @@ func (c *JiraAccessConnector) RevokeAccess(
 	if err != nil {
 		return fmt.Errorf("jira: revoke: %w", err)
 	}
-	defer resp.Body.Close()
+	defer drainAndClose(resp)
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotFound {
 		return nil
 	}

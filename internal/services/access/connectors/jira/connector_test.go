@@ -1,10 +1,12 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -273,5 +275,77 @@ func TestListEntitlements_Empty(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Fatalf("got %d entitlements, want 0", len(got))
+	}
+}
+
+// trackingBody records whether it was read to EOF (drained) before Close, so a
+// test can assert the write paths consume the body fully — the precondition
+// net/http's Transport requires to return a keep-alive connection to its pool.
+type trackingBody struct {
+	r       *bytes.Reader
+	drained bool
+	closed  bool
+}
+
+func (b *trackingBody) Read(p []byte) (int, error) {
+	n, err := b.r.Read(p)
+	if err == io.EOF {
+		b.drained = true
+	}
+	return n, err
+}
+
+func (b *trackingBody) Close() error {
+	b.closed = true
+	return nil
+}
+
+type fakeDoer struct {
+	status int
+	body   *trackingBody
+}
+
+func (d *fakeDoer) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: d.status, Body: d.body, Header: make(http.Header)}, nil
+}
+
+// TestProvisionAccess_DrainsBodyForConnectionReuse is a regression guard: the
+// success path must read the response body to completion (not just Close it),
+// otherwise net/http cannot reuse the keep-alive TCP connection and high
+// provisioning load can exhaust the connection pool. Fails without
+// drainAndClose on the write path.
+func TestProvisionAccess_DrainsBodyForConnectionReuse(t *testing.T) {
+	body := &trackingBody{r: bytes.NewReader([]byte(`{"ok":true}`))}
+	c := New()
+	c.urlOverride = "https://jira.example"
+	c.httpClient = func() httpDoer { return &fakeDoer{status: http.StatusCreated, body: body} }
+	if err := c.ProvisionAccess(context.Background(), validConfig(), validSecrets(),
+		access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"}); err != nil {
+		t.Fatalf("ProvisionAccess: %v", err)
+	}
+	if !body.drained {
+		t.Fatal("response body not drained on success path; net/http cannot reuse the keep-alive connection")
+	}
+	if !body.closed {
+		t.Fatal("response body not closed")
+	}
+}
+
+// TestRevokeAccess_DrainsBodyForConnectionReuse mirrors the provision guard for
+// the DELETE write path.
+func TestRevokeAccess_DrainsBodyForConnectionReuse(t *testing.T) {
+	body := &trackingBody{r: bytes.NewReader([]byte(`{"ok":true}`))}
+	c := New()
+	c.urlOverride = "https://jira.example"
+	c.httpClient = func() httpDoer { return &fakeDoer{status: http.StatusNoContent, body: body} }
+	if err := c.RevokeAccess(context.Background(), validConfig(), validSecrets(),
+		access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "devs"}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	if !body.drained {
+		t.Fatal("response body not drained on success path; net/http cannot reuse the keep-alive connection")
+	}
+	if !body.closed {
+		t.Fatal("response body not closed")
 	}
 }
