@@ -293,7 +293,13 @@ func (c *NotionAccessConnector) RevokeAccess(ctx context.Context, configRaw, sec
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]interface{}{"permissions": []map[string]interface{}{}})
+	// Revoke ONLY the target user's permission. Sending an empty
+	// permissions array (the previous behaviour) is a full replace that
+	// strips every collaborator on the page, so revoking user A would also
+	// drop B and C. Mirror ProvisionAccess but request role "none" for the
+	// single user, so the PATCH removes exactly that grant — matching the
+	// targeted, single-principal revoke every other connector performs.
+	body, _ := json.Marshal(map[string]interface{}{"permissions": []map[string]interface{}{{"type": "user", "user_id": userID, "role": "none"}}})
 	urlStr := fmt.Sprintf("%s/v1/pages/%s", c.baseURL(), url.PathEscape(resourceID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, urlStr, bytes.NewReader(body))
 	if err != nil {

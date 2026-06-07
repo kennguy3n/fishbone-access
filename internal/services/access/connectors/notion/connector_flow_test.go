@@ -2,6 +2,7 @@ package notion
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,14 +36,26 @@ func TestNotionConnectorFlow_FullLifecycle(t *testing.T) {
 		defer mu.Unlock()
 		switch {
 		case r.Method == http.MethodPatch && r.URL.Path == "/v1/pages/"+pageID:
-			// Both Provision (with `permissions` populated) and Revoke
-			// (with `"permissions":[]`) hit the same PATCH endpoint —
-			// always inspect the body to decide which side-effect to
-			// apply, regardless of the current `state`. This keeps the
-			// mock idempotent across repeated Provision/Revoke calls.
+			// Both Provision and Revoke hit the same PATCH endpoint with a
+			// `permissions` array scoped to the target user — Provision sends
+			// the granted role (e.g. "editor"), Revoke sends role "none" to
+			// remove exactly that user. Decode the role to decide which
+			// side-effect to apply. (A bare `"permissions":[]` would be
+			// over-revocation — clearing every collaborator — which the
+			// connector no longer emits.)
 			body, _ := io.ReadAll(r.Body)
 			_ = r.Body.Close()
-			if strings.Contains(string(body), `"permissions":[]`) {
+			var patch struct {
+				Permissions []struct {
+					UserID string `json:"user_id"`
+					Role   string `json:"role"`
+				} `json:"permissions"`
+			}
+			_ = json.Unmarshal(body, &patch)
+			if len(patch.Permissions) != 1 || patch.Permissions[0].UserID != userID {
+				t.Errorf("PATCH permissions = %s; want a single entry scoped to %q", string(body), userID)
+			}
+			if len(patch.Permissions) == 1 && patch.Permissions[0].Role == "none" {
 				state = ""
 			} else {
 				state = "editor"

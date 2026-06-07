@@ -400,3 +400,43 @@ func TestProvisionRevoke_RejectWhitespaceIDs(t *testing.T) {
 		t.Errorf("server received %d request(s); want 0 (whitespace IDs must fail validation locally)", hits)
 	}
 }
+
+// TestRevokeAccess_TargetsOnlyGrantUser verifies RevokeAccess removes ONLY the
+// target user's permission instead of clearing the whole page. Pre-fix the body
+// was {"permissions":[]} — an empty array that semantically strips every
+// collaborator (a full replace), so revoking user A would also drop B and C.
+// The fix sends the single target user with role "none", scoping the revoke to
+// exactly that principal.
+func TestRevokeAccess_TargetsOnlyGrantUser(t *testing.T) {
+	type perm struct {
+		Type   string `json:"type"`
+		UserID string `json:"user_id"`
+		Role   string `json:"role"`
+	}
+	var got struct {
+		Permissions []perm `json:"permissions"`
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &got)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	if err := c.RevokeAccess(context.Background(), nil, validSecrets(), access.AccessGrant{UserExternalID: "u-1", ResourceExternalID: "page-1"}); err != nil {
+		t.Fatalf("RevokeAccess: %v", err)
+	}
+	// An empty permissions payload is over-revocation: it would clear every
+	// collaborator on the page, not just the leaver.
+	if len(got.Permissions) != 1 {
+		t.Fatalf("permissions=%+v; want exactly 1 entry scoped to the target user (empty array over-revokes the whole page)", got.Permissions)
+	}
+	if got.Permissions[0].UserID != "u-1" {
+		t.Errorf("user_id=%q; want the target %q so only that user is revoked", got.Permissions[0].UserID, "u-1")
+	}
+	if got.Permissions[0].Type != "user" {
+		t.Errorf("type=%q; want \"user\"", got.Permissions[0].Type)
+	}
+}
