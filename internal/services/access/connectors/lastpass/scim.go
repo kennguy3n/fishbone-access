@@ -1,0 +1,121 @@
+// Package lastpass — SCIM v2.0 outbound provisioning composition.
+//
+// LastPass Enterprise exposes a SCIM 2.0 endpoint whose base ("Tenant")
+// URL is https://lastpass.com/scim/v2 — distinct from the proprietary
+// cmd-based provisioning API at https://lastpass.com/enterpriseapi.php
+// that the rest of this connector uses. The access-platform's generic
+// SCIMClient appends /Users and /Groups to this base, so the SCIM base
+// URL must be the SCIM root and NOT enterpriseapi.php. The base URL is
+// overridable via configRaw["scim_base_url"] for self-hosted SCIM
+// proxies and tests, matching the convention used by knowbe4/scim.go
+// and launchdarkly/scim.go.
+//
+// Auth: API key from secrets.api_key sent as
+// "Authorization: Basic {b64(account_number:api_key)}" in the
+// LastPass-recommended header style; some operators paste a
+// pre-baked Bearer token, which is also tolerated.
+package lastpass
+
+import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"strings"
+	"sync/atomic"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
+)
+
+// lastpassSCIMDefaultBaseURL is the SCIM 2.0 root the generic SCIMClient
+// appends /Users and /Groups to. It is deliberately NOT the proprietary
+// enterpriseapi.php endpoint used by the connector's primary API path.
+const lastpassSCIMDefaultBaseURL = "https://lastpass.com/scim/v2"
+
+// scimClient holds the process-wide SCIMClient behind an atomic pointer so
+// both the lazy initialization and SetSCIMClientForTest are goroutine-safe,
+// letting SCIM tests run with t.Parallel() without data races.
+var scimClient atomic.Pointer[access.SCIMClient]
+
+func scim() *access.SCIMClient {
+	if c := scimClient.Load(); c != nil {
+		return c
+	}
+	c := access.NewSCIMClient()
+	if scimClient.CompareAndSwap(nil, c) {
+		return c
+	}
+	return scimClient.Load()
+}
+
+// SetSCIMClientForTest swaps the package-level SCIMClient and returns
+// the previous one so tests can restore it on cleanup.
+func SetSCIMClientForTest(c *access.SCIMClient) *access.SCIMClient {
+	prev := scim()
+	scimClient.Store(c)
+	return prev
+}
+
+// scimConfig adapts the lastpass connector's config + secrets into
+// the SCIMClient's config / secrets maps.
+func (c *LastPassAccessConnector) scimConfig(configRaw, secretsRaw map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
+	cfg, err := DecodeConfig(configRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := cfg.validate(); err != nil {
+		return nil, nil, err
+	}
+	scimBaseURL := lastpassSCIMDefaultBaseURL
+	if override, ok := configRaw["scim_base_url"].(string); ok {
+		if v := strings.TrimSpace(override); v != "" {
+			scimBaseURL = strings.TrimRight(v, "/")
+		}
+	}
+	if c.urlOverride != "" {
+		scimBaseURL = strings.TrimRight(c.urlOverride, "/")
+	}
+
+	apiKey, _ := secretsRaw["api_key"].(string)
+	apiKey = strings.TrimSpace(apiKey)
+	if apiKey == "" {
+		return nil, nil, fmt.Errorf("lastpass: scim: api_key is required")
+	}
+	authValue := "Basic " + base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(cfg.AccountNumber)+":"+apiKey))
+
+	scimCfg := map[string]interface{}{
+		"scim_base_url": scimBaseURL,
+	}
+	scimSecrets := map[string]interface{}{
+		"scim_auth_header": authValue,
+	}
+	return scimCfg, scimSecrets, nil
+}
+
+// PushSCIMUser satisfies access.SCIMProvisioner.
+func (c *LastPassAccessConnector) PushSCIMUser(ctx context.Context, configRaw, secretsRaw map[string]interface{}, user access.SCIMUser) error {
+	scimCfg, scimSecrets, err := c.scimConfig(configRaw, secretsRaw)
+	if err != nil {
+		return err
+	}
+	return scim().PushSCIMUser(ctx, scimCfg, scimSecrets, user)
+}
+
+// PushSCIMGroup satisfies access.SCIMProvisioner.
+func (c *LastPassAccessConnector) PushSCIMGroup(ctx context.Context, configRaw, secretsRaw map[string]interface{}, group access.SCIMGroup) error {
+	scimCfg, scimSecrets, err := c.scimConfig(configRaw, secretsRaw)
+	if err != nil {
+		return err
+	}
+	return scim().PushSCIMGroup(ctx, scimCfg, scimSecrets, group)
+}
+
+// DeleteSCIMResource satisfies access.SCIMProvisioner.
+func (c *LastPassAccessConnector) DeleteSCIMResource(ctx context.Context, configRaw, secretsRaw map[string]interface{}, resourceType, externalID string) error {
+	scimCfg, scimSecrets, err := c.scimConfig(configRaw, secretsRaw)
+	if err != nil {
+		return err
+	}
+	return scim().DeleteSCIMResource(ctx, scimCfg, scimSecrets, resourceType, externalID)
+}
+
+var _ access.SCIMProvisioner = (*LastPassAccessConnector)(nil)
