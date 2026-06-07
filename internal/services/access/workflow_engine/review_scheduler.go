@@ -93,14 +93,15 @@ func NewReviewScheduler(engine sweepScheduler, lister workspaceLister, cfg Revie
 // is cancelled. It runs one sweep round immediately on start so a freshly
 // deployed engine does not wait a full interval for the first certification.
 func (s *ReviewScheduler) Run(ctx context.Context) error {
-	ticker := time.NewTicker(s.cfg.Interval)
-	defer ticker.Stop()
-	// Honour an already-cancelled context before the immediate sweep so a
-	// shutdown that races start-up enqueues no work ("no work after
-	// cancellation"), rather than firing one best-effort round on the way down.
+	// Honour an already-cancelled context before allocating the ticker or
+	// running the immediate sweep so a shutdown that races start-up enqueues no
+	// work ("no work after cancellation"), rather than firing one best-effort
+	// round on the way down.
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	ticker := time.NewTicker(s.cfg.Interval)
+	defer ticker.Stop()
 	s.runOnce(ctx)
 	for {
 		select {
