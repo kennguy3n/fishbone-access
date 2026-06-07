@@ -105,6 +105,41 @@ func TestConnect_Failure(t *testing.T) {
 	}
 }
 
+// TestSync_DisabledUserMapsToDisabled is a regression test ensuring a Monday
+// user with enabled:false maps to Status "disabled" (not "deleted"). Monday's
+// enabled:false is a deactivated-but-present account; "deleted" diverged from
+// the taxonomy peers use (microsoft/mezmo map accountEnabled=false→"disabled")
+// and could mislead downstream reconciliation distinguishing removed vs
+// deactivated users.
+func TestSync_DisabledUserMapsToDisabled(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":{"users":[
+			{"id":1,"name":"Active User","email":"a@example.com","enabled":true},
+			{"id":2,"name":"Off User","email":"b@example.com","enabled":false}
+		]}}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+	var got []*access.Identity
+	if err := c.SyncIdentities(context.Background(), validConfig(), validSecrets(), "", func(b []*access.Identity, _ string) error {
+		got = append(got, b...)
+		return nil
+	}); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len = %d", len(got))
+	}
+	if got[0].Status != "active" {
+		t.Errorf("enabled user status = %q; want active", got[0].Status)
+	}
+	if got[1].Status != "disabled" {
+		t.Errorf("disabled user status = %q; want disabled", got[1].Status)
+	}
+}
+
 func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	md, err := New().GetCredentialsMetadata(context.Background(), validConfig(), validSecrets())
 	if err != nil {

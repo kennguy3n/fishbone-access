@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -94,7 +95,32 @@ func (c Config) validate() error {
 			return errors.New(`make: region must be a zone subdomain like "eu1" (alphanumeric with hyphens; use base_url for a full URL)`)
 		}
 	}
+	// base_url is the credential-bearing endpoint, so when set it must be an
+	// absolute https URL. Rejecting plaintext http (and loopback exceptions for
+	// local dev/testing) prevents a misconfiguration from sending the bearer
+	// token in cleartext to a self-hosted/white-label host.
+	if c.BaseURL != "" {
+		u, err := url.Parse(c.BaseURL)
+		if err != nil || u.Host == "" {
+			return errors.New("make: base_url must be an absolute URL like https://make.example.com")
+		}
+		if u.Scheme != "https" && !isLoopbackHost(u.Hostname()) {
+			return errors.New("make: base_url must use https (http is only allowed for loopback hosts)")
+		}
+	}
 	return nil
+}
+
+// isLoopbackHost reports whether host is a loopback name/address, for which
+// plaintext http base_url is tolerated (local development and tests).
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 func (s Secrets) validate() error {
 	if strings.TrimSpace(s.Token) == "" {
@@ -307,10 +333,19 @@ func (c *MakeAccessConnector) GetCredentialsMetadata(_ context.Context, configRa
 	}, nil
 }
 
+// shortToken returns a redacted, human-identifiable hint for a credential
+// without ever exposing the secret itself. GetCredentialsMetadata is documented
+// as returning metadata without decrypting the secret, and its result is
+// surfaced in admin UIs and logs, so the raw value must never appear. It only
+// reveals a 4-char prefix and suffix when the token is long enough (>=12) to
+// keep at least 4 characters hidden; shorter tokens are fully masked.
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
-	if len(t) <= 8 {
-		return t
+	if t == "" {
+		return ""
+	}
+	if len(t) < 12 {
+		return "***"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

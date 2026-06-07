@@ -272,10 +272,19 @@ func (c *MidjourneyAccessConnector) GetCredentialsMetadata(_ context.Context, co
 	}, nil
 }
 
+// shortToken returns a redacted, human-identifiable hint for a credential
+// without ever exposing the secret itself. GetCredentialsMetadata is documented
+// as returning metadata without decrypting the secret, and its result is
+// surfaced in admin UIs and logs, so the raw value must never appear. It only
+// reveals a 4-char prefix and suffix when the token is long enough (>=12) to
+// keep at least 4 characters hidden; shorter tokens are fully masked.
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
-	if len(t) <= 8 {
-		return t
+	if t == "" {
+		return ""
+	}
+	if len(t) < 12 {
+		return "***"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

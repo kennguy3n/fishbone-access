@@ -127,4 +127,11 @@ func TestGetCredentialsMetadata_RedactsToken(t *testing.T) {
 	if !strings.Contains(got, "...") || strings.Contains(got, "1234bbbb") {
 		t.Errorf("redaction failed: %q", got)
 	}
+	// user_short is derived from the 8-char service_account_user "svc_AAAA";
+	// shortToken must redact it rather than echo the raw value (regression for
+	// the len<=8 full-credential leak).
+	user, _ := md["user_short"].(string)
+	if strings.Contains(user, "svc_AAAA") {
+		t.Errorf("user_short leaked raw value: %q", user)
+	}
 }

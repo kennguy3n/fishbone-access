@@ -303,7 +303,13 @@ func (c *MondayAccessConnector) SyncIdentities(
 		for _, u := range resp.Data.Users {
 			status := "active"
 			if u.Enabled != nil && !*u.Enabled {
-				status = "deleted"
+				// Monday's `enabled: false` is a deactivated (but still present)
+				// directory user — a deleted user is not returned by the users
+				// query at all. Map it to "disabled" to match the taxonomy peers
+				// use for accountEnabled=false (microsoft, mezmo); "deleted"
+				// would mislead downstream reconciliation that distinguishes
+				// removed vs deactivated accounts.
+				status = "disabled"
 			}
 			display := u.Name
 			if display == "" {
@@ -499,10 +505,19 @@ func (c *MondayAccessConnector) GetCredentialsMetadata(_ context.Context, _, sec
 	}, nil
 }
 
+// shortToken returns a redacted, human-identifiable hint for a credential
+// without ever exposing the secret itself. GetCredentialsMetadata is documented
+// as returning metadata without decrypting the secret, and its result is
+// surfaced in admin UIs and logs, so the raw value must never appear. It only
+// reveals a 4-char prefix and suffix when the token is long enough (>=12) to
+// keep at least 4 characters hidden; shorter tokens are fully masked.
 func shortToken(t string) string {
 	t = strings.TrimSpace(t)
-	if len(t) <= 8 {
-		return t
+	if t == "" {
+		return ""
+	}
+	if len(t) < 12 {
+		return "***"
 	}
 	return t[:4] + "..." + t[len(t)-4:]
 }

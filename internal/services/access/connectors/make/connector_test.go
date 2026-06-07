@@ -155,6 +155,53 @@ func TestBaseURL_RegionAndOverride(t *testing.T) {
 	}
 }
 
+// TestShortToken_NeverLeaksShortTokens is a regression test for the
+// GetCredentialsMetadata contract: shortToken must never return an unredacted
+// credential. The shared helper previously returned the full token verbatim for
+// len<=8, leaking short keys into metadata surfaced in admin UIs and logs.
+func TestShortToken_NeverLeaksShortTokens(t *testing.T) {
+	for _, in := range []string{"a", "abc", "12345678", "123456789", "01234567890"} {
+		got := shortToken(in)
+		if got == in {
+			t.Errorf("shortToken(%q) = %q; leaked raw value", in, got)
+		}
+		if strings.Contains(got, in) {
+			t.Errorf("shortToken(%q) = %q; contains raw value", in, got)
+		}
+	}
+	if got := shortToken(""); got != "" {
+		t.Errorf("shortToken(\"\") = %q; want empty", got)
+	}
+	// Long tokens still get a useful first4...last4 hint with a hidden middle.
+	if got := shortToken("tok_AAAA1234bbbbCCCC"); !strings.Contains(got, "...") || strings.Contains(got, "AAAA1234") {
+		t.Errorf("shortToken(long) = %q; want redacted window", got)
+	}
+}
+
+// TestValidate_RejectsInsecureBaseURL guards against a misconfigured base_url
+// that would send the bearer token over plaintext http, or that isn't a valid
+// absolute URL. Loopback http is tolerated for local dev/testing.
+func TestValidate_RejectsInsecureBaseURL(t *testing.T) {
+	for _, bad := range []string{
+		"http://make.example.com", "ftp://make.example.com",
+		"make.example.com", "://nohost", "https://",
+	} {
+		cfg := map[string]interface{}{"base_url": bad}
+		if err := New().Validate(context.Background(), cfg, validSecrets()); err == nil {
+			t.Errorf("Validate(base_url=%q) = nil; want error", bad)
+		}
+	}
+	for _, ok := range []string{
+		"https://make.example.com", "https://make.example.com/", "",
+		"http://localhost:8080", "http://127.0.0.1:9000",
+	} {
+		cfg := map[string]interface{}{"base_url": ok}
+		if err := New().Validate(context.Background(), cfg, validSecrets()); err != nil {
+			t.Errorf("Validate(base_url=%q) = %v; want nil", ok, err)
+		}
+	}
+}
+
 // TestValidate_RejectsRegionThatLooksLikeURL guards the operator against putting
 // a full URL — or any non-zone-label injection — in the region field, which
 // would build a malformed host. The region is restricted to an
