@@ -41,6 +41,25 @@ func TestValidate_RejectsMissing(t *testing.T) {
 	}
 }
 
+func TestValidate_RejectsMalformedTenant(t *testing.T) {
+	c := New()
+	// A tenant_id with path-traversal characters must be rejected before
+	// it can be concatenated into the OAuth token URL.
+	for _, bad := range []string{"../evil", "tenant/extra", "tenant id", "ten\\ant"} {
+		cfg := map[string]interface{}{"tenant_id": bad, "subscription_id": "sub-1"}
+		if err := c.Validate(context.Background(), cfg, validSecrets()); err == nil {
+			t.Errorf("tenant_id %q should be rejected", bad)
+		}
+	}
+	// Both legal forms — GUID and verified domain — are accepted.
+	for _, ok := range []string{"11111111-2222-3333-4444-555555555555", "contoso.onmicrosoft.com"} {
+		cfg := map[string]interface{}{"tenant_id": ok, "subscription_id": "sub-1"}
+		if err := c.Validate(context.Background(), cfg, validSecrets()); err != nil {
+			t.Errorf("tenant_id %q should be accepted: %v", ok, err)
+		}
+	}
+}
+
 func TestValidate_PureLocal(t *testing.T) {
 	prev := http.DefaultTransport
 	http.DefaultTransport = noNetworkRoundTripper{}
@@ -454,7 +473,7 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 		if got := r.URL.Query().Get("$filter"); got != "principalId eq 'principal-1'" {
 			t.Fatalf("$filter = %q", got)
 		}
-		_, _ = w.Write([]byte(`{"value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"role-1","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
+		_, _ = w.Write([]byte(`{"value":[{"id":"ra1","name":"ra1","properties":{"roleDefinitionId":"/subscriptions/sub-1/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
 	}))
 	t.Cleanup(srv.Close)
 	c := New()
@@ -464,7 +483,13 @@ func TestListEntitlements_FiltersByPrincipal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEntitlements: %v", err)
 	}
-	if len(got) != 1 || got[0].ResourceExternalID != "role-1" || got[0].Source != "direct" {
+	// ResourceExternalID carries the full roleDefinitionId (used for
+	// provision/revoke round-trips); Role names the role itself (its
+	// canonical trailing id segment), never the assignment scope.
+	if len(got) != 1 ||
+		got[0].ResourceExternalID != "/subscriptions/sub-1/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7" ||
+		got[0].Role != "acdd72a7-3385-48ef-bd42-f606fba81ae7" ||
+		got[0].Source != "direct" {
 		t.Fatalf("got = %+v", got)
 	}
 }
@@ -492,7 +517,10 @@ func TestListEntitlements_EscapesPrincipalIDInFilter(t *testing.T) {
 // principal with role assignments spread across pages is fully
 // enumerated (mirrors the audit.go re-anchor behavior).
 func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var srv *httptest.Server
+	pages := 0
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
 		if r.URL.Query().Get("$skiptoken") == "PAGE2" {
 			_, _ = w.Write([]byte(`{"value":[{"id":"ra2","name":"ra2","properties":{"roleDefinitionId":"role-2","principalId":"principal-1","scope":"/subscriptions/sub-1"}}]}`))
 			return
@@ -512,6 +540,9 @@ func TestListEntitlements_FollowsNextLinkAcrossPages(t *testing.T) {
 	}
 	if len(got) != 2 || got[0].ResourceExternalID != "role-1" || got[1].ResourceExternalID != "role-2" {
 		t.Fatalf("expected 2 roles across 2 pages, got = %+v", got)
+	}
+	if pages != 2 {
+		t.Fatalf("expected 2 paged requests, got %d", pages)
 	}
 }
 

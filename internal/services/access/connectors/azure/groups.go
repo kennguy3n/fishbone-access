@@ -91,7 +91,7 @@ func (c *AzureAccessConnector) SyncGroups(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -133,6 +133,9 @@ func (c *AzureAccessConnector) SyncGroups(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // SyncGroupMembers paginates GET /groups/{id}/members and emits the
@@ -159,7 +162,7 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -188,6 +191,9 @@ func (c *AzureAccessConnector) SyncGroupMembers(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 var _ access.GroupSyncer = (*AzureAccessConnector)(nil)

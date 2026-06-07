@@ -207,6 +207,15 @@ func (c *BasecampAccessConnector) doRawWithLink(req *http.Request) (int, []byte,
 	return resp.StatusCode, body, nextLinkFromHeader(resp.Header.Get("Link")), nil
 }
 
+// basecampPeopleMaxPages bounds the rel="next" Link-header walk in
+// listBasecampProjectPeople as defense-in-depth, mirroring
+// basecampAuditMaxPages and the audit caps elsewhere in this batch. The
+// loop also stops naturally when no next link is returned and checks
+// ctx.Err() each iteration; the cap only guards against a misbehaving
+// proxy/upstream that keeps issuing next links, which would otherwise
+// grow `all` without bound.
+const basecampPeopleMaxPages = 200
+
 func (c *BasecampAccessConnector) listBasecampProjectPeople(ctx context.Context, cfg Config, secrets Secrets, projectID string) ([]basecampPerson, error) {
 	// Basecamp paginates /projects/{id}/people.json via the RFC 5988
 	// Link header. A single GET truncates large project rosters, which
@@ -216,7 +225,7 @@ func (c *BasecampAccessConnector) listBasecampProjectPeople(ctx context.Context,
 	nextURL := fmt.Sprintf("%s/projects/%s/people.json",
 		c.baseURL(cfg), url.PathEscape(strings.TrimSpace(projectID)))
 	var all []basecampPerson
-	for nextURL != "" {
+	for page := 0; nextURL != "" && page < basecampPeopleMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}

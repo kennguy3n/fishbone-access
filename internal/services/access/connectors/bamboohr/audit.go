@@ -46,7 +46,12 @@ func (c *BambooHRAccessConnector) FetchAccessAuditLogs(
 	}
 
 	q := url.Values{}
-	q.Set("since", since.UTC().Format(time.RFC3339))
+	// Use RFC3339Nano to match delta_sync.go's since formatting, so both
+	// code paths send an identical timestamp format to the shared
+	// /v1/employees/changed endpoint. The audit cursor advances by
+	// batchMax (not batchMax+1ns), so sub-second precision is not required
+	// here, but keeping the format identical avoids maintainer confusion.
+	q.Set("since", since.UTC().Format(time.RFC3339Nano))
 	q.Set("type", "all")
 	fullURL := c.baseURL(cfg) + "/v1/employees/changed?" + q.Encode()
 

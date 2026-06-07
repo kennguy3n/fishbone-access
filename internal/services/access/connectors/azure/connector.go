@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,6 +33,22 @@ const (
 	defaultBaseURL    = "https://graph.microsoft.com/v1.0"
 	defaultARMBaseURL = "https://management.azure.com"
 	armAPIVersion     = "2022-04-01"
+
+	// azureSyncMaxPages and azureEntitlementsMaxPages bound the
+	// @odata.nextLink pagination walks as defense-in-depth, mirroring
+	// azureAuditMaxPages and boxCollaborationsMaxPages. Every walk also
+	// stops naturally when nextLink is empty and checks ctx.Err() each
+	// iteration; the caps only guard against a misbehaving upstream that
+	// keeps emitting fresh cursors. azureSyncMaxPages covers all the
+	// directory walks — SyncIdentities (connector.go), SyncGroups and
+	// SyncGroupMembers (groups.go) — each of which walks 200 objects/page
+	// and reports its cursor to the handler every page, so reaching the
+	// cap simply defers the rest to the next sync cycle via the persisted
+	// checkpoint and no objects are dropped. The entitlements cap is
+	// small because role assignments for a single principal never span
+	// anywhere near this many pages.
+	azureSyncMaxPages         = 10000
+	azureEntitlementsMaxPages = 1000
 )
 
 // ErrNotImplemented is retained for any future capability that is not yet
@@ -100,9 +117,21 @@ func DecodeSecrets(raw map[string]interface{}) (Secrets, error) {
 	return s, nil
 }
 
+// azureTenantPattern matches the two legal Entra tenant identifier forms —
+// a GUID or a verified domain (e.g. contoso.onmicrosoft.com). It excludes
+// '/', '\\' and whitespace so a tenant_id can never smuggle extra path
+// segments into the OAuth token URL built by microsoft.AzureADEndpoint,
+// which concatenates the value without URL-escaping it (subscription_id is
+// always url.PathEscape'd at its use sites, so it doesn't need this guard).
+var azureTenantPattern = regexp.MustCompile(`^[A-Za-z0-9.-]+$`)
+
 func (c Config) validate() error {
-	if strings.TrimSpace(c.TenantID) == "" {
+	tenant := strings.TrimSpace(c.TenantID)
+	if tenant == "" {
 		return errors.New("azure: tenant_id is required")
+	}
+	if !azureTenantPattern.MatchString(tenant) {
+		return errors.New("azure: tenant_id must be a GUID or domain (letters, digits, '.', '-')")
 	}
 	if strings.TrimSpace(c.SubscriptionID) == "" {
 		return errors.New("azure: subscription_id is required")
@@ -327,7 +356,7 @@ func (c *AzureAccessConnector) SyncIdentities(
 	if checkpoint != "" {
 		path = checkpoint
 	}
-	for {
+	for page := 0; page < azureSyncMaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -369,6 +398,9 @@ func (c *AzureAccessConnector) SyncIdentities(
 		}
 		path = next
 	}
+	// Hit the defensive page cap; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // armURL returns the absolute ARM URL for the given path. In tests the
@@ -407,6 +439,7 @@ func armRoleAssignmentName(scope, principalID, roleDefinitionID string) string {
 	// earlier releases, so the encoding must not change (a different name
 	// would make RevokeAccess DELETE a non-existent resource, get 404, and
 	// report idempotent success while leaving the real grant in place).
+	//
 	// gosec G401: deterministic identifier, not a hash for
 	// integrity/auth. SHA-1 chosen so the 20-byte output trims
 	// cleanly to a 16-byte GUID-shaped name.
@@ -433,10 +466,16 @@ func (c *AzureAccessConnector) ProvisionAccess(
 	if err != nil {
 		return err
 	}
+	// scope is the canonical ARM scope and is the stable identity fed into
+	// armRoleAssignmentName, so it MUST be built from the raw subscription
+	// id (see that function's contract). The URL path escapes the
+	// subscription id separately so the request stays well-formed without
+	// perturbing the deterministic assignment name.
 	scope := "/subscriptions/" + cfg.SubscriptionID
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
+	escapedScope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
-		scope, url.PathEscape(name), armAPIVersion)
+		escapedScope, url.PathEscape(name), armAPIVersion)
 	payload := map[string]map[string]string{
 		"properties": {
 			"roleDefinitionId": grant.ResourceExternalID,
@@ -487,10 +526,14 @@ func (c *AzureAccessConnector) RevokeAccess(
 	if err != nil {
 		return err
 	}
+	// Build the name from the raw scope (same as ProvisionAccess) so the
+	// deterministic assignment name is byte-for-byte identical on both
+	// sides; escape the subscription id only for the DELETE URL path.
 	scope := "/subscriptions/" + cfg.SubscriptionID
 	name := armRoleAssignmentName(scope, grant.UserExternalID, grant.ResourceExternalID)
+	escapedScope := "/subscriptions/" + url.PathEscape(cfg.SubscriptionID)
 	path := fmt.Sprintf("%s/providers/Microsoft.Authorization/roleAssignments/%s?api-version=%s",
-		scope, url.PathEscape(name), armAPIVersion)
+		escapedScope, url.PathEscape(name), armAPIVersion)
 	client := c.armClient(ctx, cfg, secrets)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.armURL(path), nil)
 	if err != nil {
@@ -542,7 +585,7 @@ func (c *AzureAccessConnector) ListEntitlements(
 		url.QueryEscape("principalId eq '"+escapedPrincipalID+"'"))
 	next := c.armURL(path)
 	var out []access.Entitlement
-	for {
+	for pageNum := 0; pageNum < azureEntitlementsMaxPages; pageNum++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -560,29 +603,51 @@ func (c *AzureAccessConnector) ListEntitlements(
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, fmt.Errorf("azure: list entitlements status %d: %s", resp.StatusCode, string(body))
 		}
-		var page armRoleAssignmentsResponse
-		if err := json.Unmarshal(body, &page); err != nil {
+		var pageResp armRoleAssignmentsResponse
+		if err := json.Unmarshal(body, &pageResp); err != nil {
 			return nil, fmt.Errorf("azure: decode role assignments: %w", err)
 		}
-		for _, a := range page.Value {
+		for _, a := range pageResp.Value {
 			out = append(out, access.Entitlement{
 				ResourceExternalID: a.Properties.RoleDefinitionID,
-				Role:               a.Properties.Scope,
-				Source:             "direct",
+				// Role names the role itself, not the assignment
+				// scope. The role-assignment payload only carries the
+				// roleDefinitionId, so use its canonical trailing id
+				// segment (the built-in/custom role's GUID) — the most
+				// role-descriptive value available without a secondary
+				// roleDefinitions lookup, and consistent with the other
+				// connectors that surface the role value straight from
+				// the listing response.
+				Role:   roleDefinitionShortID(a.Properties.RoleDefinitionID),
+				Source: "direct",
 			})
 		}
-		if page.NextLink == "" {
+		if pageResp.NextLink == "" {
 			return out, nil
 		}
 		// NextLink may be absolute; in tests we re-anchor to the
 		// urlOverride so the redirected server still receives it.
 		// Mirrors FetchAccessAuditLogs in audit.go.
-		if c.urlOverride != "" && strings.HasPrefix(page.NextLink, defaultARMBaseURL) {
-			next = c.urlOverride + strings.TrimPrefix(page.NextLink, defaultARMBaseURL)
+		if c.urlOverride != "" && strings.HasPrefix(pageResp.NextLink, defaultARMBaseURL) {
+			next = strings.TrimRight(c.urlOverride, "/") + strings.TrimPrefix(pageResp.NextLink, defaultARMBaseURL)
 		} else {
-			next = page.NextLink
+			next = pageResp.NextLink
 		}
 	}
+	// Hit the defensive page cap; return what we have rather than spin.
+	return out, nil
+}
+
+// roleDefinitionShortID returns the trailing identifier segment of an
+// Azure roleDefinitionId (e.g. ".../roleDefinitions/{guid}" -> "{guid}").
+// This is the canonical role identifier and is used for Entitlement.Role
+// so the field describes the role rather than the assignment scope.
+func roleDefinitionShortID(roleDefinitionID string) string {
+	id := strings.TrimRight(strings.TrimSpace(roleDefinitionID), "/")
+	if i := strings.LastIndex(id, "/"); i >= 0 {
+		return id[i+1:]
+	}
+	return id
 }
 
 func validateGrantPair(grant access.AccessGrant) error {
@@ -624,10 +689,25 @@ func (c *AzureAccessConnector) GetSSOMetadata(_ context.Context, configRaw, _ ma
 	if err != nil {
 		return nil, err
 	}
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
+	// SSO federation metadata is derived from the tenant id alone, so do
+	// not require subscription_id here (cfg.validate would). This lets a
+	// caller fetch metadata before the full RBAC config is populated,
+	// matching bamboohr's GetSSOMetadata which deliberately skips the
+	// secrets it does not need.
+	//
+	// We still enforce azureTenantPattern on the tenant id: url.PathEscape
+	// keeps the URLs built here well-formed regardless, but applying the
+	// same tenant-format check as every other method keeps validation
+	// consistent at the input boundary — a setup/validation flow that
+	// calls GetSSOMetadata first must not accept a tenant_id that Connect
+	// and SyncIdentities would later reject.
 	tenant := strings.TrimSpace(cfg.TenantID)
+	if tenant == "" {
+		return nil, errors.New("azure: tenant_id is required")
+	}
+	if !azureTenantPattern.MatchString(tenant) {
+		return nil, errors.New("azure: tenant_id must be a GUID or domain (letters, digits, '.', '-')")
+	}
 	proto := strings.ToLower(strings.TrimSpace(cfg.SSOProtocol))
 	if proto == "" {
 		proto = "oidc"
@@ -696,9 +776,9 @@ func (c *AzureAccessConnector) GetCredentialsMetadata(ctx context.Context, confi
 		// instant with the trailing Z (e.g. 2027-06-15T00:00:00Z), so a
 		// lexicographic min over the consistent format yields the
 		// earliest expiry without parsing.
-		for _, c := range creds {
-			if c.EndDateTime != "" && (earliest == "" || c.EndDateTime < earliest) {
-				earliest = c.EndDateTime
+		for _, cred := range creds {
+			if cred.EndDateTime != "" && (earliest == "" || cred.EndDateTime < earliest) {
+				earliest = cred.EndDateTime
 			}
 		}
 		if earliest != "" {

@@ -1,6 +1,7 @@
 package bigcommerce
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -56,7 +57,7 @@ func (c *BigCommerceAccessConnector) userURL(cfg Config, userID string) string {
 func (c *BigCommerceAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets, method, fullURL string, body []byte) (*http.Request, error) {
 	var rdr io.Reader
 	if len(body) > 0 {
-		rdr = strings.NewReader(string(body))
+		rdr = bytes.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {

@@ -20,6 +20,16 @@ import (
 const (
 	ProviderName = "box"
 	pageSize     = 100
+
+	// boxSyncMaxPages bounds the offset pagination walks (SyncIdentities,
+	// SyncGroups, SyncGroupMembers) as defense-in-depth, matching
+	// azureSyncMaxPages / basecampSyncMaxPages and the other connectors.
+	// Box's loop condition compares against the response TotalCount, which
+	// can keep growing if users/groups are created concurrently, so the cap
+	// guards against a walk that never observes a short page. Each loop
+	// reports its offset to the handler as a checkpoint, so hitting the cap
+	// merely defers the remainder to the next sync cycle.
+	boxSyncMaxPages = 10000
 )
 
 var ErrNotImplemented = fmt.Errorf("box: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
@@ -98,13 +108,27 @@ func (c *BoxAccessConnector) client() httpDoer {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+// bearerHeader normalizes the access token into an Authorization header
+// value, tolerating a token that was accidentally stored with a leading
+// scheme prefix so we never emit a doubled "Bearer Bearer …". The prefix
+// match is case-insensitive ("Bearer ", "bearer ", "BEARER ") so a
+// mis-cased stored scheme can't produce a malformed "Bearer bearer …".
+// scim.go reuses this same helper.
+func bearerHeader(secrets Secrets) string {
+	tok := strings.TrimSpace(secrets.AccessToken)
+	if len(tok) >= len("Bearer ") && strings.EqualFold(tok[:len("Bearer ")], "Bearer ") {
+		tok = strings.TrimSpace(tok[len("Bearer "):])
+	}
+	return "Bearer " + tok
+}
+
 func (c *BoxAccessConnector) newRequest(ctx context.Context, secrets Secrets, method, fullURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Authorization", bearerHeader(secrets))
 	return req, nil
 }
 
@@ -115,7 +139,7 @@ func (c *BoxAccessConnector) newJSONRequest(ctx context.Context, secrets Secrets
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(secrets.AccessToken))
+	req.Header.Set("Authorization", bearerHeader(secrets))
 	return req, nil
 }
 
@@ -226,7 +250,10 @@ func (c *BoxAccessConnector) SyncIdentities(
 		}
 	}
 	base := c.baseURL()
-	for {
+	for pageCount := 0; pageCount < boxSyncMaxPages; pageCount++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		path := fmt.Sprintf("%s/2.0/users?limit=%d&offset=%d&user_type=all", base, pageSize, offset)
 		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
 		if err != nil {
@@ -270,6 +297,9 @@ func (c *BoxAccessConnector) SyncIdentities(
 		}
 		offset += pageSize
 	}
+	// Defensive page cap reached; the last handler call carried a
+	// non-empty checkpoint, so the next sync cycle resumes from there.
+	return nil
 }
 
 // ---------- advanced capabilities ----------

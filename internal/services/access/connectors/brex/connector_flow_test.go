@@ -96,6 +96,56 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	}
 }
 
+// TestListEntitlements_PreservesIDRepresentation guards decodeFlexibleID:
+// a large numeric role id must round-trip exactly (no float64 precision
+// loss / scientific notation), and a bare-array response with a string id
+// must be unquoted correctly.
+func TestListEntitlements_PreservesIDRepresentation(t *testing.T) {
+	const userID = "user-1"
+	// 9007199254740993 == 2^53 + 1, which float64 cannot represent exactly.
+	const bigNumericID = "9007199254740993"
+	cases := []struct {
+		name   string
+		body   string
+		wantID string
+	}{
+		{
+			name:   "large numeric id in envelope",
+			body:   `{"data":[{"id":` + bigNumericID + `,"name":"Admin"}]}`,
+			wantID: bigNumericID,
+		},
+		{
+			name:   "string id in bare array",
+			body:   `[{"id":"ADMIN","name":"Admin"}]`,
+			wantID: "ADMIN",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/v2/users/"+userID+"/roles" {
+					t.Errorf("unexpected path %q", r.URL.Path)
+				}
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			t.Cleanup(srv.Close)
+			c := New()
+			c.urlOverride = srv.URL
+			c.httpClient = func() httpDoer { return srv.Client() }
+			ents, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), userID)
+			if err != nil {
+				t.Fatalf("ListEntitlements: %v", err)
+			}
+			if len(ents) != 1 {
+				t.Fatalf("ents len = %d, want 1: %#v", len(ents), ents)
+			}
+			if ents[0].ResourceExternalID != tc.wantID {
+				t.Fatalf("ResourceExternalID = %q, want %q", ents[0].ResourceExternalID, tc.wantID)
+			}
+		})
+	}
+}
+
 func TestConnectorFlow_ProvisionForbiddenFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

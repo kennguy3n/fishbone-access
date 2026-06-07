@@ -257,5 +257,20 @@ func TestProvisionRevoke_RejectMissing(t *testing.T) {
 	}
 }
 
+func TestBearerHeader_DedupesSchemeCaseInsensitively(t *testing.T) {
+	cases := map[string]string{
+		"abc123":        "Bearer abc123",
+		"Bearer abc123": "Bearer abc123",
+		"bearer abc123": "Bearer abc123",
+		"BEARER abc123": "Bearer abc123",
+		"  abc123  ":    "Bearer abc123",
+	}
+	for in, want := range cases {
+		if got := bearerHeader(Secrets{AccessToken: in}); got != want {
+			t.Errorf("bearerHeader(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 var _ = json.RawMessage(nil)
 var _ = fmt.Sprintf
