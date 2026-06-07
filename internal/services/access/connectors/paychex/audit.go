@@ -76,16 +76,22 @@ func (c *PaychexAccessConnector) FetchAccessAuditLogs(
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return fmt.Errorf("paychex: decode audit log: %w", err)
 		}
-		olderThanCursor := false
 		for i := range envelope.Content {
 			ts := parsePaychexAuditTime(envelope.Content[i].EffectiveDate)
+			// Defensively drop anything at/older than the cursor. The
+			// server-side modifiedSince filter should already exclude these,
+			// so this is belt-and-suspenders dedup — it must NOT terminate
+			// pagination, because Paychex does not document a chronological
+			// ordering guarantee within a page. Breaking on the first stale
+			// entry could skip newer events that share the page (or land on a
+			// later page) under eventual consistency. We page on offset until
+			// a short page signals the end, bounded by paychexAuditMaxPages.
 			if !since.IsZero() && !ts.IsZero() && !ts.After(since) {
-				olderThanCursor = true
 				continue
 			}
 			collected = append(collected, envelope.Content[i])
 		}
-		if olderThanCursor || len(envelope.Content) < paychexAuditLimit {
+		if len(envelope.Content) < paychexAuditLimit {
 			break
 		}
 	}

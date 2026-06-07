@@ -72,6 +72,14 @@ func (c *OktaAccessConnector) FetchAccessAuditLogs(
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 			_ = resp.Body.Close()
+			// Deliberately NOT mapped to access.ErrAuditNotAvailable (the
+			// plan-gated soft-skip the other auditors use). The Okta System
+			// Log API is available on every Okta edition, so a 401/403 here
+			// means the API token is missing the okta.logs.read scope and a
+			// 404 means a wrong org domain — both are real, actionable
+			// misconfigurations. Soft-skipping them would silently stop audit
+			// collection (a security-relevant gap), so we surface a hard error
+			// the operator can fix instead.
 			return fmt.Errorf("okta: audit logs status %d: %s", resp.StatusCode, string(body))
 		}
 		body, err := io.ReadAll(resp.Body)

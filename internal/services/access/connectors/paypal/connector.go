@@ -247,14 +247,15 @@ func (c *PayPalAccessConnector) accessToken(ctx context.Context, cfg Config, sec
 	tok, ttl, err := c.mintToken(ctx, cfg, secrets)
 
 	c.tokenMu.Lock()
-	// Only cache when PayPal reports a positive lifetime. Without a known
-	// expiry we cannot tell when the token goes stale, so we conservatively
-	// re-mint on the next call rather than risk serving an expired token.
-	if err == nil && ttl > 0 {
-		expiry := now.Add(ttl)
-		if ttl > tokenRefreshMargin {
-			expiry = now.Add(ttl - tokenRefreshMargin)
-		}
+	// Only cache when PayPal reports a lifetime longer than the refresh
+	// margin. Without a known expiry (ttl == 0) we cannot tell when the token
+	// goes stale; and when ttl <= tokenRefreshMargin we could not honor the
+	// margin anyway, so caching would risk serving a token in the window where
+	// it is already (or about to be) rejected. In both cases we conservatively
+	// re-mint on the next call rather than cache a token we cannot safely
+	// guard, mirroring the ttl == 0 skip.
+	if err == nil && ttl > tokenRefreshMargin {
+		expiry := now.Add(ttl - tokenRefreshMargin)
 		if c.tokenCache == nil {
 			c.tokenCache = make(map[string]cachedToken)
 		}
