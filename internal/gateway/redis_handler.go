@@ -31,6 +31,12 @@ const maxRESPBulkLen = 64 << 20
 // a real Redis call.
 const maxRESPArrayLen = 1 << 20
 
+// maxRESPLineLen bounds a single status/error reply line the proxy reads off
+// the socket (e.g. the upstream AUTH reply). A real RESP simple-string reply is
+// a few bytes; this cap stops a misbehaving upstream from streaming an
+// unbounded line with no terminator.
+const maxRESPLineLen = 64 << 10
+
 // maxPreAuthCommands bounds how many commands the proxy will service before the
 // operator presents a connect token via AUTH. Redis clients send at most a
 // handful of pre-auth commands (PING/HELLO) before AUTH; a client that never
@@ -224,7 +230,11 @@ func (p *RedisProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 		_ = conn.Close()
 		return nil, fmt.Errorf("set upstream auth read deadline: %w", err)
 	}
-	line, err := bufio.NewReader(conn).ReadString('\n')
+	// Read the AUTH reply directly off the socket rather than via a throwaway
+	// bufio.Reader: a buffered reader can pull bytes past the reply line into
+	// its buffer, and those bytes would be silently dropped when steady-state
+	// proxying takes over the raw connection below.
+	line, err := readUpstreamLine(conn, maxRESPLineLen)
 	if err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("read upstream AUTH reply: %w", err)
@@ -304,6 +314,32 @@ func (p *RedisProxy) forwardOperatorCommands(ctx context.Context, operator net.C
 		}
 		if _, err := upstream.Write(raw); err != nil {
 			return
+		}
+	}
+}
+
+// readUpstreamLine reads a single line terminated by '\n' directly from conn,
+// one byte at a time, returning the line including the terminator. Reading
+// without a bufio.Reader guarantees no bytes past the line are consumed from
+// the socket, so a subsequent raw-proxy copy starts exactly after this reply.
+// The returned line is capped at max bytes to bound memory against an upstream
+// that never sends a terminator.
+func readUpstreamLine(conn net.Conn, max int) (string, error) {
+	buf := make([]byte, 0, 64)
+	one := make([]byte, 1)
+	for {
+		n, err := conn.Read(one)
+		if n > 0 {
+			buf = append(buf, one[0])
+			if one[0] == '\n' {
+				return string(buf), nil
+			}
+			if len(buf) >= max {
+				return string(buf), errors.New("gateway: upstream reply line exceeds limit")
+			}
+		}
+		if err != nil {
+			return string(buf), err
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -88,6 +89,26 @@ func TestParseScramServerFirst(t *testing.T) {
 	}
 	if sf.nonce != "clientnonceServer" || sf.iterations != 4096 || string(sf.salt) != "0123456789abcdef" {
 		t.Fatalf("server-first parsed wrong: %+v", sf)
+	}
+}
+
+func TestScramServerSignature(t *testing.T) {
+	sig := []byte("0123456789abcdef0123456789abcdef")
+	enc := base64.StdEncoding.EncodeToString(sig)
+	// Exact v= attribute, possibly alongside extension attributes.
+	got, err := scramServerSignature("v=" + enc)
+	if err != nil {
+		t.Fatalf("parse v=: %v", err)
+	}
+	if !bytes.Equal(got, sig) {
+		t.Fatalf("signature mismatch")
+	}
+	if _, err := scramServerSignature("v=" + enc + ",extra=1"); err != nil {
+		t.Fatalf("parse with extension attr: %v", err)
+	}
+	// A server-final error carries e=, no verifier: must fail closed.
+	if _, err := scramServerSignature("e=other-error"); err == nil {
+		t.Fatal("expected error for missing verifier")
 	}
 }
 
@@ -225,7 +246,10 @@ func TestMongoProxyEndToEnd(t *testing.T) {
 		t.Fatalf("listen: %v", err)
 	}
 	defer upLn.Close()
-	up := &mockMongoUpstream{user: "svc", pass: "vault-pass"}
+	// Password deliberately contains '=' and ',' — RFC 5802 escapes only the
+	// username, never the password fed to PBKDF2. A regression that escapes the
+	// password would derive the wrong salted key and fail the SCRAM proof here.
+	up := &mockMongoUpstream{user: "svc", pass: "v=ault,pa55"}
 	go func() {
 		for {
 			c, err := upLn.Accept()
@@ -236,7 +260,7 @@ func TestMongoProxyEndToEnd(t *testing.T) {
 		}
 	}()
 
-	target := env.createTarget(t, models.PAMProtocolMongoDB, upLn.Addr().String(), pam.Secret{Username: "svc", Password: "vault-pass"})
+	target := env.createTarget(t, models.PAMProtocolMongoDB, upLn.Addr().String(), pam.Secret{Username: "svc", Password: "v=ault,pa55"})
 	token := env.mintToken(t, target.ID, "alice")
 
 	proxy, err := NewMongoProxy(MongoProxyConfig{Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store, DialTimeout: 5 * time.Second})

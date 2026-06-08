@@ -645,13 +645,15 @@ func injectClientInfoCredentials(pdu, userData []byte, leased *pam.LeasedSession
 
 	newUserData := append(append([]byte{}, userData[:secHdr]...), nb...)
 
-	// The PER length determinant sits immediately before udOff; its width is 1
-	// byte when the high bit is clear, else 2. Rebuild the PDU from before that
-	// field with a freshly encoded length and the new user data.
-	lenFieldStart := udOff - 1
-	if pdu[udOff-1]&0x80 != 0 {
-		lenFieldStart = udOff - 2
-	}
+	// Rebuild the PDU from the PER length determinant onward with a freshly
+	// encoded length and the new user data. The determinant sits at a fixed
+	// offset in a Send Data PDU — TPKT(4) + X.224 data header(3) + MCS choice(1)
+	// + initiator(2) + channelID(2) + dataPriority(1) — which is exactly where
+	// sendDataUserDataOffset reads it. Deriving the start from that layout is
+	// correct even when a 2-byte length's low byte has bit 7 clear (user-data
+	// lengths like 256–383): the old heuristic that inspected the byte just
+	// before udOff misread those as a 1-byte determinant and corrupted the PDU.
+	lenFieldStart := tpktHeaderLen + 3 + 1 + 5
 	out := append([]byte{}, pdu[:lenFieldStart]...)
 	out = append(out, perWriteLength(len(newUserData))...)
 	out = append(out, newUserData...)

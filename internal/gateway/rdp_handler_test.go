@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -72,6 +73,39 @@ func TestInjectClientInfoCredentials(t *testing.T) {
 	_, ud, ok := parseSendData(out, mcsSendDataRequest)
 	if !ok {
 		t.Fatal("rewritten PDU not parseable")
+	}
+	user, pass, _ := decodeClientInfoUserData(ud)
+	if user != "vault-admin" || pass != "vault-secret" {
+		t.Fatalf("injected creds = %q / %q", user, pass)
+	}
+	if int(binary.BigEndian.Uint16(out[2:4])) != len(out) {
+		t.Fatalf("TPKT length not fixed: hdr=%d actual=%d", binary.BigEndian.Uint16(out[2:4]), len(out))
+	}
+}
+
+func TestInjectClientInfoCredentialsTwoBytePERLength(t *testing.T) {
+	// Build an operator Client Info PDU whose user-data length uses the 2-byte
+	// PER form with a low byte < 0x80: 300 = 0x012C encodes to [0x81, 0x2C].
+	// A heuristic that decided the determinant width by inspecting the byte just
+	// before the user data would see 0x2C (high bit clear), misread it as a
+	// 1-byte determinant, and splice in the stray 0x81 — corrupting the PDU.
+	longPass := strings.Repeat("p", 131) // user "bob" + this pass ⇒ user-data len 300
+	info := buildClientInfoUserData("bob", longPass, "")
+	if len(info) < 0x80 || byte(len(info))&0x80 != 0 {
+		t.Fatalf("precondition: user-data len %d is not a 2-byte PER form with low byte < 0x80", len(info))
+	}
+	pdu := buildSendData(mcsSendDataRequest, 1003, info)
+	leased := &pam.LeasedSession{
+		Target: &models.PAMTarget{Username: "fallback"},
+		Secret: pam.Secret{Username: "vault-admin", Password: "vault-secret"},
+	}
+	out, err := injectClientInfoCredentials(pdu, info, leased)
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	_, ud, ok := parseSendData(out, mcsSendDataRequest)
+	if !ok {
+		t.Fatal("rewritten 2-byte-length PDU not parseable")
 	}
 	user, pass, _ := decodeClientInfoUserData(ud)
 	if user != "vault-admin" || pass != "vault-secret" {

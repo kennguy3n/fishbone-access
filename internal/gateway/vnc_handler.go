@@ -477,7 +477,15 @@ func readRFBClientMessage(r io.Reader) ([]byte, uint8, error) {
 		}
 		return concat(t[0], rest, body), t[0], nil
 	default:
-		return nil, t[0], fmt.Errorf("unsupported RFB client message type %d", t[0])
+		// Fail closed. The proxy must frame every client message to locate and
+		// gate ClientCutText (clipboard). An unknown message type (a VNC
+		// extension such as TightVNC/UltraVNC or a QEMU extended event) has an
+		// unknown length, so we cannot find where the next message begins. The
+		// only alternative — stop parsing and stream the rest raw — would let
+		// clipboard data bypass policy, defeating the gateway's purpose, so we
+		// terminate rather than fail open. Supporting a specific extension means
+		// teaching this switch that message's framing, not relaxing the default.
+		return nil, t[0], fmt.Errorf("unsupported RFB client message type %d (gateway fails closed on unframable messages)", t[0])
 	}
 }
 

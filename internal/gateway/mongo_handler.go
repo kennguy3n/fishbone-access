@@ -556,7 +556,7 @@ func scramSHA256Auth(conn net.Conn, timeout time.Duration, authSource, user, pas
 		return err
 	}
 	gs2 := "n,,"
-	clientFirstBare := "n=" + scramSaslPrep(user) + ",r=" + clientNonce
+	clientFirstBare := "n=" + scramEscapeUsername(user) + ",r=" + clientNonce
 	clientFirst := gs2 + clientFirstBare
 
 	serverFirstPayload, convID, err := scramSend(conn, buildSaslStartSCRAM(authSource, clientFirst))
@@ -571,7 +571,11 @@ func scramSHA256Auth(conn net.Conn, timeout time.Duration, authSource, user, pas
 		return errors.New("server nonce does not extend client nonce")
 	}
 
-	saltedPassword := pbkdf2.Key([]byte(scramSaslPrep(password)), sf.salt, sf.iterations, sha256.Size, sha256.New)
+	// RFC 5802: only the username in client-first-bare is comma/equals escaped.
+	// The password fed to PBKDF2 is the SASLprep'd value, which is identity for
+	// ASCII; it must NOT be escaped or a password containing '=' or ',' would
+	// derive the wrong salted key and the upstream would reject the proof.
+	saltedPassword := pbkdf2.Key([]byte(password), sf.salt, sf.iterations, sha256.Size, sha256.New)
 	clientKey := scramHMAC(saltedPassword, []byte("Client Key"))
 	storedKey := sha256.Sum256(clientKey)
 	channelBinding := base64.StdEncoding.EncodeToString([]byte(gs2))
@@ -589,8 +593,11 @@ func scramSHA256Auth(conn net.Conn, timeout time.Duration, authSource, user, pas
 	// successful auth.
 	serverKey := scramHMAC(saltedPassword, []byte("Server Key"))
 	serverSignature := scramHMAC(serverKey, []byte(authMessage))
-	wantSig := "v=" + base64.StdEncoding.EncodeToString(serverSignature)
-	if !strings.Contains(serverFinalPayload, wantSig) {
+	gotSig, err := scramServerSignature(serverFinalPayload)
+	if err != nil {
+		return err
+	}
+	if !hmac.Equal(gotSig, serverSignature) {
 		return errors.New("server signature verification failed")
 	}
 	return nil
@@ -693,6 +700,28 @@ func parseScramServerFirst(payload string) (scramServerFirst, error) {
 	return sf, nil
 }
 
+// scramServerSignature extracts and decodes the ServerSignature from a
+// server-final message ("v=<base64>", optionally with extension attributes).
+// Parsing the v= attribute and comparing the decoded bytes with hmac.Equal is
+// stricter than a substring check: it rejects a payload that merely contains
+// the expected value elsewhere, and it fails closed when the server returns an
+// error attribute ("e=...") instead of a verifier.
+func scramServerSignature(payload string) ([]byte, error) {
+	for _, field := range strings.Split(payload, ",") {
+		if len(field) < 2 {
+			continue
+		}
+		if field[:2] == "v=" {
+			sig, err := base64.StdEncoding.DecodeString(field[2:])
+			if err != nil {
+				return nil, fmt.Errorf("decode server signature: %w", err)
+			}
+			return sig, nil
+		}
+	}
+	return nil, errors.New("server-final message missing verifier")
+}
+
 // randomNonce returns a base64 client nonce.
 func randomNonce() (string, error) {
 	b := make([]byte, 24)
@@ -718,11 +747,12 @@ func xorBytes(a, b []byte) []byte {
 	return out
 }
 
-// scramSaslPrep applies the comma/equals escaping SCRAM requires on the
-// username (RFC 5802 §5.1: '=' → "=3D", ',' → "=2C"). Full SASLprep
-// normalization is not applied; MongoDB usernames in practice are ASCII, and
-// the upstream applies its own normalization to the stored credential.
-func scramSaslPrep(s string) string {
+// scramEscapeUsername applies the comma/equals escaping RFC 5802 §5.1 mandates
+// for the username in the client-first-bare message ('=' → "=3D", ',' → "=2C").
+// This is purely the n= field encoding — it is NOT SASLprep and must never be
+// applied to the password (the password is SASLprep'd, identity for ASCII, and
+// fed raw to PBKDF2). MongoDB usernames in practice are ASCII.
+func scramEscapeUsername(s string) string {
 	s = strings.ReplaceAll(s, "=", "=3D")
 	s = strings.ReplaceAll(s, ",", "=2C")
 	return s
