@@ -33,7 +33,13 @@ import (
 // defaultTimeout bounds a single skill invocation end-to-end. AI is
 // decision-support, so a slow agent must not stall an access request: the
 // control plane prefers its deterministic fallback to a long block.
-const defaultTimeout = 5 * time.Second
+//
+// 15s accommodates self-hosted, quantized local inference (Ternary-Bonsai-8B
+// via Ollama/llama.cpp), which is slower than a hosted API. The agent's own
+// per-call LLM timeout (skills/llm.py _LLM_TIMEOUT_SECONDS = 10s) sits below
+// this, so a slow model trips the agent's in-process deterministic fallback
+// before this end-to-end deadline cancels the whole request.
+const defaultTimeout = 15 * time.Second
 
 // invokePath is the agent's single skill-dispatch endpoint.
 const invokePath = "/a2a/invoke"

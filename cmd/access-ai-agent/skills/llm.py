@@ -74,9 +74,23 @@ ENV_MODEL = "ACCESS_AI_LLM_MODEL"
 ENV_MODEL_4B = "ACCESS_AI_LLM_MODEL_4B"
 ENV_MODEL_8B = "ACCESS_AI_LLM_MODEL_8B"
 
+# Default served model when no model env var is set. The recommended
+# deployment is the self-hosted, quantized Ternary-Bonsai-8B (runs on commodity
+# hardware via Ollama/llama.cpp/vLLM; see visible-fishbone docs/ai-model-setup.md).
+# Operators override per tier via ACCESS_AI_LLM_MODEL[/_4B/_8B].
+DEFAULT_LOCAL_MODEL = "Ternary-Bonsai-8B"
+
+# Model-family hint: Ternary-Bonsai (and other small local models) answer best
+# with terser, more explicitly-structured prompts than a hosted GPT-class model.
+_COMPACT_MODEL_MARKERS: tuple[str, ...] = ("bonsai", "ternary")
+
 # Bound a single inference call so a slow model cannot stall the agent past the
-# Go client's own 5s deadline.
-_LLM_TIMEOUT_SECONDS = 4.0
+# Go client's end-to-end deadline (aiclient.defaultTimeout = 15s). Local
+# quantized inference is slower than a hosted API, so this sits at 10s — high
+# enough for a 512-token Ternary-Bonsai-8B response on CPU, yet below the Go
+# deadline so the agent still falls back to its deterministic path on a slow
+# model rather than having the whole request cancelled upstream.
+_LLM_TIMEOUT_SECONDS = 10.0
 
 
 class LLMUnavailable(RuntimeError):
@@ -152,7 +166,7 @@ def _resolve_model() -> str:
         model = os.environ.get(env_name, "").strip()
         if model:
             return model
-    return "local-default"
+    return DEFAULT_LOCAL_MODEL
 
 
 def call_llm(prompt: str, *, system: str | None = None, max_tokens: int = 512) -> str:
@@ -188,7 +202,36 @@ def call_llm(prompt: str, *, system: str | None = None, max_tokens: int = 512) -
     if not base_url:
         raise LLMUnavailable(f"{ENV_BASE_URL} is required for provider={provider!r}")
 
-    return _chat_completion(base_url, _resolve_model(), prompt, system, max_tokens)
+    model = _resolve_model()
+    return _chat_completion(
+        base_url, model, prompt, adapt_system_prompt(system, model), max_tokens
+    )
+
+
+def is_compact_local_model(model: str) -> bool:
+    """Report whether *model* is a small local model (e.g. Ternary-Bonsai) that
+    benefits from terser, more structured prompting."""
+    name = (model or "").lower()
+    return any(marker in name for marker in _COMPACT_MODEL_MARKERS)
+
+
+def adapt_system_prompt(system: str | None, model: str) -> str | None:
+    """Tune the system prompt for the resolved model. For compact local models
+    (Ternary-Bonsai), append a concise directive: JSON-only output is reinforced
+    for skills that already request JSON, otherwise brevity is reinforced. The
+    prompt is left unchanged for larger / hosted-class models, so this never
+    regresses their behaviour."""
+    if not is_compact_local_model(model):
+        return system
+    base = system or ""
+    if "json" in base.lower():
+        hint = (
+            "Output ONLY a single JSON object — no prose, no explanation, "
+            "no markdown code fences."
+        )
+    else:
+        hint = "Answer in at most three short sentences. Do not invent facts."
+    return f"{base} {hint}".strip()
 
 
 def _chat_completion(base_url: str, model: str, prompt: str, system: str | None, max_tokens: int) -> str:
@@ -214,9 +257,11 @@ def _chat_completion(base_url: str, model: str, prompt: str, system: str | None,
 
 
 def parse_json_response(text: str) -> dict[str, Any]:
-    """Parse a model's text as a JSON object, tolerating a ```json fenced block.
-    Raises :class:`LLMUnavailable` when the text is not a JSON object so the
-    caller falls back to deterministic logic rather than trusting garbage."""
+    """Parse a model's text as a JSON object, tolerating a ```json fenced block
+    and prose wrapped around the object (common with smaller local models that
+    add a preamble like "Here is the result:"). Raises :class:`LLMUnavailable`
+    when no JSON object can be recovered so the caller falls back to
+    deterministic logic rather than trusting garbage."""
     cleaned = text.strip()
     if cleaned.startswith("```"):
         # Strip a leading ```json / ``` fence and the trailing fence.
@@ -226,8 +271,45 @@ def parse_json_response(text: str) -> dict[str, Any]:
         cleaned = cleaned.strip()
     try:
         parsed = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        raise LLMUnavailable(f"LLM response was not valid JSON: {exc}") from exc
+    except json.JSONDecodeError:
+        # Smaller models sometimes wrap the object in prose. Recover the first
+        # balanced top-level {...} object and parse that.
+        parsed = _extract_first_json_object(cleaned)
     if not isinstance(parsed, dict):
         raise LLMUnavailable("LLM response JSON was not an object")
     return parsed
+
+
+def _extract_first_json_object(text: str) -> Any:
+    """Return the first balanced, top-level JSON object parsed from *text*,
+    ignoring braces inside strings. Raises :class:`LLMUnavailable` when no
+    parseable object is present."""
+    start = text.find("{")
+    while start != -1:
+        depth = 0
+        in_string = False
+        escaped = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[start : i + 1])
+                    except json.JSONDecodeError:
+                        break  # malformed; try the next '{' if any
+        # Advance to the next candidate opening brace.
+        start = text.find("{", start + 1)
+    raise LLMUnavailable("LLM response did not contain a JSON object")
