@@ -3,6 +3,8 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -67,19 +69,30 @@ type rdpChannelDef struct {
 // RDPProxy is the gateway.ConnHandler for the RDP listener (:3389). It
 // terminates the operator's RDP connection, extracts the one-shot connect token
 // from the X.224 Connection Request routing cookie ("Cookie: mstshash=<token>"),
-// redeems it, then dials the upstream RDP server forcing standard RDP security
-// so the Client Info PDU is not TLS/CredSSP-wrapped. It injects the JIT vault
+// redeems it, then dials the upstream RDP server with the security mode the
+// target configures (standard RDP, TLS, or NLA/CredSSP). It injects the JIT vault
 // credential into the Client Info PDU (TS_INFO_PACKET domain/username/password)
 // and gates clipboard and drive redirection by dropping virtual-channel PDUs on
 // the cliprdr/rdpdr channels when the 1C policy engine denies them. The stream
 // is recorded and the session open/close is appended to the workspace audit
 // hash chain.
 //
-// Security mode: this proxy handles standard RDP security (PROTOCOL_RDP), which
-// is what allows in-band credential injection and channel gating. Terminating
-// NLA/CredSSP (PROTOCOL_HYBRID) requires the gateway to act as a TLS+SPNEGO
-// server and is a separate workstream; when the upstream insists on NLA the
-// proxy fails the session closed rather than silently downgrading.
+// Security mode (per-target "security" config: "rdp" (default), "tls" or "nla"):
+//   - "rdp": standard RDP security on both hops; the operator and upstream PDUs
+//     are plaintext and the vault credential is injected into the Client Info PDU.
+//   - "tls": Enhanced RDP Security (TLS) terminated at the gateway on both hops.
+//   - "nla": Enhanced RDP Security to the operator (TLS) and CredSSP/NLA to the
+//     upstream — the gateway runs CredSSP as the client (see credssp.go),
+//     authenticating to the upstream with the vault credential delivered as
+//     TSCredentials, so modern Windows servers that require NLA work without a
+//     downgrade. Because both hops then use Enhanced RDP Security, the relayed
+//     MCS/GCC/Client Info PDUs carry no per-PDU RDP security header and map 1:1,
+//     so credential injection and clipboard/drive gating operate unchanged on
+//     the decrypted stream in the middle.
+//
+// In every mode the operator authenticates via the one-shot connect token in the
+// X.224 routing cookie (read in clear text before any TLS upgrade), the stream is
+// recorded, and session open/close is appended to the workspace audit hash chain.
 type RDPProxy struct {
 	broker      *pam.Broker
 	sessions    *pam.SessionManager
@@ -87,6 +100,7 @@ type RDPProxy struct {
 	store       ReplayStore
 	dialTimeout time.Duration
 	recMaxBytes int
+	serverTLS   *tls.Config
 }
 
 // RDPProxyConfig configures an RDPProxy.
@@ -97,6 +111,10 @@ type RDPProxyConfig struct {
 	Store       ReplayStore
 	DialTimeout time.Duration
 	RecMaxBytes int
+	// TLSConfig is the server-side TLS config presented to the operator when the
+	// target uses Enhanced RDP Security ("tls"/"nla"). When nil an ephemeral
+	// self-signed certificate is generated, matching the other proxies.
+	TLSConfig *tls.Config
 }
 
 // NewRDPProxy builds an RDPProxy. broker and sessions are required.
@@ -108,6 +126,14 @@ func NewRDPProxy(cfg RDPProxyConfig) (*RDPProxy, error) {
 	if dt <= 0 {
 		dt = 15 * time.Second
 	}
+	tlsCfg := cfg.TLSConfig
+	if tlsCfg == nil {
+		cert, err := ephemeralTLSCert()
+		if err != nil {
+			return nil, fmt.Errorf("gateway: rdp ephemeral cert: %w", err)
+		}
+		tlsCfg = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12} //nolint:gosec
+	}
 	return &RDPProxy{
 		broker:      cfg.Broker,
 		sessions:    cfg.Sessions,
@@ -115,6 +141,7 @@ func NewRDPProxy(cfg RDPProxyConfig) (*RDPProxy, error) {
 		store:       cfg.Store,
 		dialTimeout: dt,
 		recMaxBytes: cfg.RecMaxBytes,
+		serverTLS:   tlsCfg,
 	}, nil
 }
 
@@ -160,7 +187,19 @@ func (p *RDPProxy) Handle(ctx context.Context, conn net.Conn) {
 		}
 	}()
 
-	upstream, err := p.dialUpstream(sessCtx, leased, crPDU)
+	mode := rdpSecurityMode(leased)
+
+	// Answer the operator's X.224 negotiation and, for Enhanced RDP Security
+	// modes, upgrade the operator hop to TLS. This must precede the upstream dial
+	// so a failed operator negotiation never opens an upstream session.
+	operator, err := p.negotiateOperator(ctx, conn, crPDU, mode)
+	if err != nil {
+		rec.Annotate(fmt.Sprintf("[operator negotiation failed: %v]", err))
+		logger.Warnf(ctx, "rdp-proxy: operator negotiation from %s: %v", clientAddr, err)
+		return
+	}
+
+	upstream, err := p.dialUpstream(sessCtx, leased, mode)
 	if err != nil {
 		rec.Annotate(fmt.Sprintf("[upstream connect failed: %v]", err))
 		logger.Warnf(ctx, "rdp-proxy: upstream %s: %v", leased.Target.Address, err)
@@ -175,7 +214,68 @@ func (p *RDPProxy) Handle(ctx context.Context, conn net.Conn) {
 		rec.Annotate("[clipboard/drive redirection blocked by policy]")
 	}
 
-	p.splice(sessCtx, conn, upstream, leased, session, rec, cancel, clipboardAllowed)
+	p.splice(sessCtx, operator, upstream, leased, session, rec, cancel, clipboardAllowed)
+}
+
+// rdpSecurityMode resolves the per-target security mode from the target config.
+// It accepts the explicit "security" key ("rdp"/"tls"/"nla") and the legacy
+// boolean shortcuts "nla":"true" and "tls":"true". The default is standard RDP
+// security.
+func rdpSecurityMode(leased *pam.LeasedSession) string {
+	cfg := decodeTargetConfig(leased.Target.Config)
+	switch strings.ToLower(cfg["security"]) {
+	case "nla", "hybrid", "credssp":
+		return "nla"
+	case "tls", "ssl":
+		return "tls"
+	case "rdp", "standard", "":
+		// fall through to the boolean shortcuts
+	default:
+		// unknown value: treat as standard
+	}
+	if cfg["nla"] == "true" {
+		return "nla"
+	}
+	if cfg["tls"] == "true" {
+		return "tls"
+	}
+	return "rdp"
+}
+
+// negotiateOperator sends the operator's X.224 Connection Confirm selecting the
+// security protocol for the chosen mode and, for the TLS-backed modes, upgrades
+// the operator connection to a server-side TLS session terminated at the
+// gateway. The returned net.Conn is the connection the relay reads/writes
+// (plaintext socket for "rdp", *tls.Conn for "tls"/"nla").
+func (p *RDPProxy) negotiateOperator(ctx context.Context, conn net.Conn, operatorCR []byte, mode string) (net.Conn, error) {
+	switch mode {
+	case "tls", "nla":
+		// The operator must have offered SSL (Enhanced RDP Security). mstsc always
+		// offers SSL alongside HYBRID, so selecting SSL is a valid response even
+		// when the operator requested NLA; the gateway is the operator's trust
+		// boundary and re-originates NLA toward the upstream itself.
+		if !operatorRequestedProtocol(operatorCR, rdpNegProtocolSSL|rdpNegProtocolHybrid) {
+			return nil, errors.New("operator did not offer TLS/NLA security")
+		}
+		if err := writeTPKT(conn, buildConnectionConfirm(rdpNegProtocolSSL)); err != nil {
+			return nil, fmt.Errorf("send connection confirm: %w", err)
+		}
+		_ = conn.SetDeadline(time.Now().Add(p.dialTimeout))
+		tlsConn := tls.Server(conn, p.serverTLS)
+		hsCtx, hsCancel := context.WithTimeout(ctx, p.dialTimeout)
+		err := tlsConn.HandshakeContext(hsCtx)
+		hsCancel()
+		if err != nil {
+			return nil, fmt.Errorf("operator tls handshake: %w", err)
+		}
+		_ = conn.SetDeadline(time.Time{})
+		return tlsConn, nil
+	default: // "rdp"
+		if err := writeTPKT(conn, buildConnectionConfirm(rdpNegProtocolRDP)); err != nil {
+			return nil, fmt.Errorf("send connection confirm: %w", err)
+		}
+		return conn, nil
+	}
 }
 
 // clipboardAllowed evaluates the synthetic "clipboard:redirect" command against
@@ -212,9 +312,14 @@ func (p *RDPProxy) readOperatorConnectionRequest(conn net.Conn) ([]byte, string,
 }
 
 // dialUpstream connects to the upstream RDP server and performs the X.224
-// negotiation, forcing standard RDP security so the Client Info PDU and channel
-// data remain in clear text for injection and gating.
-func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, operatorCR []byte) (net.Conn, error) {
+// negotiation for the chosen security mode:
+//   - "rdp": request standard RDP security; the Client Info PDU and channel data
+//     stay in clear text for injection and gating.
+//   - "tls": request SSL; complete a TLS client handshake, then relay over TLS.
+//   - "nla": request HYBRID (CredSSP); complete TLS, then run the CredSSP/NLA
+//     client exchange (credssp.go) delivering the vault credential as
+//     TSCredentials before relaying over TLS.
+func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, mode string) (net.Conn, error) {
 	d := net.Dialer{Timeout: p.dialTimeout}
 	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
 	if err != nil {
@@ -222,10 +327,18 @@ func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, 
 	}
 	_ = conn.SetDeadline(time.Now().Add(p.dialTimeout))
 
+	requested := rdpNegProtocolRDP
+	switch mode {
+	case "nla":
+		requested = rdpNegProtocolHybrid
+	case "tls":
+		requested = rdpNegProtocolSSL
+	}
+
 	user := credUser(leased)
 	// Build our own Connection Request: replay the mstshash as the vault user and
-	// request only standard RDP security.
-	if err := writeTPKT(conn, buildConnectionRequest(user, rdpNegProtocolRDP)); err != nil {
+	// request the negotiated security protocol.
+	if err := writeTPKT(conn, buildConnectionRequest(user, requested)); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("send connection request: %w", err)
 	}
@@ -239,27 +352,79 @@ func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, 
 		_ = conn.Close()
 		return nil, err
 	}
-	if selected != rdpNegProtocolRDP {
+
+	if mode == "rdp" {
+		if selected != rdpNegProtocolRDP {
+			_ = conn.Close()
+			return nil, fmt.Errorf("upstream requires non-standard security (selected protocol %d); set the target's \"security\" to \"tls\" or \"nla\"", selected)
+		}
+		_ = conn.SetDeadline(time.Time{})
+		return conn, nil
+	}
+
+	// Enhanced RDP Security: the upstream must have selected SSL or HYBRID.
+	if selected != rdpNegProtocolSSL && selected != rdpNegProtocolHybrid {
 		_ = conn.Close()
-		return nil, fmt.Errorf("upstream requires non-standard security (selected protocol %d); NLA/TLS termination is out of scope", selected)
+		return nil, fmt.Errorf("upstream selected protocol %d, expected TLS/NLA", selected)
+	}
+	tlsConn := tls.Client(conn, upstreamRDPTLSConfig(leased))
+	hsCtx, hsCancel := context.WithTimeout(ctx, p.dialTimeout)
+	err = tlsConn.HandshakeContext(hsCtx)
+	hsCancel()
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("upstream tls handshake: %w", err)
+	}
+
+	// CredSSP/NLA: authenticate with the vault credential and deliver it as
+	// TSCredentials, binding to the server's TLS public key to defeat MITM.
+	if mode == "nla" || selected == rdpNegProtocolHybrid {
+		state := tlsConn.ConnectionState()
+		if len(state.PeerCertificates) == 0 {
+			_ = tlsConn.Close()
+			return nil, errors.New("upstream presented no TLS certificate for CredSSP binding")
+		}
+		pubKeyInfo := state.PeerCertificates[0].RawSubjectPublicKeyInfo
+		domain := decodeTargetConfig(leased.Target.Config)["domain"]
+		if err := credsspClientAuth(tlsConn, pubKeyInfo, user, leased.Secret.Password, domain); err != nil {
+			_ = tlsConn.Close()
+			return nil, fmt.Errorf("upstream credssp/nla: %w", err)
+		}
 	}
 	_ = conn.SetDeadline(time.Time{})
-	return conn, nil
+	return tlsConn, nil
+}
+
+// upstreamRDPTLSConfig builds the TLS client config for the upstream RDP hop. A
+// "ca_cert" PEM in the target config pins the upstream identity; otherwise chain
+// verification is skipped because RDP servers typically present self-signed
+// certificates and CredSSP's public-key binding (not PKI) is what protects the
+// credential from a MITM.
+func upstreamRDPTLSConfig(leased *pam.LeasedSession) *tls.Config {
+	cfg := decodeTargetConfig(leased.Target.Config)
+	host := leased.Target.Address
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	tlsCfg := &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
+	if ca := cfg["ca_cert"]; ca != "" {
+		pool := x509.NewCertPool()
+		if pool.AppendCertsFromPEM([]byte(ca)) {
+			tlsCfg.RootCAs = pool
+			return tlsCfg
+		}
+	}
+	tlsCfg.InsecureSkipVerify = true //nolint:gosec // no CA pinned: CredSSP public-key binding protects the credential; the gateway is the audited trust boundary to the upstream.
+	return tlsCfg
 }
 
 // splice relays the post-negotiation RDP stream. The operator's Connection
-// Confirm is sent first (advertising standard RDP security), then both
+// Confirm and any TLS upgrade have already happened in negotiateOperator; both
 // directions are proxied TPKT-framed: operator→upstream PDUs are inspected so
 // the Client Info PDU can have the vault credential injected and clipboard/drive
 // channel PDUs can be dropped when policy denies; upstream→operator is recorded
 // and copied through.
 func (p *RDPProxy) splice(ctx context.Context, operator, upstream net.Conn, leased *pam.LeasedSession, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc, clipboardAllowed bool) {
-	// Tell the operator standard RDP security was selected.
-	if err := writeTPKT(operator, buildConnectionConfirm(rdpNegProtocolRDP)); err != nil {
-		logger.Warnf(ctx, "rdp-proxy: send connection confirm: %v", err)
-		return
-	}
-
 	st := &rdpRelayState{
 		leased:           leased,
 		clipboardAllowed: clipboardAllowed,
@@ -493,6 +658,28 @@ func selectedProtocol(pdu []byte) (uint32, error) {
 		return rdpNegProtocolRDP, nil
 	}
 	return binary.LittleEndian.Uint32(pdu[negOff+4 : negOff+8]), nil
+}
+
+// operatorRequestedProtocol reports whether the operator's X.224 Connection
+// Request advertised any of the protocols in mask via its RDP_NEG_REQ
+// ([MS-RDPBCGR] 2.2.1.1.1). An absent RDP_NEG_REQ means standard RDP only.
+func operatorRequestedProtocol(cr []byte, mask uint32) bool {
+	const x224HeaderLen = 7
+	p := tpktHeaderLen + x224HeaderLen
+	if len(cr) < p {
+		return false
+	}
+	rest := cr[p:]
+	// Skip an optional routing cookie line ("Cookie: mstshash=...\r\n").
+	if bytes.HasPrefix(rest, []byte("Cookie:")) || bytes.HasPrefix(rest, []byte("mstshash")) {
+		if i := bytes.Index(rest, []byte("\r\n")); i >= 0 {
+			rest = rest[i+2:]
+		}
+	}
+	if len(rest) < 8 || rest[0] != rdpNegTypeReq {
+		return false
+	}
+	return binary.LittleEndian.Uint32(rest[4:8])&mask != 0
 }
 
 // --- MCS / GCC helpers ----------------------------------------------------

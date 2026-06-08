@@ -28,7 +28,10 @@ const (
 const veNCryptPlain uint32 = 256
 
 // RFB client→server message types the proxy must recognise to frame the stream
-// and gate clipboard pastes.
+// and gate clipboard pastes. The first group is the RFC 6143 core set; the
+// second group is the widely-deployed extension messages (TigerVNC, UltraVNC,
+// QEMU) the proxy frames so legitimate clients are not severed while clipboard
+// gating stays intact.
 const (
 	rfbCMsgSetPixelFormat           uint8 = 0
 	rfbCMsgSetEncodings             uint8 = 2
@@ -36,7 +39,32 @@ const (
 	rfbCMsgKeyEvent                 uint8 = 4
 	rfbCMsgPointerEvent             uint8 = 5
 	rfbCMsgClientCutText            uint8 = 6
+
+	rfbCMsgEnableContinuousUpdates uint8 = 150 // EnableContinuousUpdates
+	rfbCMsgClientFence             uint8 = 248 // ClientFence
+	rfbCMsgXvp                     uint8 = 250 // xvp
+	rfbCMsgSetDesktopSize          uint8 = 251 // SetDesktopSize
+	rfbCMsgQEMU                    uint8 = 255 // QEMU Client Message
 )
+
+// QEMU Client Message (type 255) sub-message types ([QEMU RFB extensions]).
+const (
+	qemuSubExtendedKeyEvent uint8 = 0
+	qemuSubAudio            uint8 = 1
+)
+
+// qemuAudioSetFormat is the QEMU audio operation that carries a 4-byte format
+// trailer (sample-format, channels, frequency); the enable/disable operations
+// carry no trailer.
+const qemuAudioSetFormat uint16 = 2
+
+// maxRFBFenceLen bounds a ClientFence payload (the wire field is a single byte,
+// so 255 is the protocol maximum).
+const maxRFBFenceLen = 255
+
+// maxRFBScreens bounds the SetDesktopSize screen count to keep the per-screen
+// (16 bytes each) read bounded against a hostile operator.
+const maxRFBScreens = 1024
 
 // rfbProtocolVersion is the version the proxy speaks on both hops.
 const rfbProtocolVersion = "RFB 003.008\n"
@@ -462,30 +490,120 @@ func readRFBClientMessage(r io.Reader) ([]byte, uint8, error) {
 		}
 		return concat(t[0], rest, body), t[0], nil
 	case rfbCMsgClientCutText:
-		// 1 type + 3 pad + 4 length + length bytes.
+		// 1 type + 3 pad + 4 length + body. RFC 6143 ClientCutText carries a
+		// CARD32 length. TigerVNC's Extended Clipboard reuses this type with the
+		// length's high bit set: interpreted as int32 the value is negative and
+		// its magnitude is the body size (a 4-byte flags word followed by the
+		// payload). Both forms are clipboard and gated identically.
 		rest := make([]byte, 7)
 		if _, err := io.ReadFull(r, rest); err != nil {
 			return nil, t[0], err
 		}
-		length := binary.BigEndian.Uint32(rest[3:7])
-		if length > maxRFBCutTextLen {
-			return nil, t[0], fmt.Errorf("ClientCutText too large (%d bytes)", length)
+		raw := binary.BigEndian.Uint32(rest[3:7])
+		var bodyLen int64
+		if int32(raw) < 0 {
+			bodyLen = int64(-int32(raw)) // extended clipboard: |length| is the body size
+		} else {
+			bodyLen = int64(raw)
+		}
+		if bodyLen > maxRFBCutTextLen {
+			return nil, t[0], fmt.Errorf("ClientCutText too large (%d bytes)", bodyLen)
+		}
+		body := make([]byte, bodyLen)
+		if _, err := io.ReadFull(r, body); err != nil {
+			return nil, t[0], err
+		}
+		return concat(t[0], rest, body), t[0], nil
+	case rfbCMsgEnableContinuousUpdates:
+		// 1 type + 1 enable + 2 x + 2 y + 2 width + 2 height = 10 bytes.
+		return readRFBFixed(r, t[0], 10)
+	case rfbCMsgXvp:
+		// 1 type + 1 pad + 1 version + 1 code = 4 bytes.
+		return readRFBFixed(r, t[0], 4)
+	case rfbCMsgClientFence:
+		// 1 type + 3 pad + 4 flags + 1 length + length bytes (length is a single
+		// byte, max 64 per the fence spec but bounded at the wire maximum here).
+		rest := make([]byte, 8)
+		if _, err := io.ReadFull(r, rest); err != nil {
+			return nil, t[0], err
+		}
+		length := int(rest[7])
+		if length > maxRFBFenceLen {
+			return nil, t[0], fmt.Errorf("ClientFence payload too large (%d bytes)", length)
 		}
 		body := make([]byte, length)
 		if _, err := io.ReadFull(r, body); err != nil {
 			return nil, t[0], err
 		}
 		return concat(t[0], rest, body), t[0], nil
+	case rfbCMsgSetDesktopSize:
+		// 1 type + 1 pad + 2 width + 2 height + 1 number-of-screens + 1 pad,
+		// then number-of-screens × 16-byte screen records.
+		rest := make([]byte, 7)
+		if _, err := io.ReadFull(r, rest); err != nil {
+			return nil, t[0], err
+		}
+		screens := int(rest[5])
+		if screens > maxRFBScreens {
+			return nil, t[0], fmt.Errorf("SetDesktopSize screen count too large (%d)", screens)
+		}
+		body := make([]byte, screens*16)
+		if _, err := io.ReadFull(r, body); err != nil {
+			return nil, t[0], err
+		}
+		return concat(t[0], rest, body), t[0], nil
+	case rfbCMsgQEMU:
+		return readRFBQEMUMessage(r, t[0])
 	default:
 		// Fail closed. The proxy must frame every client message to locate and
-		// gate ClientCutText (clipboard). An unknown message type (a VNC
-		// extension such as TightVNC/UltraVNC or a QEMU extended event) has an
-		// unknown length, so we cannot find where the next message begins. The
-		// only alternative — stop parsing and stream the rest raw — would let
-		// clipboard data bypass policy, defeating the gateway's purpose, so we
-		// terminate rather than fail open. Supporting a specific extension means
-		// teaching this switch that message's framing, not relaxing the default.
+		// gate ClientCutText (clipboard). A message type whose framing the proxy
+		// does not know has an unknown length, so we cannot find where the next
+		// message begins. The only alternative — stop parsing and stream the
+		// rest raw — would let clipboard data bypass policy, defeating the
+		// gateway's purpose, so we terminate rather than fail open. The common
+		// real-world extensions are framed in the cases above; supporting a
+		// further extension means teaching this switch that message's framing,
+		// never relaxing this default.
 		return nil, t[0], fmt.Errorf("unsupported RFB client message type %d (gateway fails closed on unframable messages)", t[0])
+	}
+}
+
+// readRFBQEMUMessage frames a QEMU Client Message (type 255). The first trailing
+// byte is the sub-message type: ExtendedKeyEvent is a fixed 12-byte message;
+// Audio is 2 bytes of operation followed, only for the set-format operation, by
+// a 4-byte format trailer. Any other sub-message is unframable, so the proxy
+// fails closed for it rather than guessing a length.
+func readRFBQEMUMessage(r io.Reader, msgType uint8) ([]byte, uint8, error) {
+	var sub [1]byte
+	if _, err := io.ReadFull(r, sub[:]); err != nil {
+		return nil, msgType, err
+	}
+	switch sub[0] {
+	case qemuSubExtendedKeyEvent:
+		// type + sub + 2 down-flag + 4 keysym + 4 keycode = 12 bytes; 2 already read.
+		rest := make([]byte, 10)
+		if _, err := io.ReadFull(r, rest); err != nil {
+			return nil, msgType, err
+		}
+		return concat(msgType, sub[:], rest), msgType, nil
+	case qemuSubAudio:
+		op := make([]byte, 2)
+		if _, err := io.ReadFull(r, op); err != nil {
+			return nil, msgType, err
+		}
+		var trailer []byte
+		if binary.BigEndian.Uint16(op) == qemuAudioSetFormat {
+			// set-format trailer: sample-format(1) + channels(1) + frequency(4).
+			trailer = make([]byte, 6)
+			if _, err := io.ReadFull(r, trailer); err != nil {
+				return nil, msgType, err
+			}
+		}
+		out := concat(msgType, sub[:], op)
+		out = append(out, trailer...)
+		return out, msgType, nil
+	default:
+		return nil, msgType, fmt.Errorf("unsupported QEMU sub-message type %d (gateway fails closed on unframable messages)", sub[0])
 	}
 }
 

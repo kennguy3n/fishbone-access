@@ -3,6 +3,8 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"net"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+	"gorm.io/datatypes"
 )
 
 // --- unit tests -----------------------------------------------------------
@@ -296,6 +299,216 @@ func TestRDPProxyEndToEnd(t *testing.T) {
 	if !sawClipDeny {
 		t.Fatal("expected denied clipboard:redirect command row")
 	}
+}
+
+// mockNLARDPUpstream is a mock RDP server that requires NLA: it confirms HYBRID
+// security, completes a TLS handshake, runs the CredSSP server exchange (via the
+// independent mockCredSSPServer verifier), then exchanges the GCC channel data
+// and captures Client Info credentials over TLS — exactly like a modern Windows
+// server. A real NLA server is impractical in a unit test; this double proves
+// the gateway terminates the operator's TLS, re-originates CredSSP/NLA upstream
+// with the vault credential, and still injects + gates on the decrypted stream.
+type mockNLARDPUpstream struct {
+	tlsCfg           *tls.Config
+	cred             *mockCredSSPServer
+	serverChannelIDs []uint16
+
+	mu           sync.Mutex
+	sendChannels []uint16
+	gotUser      string
+	gotPass      string
+}
+
+func (m *mockNLARDPUpstream) snapshot() ([]uint16, string, string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]uint16(nil), m.sendChannels...), m.gotUser, m.gotPass
+}
+
+func (m *mockNLARDPUpstream) serve(rawConn net.Conn) {
+	defer rawConn.Close()
+	if _, err := readTPKT(rawConn); err != nil {
+		return
+	}
+	if err := writeTPKT(rawConn, buildConnectionConfirm(rdpNegProtocolHybrid)); err != nil {
+		return
+	}
+	tlsConn := tls.Server(rawConn, m.tlsCfg)
+	if err := tlsConn.Handshake(); err != nil {
+		return
+	}
+	// CredSSP/NLA: the independent verifier checks the gateway's NTLMv2 proof and
+	// public-key binding and decrypts the delivered TSCredentials.
+	if err := m.cred.serve(tlsConn); err != nil {
+		return
+	}
+	_ = tlsConn.SetDeadline(time.Time{})
+	// GCC exchange + steady-state, all over TLS.
+	if _, err := readTPKT(tlsConn); err != nil {
+		return
+	}
+	if _, err := tlsConn.Write(buildConnectResponse(m.serverChannelIDs)); err != nil {
+		return
+	}
+	for {
+		pdu, err := readTPKT(tlsConn)
+		if err != nil {
+			return
+		}
+		ch, ud, ok := parseSendData(pdu, mcsSendDataRequest)
+		if !ok {
+			continue
+		}
+		m.mu.Lock()
+		m.sendChannels = append(m.sendChannels, ch)
+		if isClientInfoPDU(ud) {
+			m.gotUser, m.gotPass, _ = decodeClientInfoUserData(ud)
+		}
+		m.mu.Unlock()
+	}
+}
+
+// TestRDPProxyNLAEndToEnd drives a full NLA session: the operator requests NLA,
+// the gateway terminates the operator's TLS, dials the NLA-requiring upstream,
+// completes CredSSP delivering the vault credential, and relays the GCC/Client
+// Info exchange over TLS — injecting the vault credential and gating clipboard.
+func TestRDPProxyNLAEndToEnd(t *testing.T) {
+	env := newProxyTestEnv(t)
+	env.seedDeny(t, "no-clipboard", []string{"*"}, []string{"cmd:clipboard*"})
+
+	upstreamTLS := testTLSConfig(t)
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer upLn.Close()
+	up := &mockNLARDPUpstream{
+		tlsCfg:           upstreamTLS,
+		serverChannelIDs: []uint16{1004, 1005}, // cliprdr, rdpdr
+		cred: &mockCredSSPServer{
+			t:          t,
+			user:       "vault-admin",
+			password:   "vault-secret",
+			domain:     "",
+			pubKeyInfo: tlsCfgLeafSPKI(t, upstreamTLS),
+		},
+	}
+	go func() {
+		for {
+			c, err := upLn.Accept()
+			if err != nil {
+				return
+			}
+			go up.serve(c)
+		}
+	}()
+
+	target, err := env.vault.CreateTarget(context.Background(), pam.CreateTargetInput{
+		WorkspaceID: env.workspaceID,
+		Name:        "tgt-rdp-nla",
+		Protocol:    models.PAMProtocolRDP,
+		Address:     upLn.Addr().String(),
+		Username:    "vault-admin",
+		Secret:      pam.Secret{Username: "vault-admin", Password: "vault-secret"},
+		Config:      datatypes.JSON(`{"security":"nla"}`),
+		Actor:       "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+	token := env.mintToken(t, target.ID, "alice")
+
+	proxy, err := NewRDPProxy(RDPProxyConfig{
+		Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store,
+		DialTimeout: 5 * time.Second, TLSConfig: testTLSConfig(t),
+	})
+	if err != nil {
+		t.Fatalf("NewRDPProxy: %v", err)
+	}
+	client, server := pipeConn(t)
+	defer client.Close()
+	done := make(chan struct{})
+	go func() {
+		proxy.Handle(context.Background(), server)
+		close(done)
+	}()
+
+	_ = client.SetDeadline(time.Now().Add(10 * time.Second))
+
+	// Operator Connection Request requesting NLA (HYBRID), token in the cookie.
+	if err := writeTPKT(client, buildConnectionRequest(token, rdpNegProtocolHybrid)); err != nil {
+		t.Fatalf("write CR: %v", err)
+	}
+	cc, err := readTPKT(client)
+	if err != nil {
+		t.Fatalf("read CC: %v", err)
+	}
+	if p, _ := selectedProtocol(cc); p != rdpNegProtocolSSL {
+		t.Fatalf("operator confirm selected protocol %d, want SSL", p)
+	}
+	// Operator upgrades to TLS terminated at the gateway.
+	opTLS := tls.Client(client, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test
+	if err := opTLS.Handshake(); err != nil {
+		t.Fatalf("operator tls handshake: %v", err)
+	}
+	// GCC + clipboard + Client Info, all over the operator TLS channel.
+	if _, err := opTLS.Write(buildConnectInitial([]string{"cliprdr", "rdpdr"})); err != nil {
+		t.Fatalf("write connect initial: %v", err)
+	}
+	if _, err := readTPKT(opTLS); err != nil {
+		t.Fatalf("read connect response: %v", err)
+	}
+	if _, err := opTLS.Write(buildSendData(mcsSendDataRequest, 1004, []byte("clipboard-format-list"))); err != nil {
+		t.Fatalf("write clipboard: %v", err)
+	}
+	info := buildClientInfoUserData("OPERATOR\\bob", "placeholder", "")
+	if _, err := opTLS.Write(buildSendData(mcsSendDataRequest, 1003, info)); err != nil {
+		t.Fatalf("write client info: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, u, _ := up.snapshot(); u != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	channels, gotUser, gotPass := up.snapshot()
+	for _, ch := range channels {
+		if ch == 1004 || ch == 1005 {
+			t.Fatalf("gated channel %d reached upstream over NLA session", ch)
+		}
+	}
+	if gotUser != "vault-admin" || gotPass != "vault-secret" {
+		t.Fatalf("upstream Client Info creds %q / %q, want vault-admin / vault-secret", gotUser, gotPass)
+	}
+	// The vault credential was also delivered to the upstream via CredSSP.
+	if up.cred.gotCreds.user != "vault-admin" || up.cred.gotCreds.password != "vault-secret" {
+		t.Fatalf("credssp delivered creds = %+v, want vault-admin/vault-secret", up.cred.gotCreds)
+	}
+
+	_ = client.Close()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("proxy did not return")
+	}
+
+	rows := env.sessionRows(t)
+	if len(rows) != 1 || rows[0].State != models.PAMSessionClosed {
+		t.Fatalf("session not closed: %+v", rows)
+	}
+}
+
+// tlsCfgLeafSPKI returns the SubjectPublicKeyInfo of the config's leaf
+// certificate — the bytes the gateway binds the CredSSP exchange to.
+func tlsCfgLeafSPKI(t *testing.T, cfg *tls.Config) []byte {
+	t.Helper()
+	leaf, err := x509.ParseCertificate(cfg.Certificates[0].Certificate[0])
+	if err != nil {
+		t.Fatalf("parse leaf cert: %v", err)
+	}
+	return leaf.RawSubjectPublicKeyInfo
 }
 
 // --- test helpers ---------------------------------------------------------

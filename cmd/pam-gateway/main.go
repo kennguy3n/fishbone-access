@@ -160,10 +160,11 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 
 	// Workstream 1 protocol proxies. Each follows the same pattern as the
 	// original four (token redemption, vault credential injection, session
-	// recording, 1C command gating, audit hash chain) and needs no operator-side
-	// TLS keypair: RDP/VNC carry their own transport security and the DB/cache
-	// wire protocols are proxied in clear text to the operator's native client.
-	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	// recording, 1C command gating, audit hash chain).
+	//
+	// RDP presents server-side TLS to the operator when the target uses Enhanced
+	// RDP Security ("tls"/"nla"); reuse the shared operator-facing keypair.
+	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
 	if err != nil {
 		return nil, err
 	}

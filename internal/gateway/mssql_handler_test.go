@@ -3,12 +3,15 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"net"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"gorm.io/datatypes"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
@@ -73,6 +76,27 @@ func TestTDSLoginSucceeded(t *testing.T) {
 	}
 }
 
+func TestPreloginEncryptionByte(t *testing.T) {
+	// A well-formed PRELOGIN advertising each value round-trips.
+	for _, want := range []byte{tdsEncryptOff, tdsEncryptOn, tdsEncryptReq, tdsEncryptNotSup} {
+		if got := preloginEncryptionByte(buildPreLogin(want)); got != want {
+			t.Fatalf("preloginEncryptionByte = 0x%02x, want 0x%02x", got, want)
+		}
+	}
+	// Malformed / truncated payloads must fail safe to NOT_SUP rather than read
+	// out of range or misreport that the peer can encrypt.
+	for name, payload := range map[string][]byte{
+		"empty":               {},
+		"truncated-option":    {preLoginEncryptionToken, 0x00},
+		"offset-out-of-range": {preLoginEncryptionToken, 0x00, 0x7f, 0x00, 0x01, 0xff},
+		"no-encryption-token": {0x00, 0x00, 0x06, 0x00, 0x01, 0xff, 0x10},
+	} {
+		if got := preloginEncryptionByte(payload); got != tdsEncryptNotSup {
+			t.Fatalf("%s: preloginEncryptionByte = 0x%02x, want NOT_SUP", name, got)
+		}
+	}
+}
+
 // --- integration test with a mock TDS upstream ----------------------------
 
 // mockMSSQLUpstream is a minimal SQL Server: it answers PRELOGIN, validates the
@@ -84,6 +108,10 @@ func TestTDSLoginSucceeded(t *testing.T) {
 type mockMSSQLUpstream struct {
 	wantUser string
 	wantPass string
+	// tlsCfg, when set, makes the mock advertise ENCRYPT_ON in its PRELOGIN
+	// response and perform the TLS server handshake (tunnelled over TDS PRELOGIN
+	// packets) before reading LOGIN7, exercising the proxy's upstream-TLS path.
+	tlsCfg *tls.Config
 
 	mu     sync.Mutex
 	seen   []string
@@ -96,14 +124,28 @@ func (m *mockMSSQLUpstream) batches() []string {
 	return append([]string(nil), m.seen...)
 }
 
-func (m *mockMSSQLUpstream) serve(conn net.Conn) {
-	defer conn.Close()
+func (m *mockMSSQLUpstream) serve(rawConn net.Conn) {
+	defer rawConn.Close()
 
 	// PRELOGIN.
-	if typ, _, err := readTDSMessage(conn); err != nil || typ != tdsPreLogin {
+	if typ, _, err := readTDSMessage(rawConn); err != nil || typ != tdsPreLogin {
 		return
 	}
-	if err := writeTDSMessage(conn, tdsResponse, buildPreLoginResponse()); err != nil {
+	// conn is the connection LOGIN7 and batches ride on: the raw socket, or a
+	// tls.Conn after the handshake when encryption is negotiated.
+	conn := rawConn
+	if m.tlsCfg != nil {
+		if err := writeTDSMessage(rawConn, tdsResponse, buildPreLogin(tdsEncryptOn)); err != nil {
+			return
+		}
+		wrapper := &tdsPreloginConn{Conn: rawConn}
+		tlsConn := tls.Server(wrapper, m.tlsCfg)
+		if err := tlsConn.Handshake(); err != nil {
+			return
+		}
+		wrapper.handshakeDone = true
+		conn = tlsConn
+	} else if err := writeTDSMessage(rawConn, tdsResponse, buildPreLoginResponse()); err != nil {
 		return
 	}
 	// LOGIN7 — validate injected credential.
@@ -249,6 +291,100 @@ func TestMSSQLProxyEndToEnd(t *testing.T) {
 	}
 	if !sawAllow || !sawDeny {
 		t.Fatalf("command rows missing expected decisions: %+v", cmds)
+	}
+}
+
+// TestMSSQLProxyUpstreamTLS verifies that when the target requests encryption
+// the proxy negotiates ENCRYPT_ON, completes the TLS handshake tunnelled over
+// TDS PRELOGIN packets, and then injects the vault credential and relays a SQL
+// batch entirely over the encrypted upstream connection.
+func TestMSSQLProxyUpstreamTLS(t *testing.T) {
+	env := newProxyTestEnv(t)
+
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer upLn.Close()
+	up := &mockMSSQLUpstream{wantUser: "sa", wantPass: "vault-pass", tlsCfg: testTLSConfig(t)}
+	go func() {
+		for {
+			c, err := upLn.Accept()
+			if err != nil {
+				return
+			}
+			go up.serve(c)
+		}
+	}()
+
+	target, err := env.vault.CreateTarget(context.Background(), pam.CreateTargetInput{
+		WorkspaceID: env.workspaceID,
+		Name:        "mssql-tls",
+		Protocol:    models.PAMProtocolMSSQL,
+		Address:     upLn.Addr().String(),
+		Username:    "sa",
+		Secret:      pam.Secret{Username: "sa", Password: "vault-pass"},
+		Config:      datatypes.JSON(`{"encrypt":"true"}`),
+		Actor:       "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+	token := env.mintToken(t, target.ID, "alice")
+
+	proxy, err := NewMSSQLProxy(MSSQLProxyConfig{Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store, DialTimeout: 5 * time.Second})
+	if err != nil {
+		t.Fatalf("NewMSSQLProxy: %v", err)
+	}
+	client, server := pipeConn(t)
+	defer client.Close()
+	done := make(chan struct{})
+	go func() {
+		proxy.Handle(context.Background(), server)
+		close(done)
+	}()
+
+	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Operator↔gateway PRELOGIN (clear text by design so the token is readable).
+	if err := writeTDSMessage(client, tdsPreLogin, buildPreLoginRequest()); err != nil {
+		t.Fatalf("write prelogin: %v", err)
+	}
+	if typ, _, err := readTDSMessage(client); err != nil || typ != tdsResponse {
+		t.Fatalf("prelogin response: typ=0x%02x err=%v", typ, err)
+	}
+	// LOGIN7 carrying the connect token as the password.
+	if err := writeTDSMessage(client, tdsLogin7, buildLogin7("alice", token, "appdb")); err != nil {
+		t.Fatalf("write login7: %v", err)
+	}
+	typ, loginResp, err := readTDSMessage(client)
+	if err != nil || typ != tdsResponse {
+		t.Fatalf("login response: typ=0x%02x err=%v", typ, err)
+	}
+	if !tdsLoginSucceeded(loginResp) {
+		t.Fatal("operator did not receive a successful LOGINACK over the TLS-backed upstream")
+	}
+
+	// A batch must relay through the encrypted upstream and be recorded.
+	if err := writeTDSMessage(client, tdsSQLBatch, buildSQLBatch("SELECT 42")); err != nil {
+		t.Fatalf("write batch: %v", err)
+	}
+	if typ, _, err := readTDSMessage(client); err != nil || typ != tdsResponse {
+		t.Fatalf("batch response: typ=0x%02x err=%v", typ, err)
+	}
+
+	_ = client.Close()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("proxy did not return")
+	}
+
+	if !up.authOK {
+		t.Fatal("upstream never authenticated over TLS")
+	}
+	if bs := up.batches(); len(bs) != 1 || bs[0] != "SELECT 42" {
+		t.Fatalf("upstream batches = %v, want [SELECT 42]", bs)
 	}
 }
 

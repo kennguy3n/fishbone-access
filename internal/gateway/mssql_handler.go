@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -27,6 +29,21 @@ const (
 	tdsPreLogin  byte = 0x12
 )
 
+// TDS PRELOGIN ENCRYPTION option values ([MS-TDS] 2.2.6.5). The negotiated
+// outcome when the gateway advertises ENCRYPT_ON is always "encrypt the whole
+// session" (TLS) or "fail" — never the awkward encrypt-login-only mode that
+// only arises when the client advertises ENCRYPT_OFF — so the upstream TLS path
+// here either wraps the entire connection or refuses.
+const (
+	tdsEncryptOff    byte = 0x00 // encryption available, off
+	tdsEncryptOn     byte = 0x01 // encryption available, on
+	tdsEncryptNotSup byte = 0x02 // encryption not supported
+	tdsEncryptReq    byte = 0x03 // encryption required
+)
+
+// preLoginEncryptionToken is the PRELOGIN option token for the ENCRYPTION field.
+const preLoginEncryptionToken byte = 0x01
+
 // tdsHeaderLen is the fixed TDS packet header size.
 const tdsHeaderLen = 8
 
@@ -51,6 +68,17 @@ const maxTDSMessageSize = 32 * 1024 * 1024
 // the session: every SQL_BATCH is decoded, gated against the 1C policy engine,
 // and appended to the workspace audit hash chain before reaching the upstream;
 // a denied batch fails the session closed.
+//
+// Upstream encryption: when the target's config sets "encrypt":"true" (or
+// "tls":"true"), the gateway advertises ENCRYPT_ON in its PRELOGIN to the
+// upstream and, when the server agrees, performs the TLS handshake tunnelled
+// inside TDS PRELOGIN packets ([MS-TDS] 2.2.6.5) before sending LOGIN7. The
+// whole gateway↔upstream session — including the injected vault credential — is
+// then encrypted. The operator↔gateway hop stays clear text by design so the
+// gateway can read the connect token from LOGIN7; that hop is the audited trust
+// boundary on the gateway's own network. A "ca_cert" PEM in the target config
+// pins the upstream identity, otherwise the gateway (the trust boundary) skips
+// chain verification, mirroring the k8s and web proxies.
 type MSSQLProxy struct {
 	broker      *pam.Broker
 	sessions    *pam.SessionManager
@@ -185,45 +213,190 @@ func (p *MSSQLProxy) authenticateOperator(ctx context.Context, conn net.Conn) (s
 
 // dialUpstream connects to the upstream SQL Server and authenticates with the
 // vault credential via PRELOGIN + LOGIN7, returning the connection and the raw
-// login-response payload to relay to the operator.
+// login-response payload to relay to the operator. When the target requests
+// encryption the gateway upgrades the connection to TLS (tunnelled over TDS
+// PRELOGIN packets) before LOGIN7, so the injected credential is never sent in
+// clear text to the upstream.
 func (p *MSSQLProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (net.Conn, []byte, error) {
 	d := net.Dialer{Timeout: p.dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	raw, err := d.DialContext(ctx, "tcp", leased.Target.Address)
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial sqlserver: %w", err)
 	}
-	_ = conn.SetDeadline(time.Now().Add(p.dialTimeout))
+	_ = raw.SetDeadline(time.Now().Add(p.dialTimeout))
 
-	if err := writeTDSMessage(conn, tdsPreLogin, buildPreLoginRequest()); err != nil {
-		_ = conn.Close()
+	wantTLS, tlsCfg := upstreamTLSConfig(leased)
+	encByte := tdsEncryptNotSup
+	if wantTLS {
+		encByte = tdsEncryptOn
+	}
+	if err := writeTDSMessage(raw, tdsPreLogin, buildPreLogin(encByte)); err != nil {
+		_ = raw.Close()
 		return nil, nil, fmt.Errorf("send prelogin: %w", err)
 	}
-	if _, _, err := readTDSMessage(conn); err != nil {
-		_ = conn.Close()
+	_, preResp, err := readTDSMessage(raw)
+	if err != nil {
+		_ = raw.Close()
 		return nil, nil, fmt.Errorf("read prelogin response: %w", err)
+	}
+	srvEnc := preloginEncryptionByte(preResp)
+
+	// conn is the connection LOGIN7 and the steady-state session ride on; it is
+	// the raw socket unless TLS is negotiated, in which case it is the tls.Conn.
+	conn := net.Conn(raw)
+	if wantTLS {
+		if srvEnc == tdsEncryptNotSup {
+			_ = raw.Close()
+			return nil, nil, errors.New("upstream does not support encryption but target requires it")
+		}
+		tlsConn, terr := tlsHandshakeOverTDS(ctx, raw, tlsCfg, p.dialTimeout)
+		if terr != nil {
+			_ = raw.Close()
+			return nil, nil, fmt.Errorf("upstream tls handshake: %w", terr)
+		}
+		conn = tlsConn
+	} else if srvEnc == tdsEncryptReq {
+		_ = raw.Close()
+		return nil, nil, errors.New("upstream requires encryption; set \"encrypt\":\"true\" on the target")
 	}
 
 	user := credUser(leased)
 	database := decodeTargetConfig(leased.Target.Config)["database"]
 	if err := writeTDSMessage(conn, tdsLogin7, buildLogin7(user, leased.Secret.Password, database)); err != nil {
-		_ = conn.Close()
+		_ = raw.Close()
 		return nil, nil, fmt.Errorf("send login7: %w", err)
 	}
 	respType, resp, err := readTDSMessage(conn)
 	if err != nil {
-		_ = conn.Close()
+		_ = raw.Close()
 		return nil, nil, fmt.Errorf("read login response: %w", err)
 	}
 	if respType != tdsResponse {
-		_ = conn.Close()
+		_ = raw.Close()
 		return nil, nil, fmt.Errorf("unexpected login response type 0x%02x", respType)
 	}
 	if !tdsLoginSucceeded(resp) {
-		_ = conn.Close()
+		_ = raw.Close()
 		return nil, nil, errors.New("upstream rejected vault credential")
 	}
-	_ = conn.SetDeadline(time.Time{})
+	_ = raw.SetDeadline(time.Time{})
 	return conn, resp, nil
+}
+
+// upstreamTLSConfig reports whether the target requests upstream encryption and,
+// if so, the tls.Config to use. A "ca_cert" PEM pins the upstream identity;
+// otherwise the gateway (the audited trust boundary to the upstream) skips chain
+// verification, mirroring the k8s and web proxies.
+func upstreamTLSConfig(leased *pam.LeasedSession) (bool, *tls.Config) {
+	cfg := decodeTargetConfig(leased.Target.Config)
+	if cfg["encrypt"] != "true" && cfg["tls"] != "true" {
+		return false, nil
+	}
+	host := leased.Target.Address
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	tlsCfg := &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
+	if ca := cfg["ca_cert"]; ca != "" {
+		pool := x509.NewCertPool()
+		if pool.AppendCertsFromPEM([]byte(ca)) {
+			tlsCfg.RootCAs = pool
+		}
+	} else {
+		tlsCfg.InsecureSkipVerify = true //nolint:gosec // no CA pinned: the gateway is the audited trust boundary to the upstream SQL Server.
+	}
+	return true, tlsCfg
+}
+
+// preloginEncryptionByte extracts the ENCRYPTION option value from a PRELOGIN
+// response payload, walking the option table (token, 2-byte offset, 2-byte
+// length) until the terminator (0xff). Offsets are relative to the start of the
+// PRELOGIN payload. If the option is absent or malformed it reports NOT_SUP,
+// the safe assumption that the peer cannot encrypt.
+func preloginEncryptionByte(payload []byte) byte {
+	for i := 0; i+1 <= len(payload); {
+		tok := payload[i]
+		if tok == 0xff {
+			return tdsEncryptNotSup
+		}
+		if i+5 > len(payload) {
+			return tdsEncryptNotSup
+		}
+		off := int(binary.BigEndian.Uint16(payload[i+1 : i+3]))
+		length := int(binary.BigEndian.Uint16(payload[i+3 : i+5]))
+		if tok == preLoginEncryptionToken {
+			if length >= 1 && off >= 0 && off < len(payload) {
+				return payload[off]
+			}
+			return tdsEncryptNotSup
+		}
+		i += 5
+	}
+	return tdsEncryptNotSup
+}
+
+// tlsHandshakeOverTDS performs a TLS client handshake whose handshake records
+// are tunnelled inside TDS PRELOGIN packets ([MS-TDS] 2.2.6.5), then returns a
+// *tls.Conn whose subsequent reads/writes ride directly on the socket (the TLS
+// record layer wraps each later TDS packet). The returned conn must be used for
+// all post-PRELOGIN traffic.
+func tlsHandshakeOverTDS(ctx context.Context, raw net.Conn, cfg *tls.Config, timeout time.Duration) (*tls.Conn, error) {
+	wrapper := &tdsPreloginConn{Conn: raw}
+	tlsConn := tls.Client(wrapper, cfg)
+	hsCtx, hsCancel := context.WithTimeout(ctx, timeout)
+	err := tlsConn.HandshakeContext(hsCtx)
+	hsCancel()
+	if err != nil {
+		return nil, err
+	}
+	// Handshake complete: stop wrapping. Application data (LOGIN7 onward) now
+	// rides as ordinary TLS records straight on the socket.
+	wrapper.handshakeDone = true
+	return tlsConn, nil
+}
+
+// tdsPreloginConn tunnels the TLS handshake inside TDS PRELOGIN packets. While
+// handshakeDone is false, each Write from crypto/tls is emitted as a PRELOGIN
+// TDS message and each Read returns the payload of one inbound PRELOGIN TDS
+// message; once the handshake completes the connection passes bytes straight
+// through so the tls.Conn record layer rides on the raw socket.
+type tdsPreloginConn struct {
+	net.Conn
+	handshakeDone bool
+	readBuf       []byte
+}
+
+func (c *tdsPreloginConn) Write(p []byte) (int, error) {
+	if c.handshakeDone {
+		return c.Conn.Write(p)
+	}
+	if err := writeTDSMessage(c.Conn, tdsPreLogin, p); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+func (c *tdsPreloginConn) Read(p []byte) (int, error) {
+	// Always drain decoded handshake bytes first so none are lost when the
+	// handshake completes mid-message.
+	if len(c.readBuf) > 0 {
+		n := copy(p, c.readBuf)
+		c.readBuf = c.readBuf[n:]
+		return n, nil
+	}
+	if c.handshakeDone {
+		return c.Conn.Read(p)
+	}
+	_, payload, err := readTDSMessage(c.Conn)
+	if err != nil {
+		return 0, err
+	}
+	if len(payload) == 0 {
+		return 0, nil
+	}
+	n := copy(p, payload)
+	c.readBuf = payload[n:]
+	return n, nil
 }
 
 // splice runs the steady-state TDS frame proxy.
@@ -371,10 +544,12 @@ func buildPreLoginResponse() []byte {
 	return buildPreLogin(0x02)
 }
 
-// buildPreLoginRequest builds the gateway's PRELOGIN to the upstream, likewise
-// declaring ENCRYPTION = NOT_SUP so the gateway's LOGIN7 is sent in clear text.
+// buildPreLoginRequest builds a clear-text PRELOGIN (ENCRYPTION = NOT_SUP) as an
+// operator/client would send it. The gateway's own upstream PRELOGIN is built
+// directly via buildPreLogin so it can advertise ENCRYPT_ON when the target
+// requests encryption.
 func buildPreLoginRequest() []byte {
-	return buildPreLogin(0x02)
+	return buildPreLogin(tdsEncryptNotSup)
 }
 
 // buildPreLogin assembles a PRELOGIN packet body with VERSION and ENCRYPTION

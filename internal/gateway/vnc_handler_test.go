@@ -67,6 +67,74 @@ func TestReadRFBClientMessageFraming(t *testing.T) {
 	}
 }
 
+// TestReadRFBClientMessageExtensionFraming proves the proxy frames the common
+// real-world extension client messages whole — so a client that uses them is no
+// longer severed — while still locating the clipboard message that follows. A
+// false length read would consume into the trailing KeyEvent and desync.
+func TestReadRFBClientMessageExtensionFraming(t *testing.T) {
+	// EnableContinuousUpdates (10 bytes).
+	ecu := []byte{rfbCMsgEnableContinuousUpdates, 1, 0, 0, 0, 0, 0, 0, 0, 0}
+	// xvp (4 bytes).
+	xvp := []byte{rfbCMsgXvp, 0, 1, 2}
+	// ClientFence: type + 3 pad + 4 flags + 1 len + len bytes.
+	fence := append([]byte{rfbCMsgClientFence, 0, 0, 0, 0, 0, 0, 0, 3}, []byte{0xAA, 0xBB, 0xCC}...)
+	// SetDesktopSize with one screen: type + pad + w(2) + h(2) + screens(1) + pad + 16.
+	sds := append([]byte{rfbCMsgSetDesktopSize, 0, 0x05, 0x00, 0x04, 0x00, 1, 0}, make([]byte, 16)...)
+	// QEMU ExtendedKeyEvent (sub 0): 12 bytes total.
+	qkey := []byte{rfbCMsgQEMU, qemuSubExtendedKeyEvent, 0, 1, 0, 0, 0, 0x41, 0, 0, 0, 0x1E}
+	// QEMU Audio set-format (sub 1, op 2): type+sub+op(2)+trailer(6) = 10 bytes.
+	qaud := []byte{rfbCMsgQEMU, qemuSubAudio, 0x00, 0x02, 0, 2, 0, 0, 0x3E, 0x80}
+	// Extended clipboard: type + 3 pad + length(int32 negative) + body.
+	extClip := []byte{rfbCMsgClientCutText, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFA} // -6
+	extClip = append(extClip, []byte{0, 0, 0, 1, 0xDE, 0xAD}...)              // 4 flags + 2 payload = 6
+	// A trailing KeyEvent proves the previous frame ended exactly on boundary.
+	key := []byte{rfbCMsgKeyEvent, 0x01, 0, 0, 0, 0, 0, 0x42}
+
+	stream := bytes.Join([][]byte{ecu, xvp, fence, sds, qkey, qaud, extClip, key}, nil)
+	r := bytes.NewReader(stream)
+
+	want := []struct {
+		name string
+		typ  uint8
+		raw  []byte
+	}{
+		{"EnableContinuousUpdates", rfbCMsgEnableContinuousUpdates, ecu},
+		{"xvp", rfbCMsgXvp, xvp},
+		{"ClientFence", rfbCMsgClientFence, fence},
+		{"SetDesktopSize", rfbCMsgSetDesktopSize, sds},
+		{"QEMUExtendedKeyEvent", rfbCMsgQEMU, qkey},
+		{"QEMUAudioSetFormat", rfbCMsgQEMU, qaud},
+		{"ExtendedClipboard", rfbCMsgClientCutText, extClip},
+		{"KeyEvent", rfbCMsgKeyEvent, key},
+	}
+	for _, w := range want {
+		msg, typ, err := readRFBClientMessage(r)
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", w.name, err)
+		}
+		if typ != w.typ || !bytes.Equal(msg, w.raw) {
+			t.Fatalf("%s: framed %d %v, want %d %v", w.name, typ, msg, w.typ, w.raw)
+		}
+	}
+	if _, _, err := readRFBClientMessage(r); err == nil {
+		t.Fatal("expected EOF after final message")
+	}
+}
+
+// TestReadRFBClientMessageUnknownStillFailsClosed proves a genuinely unframable
+// message type still terminates the session rather than letting clipboard data
+// bypass policy by streaming the remainder raw.
+func TestReadRFBClientMessageUnknownStillFailsClosed(t *testing.T) {
+	// Type 200 is not a framed extension.
+	if _, _, err := readRFBClientMessage(bytes.NewReader([]byte{200, 0, 0, 0})); err == nil {
+		t.Fatal("expected error for unframable client message type")
+	}
+	// QEMU sub-message the proxy cannot frame must also fail closed.
+	if _, _, err := readRFBClientMessage(bytes.NewReader([]byte{rfbCMsgQEMU, 0x09, 0, 0})); err == nil {
+		t.Fatal("expected error for unframable QEMU sub-message")
+	}
+}
+
 // --- integration test with a mock VNC upstream ----------------------------
 
 // mockVNCUpstream is a minimal RFB server doing VNC Authentication (DES
