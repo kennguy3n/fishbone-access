@@ -9,7 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -211,5 +213,56 @@ func TestInvokeSkillInto_RejectsBadOut(t *testing.T) {
 	var notPtr SkillResponse
 	if err := c.InvokeSkillInto(context.Background(), SkillAccessRiskAssessment, "", nil, notPtr); err == nil {
 		t.Error("expected error for non-pointer out")
+	}
+}
+
+func TestTimeoutFromEnv(t *testing.T) {
+	cases := []struct {
+		name    string
+		val     string
+		set     bool
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "unset_defaults", set: false, want: defaultTimeout},
+		{name: "empty_defaults", set: true, val: "", want: defaultTimeout},
+		{name: "override_lower", set: true, val: "5s", want: 5 * time.Second},
+		{name: "override_higher", set: true, val: "20s", want: 20 * time.Second},
+		{name: "malformed_errors", set: true, val: "10", wantErr: true},
+		{name: "zero_errors", set: true, val: "0s", wantErr: true},
+		{name: "negative_errors", set: true, val: "-1s", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.set {
+				t.Setenv(EnvTimeout, tc.val)
+			} else {
+				// t.Setenv first so the framework snapshots and restores any
+				// pre-existing value on cleanup; then unset for the test body.
+				t.Setenv(EnvTimeout, "")
+				_ = os.Unsetenv(EnvTimeout)
+			}
+			got, err := timeoutFromEnv()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("timeoutFromEnv(%q) = %v; want error", tc.val, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("timeoutFromEnv(%q) unexpected error: %v", tc.val, err)
+			}
+			if got != tc.want {
+				t.Errorf("timeoutFromEnv(%q) = %v; want %v", tc.val, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewAIClientFromEnv_RejectsBadTimeout(t *testing.T) {
+	clearMTLSEnv(t)
+	t.Setenv(EnvTimeout, "not-a-duration")
+	if _, err := NewAIClientFromEnv(); err == nil {
+		t.Fatal("expected error for malformed ACCESS_AI_AGENT_TIMEOUT")
 	}
 }
