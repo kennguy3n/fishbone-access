@@ -196,7 +196,8 @@ def test_adapt_system_prompt_compact_prose_skill():
     # A prose skill prompt gets a brevity directive (not a JSON one).
     adapted = llm.adapt_system_prompt("Be concise and concrete.", "ternary-bonsai-8b")
     assert adapted is not None
-    assert "three short sentences" in adapted
+    assert "Be concise and concrete." in adapted
+    assert "concise and factual" in adapted.lower()
     assert "JSON" not in adapted
 
 

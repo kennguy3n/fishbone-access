@@ -237,7 +237,10 @@ def adapt_system_prompt(system: str | None, model: str) -> str | None:
             "no markdown code fences."
         )
     else:
-        hint = "Answer in at most three short sentences. Do not invent facts."
+        # Reinforce brevity without a hard sentence count: several skills set
+        # their own length target in the prompt (e.g. "2-4 sentences"), so an
+        # absolute cap here would contradict them. Keep it qualitative.
+        hint = "Be concise and factual. Do not ramble or invent facts."
     return f"{base} {hint}".strip()
 
 
