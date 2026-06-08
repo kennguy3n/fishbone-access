@@ -220,10 +220,16 @@ def adapt_system_prompt(system: str | None, model: str) -> str | None:
     (Ternary-Bonsai), append a concise directive: JSON-only output is reinforced
     for skills that already request JSON, otherwise brevity is reinforced. The
     prompt is left unchanged for larger / hosted-class models, so this never
-    regresses their behaviour."""
+    regresses their behaviour.
+
+    A ``None`` system prompt is preserved as ``None`` for every model: when a
+    caller deliberately sends no system role we do not synthesise one, so this
+    helper only ever *tunes* an existing prompt rather than inventing one."""
+    if system is None:
+        return None
     if not is_compact_local_model(model):
         return system
-    base = system or ""
+    base = system
     if "json" in base.lower():
         hint = (
             "Output ONLY a single JSON object — no prose, no explanation, "

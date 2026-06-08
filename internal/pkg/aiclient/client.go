@@ -39,6 +39,10 @@ import (
 // per-call LLM timeout (skills/llm.py _LLM_TIMEOUT_SECONDS = 10s) sits below
 // this, so a slow model trips the agent's in-process deterministic fallback
 // before this end-to-end deadline cancels the whole request.
+//
+// Operators whose latency budget differs (a faster hosted model, or an
+// approval flow that must not block this long) can override it via
+// EnvTimeout; see timeoutFromEnv.
 const defaultTimeout = 15 * time.Second
 
 // invokePath is the agent's single skill-dispatch endpoint.
@@ -114,6 +118,13 @@ func NewAIClient(baseURL string, tlsConfig *tls.Config, apiKey string) *AIClient
 func NewAIClientFromEnv() (*AIClient, error) {
 	baseURL := strings.TrimSpace(os.Getenv(EnvBaseURL))
 	apiKey := strings.TrimSpace(os.Getenv(EnvAPIKey))
+	// Resolve the timeout override up front so an invalid value fails the
+	// boot regardless of the mTLS branch taken below, rather than silently
+	// reverting to the default at request time.
+	timeout, err := timeoutFromEnv()
+	if err != nil {
+		return nil, err
+	}
 	tlsCfg, err := TLSConfigFromEnv()
 	if err != nil {
 		return nil, err
@@ -145,7 +156,28 @@ func NewAIClientFromEnv() (*AIClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewAIClient(baseURL, tc, apiKey), nil
+	c := NewAIClient(baseURL, tc, apiKey)
+	c.httpClient.Timeout = timeout
+	return c, nil
+}
+
+// timeoutFromEnv resolves the single-invocation timeout from EnvTimeout,
+// returning defaultTimeout when unset. A malformed or non-positive value is a
+// hard error so an operator typo fails the boot rather than silently reverting
+// to the default (mirroring the fail-closed posture of the mTLS env parsing).
+func timeoutFromEnv() (time.Duration, error) {
+	raw := strings.TrimSpace(os.Getenv(EnvTimeout))
+	if raw == "" {
+		return defaultTimeout, nil
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("aiclient: invalid %s %q: %w", EnvTimeout, raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("aiclient: %s must be a positive duration, got %q", EnvTimeout, raw)
+	}
+	return d, nil
 }
 
 // SetHTTPClient overrides the underlying *http.Client. Intended for tests that

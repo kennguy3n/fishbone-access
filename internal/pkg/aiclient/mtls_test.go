@@ -92,7 +92,7 @@ func TestBuild_BadCAFile(t *testing.T) {
 
 func clearMTLSEnv(t *testing.T) {
 	t.Helper()
-	for _, k := range []string{EnvClientCertFile, EnvClientKeyFile, EnvServerCAFile, EnvServerName, EnvExpectedServerIdentity, EnvBaseURL, EnvAPIKey} {
+	for _, k := range []string{EnvClientCertFile, EnvClientKeyFile, EnvServerCAFile, EnvServerName, EnvExpectedServerIdentity, EnvBaseURL, EnvAPIKey, EnvTimeout} {
 		t.Setenv(k, "")
 	}
 }

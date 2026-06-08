@@ -43,6 +43,12 @@ const (
 	// EnvAPIKey is the optional shared secret sent as X-API-Key for
 	// defence-in-depth alongside mTLS.
 	EnvAPIKey = "ACCESS_AI_AGENT_API_KEY"
+	// EnvTimeout optionally overrides the end-to-end single-skill-invocation
+	// timeout as a Go duration string (e.g. "8s", "20s"). When unset it
+	// defaults to defaultTimeout (15s). Operators with a tighter latency
+	// budget (e.g. an access-request approval flow that must not block long)
+	// can lower it; those running a slower self-hosted model can raise it.
+	EnvTimeout = "ACCESS_AI_AGENT_TIMEOUT"
 )
 
 // MTLSConfigError signals a half-configured or unreadable mTLS configuration.
