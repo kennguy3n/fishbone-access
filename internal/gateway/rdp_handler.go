@@ -473,9 +473,10 @@ func (p *RDPProxy) forwardOperator(ctx context.Context, operator, upstream net.C
 			return
 		}
 		// MCS Connect Initial carries the client channel list (CS_NET). Learn the
-		// channel order once so the server-assigned ids from SC_NET can be mapped;
-		// CS_NET only appears in the Connect Initial, so ignore any later
-		// coincidental 0xC003 byte pair in steady-state traffic.
+		// channel order once so the server-assigned ids from SC_NET can be mapped.
+		// CS_NET only appears in the Connect Initial; parseClientNetworkData walks
+		// the GCC block structure (it does not scan for a marker), so steady-state
+		// traffic won't match, but the seen-guard still avoids re-walking.
 		st.mu.Lock()
 		alreadySeen := st.clientNetSeen
 		st.mu.Unlock()
@@ -841,62 +842,101 @@ func injectClientInfoCredentials(pdu, userData []byte, leased *pam.LeasedSession
 	return out, nil
 }
 
-// parseClientNetworkData locates the CS_NET (0xC003) block inside an MCS Connect
-// Initial PDU's GCC user data and returns the requested channel definitions in
-// order. ok is false when the PDU contains no CS_NET block.
+// h221ClientKey and h221ServerKey are the H.221 non-standard keys that delimit
+// the settings user data inside the GCC Conference Create Request (client) and
+// Response (server) carried by the MCS Connect Initial/Response PDUs
+// ([MS-RDPBCGR] 2.2.1.3 / 2.2.1.4). The settings blocks (CS_*/SC_*) immediately
+// follow the key and a PER-encoded user-data length.
+var (
+	h221ClientKey = []byte("Duca")
+	h221ServerKey = []byte("McDn")
+)
+
+const (
+	gccTypeClientNetwork uint16 = 0xC003 // CS_NET
+	gccTypeServerNetwork uint16 = 0x0C03 // SC_NET
+)
+
+// gccBlock locates the GCC settings block of type want inside an MCS Connect
+// Initial/Response PDU. Instead of scanning the whole PDU for the 2-byte block
+// type — which can false-match those bytes appearing inside another block's
+// payload (e.g. a desktop name or certificate) — it anchors on the 4-byte H.221
+// key that delimits the settings user data, then walks the length-prefixed
+// block list, only ever reading a block-type field at a real block boundary.
+// It returns the block including its 4-byte (type, length) header and fails
+// closed on any framing inconsistency.
+func gccBlock(pdu, h221Key []byte, want uint16) ([]byte, bool) {
+	keyIdx := bytes.Index(pdu, h221Key)
+	if keyIdx < 0 {
+		return nil, false
+	}
+	p := keyIdx + len(h221Key)
+	udLen, consumed, err := perReadLength(pdu[p:])
+	if err != nil {
+		return nil, false
+	}
+	p += consumed
+	end := p + udLen
+	if end > len(pdu) {
+		return nil, false
+	}
+	for p+4 <= end {
+		blockType := binary.LittleEndian.Uint16(pdu[p : p+2])
+		blockLen := int(binary.LittleEndian.Uint16(pdu[p+2 : p+4]))
+		if blockLen < 4 || p+blockLen > end {
+			return nil, false
+		}
+		if blockType == want {
+			return pdu[p : p+blockLen], true
+		}
+		p += blockLen
+	}
+	return nil, false
+}
+
+// parseClientNetworkData locates the CS_NET block inside an MCS Connect Initial
+// PDU's GCC user data and returns the requested channel definitions in order.
+// ok is false when the PDU contains no CS_NET block.
 func parseClientNetworkData(pdu []byte) ([]rdpChannelDef, bool) {
-	idx := indexU16LE(pdu, 0xC003)
-	if idx < 0 || idx+8 > len(pdu) {
+	block, ok := gccBlock(pdu, h221ClientKey, gccTypeClientNetwork)
+	if !ok || len(block) < 8 {
 		return nil, false
 	}
-	blockLen := int(binary.LittleEndian.Uint16(pdu[idx+2 : idx+4]))
-	if blockLen < 8 || idx+blockLen > len(pdu) {
-		return nil, false
-	}
-	count := int(binary.LittleEndian.Uint32(pdu[idx+4 : idx+8]))
-	p := idx + 8
+	// TS_UD_CS_NET: header(4), channelCount(4), channelDefArray(count×12).
+	count := int(binary.LittleEndian.Uint32(block[4:8]))
+	p := 8
 	var defs []rdpChannelDef
 	for i := 0; i < count; i++ {
-		if p+12 > idx+blockLen {
+		if p+12 > len(block) {
 			break
 		}
-		name := string(bytes.TrimRight(pdu[p:p+8], "\x00"))
+		name := string(bytes.TrimRight(block[p:p+8], "\x00"))
 		defs = append(defs, rdpChannelDef{name: name})
 		p += 12 // 8-byte name + 4-byte options
 	}
 	return defs, len(defs) > 0
 }
 
-// parseServerNetworkData locates the SC_NET (0x0C03) block inside an MCS Connect
-// Response PDU's GCC user data and returns the server-assigned channel ids in
-// order. ok is false when the PDU contains no SC_NET block.
+// parseServerNetworkData locates the SC_NET block inside an MCS Connect Response
+// PDU's GCC user data and returns the server-assigned channel ids in order. ok
+// is false when the PDU contains no SC_NET block.
 func parseServerNetworkData(pdu []byte) ([]uint16, bool) {
-	idx := indexU16LE(pdu, 0x0C03)
-	if idx < 0 || idx+8 > len(pdu) {
+	block, ok := gccBlock(pdu, h221ServerKey, gccTypeServerNetwork)
+	if !ok || len(block) < 8 {
 		return nil, false
 	}
-	blockLen := int(binary.LittleEndian.Uint16(pdu[idx+2 : idx+4]))
-	if blockLen < 8 || idx+blockLen > len(pdu) {
-		return nil, false
-	}
-	channelCount := int(binary.LittleEndian.Uint16(pdu[idx+6 : idx+8]))
-	p := idx + 8
+	// TS_UD_SC_NET: header(4), MCSChannelId(2), channelCount(2), idArray(count×2).
+	channelCount := int(binary.LittleEndian.Uint16(block[6:8]))
+	p := 8
 	var ids []uint16
 	for i := 0; i < channelCount; i++ {
-		if p+2 > idx+blockLen {
+		if p+2 > len(block) {
 			break
 		}
-		ids = append(ids, binary.LittleEndian.Uint16(pdu[p:p+2]))
+		ids = append(ids, binary.LittleEndian.Uint16(block[p:p+2]))
 		p += 2
 	}
 	return ids, len(ids) > 0
-}
-
-// indexU16LE returns the first offset at which the little-endian uint16 marker
-// appears in b, or -1.
-func indexU16LE(b []byte, marker uint16) int {
-	want := []byte{byte(marker), byte(marker >> 8)}
-	return bytes.Index(b, want)
 }
 
 // summarizePDU renders a short, fixed-size record line for a relayed PDU so the

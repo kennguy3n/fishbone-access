@@ -134,6 +134,38 @@ func TestParseClientAndServerNetworkData(t *testing.T) {
 	}
 }
 
+// TestParseNetworkDataIgnoresDecoyMarkers proves the CS_NET/SC_NET locators walk
+// the GCC block structure rather than scanning the PDU for the 2-byte block
+// marker. buildConnectInitial/buildConnectResponse plant a leading CS_CORE/
+// SC_CORE block whose payload literally contains the CS_NET (0x03,0xC0) and
+// SC_NET (0x03,0x0C) marker bytes; a byte-pattern scan would false-match the
+// decoy and misparse, while a structural walk skips the core block by its length
+// and reads the type field only at the real block boundary. It also asserts the
+// locators fail closed when the H.221 anchor is missing or a block length
+// overruns the declared user-data region.
+func TestParseNetworkDataIgnoresDecoyMarkers(t *testing.T) {
+	defs, ok := parseClientNetworkData(buildConnectInitial([]string{"cliprdr", "rdpdr", "drdynvc"}))
+	if !ok || len(defs) != 3 || defs[0].name != "cliprdr" || defs[2].name != "drdynvc" {
+		t.Fatalf("CS_NET walk did not skip decoy correctly: defs=%+v ok=%v", defs, ok)
+	}
+	ids, ok := parseServerNetworkData(buildConnectResponse([]uint16{1004, 1005}))
+	if !ok || len(ids) != 2 || ids[0] != 1004 || ids[1] != 1005 {
+		t.Fatalf("SC_NET walk did not skip decoy correctly: ids=%v ok=%v", ids, ok)
+	}
+
+	// Marker bytes present but no H.221 anchor → must fail closed.
+	noAnchor := []byte{0x03, 0x00, 0x00, 0x0c, 0x03, 0xC0, 0x08, 0x00, 0x01, 0x00, 0x00, 0x00}
+	if got, ok := parseClientNetworkData(noAnchor); ok {
+		t.Fatalf("expected fail-closed without H.221 anchor, got defs=%+v", got)
+	}
+
+	// A block length that overruns the declared user-data region → fail closed.
+	bad := gccWrap(h221ClientKey, []byte{0x03, 0xC0, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00})
+	if _, ok := parseClientNetworkData(bad); ok {
+		t.Fatalf("expected fail-closed on overrunning block length")
+	}
+}
+
 // --- integration test with a mock RDP upstream ----------------------------
 
 // mockRDPUpstream is a minimal RDP server: it confirms standard RDP security,
@@ -584,51 +616,71 @@ func decodeClientInfoUserData(ud []byte) (user, pass string, ok bool) {
 	return user, pass, true
 }
 
-// buildConnectInitial builds a minimal PDU containing a CS_NET (0xC003) block
-// with the given channel names, inside a TPKT/X.224-data envelope whose MCS
-// choice byte is not a Send Data choice.
+func appendU16LE(b []byte, v uint16) []byte {
+	return append(b, byte(v), byte(v>>8))
+}
+
+func appendU32LE(b []byte, v uint32) []byte {
+	return append(b, byte(v), byte(v>>8), byte(v>>16), byte(v>>24))
+}
+
+// settingsBlock frames a GCC settings block: type(2 LE) + length(2 LE, incl
+// the 4-byte header) + payload, matching the on-wire CS_*/SC_* block layout.
+func settingsBlock(blockType uint16, payload []byte) []byte {
+	b := appendU16LE(nil, blockType)
+	b = appendU16LE(b, uint16(4+len(payload)))
+	return append(b, payload...)
+}
+
+// gccWrap frames GCC settings blocks as they appear in a Conference Create
+// Request/Response: the 4-byte H.221 key followed by a PER-encoded user-data
+// length and then the concatenated blocks.
+func gccWrap(key, blocks []byte) []byte {
+	ud := append([]byte{}, key...)
+	ud = append(ud, perWriteLength(len(blocks))...)
+	return append(ud, blocks...)
+}
+
+// buildConnectInitial builds a PDU containing a CS_NET block with the given
+// channel names, inside a TPKT/X.224-data envelope whose MCS choice byte is not
+// a Send Data choice. The settings are framed exactly like a real GCC
+// Conference Create Request: a leading CS_CORE block, then CS_NET, anchored by
+// the H.221 "Duca" key and a PER user-data length. The CS_CORE payload
+// deliberately embeds the bytes 0x03,0xC0 (a decoy CS_NET marker) so the tests
+// prove parseClientNetworkData walks the block structure rather than scanning
+// for the marker.
 func buildConnectInitial(names []string) []byte {
-	var net []byte
-	net = append(net, 0x03, 0xC0) // CS_NET type (little-endian 0xC003)
-	blockLen := 8 + len(names)*12
-	lb := make([]byte, 2)
-	binary.LittleEndian.PutUint16(lb, uint16(blockLen))
-	net = append(net, lb...)
-	cnt := make([]byte, 4)
-	binary.LittleEndian.PutUint32(cnt, uint32(len(names)))
-	net = append(net, cnt...)
+	csNet := appendU32LE(nil, uint32(len(names))) // channelCount
 	for _, n := range names {
 		name := make([]byte, 8)
 		copy(name, n)
-		net = append(net, name...)
-		net = append(net, 0, 0, 0, 0) // options
+		csNet = append(csNet, name...)
+		csNet = append(csNet, 0, 0, 0, 0) // options
 	}
+	blocks := settingsBlock(0xC001, []byte{0x03, 0xC0, 0xAA, 0xBB, 0x03, 0xC0}) // CS_CORE w/ decoy markers
+	blocks = append(blocks, settingsBlock(gccTypeClientNetwork, csNet)...)
+	ud := gccWrap(h221ClientKey, blocks)
 	// X.224 data header + a BER-ish prefix (0x7f 0x65) so parseSendData rejects it.
-	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x65}, net...)
+	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x65}, ud...)
 	out := append([]byte{0x03, 0x00, 0x00, 0x00}, body...)
 	binary.BigEndian.PutUint16(out[2:4], uint16(len(out)))
 	return out
 }
 
-// buildConnectResponse builds a minimal PDU containing an SC_NET (0x0C03) block
-// with the given server channel ids.
+// buildConnectResponse builds a PDU containing an SC_NET block with the given
+// server channel ids, framed like a real GCC Conference Create Response with a
+// leading SC_CORE block whose payload embeds the bytes 0x03,0x0C (a decoy
+// SC_NET marker), anchored by the H.221 "McDn" key.
 func buildConnectResponse(ids []uint16) []byte {
-	var net []byte
-	net = append(net, 0x03, 0x0C) // SC_NET type (little-endian 0x0C03)
-	blockLen := 8 + len(ids)*2
-	lb := make([]byte, 2)
-	binary.LittleEndian.PutUint16(lb, uint16(blockLen))
-	net = append(net, lb...)
-	net = append(net, 0xEB, 0x03) // MCSChannelId (I/O channel 1003)
-	cc := make([]byte, 2)
-	binary.LittleEndian.PutUint16(cc, uint16(len(ids)))
-	net = append(net, cc...)
+	scNet := []byte{0xEB, 0x03}                  // MCSChannelId (I/O channel 1003)
+	scNet = appendU16LE(scNet, uint16(len(ids))) // channelCount
 	for _, id := range ids {
-		b := make([]byte, 2)
-		binary.LittleEndian.PutUint16(b, id)
-		net = append(net, b...)
+		scNet = appendU16LE(scNet, id)
 	}
-	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x66}, net...)
+	blocks := settingsBlock(0x0C01, []byte{0x03, 0x0C, 0xAA, 0xBB, 0x03, 0x0C}) // SC_CORE w/ decoy markers
+	blocks = append(blocks, settingsBlock(gccTypeServerNetwork, scNet)...)
+	ud := gccWrap(h221ServerKey, blocks)
+	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x66}, ud...)
 	out := append([]byte{0x03, 0x00, 0x00, 0x00}, body...)
 	binary.BigEndian.PutUint16(out[2:4], uint16(len(out)))
 	return out
