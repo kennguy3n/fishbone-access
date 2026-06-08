@@ -203,10 +203,7 @@ func (p *MSSQLProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 		return nil, nil, fmt.Errorf("read prelogin response: %w", err)
 	}
 
-	user := leased.Secret.Username
-	if user == "" {
-		user = leased.Target.Username
-	}
+	user := credUser(leased)
 	database := decodeTargetConfig(leased.Target.Config)["database"]
 	if err := writeTDSMessage(conn, tdsLogin7, buildLogin7(user, leased.Secret.Password, database)); err != nil {
 		_ = conn.Close()

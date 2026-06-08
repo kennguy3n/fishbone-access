@@ -188,7 +188,10 @@ func (p *WebProxy) serveRequest(ctx context.Context, operator net.Conn, req *htt
 		// A denied request keeps the session usable for subsequent allowed
 		// paths, so the 403 is written keep-alive (Content-Length delimited, no
 		// Connection: close) and the connection survives unless the operator
-		// itself asked to close.
+		// itself asked to close. The unread request body is drained by the
+		// deferred req.Body.Close above (Go's (*body).Close fully consumes the
+		// body), so the next http.ReadRequest on this keep-alive connection
+		// starts at the following request and the stream stays in sync.
 		writeHTTPDeny(operator, "pam-gateway: "+reason)
 		return !shouldClose(req)
 	}
@@ -382,15 +385,6 @@ func authMode(cfg map[string]string, secret pam.Secret) webAuthMode {
 	default:
 		return webAuthNone
 	}
-}
-
-// credUser returns the upstream username, preferring the target's Username and
-// falling back to the secret's.
-func credUser(leased *pam.LeasedSession) string {
-	if leased.Target.Username != "" {
-		return leased.Target.Username
-	}
-	return leased.Secret.Username
 }
 
 // webConnectToken extracts the one-shot token from the dedicated header or, as a

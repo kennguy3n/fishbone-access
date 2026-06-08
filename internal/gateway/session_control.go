@@ -32,6 +32,18 @@ func reconcileOrphanSession(ctx context.Context, sessions *pam.SessionManager, s
 	}
 }
 
+// credUser resolves the upstream username for a leased session. It prefers the
+// target's configured Username and falls back to the secret's, matching the
+// existing Postgres and MySQL handlers so every protocol proxy resolves the
+// upstream identity the same way. Centralised here so the new RDP/VNC/Mongo/
+// Redis/MSSQL/Web handlers cannot drift from that convention.
+func credUser(leased *pam.LeasedSession) string {
+	if leased.Target.Username != "" {
+		return leased.Target.Username
+	}
+	return leased.Secret.Username
+}
+
 // SessionHub tracks the privileged sessions currently proxied by this gateway
 // process so an admin can take over: live-monitor the streamed I/O or terminate
 // the connection outright. It is the in-process half of the takeover feature;

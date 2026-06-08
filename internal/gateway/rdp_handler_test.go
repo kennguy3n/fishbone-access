@@ -62,9 +62,11 @@ func TestInjectClientInfoCredentials(t *testing.T) {
 	// replace them with the vault credential and keep the PDU parseable.
 	info := buildClientInfoUserData("OPERATOR\\bob", "placeholder-pass", "DOMAIN")
 	pdu := buildSendData(mcsSendDataRequest, 1003, info)
+	// credUser prefers the target's username (matching the PG/MySQL convention),
+	// so the target's "vault-admin" wins over the secret's username here.
 	leased := &pam.LeasedSession{
-		Target: &models.PAMTarget{Username: "fallback"},
-		Secret: pam.Secret{Username: "vault-admin", Password: "vault-secret"},
+		Target: &models.PAMTarget{Username: "vault-admin"},
+		Secret: pam.Secret{Username: "ignored-secret-user", Password: "vault-secret"},
 	}
 	out, err := injectClientInfoCredentials(pdu, info, leased)
 	if err != nil {
@@ -96,8 +98,8 @@ func TestInjectClientInfoCredentialsTwoBytePERLength(t *testing.T) {
 	}
 	pdu := buildSendData(mcsSendDataRequest, 1003, info)
 	leased := &pam.LeasedSession{
-		Target: &models.PAMTarget{Username: "fallback"},
-		Secret: pam.Secret{Username: "vault-admin", Password: "vault-secret"},
+		Target: &models.PAMTarget{Username: "vault-admin"},
+		Secret: pam.Secret{Username: "ignored-secret-user", Password: "vault-secret"},
 	}
 	out, err := injectClientInfoCredentials(pdu, info, leased)
 	if err != nil {

@@ -208,10 +208,7 @@ func (p *RedisProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 		// already usable.
 		return conn, nil
 	}
-	user := leased.Target.Username
-	if user == "" {
-		user = leased.Secret.Username
-	}
+	user := credUser(leased)
 	var authCmd []byte
 	if user != "" {
 		authCmd = encodeRESPCommand("AUTH", user, password)

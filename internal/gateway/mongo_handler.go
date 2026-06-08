@@ -208,10 +208,7 @@ func (p *MongoProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 	if err != nil {
 		return nil, fmt.Errorf("dial mongod: %w", err)
 	}
-	user := leased.Secret.Username
-	if user == "" {
-		user = leased.Target.Username
-	}
+	user := credUser(leased)
 	// A target with no credential proxies unauthenticated (e.g. a mongod with no
 	// auth enabled on a trusted segment); only run SCRAM when a password is set.
 	if leased.Secret.Password == "" {
@@ -347,6 +344,11 @@ func parseCommand(msg []byte) (name string, body bsoncore.Document, namespace st
 		}
 		_ = flags
 		// Walk sections until the body (single document, the command) is found.
+		// The body section is the command document; the OP_MSG spec and every
+		// driver emit it first, so this loop returns at the body and any optional
+		// trailing CRC32C checksum (checksumPresent) is never examined. A message
+		// with no body section yields ok=false regardless — and carries no
+		// command to gate — so checksum handling does not affect gating.
 		for len(rem2) > 0 {
 			st, after, sok := wiremessage.ReadMsgSectionType(rem2)
 			if !sok {

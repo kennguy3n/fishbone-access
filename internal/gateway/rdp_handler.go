@@ -222,10 +222,7 @@ func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, 
 	}
 	_ = conn.SetDeadline(time.Now().Add(p.dialTimeout))
 
-	user := leased.Secret.Username
-	if user == "" {
-		user = leased.Target.Username
-	}
+	user := credUser(leased)
 	// Build our own Connection Request: replay the mstshash as the vault user and
 	// request only standard RDP security.
 	if err := writeTPKT(conn, buildConnectionRequest(user, rdpNegProtocolRDP)); err != nil {
@@ -624,11 +621,7 @@ func injectClientInfoCredentials(pdu, userData []byte, leased *pam.LeasedSession
 	_, _ = cbShell, cbWorkDir // shell/workingdir live in the preserved tail
 
 	newDomain := utf16zTerminated(decodeTargetConfig(leased.Target.Config)["domain"])
-	user := leased.Secret.Username
-	if user == "" {
-		user = leased.Target.Username
-	}
-	newUser := utf16zTerminated(user)
+	newUser := utf16zTerminated(credUser(leased))
 	newPass := utf16zTerminated(leased.Secret.Password)
 
 	// Rebuild TS_INFO_PACKET: fixed header (with updated cb fields) + new

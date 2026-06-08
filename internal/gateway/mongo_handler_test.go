@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/x/bsonx/bsoncore"
+	"go.mongodb.org/mongo-driver/v2/x/mongo/driver/wiremessage"
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
@@ -40,6 +41,35 @@ func TestMongoParseCommandOpMsg(t *testing.T) {
 	}
 	if ns != "app.victims" {
 		t.Fatalf("ns = %q, want app.victims", ns)
+	}
+}
+
+func TestMongoParseCommandOpMsgChecksum(t *testing.T) {
+	var doc []byte
+	idx, doc := bsoncore.AppendDocumentStart(doc)
+	doc = bsoncore.AppendStringElement(doc, "drop", "victims")
+	doc = bsoncore.AppendStringElement(doc, "$db", "app")
+	doc, _ = bsoncore.AppendDocumentEnd(doc, idx)
+
+	// Build an OP_MSG with the checksumPresent flag set and a trailing 4-byte
+	// CRC32C, as a driver may emit when the server advertises maxWireVersion 17.
+	// Invariant guard: the body section is parsed first, so a checksum-present
+	// command still resolves to ok=true and is gated — the trailing checksum is
+	// never misread as a section. Regression cover for the false-positive claim
+	// that checksum-present commands bypass policy gating.
+	hidx, b := wiremessage.AppendHeaderStart(nil, wiremessage.NextRequestID(), 0, wiremessage.OpMsg)
+	b = wiremessage.AppendMsgFlags(b, wiremessage.ChecksumPresent)
+	b = wiremessage.AppendMsgSectionType(b, wiremessage.SingleDocument)
+	b = append(b, doc...)
+	b = append(b, 0xDE, 0xAD, 0xBE, 0xEF) // CRC32C placeholder; proxy trims, never verifies
+	msg := bsoncore.UpdateLength(b, hidx, int32(len(b)-int(hidx)))
+
+	name, _, ns, _, _, ok := parseCommand(msg)
+	if !ok {
+		t.Fatal("parseCommand failed on checksum-present OP_MSG (command would bypass gating)")
+	}
+	if name != "drop" || ns != "app.victims" {
+		t.Fatalf("parsed name=%q ns=%q, want drop / app.victims", name, ns)
 	}
 }
 
