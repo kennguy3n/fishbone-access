@@ -1,0 +1,696 @@
+package gateway
+
+import (
+	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/binary"
+	"net"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+	"unicode/utf16"
+
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+	"gorm.io/datatypes"
+)
+
+// --- unit tests -----------------------------------------------------------
+
+func TestMstshashTokenExtraction(t *testing.T) {
+	cr := buildConnectionRequest("tok-abc123", rdpNegProtocolHybrid)
+	pdu := append([]byte{0x03, 0x00, 0x00, 0x00}, cr...)
+	binary.BigEndian.PutUint16(pdu[2:4], uint16(len(pdu)))
+	got, err := mstshashToken(pdu)
+	if err != nil {
+		t.Fatalf("mstshashToken: %v", err)
+	}
+	if got != "tok-abc123" {
+		t.Fatalf("token = %q", got)
+	}
+}
+
+func TestSelectedProtocol(t *testing.T) {
+	cc := append([]byte{0x03, 0x00, 0x00, 0x00}, buildConnectionConfirm(rdpNegProtocolSSL)...)
+	binary.BigEndian.PutUint16(cc[2:4], uint16(len(cc)))
+	p, err := selectedProtocol(cc)
+	if err != nil {
+		t.Fatalf("selectedProtocol: %v", err)
+	}
+	if p != rdpNegProtocolSSL {
+		t.Fatalf("selected = %d", p)
+	}
+}
+
+func TestParseSendDataRoundTrip(t *testing.T) {
+	ud := []byte("hello-rdp-userdata")
+	pdu := buildSendData(mcsSendDataRequest, 1007, ud)
+	ch, got, ok := parseSendData(pdu, mcsSendDataRequest)
+	if !ok {
+		t.Fatal("not parsed as send data")
+	}
+	if ch != 1007 {
+		t.Fatalf("channel = %d", ch)
+	}
+	if !bytes.Equal(got, ud) {
+		t.Fatalf("userdata = %q", got)
+	}
+}
+
+func TestInjectClientInfoCredentials(t *testing.T) {
+	// Operator's Client Info PDU carries placeholder creds; injection must
+	// replace them with the vault credential and keep the PDU parseable.
+	info := buildClientInfoUserData("OPERATOR\\bob", "placeholder-pass", "DOMAIN")
+	pdu := buildSendData(mcsSendDataRequest, 1003, info)
+	// credUser prefers the target's username (matching the PG/MySQL convention),
+	// so the target's "vault-admin" wins over the secret's username here.
+	leased := &pam.LeasedSession{
+		Target: &models.PAMTarget{Username: "vault-admin"},
+		Secret: pam.Secret{Username: "ignored-secret-user", Password: "vault-secret"},
+	}
+	out, err := injectClientInfoCredentials(pdu, info, leased)
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	_, ud, ok := parseSendData(out, mcsSendDataRequest)
+	if !ok {
+		t.Fatal("rewritten PDU not parseable")
+	}
+	user, pass, _ := decodeClientInfoUserData(ud)
+	if user != "vault-admin" || pass != "vault-secret" {
+		t.Fatalf("injected creds = %q / %q", user, pass)
+	}
+	if int(binary.BigEndian.Uint16(out[2:4])) != len(out) {
+		t.Fatalf("TPKT length not fixed: hdr=%d actual=%d", binary.BigEndian.Uint16(out[2:4]), len(out))
+	}
+}
+
+func TestInjectClientInfoCredentialsTwoBytePERLength(t *testing.T) {
+	// Build an operator Client Info PDU whose user-data length uses the 2-byte
+	// PER form with a low byte < 0x80: 300 = 0x012C encodes to [0x81, 0x2C].
+	// A heuristic that decided the determinant width by inspecting the byte just
+	// before the user data would see 0x2C (high bit clear), misread it as a
+	// 1-byte determinant, and splice in the stray 0x81 — corrupting the PDU.
+	longPass := strings.Repeat("p", 131) // user "bob" + this pass ⇒ user-data len 300
+	info := buildClientInfoUserData("bob", longPass, "")
+	if len(info) < 0x80 || byte(len(info))&0x80 != 0 {
+		t.Fatalf("precondition: user-data len %d is not a 2-byte PER form with low byte < 0x80", len(info))
+	}
+	pdu := buildSendData(mcsSendDataRequest, 1003, info)
+	leased := &pam.LeasedSession{
+		Target: &models.PAMTarget{Username: "vault-admin"},
+		Secret: pam.Secret{Username: "ignored-secret-user", Password: "vault-secret"},
+	}
+	out, err := injectClientInfoCredentials(pdu, info, leased)
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	_, ud, ok := parseSendData(out, mcsSendDataRequest)
+	if !ok {
+		t.Fatal("rewritten 2-byte-length PDU not parseable")
+	}
+	user, pass, _ := decodeClientInfoUserData(ud)
+	if user != "vault-admin" || pass != "vault-secret" {
+		t.Fatalf("injected creds = %q / %q", user, pass)
+	}
+	if int(binary.BigEndian.Uint16(out[2:4])) != len(out) {
+		t.Fatalf("TPKT length not fixed: hdr=%d actual=%d", binary.BigEndian.Uint16(out[2:4]), len(out))
+	}
+}
+
+func TestParseClientAndServerNetworkData(t *testing.T) {
+	ci := buildConnectInitial([]string{"cliprdr", "rdpdr"})
+	defs, ok := parseClientNetworkData(ci)
+	if !ok || len(defs) != 2 || defs[0].name != "cliprdr" || defs[1].name != "rdpdr" {
+		t.Fatalf("CS_NET parse = %+v ok=%v", defs, ok)
+	}
+	cr := buildConnectResponse([]uint16{1004, 1005})
+	ids, ok := parseServerNetworkData(cr)
+	if !ok || len(ids) != 2 || ids[0] != 1004 || ids[1] != 1005 {
+		t.Fatalf("SC_NET parse = %v ok=%v", ids, ok)
+	}
+}
+
+// TestParseNetworkDataIgnoresDecoyMarkers proves the CS_NET/SC_NET locators walk
+// the GCC block structure rather than scanning the PDU for the 2-byte block
+// marker. buildConnectInitial/buildConnectResponse plant a leading CS_CORE/
+// SC_CORE block whose payload literally contains the CS_NET (0x03,0xC0) and
+// SC_NET (0x03,0x0C) marker bytes; a byte-pattern scan would false-match the
+// decoy and misparse, while a structural walk skips the core block by its length
+// and reads the type field only at the real block boundary. It also asserts the
+// locators fail closed when the H.221 anchor is missing or a block length
+// overruns the declared user-data region.
+func TestParseNetworkDataIgnoresDecoyMarkers(t *testing.T) {
+	defs, ok := parseClientNetworkData(buildConnectInitial([]string{"cliprdr", "rdpdr", "drdynvc"}))
+	if !ok || len(defs) != 3 || defs[0].name != "cliprdr" || defs[2].name != "drdynvc" {
+		t.Fatalf("CS_NET walk did not skip decoy correctly: defs=%+v ok=%v", defs, ok)
+	}
+	ids, ok := parseServerNetworkData(buildConnectResponse([]uint16{1004, 1005}))
+	if !ok || len(ids) != 2 || ids[0] != 1004 || ids[1] != 1005 {
+		t.Fatalf("SC_NET walk did not skip decoy correctly: ids=%v ok=%v", ids, ok)
+	}
+
+	// Marker bytes present but no H.221 anchor → must fail closed.
+	noAnchor := []byte{0x03, 0x00, 0x00, 0x0c, 0x03, 0xC0, 0x08, 0x00, 0x01, 0x00, 0x00, 0x00}
+	if got, ok := parseClientNetworkData(noAnchor); ok {
+		t.Fatalf("expected fail-closed without H.221 anchor, got defs=%+v", got)
+	}
+
+	// A block length that overruns the declared user-data region → fail closed.
+	bad := gccWrap(h221ClientKey, []byte{0x03, 0xC0, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00})
+	if _, ok := parseClientNetworkData(bad); ok {
+		t.Fatalf("expected fail-closed on overrunning block length")
+	}
+}
+
+// --- integration test with a mock RDP upstream ----------------------------
+
+// mockRDPUpstream is a minimal RDP server: it confirms standard RDP security,
+// exchanges the GCC channel data, then records the channel ids it receives Send
+// Data on and the credential carried in the Client Info PDU. A real RDP server
+// is impractical in a unit test; this double verifies the proxy forces standard
+// security, injects the vault credential, and never relays gated channel PDUs.
+type mockRDPUpstream struct {
+	serverChannelIDs []uint16
+
+	mu           sync.Mutex
+	sendChannels []uint16
+	gotUser      string
+	gotPass      string
+}
+
+func (m *mockRDPUpstream) snapshot() ([]uint16, string, string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]uint16(nil), m.sendChannels...), m.gotUser, m.gotPass
+}
+
+func (m *mockRDPUpstream) serve(conn net.Conn) {
+	defer conn.Close()
+	// Connection Request → Confirm (standard RDP security).
+	if _, err := readTPKT(conn); err != nil {
+		return
+	}
+	if err := writeTPKT(conn, buildConnectionConfirm(rdpNegProtocolRDP)); err != nil {
+		return
+	}
+	// MCS Connect Initial → Connect Response with our channel ids.
+	if _, err := readTPKT(conn); err != nil {
+		return
+	}
+	if _, err := conn.Write(buildConnectResponse(m.serverChannelIDs)); err != nil {
+		return
+	}
+	for {
+		pdu, err := readTPKT(conn)
+		if err != nil {
+			return
+		}
+		ch, ud, ok := parseSendData(pdu, mcsSendDataRequest)
+		if !ok {
+			continue
+		}
+		m.mu.Lock()
+		m.sendChannels = append(m.sendChannels, ch)
+		if isClientInfoPDU(ud) {
+			m.gotUser, m.gotPass, _ = decodeClientInfoUserData(ud)
+		}
+		m.mu.Unlock()
+	}
+}
+
+func TestRDPProxyEndToEnd(t *testing.T) {
+	env := newProxyTestEnv(t)
+	env.seedDeny(t, "no-clipboard", []string{"*"}, []string{"cmd:clipboard*"})
+
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer upLn.Close()
+	up := &mockRDPUpstream{serverChannelIDs: []uint16{1004, 1005}} // cliprdr, rdpdr
+	go func() {
+		for {
+			c, err := upLn.Accept()
+			if err != nil {
+				return
+			}
+			go up.serve(c)
+		}
+	}()
+
+	target := env.createTarget(t, models.PAMProtocolRDP, upLn.Addr().String(),
+		pam.Secret{Username: "vault-admin", Password: "vault-secret"})
+	token := env.mintToken(t, target.ID, "alice")
+
+	proxy, err := NewRDPProxy(RDPProxyConfig{Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store, DialTimeout: 5 * time.Second})
+	if err != nil {
+		t.Fatalf("NewRDPProxy: %v", err)
+	}
+	client, server := pipeConn(t)
+	defer client.Close()
+	done := make(chan struct{})
+	go func() {
+		proxy.Handle(context.Background(), server)
+		close(done)
+	}()
+
+	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Operator Connection Request with the token in the mstshash cookie.
+	if err := writeTPKT(client, buildConnectionRequest(token, rdpNegProtocolHybrid)); err != nil {
+		t.Fatalf("write CR: %v", err)
+	}
+	// Connection Confirm (standard RDP security).
+	cc, err := readTPKT(client)
+	if err != nil {
+		t.Fatalf("read CC: %v", err)
+	}
+	if p, _ := selectedProtocol(cc); p != rdpNegProtocolRDP {
+		t.Fatalf("operator confirm selected protocol %d", p)
+	}
+	// MCS Connect Initial advertising clipboard + drive channels (buildConnectInitial
+	// already returns a full TPKT frame, so write it raw).
+	if _, err := client.Write(buildConnectInitial([]string{"cliprdr", "rdpdr"})); err != nil {
+		t.Fatalf("write connect initial: %v", err)
+	}
+	// Connect Response (carries SC_NET channel ids); reading it guarantees the
+	// gateway has populated its channel→id gating map before we send anything on
+	// those channels.
+	if _, err := readTPKT(client); err != nil {
+		t.Fatalf("read connect response: %v", err)
+	}
+	// Clipboard Send Data (channel 1004) → must be dropped by the gateway.
+	if _, err := client.Write(buildSendData(mcsSendDataRequest, 1004, []byte("clipboard-format-list"))); err != nil {
+		t.Fatalf("write clipboard: %v", err)
+	}
+	// Client Info PDU on the I/O channel (1003) → forwarded with injected creds.
+	info := buildClientInfoUserData("OPERATOR\\bob", "placeholder", "")
+	if _, err := client.Write(buildSendData(mcsSendDataRequest, 1003, info)); err != nil {
+		t.Fatalf("write client info: %v", err)
+	}
+
+	// Wait until the upstream has received the Client Info PDU.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, u, _ := up.snapshot(); u != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	channels, gotUser, gotPass := up.snapshot()
+	for _, ch := range channels {
+		if ch == 1004 || ch == 1005 {
+			t.Fatalf("gated channel %d reached upstream", ch)
+		}
+	}
+	if gotUser != "vault-admin" || gotPass != "vault-secret" {
+		t.Fatalf("upstream saw creds %q / %q, want vault-admin / vault-secret", gotUser, gotPass)
+	}
+
+	_ = client.Close()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("proxy did not return")
+	}
+
+	rows := env.sessionRows(t)
+	if len(rows) != 1 || rows[0].State != models.PAMSessionClosed {
+		t.Fatalf("session not closed: %+v", rows)
+	}
+	var sawClipDeny bool
+	for _, c := range env.commandRows(t, rows[0].ID) {
+		if c.Command == "clipboard:redirect" && c.Decision == models.PAMDecisionDeny {
+			sawClipDeny = true
+		}
+	}
+	if !sawClipDeny {
+		t.Fatal("expected denied clipboard:redirect command row")
+	}
+}
+
+// mockNLARDPUpstream is a mock RDP server that requires NLA: it confirms HYBRID
+// security, completes a TLS handshake, runs the CredSSP server exchange (via the
+// independent mockCredSSPServer verifier), then exchanges the GCC channel data
+// and captures Client Info credentials over TLS — exactly like a modern Windows
+// server. A real NLA server is impractical in a unit test; this double proves
+// the gateway terminates the operator's TLS, re-originates CredSSP/NLA upstream
+// with the vault credential, and still injects + gates on the decrypted stream.
+type mockNLARDPUpstream struct {
+	tlsCfg           *tls.Config
+	cred             *mockCredSSPServer
+	serverChannelIDs []uint16
+
+	mu           sync.Mutex
+	sendChannels []uint16
+	gotUser      string
+	gotPass      string
+}
+
+func (m *mockNLARDPUpstream) snapshot() ([]uint16, string, string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]uint16(nil), m.sendChannels...), m.gotUser, m.gotPass
+}
+
+func (m *mockNLARDPUpstream) serve(rawConn net.Conn) {
+	defer rawConn.Close()
+	if _, err := readTPKT(rawConn); err != nil {
+		return
+	}
+	if err := writeTPKT(rawConn, buildConnectionConfirm(rdpNegProtocolHybrid)); err != nil {
+		return
+	}
+	tlsConn := tls.Server(rawConn, m.tlsCfg)
+	if err := tlsConn.Handshake(); err != nil {
+		return
+	}
+	// CredSSP/NLA: the independent verifier checks the gateway's NTLMv2 proof and
+	// public-key binding and decrypts the delivered TSCredentials.
+	if err := m.cred.serve(tlsConn); err != nil {
+		return
+	}
+	_ = tlsConn.SetDeadline(time.Time{})
+	// GCC exchange + steady-state, all over TLS.
+	if _, err := readTPKT(tlsConn); err != nil {
+		return
+	}
+	if _, err := tlsConn.Write(buildConnectResponse(m.serverChannelIDs)); err != nil {
+		return
+	}
+	for {
+		pdu, err := readTPKT(tlsConn)
+		if err != nil {
+			return
+		}
+		ch, ud, ok := parseSendData(pdu, mcsSendDataRequest)
+		if !ok {
+			continue
+		}
+		m.mu.Lock()
+		m.sendChannels = append(m.sendChannels, ch)
+		if isClientInfoPDU(ud) {
+			m.gotUser, m.gotPass, _ = decodeClientInfoUserData(ud)
+		}
+		m.mu.Unlock()
+	}
+}
+
+// TestRDPProxyNLAEndToEnd drives a full NLA session: the operator requests NLA,
+// the gateway terminates the operator's TLS, dials the NLA-requiring upstream,
+// completes CredSSP delivering the vault credential, and relays the GCC/Client
+// Info exchange over TLS — injecting the vault credential and gating clipboard.
+func TestRDPProxyNLAEndToEnd(t *testing.T) {
+	env := newProxyTestEnv(t)
+	env.seedDeny(t, "no-clipboard", []string{"*"}, []string{"cmd:clipboard*"})
+
+	upstreamTLS := testTLSConfig(t)
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer upLn.Close()
+	up := &mockNLARDPUpstream{
+		tlsCfg:           upstreamTLS,
+		serverChannelIDs: []uint16{1004, 1005}, // cliprdr, rdpdr
+		cred: &mockCredSSPServer{
+			t:          t,
+			user:       "vault-admin",
+			password:   "vault-secret",
+			domain:     "",
+			pubKeyInfo: tlsCfgLeafSPKI(t, upstreamTLS),
+		},
+	}
+	go func() {
+		for {
+			c, err := upLn.Accept()
+			if err != nil {
+				return
+			}
+			go up.serve(c)
+		}
+	}()
+
+	target, err := env.vault.CreateTarget(context.Background(), pam.CreateTargetInput{
+		WorkspaceID: env.workspaceID,
+		Name:        "tgt-rdp-nla",
+		Protocol:    models.PAMProtocolRDP,
+		Address:     upLn.Addr().String(),
+		Username:    "vault-admin",
+		Secret:      pam.Secret{Username: "vault-admin", Password: "vault-secret"},
+		Config:      datatypes.JSON(`{"security":"nla"}`),
+		Actor:       "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+	token := env.mintToken(t, target.ID, "alice")
+
+	proxy, err := NewRDPProxy(RDPProxyConfig{
+		Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store,
+		DialTimeout: 5 * time.Second, TLSConfig: testTLSConfig(t),
+	})
+	if err != nil {
+		t.Fatalf("NewRDPProxy: %v", err)
+	}
+	client, server := pipeConn(t)
+	defer client.Close()
+	done := make(chan struct{})
+	go func() {
+		proxy.Handle(context.Background(), server)
+		close(done)
+	}()
+
+	_ = client.SetDeadline(time.Now().Add(10 * time.Second))
+
+	// Operator Connection Request requesting NLA (HYBRID), token in the cookie.
+	if err := writeTPKT(client, buildConnectionRequest(token, rdpNegProtocolHybrid)); err != nil {
+		t.Fatalf("write CR: %v", err)
+	}
+	cc, err := readTPKT(client)
+	if err != nil {
+		t.Fatalf("read CC: %v", err)
+	}
+	if p, _ := selectedProtocol(cc); p != rdpNegProtocolSSL {
+		t.Fatalf("operator confirm selected protocol %d, want SSL", p)
+	}
+	// Operator upgrades to TLS terminated at the gateway.
+	opTLS := tls.Client(client, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec // test
+	if err := opTLS.Handshake(); err != nil {
+		t.Fatalf("operator tls handshake: %v", err)
+	}
+	// GCC + clipboard + Client Info, all over the operator TLS channel.
+	if _, err := opTLS.Write(buildConnectInitial([]string{"cliprdr", "rdpdr"})); err != nil {
+		t.Fatalf("write connect initial: %v", err)
+	}
+	if _, err := readTPKT(opTLS); err != nil {
+		t.Fatalf("read connect response: %v", err)
+	}
+	if _, err := opTLS.Write(buildSendData(mcsSendDataRequest, 1004, []byte("clipboard-format-list"))); err != nil {
+		t.Fatalf("write clipboard: %v", err)
+	}
+	info := buildClientInfoUserData("OPERATOR\\bob", "placeholder", "")
+	if _, err := opTLS.Write(buildSendData(mcsSendDataRequest, 1003, info)); err != nil {
+		t.Fatalf("write client info: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, u, _ := up.snapshot(); u != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	channels, gotUser, gotPass := up.snapshot()
+	for _, ch := range channels {
+		if ch == 1004 || ch == 1005 {
+			t.Fatalf("gated channel %d reached upstream over NLA session", ch)
+		}
+	}
+	if gotUser != "vault-admin" || gotPass != "vault-secret" {
+		t.Fatalf("upstream Client Info creds %q / %q, want vault-admin / vault-secret", gotUser, gotPass)
+	}
+	// The vault credential was also delivered to the upstream via CredSSP.
+	if up.cred.gotCreds.user != "vault-admin" || up.cred.gotCreds.password != "vault-secret" {
+		t.Fatalf("credssp delivered creds = %+v, want vault-admin/vault-secret", up.cred.gotCreds)
+	}
+
+	_ = client.Close()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("proxy did not return")
+	}
+
+	rows := env.sessionRows(t)
+	if len(rows) != 1 || rows[0].State != models.PAMSessionClosed {
+		t.Fatalf("session not closed: %+v", rows)
+	}
+}
+
+// tlsCfgLeafSPKI returns the SubjectPublicKeyInfo of the config's leaf
+// certificate — the bytes the gateway binds the CredSSP exchange to.
+func tlsCfgLeafSPKI(t *testing.T, cfg *tls.Config) []byte {
+	t.Helper()
+	leaf, err := x509.ParseCertificate(cfg.Certificates[0].Certificate[0])
+	if err != nil {
+		t.Fatalf("parse leaf cert: %v", err)
+	}
+	return leaf.RawSubjectPublicKeyInfo
+}
+
+// --- test helpers ---------------------------------------------------------
+
+// buildSendData frames an MCS Send Data PDU (request or indication) on a
+// channel inside a TPKT/X.224-data envelope.
+func buildSendData(choice uint8, channelID uint16, userData []byte) []byte {
+	x224 := []byte{0x02, x224TPDUData, 0x80}
+	mcs := []byte{choice << 2}
+	mcs = append(mcs, 0x00, 0x07) // initiator (arbitrary)
+	chb := make([]byte, 2)
+	binary.BigEndian.PutUint16(chb, channelID)
+	mcs = append(mcs, chb...)
+	mcs = append(mcs, 0x70) // dataPriority/segmentation
+	mcs = append(mcs, perWriteLength(len(userData))...)
+	mcs = append(mcs, userData...)
+	out := append([]byte{0x03, 0x00, 0x00, 0x00}, x224...)
+	out = append(out, mcs...)
+	binary.BigEndian.PutUint16(out[2:4], uint16(len(out)))
+	return out
+}
+
+// buildClientInfoUserData builds a Send Data user-data payload: a 4-byte
+// security header with SEC_INFO_PKT plus a UNICODE TS_INFO_PACKET.
+func buildClientInfoUserData(user, pass, domain string) []byte {
+	sec := make([]byte, 4)
+	binary.LittleEndian.PutUint16(sec[0:2], secInfoPkt)
+
+	dom := utf16z(domain)
+	usr := utf16z(user)
+	pwd := utf16z(pass)
+	shell := utf16z("")
+	workdir := utf16z("")
+
+	info := make([]byte, 18)
+	binary.LittleEndian.PutUint32(info[0:4], 0)           // CodePage
+	binary.LittleEndian.PutUint32(info[4:8], infoUnicode) // flags
+	binary.LittleEndian.PutUint16(info[8:10], uint16(len(dom)-2))
+	binary.LittleEndian.PutUint16(info[10:12], uint16(len(usr)-2))
+	binary.LittleEndian.PutUint16(info[12:14], uint16(len(pwd)-2))
+	binary.LittleEndian.PutUint16(info[14:16], uint16(len(shell)-2))
+	binary.LittleEndian.PutUint16(info[16:18], uint16(len(workdir)-2))
+	info = append(info, dom...)
+	info = append(info, usr...)
+	info = append(info, pwd...)
+	info = append(info, shell...)
+	info = append(info, workdir...)
+	return append(sec, info...)
+}
+
+// decodeClientInfoUserData extracts the domain-less username and password from
+// a Client Info user-data payload built by buildClientInfoUserData / rewritten
+// by the proxy.
+func decodeClientInfoUserData(ud []byte) (user, pass string, ok bool) {
+	if !isClientInfoPDU(ud) || len(ud) < 4+18 {
+		return "", "", false
+	}
+	info := ud[4:]
+	cbDomain := int(binary.LittleEndian.Uint16(info[8:10]))
+	cbUser := int(binary.LittleEndian.Uint16(info[10:12]))
+	cbPass := int(binary.LittleEndian.Uint16(info[12:14]))
+	p := 18
+	p += cbDomain + 2
+	if p+cbUser+2 > len(info) {
+		return "", "", false
+	}
+	user = decodeUTF16LE(info[p : p+cbUser])
+	p += cbUser + 2
+	if p+cbPass > len(info) {
+		return "", "", false
+	}
+	pass = decodeUTF16LE(info[p : p+cbPass])
+	return user, pass, true
+}
+
+func appendU16LE(b []byte, v uint16) []byte {
+	return append(b, byte(v), byte(v>>8))
+}
+
+func appendU32LE(b []byte, v uint32) []byte {
+	return append(b, byte(v), byte(v>>8), byte(v>>16), byte(v>>24))
+}
+
+// settingsBlock frames a GCC settings block: type(2 LE) + length(2 LE, incl
+// the 4-byte header) + payload, matching the on-wire CS_*/SC_* block layout.
+func settingsBlock(blockType uint16, payload []byte) []byte {
+	b := appendU16LE(nil, blockType)
+	b = appendU16LE(b, uint16(4+len(payload)))
+	return append(b, payload...)
+}
+
+// gccWrap frames GCC settings blocks as they appear in a Conference Create
+// Request/Response: the 4-byte H.221 key followed by a PER-encoded user-data
+// length and then the concatenated blocks.
+func gccWrap(key, blocks []byte) []byte {
+	ud := append([]byte{}, key...)
+	ud = append(ud, perWriteLength(len(blocks))...)
+	return append(ud, blocks...)
+}
+
+// buildConnectInitial builds a PDU containing a CS_NET block with the given
+// channel names, inside a TPKT/X.224-data envelope whose MCS choice byte is not
+// a Send Data choice. The settings are framed exactly like a real GCC
+// Conference Create Request: a leading CS_CORE block, then CS_NET, anchored by
+// the H.221 "Duca" key and a PER user-data length. The CS_CORE payload
+// deliberately embeds the bytes 0x03,0xC0 (a decoy CS_NET marker) so the tests
+// prove parseClientNetworkData walks the block structure rather than scanning
+// for the marker.
+func buildConnectInitial(names []string) []byte {
+	csNet := appendU32LE(nil, uint32(len(names))) // channelCount
+	for _, n := range names {
+		name := make([]byte, 8)
+		copy(name, n)
+		csNet = append(csNet, name...)
+		csNet = append(csNet, 0, 0, 0, 0) // options
+	}
+	blocks := settingsBlock(0xC001, []byte{0x03, 0xC0, 0xAA, 0xBB, 0x03, 0xC0}) // CS_CORE w/ decoy markers
+	blocks = append(blocks, settingsBlock(gccTypeClientNetwork, csNet)...)
+	ud := gccWrap(h221ClientKey, blocks)
+	// X.224 data header + a BER-ish prefix (0x7f 0x65) so parseSendData rejects it.
+	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x65}, ud...)
+	out := append([]byte{0x03, 0x00, 0x00, 0x00}, body...)
+	binary.BigEndian.PutUint16(out[2:4], uint16(len(out)))
+	return out
+}
+
+// buildConnectResponse builds a PDU containing an SC_NET block with the given
+// server channel ids, framed like a real GCC Conference Create Response with a
+// leading SC_CORE block whose payload embeds the bytes 0x03,0x0C (a decoy
+// SC_NET marker), anchored by the H.221 "McDn" key.
+func buildConnectResponse(ids []uint16) []byte {
+	scNet := []byte{0xEB, 0x03}                  // MCSChannelId (I/O channel 1003)
+	scNet = appendU16LE(scNet, uint16(len(ids))) // channelCount
+	for _, id := range ids {
+		scNet = appendU16LE(scNet, id)
+	}
+	blocks := settingsBlock(0x0C01, []byte{0x03, 0x0C, 0xAA, 0xBB, 0x03, 0x0C}) // SC_CORE w/ decoy markers
+	blocks = append(blocks, settingsBlock(gccTypeServerNetwork, scNet)...)
+	ud := gccWrap(h221ServerKey, blocks)
+	body := append([]byte{0x02, x224TPDUData, 0x80, 0x7f, 0x66}, ud...)
+	out := append([]byte{0x03, 0x00, 0x00, 0x00}, body...)
+	binary.BigEndian.PutUint16(out[2:4], uint16(len(out)))
+	return out
+}
+
+func utf16z(s string) []byte {
+	u := utf16.Encode([]rune(s))
+	out := make([]byte, len(u)*2+2)
+	for i, r := range u {
+		binary.LittleEndian.PutUint16(out[i*2:], r)
+	}
+	return out
+}
