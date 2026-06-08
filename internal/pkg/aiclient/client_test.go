@@ -237,6 +237,9 @@ func TestTimeoutFromEnv(t *testing.T) {
 			if tc.set {
 				t.Setenv(EnvTimeout, tc.val)
 			} else {
+				// t.Setenv first so the framework snapshots and restores any
+				// pre-existing value on cleanup; then unset for the test body.
+				t.Setenv(EnvTimeout, "")
 				_ = os.Unsetenv(EnvTimeout)
 			}
 			got, err := timeoutFromEnv()
