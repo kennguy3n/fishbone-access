@@ -227,12 +227,14 @@ func (p *MongoProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 
 // splice relays wire messages in both directions. Operator→upstream messages
 // are parsed so destructive commands can be gated and every command recorded;
-// upstream→operator bytes are copied through with recording.
+// upstream→operator messages are relayed one complete wire message at a time so
+// a deny reply written by the command loop can never be spliced into the middle
+// of an upstream message on the shared operator socket.
 func (p *MongoProxy) splice(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
 	var wg sync.WaitGroup
 
 	// Both relay directions write to the operator connection: the command loop
-	// injects deny replies, the copy loop streams upstream replies. Drivers
+	// injects deny replies, the reply loop streams upstream replies. Drivers
 	// correlate replies by responseTo so ordering is safe, but a raw net.Conn
 	// still does not serialize concurrent Writes — funnel both through one
 	// lockedWriter so the bytes of a deny frame and a reply frame cannot
@@ -250,7 +252,7 @@ func (p *MongoProxy) splice(ctx context.Context, operator net.Conn, operatorBuf 
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		_, _ = io.Copy(operatorOut, rec.TeeReader(DirOutput, upstream))
+		p.relayUpstreamReplies(operatorOut, upstream, rec)
 	}()
 
 	go func() {
@@ -307,6 +309,26 @@ func (p *MongoProxy) forwardOperatorCommands(ctx context.Context, operator io.Wr
 		}
 
 		if _, err := upstream.Write(msg); err != nil {
+			return
+		}
+	}
+}
+
+// relayUpstreamReplies reads complete wire messages from the upstream and writes
+// each as a single Write through the shared lockedWriter. Relaying whole
+// messages (rather than an io.Copy that flushes arbitrary 32KB chunks) is what
+// makes the lockedWriter sufficient: a deny reply from the command loop can only
+// land between two upstream messages, never inside one, so the operator's driver
+// always reads a contiguous, correctly length-prefixed wire message.
+func (p *MongoProxy) relayUpstreamReplies(operator io.Writer, upstream io.Reader, rec *IORecorder) {
+	upstreamBuf := bufio.NewReaderSize(upstream, 32*1024)
+	for {
+		msg, err := readWireMessage(upstreamBuf)
+		if err != nil {
+			return
+		}
+		rec.Record(DirOutput, msg)
+		if _, err := operator.Write(msg); err != nil {
 			return
 		}
 	}

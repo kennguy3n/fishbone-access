@@ -403,22 +403,29 @@ func (c *tdsPreloginConn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-// splice runs the steady-state TDS frame proxy.
+// splice runs the steady-state TDS frame proxy. Both relay goroutines write to
+// the operator socket — the command loop emits a deny error, the reply loop
+// relays upstream messages — so the operator connection is funnelled through one
+// lockedWriter. Because writeTDSMessage now emits each TDS message in a single
+// Write, the lockedWriter guarantees a deny error can only land between two
+// upstream messages, never inside one.
 func (p *MSSQLProxy) splice(ctx context.Context, operator, upstream net.Conn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
 	var wg sync.WaitGroup
+
+	operatorOut := newLockedWriter(operator)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		p.forwardOperatorMessages(ctx, operator, upstream, session, rec)
+		p.forwardOperatorMessages(ctx, operator, operatorOut, upstream, session, rec)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		_, _ = io.Copy(operator, rec.TeeReader(DirOutput, upstream))
+		p.relayUpstreamMessages(operatorOut, upstream, rec)
 	}()
 
 	go func() {
@@ -430,14 +437,32 @@ func (p *MSSQLProxy) splice(ctx context.Context, operator, upstream net.Conn, se
 	wg.Wait()
 }
 
+// relayUpstreamMessages reads complete TDS messages from the upstream and writes
+// each (re-framed) as a single Write through the shared lockedWriter, recording
+// the payload for replay. Relaying whole messages — rather than an io.Copy that
+// flushes arbitrary 32KB chunks — is what lets the lockedWriter keep a deny
+// error from splitting an upstream result set on the operator socket.
+func (p *MSSQLProxy) relayUpstreamMessages(operator io.Writer, upstream io.Reader, rec *IORecorder) {
+	for {
+		msgType, payload, err := readTDSMessage(upstream)
+		if err != nil {
+			return
+		}
+		rec.Record(DirOutput, payload)
+		if err := writeTDSMessage(operator, msgType, payload); err != nil {
+			return
+		}
+	}
+}
+
 // forwardOperatorMessages reads whole operator TDS messages, gating each
 // SQL_BATCH before re-framing it to the upstream. A denied batch fails the
 // session closed: TDS interleaves result-set tokens across packets, so the safe
 // enforcement for an in-flight stream is to sever it rather than risk a
 // desynchronised protocol state (mirrors the MySQL proxy).
-func (p *MSSQLProxy) forwardOperatorMessages(ctx context.Context, operator, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
+func (p *MSSQLProxy) forwardOperatorMessages(ctx context.Context, operatorRead io.Reader, operatorOut io.Writer, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
-		msgType, payload, err := readTDSMessage(operator)
+		msgType, payload, err := readTDSMessage(operatorRead)
 		if err != nil {
 			return
 		}
@@ -452,7 +477,7 @@ func (p *MSSQLProxy) forwardOperatorMessages(ctx context.Context, operator, upst
 					reason = "denied by command policy"
 				}
 				rec.Annotate(fmt.Sprintf("[batch denied: %s]", reason))
-				_ = writeTDSMessage(operator, tdsResponse, buildTDSError("pam-gateway: "+reason))
+				_ = writeTDSMessage(operatorOut, tdsResponse, buildTDSError("pam-gateway: "+reason))
 				return
 			}
 		case tdsRPC:
@@ -512,8 +537,13 @@ func readTDSMessage(r io.Reader) (msgType byte, payload []byte, err error) {
 }
 
 // writeTDSMessage frames payload into TDS packets of at most
-// tdsDefaultPacketSize data bytes, setting the EOM bit on the final packet.
+// tdsDefaultPacketSize data bytes, setting the EOM bit on the final packet. The
+// whole multi-packet message is assembled into one buffer and emitted in a
+// single Write so the message is atomic on the wire: when the destination is a
+// lockedWriter shared by two goroutines (the operator socket), a concurrent
+// write cannot be spliced between this message's packets.
 func writeTDSMessage(w io.Writer, msgType byte, payload []byte) error {
+	var buf []byte
 	packetID := byte(1)
 	for first := true; first || len(payload) > 0; first = false {
 		chunk := payload
@@ -525,18 +555,19 @@ func writeTDSMessage(w io.Writer, msgType byte, payload []byte) error {
 		if len(payload) == 0 {
 			status = tdsStatusEOM
 		}
-		frame := make([]byte, tdsHeaderLen+len(chunk))
-		frame[0] = msgType
-		frame[1] = status
-		binary.BigEndian.PutUint16(frame[2:4], uint16(tdsHeaderLen+len(chunk)))
-		frame[4], frame[5] = 0x00, 0x00 // SPID
-		frame[6] = packetID
-		frame[7] = 0x00 // Window
-		copy(frame[tdsHeaderLen:], chunk)
-		if _, err := w.Write(frame); err != nil {
-			return err
-		}
+		hdr := [tdsHeaderLen]byte{}
+		hdr[0] = msgType
+		hdr[1] = status
+		binary.BigEndian.PutUint16(hdr[2:4], uint16(tdsHeaderLen+len(chunk)))
+		hdr[4], hdr[5] = 0x00, 0x00 // SPID
+		hdr[6] = packetID
+		hdr[7] = 0x00 // Window
+		buf = append(buf, hdr[:]...)
+		buf = append(buf, chunk...)
 		packetID++
+	}
+	if _, err := w.Write(buf); err != nil {
+		return err
 	}
 	return nil
 }

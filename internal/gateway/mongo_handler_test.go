@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -422,6 +423,65 @@ func TestMongoSCRAMRejectsBadPassword(t *testing.T) {
 		// Accept any non-nil error; the message should reference the upstream
 		// rejection or signature failure.
 		t.Logf("scram error: %v", err)
+	}
+}
+
+// chunkRecordingWriter records the length of every individual Write call so a
+// test can assert how a relay split (or did not split) its output on the wire.
+type chunkRecordingWriter struct {
+	mu    sync.Mutex
+	sizes []int
+	buf   bytes.Buffer
+}
+
+func (w *chunkRecordingWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.sizes = append(w.sizes, len(p))
+	return w.buf.Write(p)
+}
+
+// rawWireMessage builds a syntactically valid MongoDB wire message of exactly
+// total bytes: a little-endian length prefix followed by filler. relay only
+// reads the length prefix and copies bytes, so the body content is irrelevant.
+func rawWireMessage(total int) []byte {
+	if total < mongoHeaderLen {
+		total = mongoHeaderLen
+	}
+	b := make([]byte, total)
+	binary.LittleEndian.PutUint32(b[0:4], uint32(total))
+	for i := mongoHeaderLen; i < total; i++ {
+		b[i] = byte(i)
+	}
+	return b
+}
+
+// TestMongoRelayUpstreamRepliesFramed proves the upstream→operator relay writes
+// each complete wire message in a single Write, even when a message is far
+// larger than the relay's 32KB read buffer. This is the property that makes the
+// shared lockedWriter sufficient to prevent a concurrently-written deny reply
+// from being spliced into the middle of an upstream message: if every message
+// is one atomic Write, a deny frame can only land between messages. The earlier
+// io.Copy relay flushed arbitrary 32KB chunks, so a large reply was multiple
+// Writes and a deny frame could interleave and corrupt the operator's stream.
+func TestMongoRelayUpstreamRepliesFramed(t *testing.T) {
+	small := rawWireMessage(64)
+	big := rawWireMessage(100 * 1024) // > the 32KB bufio read buffer
+	upstream := bytes.NewReader(append(append([]byte{}, small...), big...))
+
+	w := &chunkRecordingWriter{}
+	rec := NewIORecorder("test-relay", 0)
+	p := &MongoProxy{}
+	p.relayUpstreamReplies(w, upstream, rec)
+
+	if len(w.sizes) != 2 {
+		t.Fatalf("expected 2 atomic Writes (one per message), got %d: %v", len(w.sizes), w.sizes)
+	}
+	if w.sizes[0] != len(small) || w.sizes[1] != len(big) {
+		t.Fatalf("messages not relayed as whole units: writes=%v want [%d %d]", w.sizes, len(small), len(big))
+	}
+	if !bytes.Equal(w.buf.Bytes(), append(append([]byte{}, small...), big...)) {
+		t.Fatal("relayed bytes do not match upstream bytes")
 	}
 }
 

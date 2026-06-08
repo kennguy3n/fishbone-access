@@ -42,6 +42,71 @@ func TestTDSMessageRoundTripMultiPacket(t *testing.T) {
 	}
 }
 
+// TestWriteTDSMessageAtomic proves writeTDSMessage emits an entire multi-packet
+// message in a single Write. That atomicity is what lets the operator socket be
+// shared (via a lockedWriter) by the upstream-relay goroutine and the deny-error
+// path without a deny frame ever being spliced between an upstream message's
+// packets.
+func TestWriteTDSMessageAtomic(t *testing.T) {
+	payload := make([]byte, tdsDefaultPacketSize*3+7) // spans 4 packets
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+	w := &chunkRecordingWriter{}
+	if err := writeTDSMessage(w, tdsResponse, payload); err != nil {
+		t.Fatalf("writeTDSMessage: %v", err)
+	}
+	if len(w.sizes) != 1 {
+		t.Fatalf("expected 1 atomic Write for the whole message, got %d: %v", len(w.sizes), w.sizes)
+	}
+	// The single Write must reassemble back to the original payload.
+	typ, got, err := readTDSMessage(bytes.NewReader(w.buf.Bytes()))
+	if err != nil {
+		t.Fatalf("readTDSMessage: %v", err)
+	}
+	if typ != tdsResponse || !bytes.Equal(got, payload) {
+		t.Fatalf("round-trip mismatch: type=0x%02x len=%d", typ, len(got))
+	}
+}
+
+// TestMSSQLRelayUpstreamMessagesFramed proves the upstream→operator relay writes
+// each complete TDS message as a single atomic Write, even one spanning several
+// TDS packets. Combined with the shared lockedWriter, this guarantees a deny
+// error cannot split an upstream result set on the operator socket — the hazard
+// the previous raw io.Copy relay left open.
+func TestMSSQLRelayUpstreamMessagesFramed(t *testing.T) {
+	// Two upstream messages: a small one, then one spanning multiple packets.
+	small := []byte("OK")
+	big := make([]byte, tdsDefaultPacketSize*2+99)
+	for i := range big {
+		big[i] = byte(i % 251)
+	}
+	var upstream bytes.Buffer
+	if err := writeTDSMessage(&upstream, tdsResponse, small); err != nil {
+		t.Fatalf("frame small: %v", err)
+	}
+	if err := writeTDSMessage(&upstream, tdsResponse, big); err != nil {
+		t.Fatalf("frame big: %v", err)
+	}
+
+	w := &chunkRecordingWriter{}
+	rec := NewIORecorder("test-mssql-relay", 0)
+	p := &MSSQLProxy{}
+	p.relayUpstreamMessages(w, bytes.NewReader(upstream.Bytes()), rec)
+
+	if len(w.sizes) != 2 {
+		t.Fatalf("expected 2 atomic Writes (one per message), got %d: %v", len(w.sizes), w.sizes)
+	}
+	// Each relayed message must independently reassemble to its source payload.
+	r := bytes.NewReader(w.buf.Bytes())
+	if _, got, err := readTDSMessage(r); err != nil || !bytes.Equal(got, small) {
+		t.Fatalf("first message mismatch: err=%v", err)
+	}
+	if _, got, err := readTDSMessage(r); err != nil || !bytes.Equal(got, big) {
+		t.Fatalf("second message mismatch: err=%v", err)
+	}
+}
+
 func TestLogin7PasswordRoundTrip(t *testing.T) {
 	login := buildLogin7("sa", "S3cr3t-Token!", "appdb")
 	tok, err := tokenFromLogin7(login)
