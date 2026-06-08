@@ -26,6 +26,20 @@ func TestNTOWFv2KnownAnswer(t *testing.T) {
 	}
 }
 
+// TestNTOWFv2UppercasesUnicodeUsername proves the username upper-casing in the
+// NTLMv2 key derivation is Unicode-aware, not ASCII-only: a non-ASCII username
+// must derive the same key whether the operator typed it lower- or upper-cased,
+// since the server upper-cases it before computing its own NTOWFv2. An
+// ASCII-only fold would leave the accented letters untouched and silently derive
+// a different key (an unauthenticatable account). Regression cover for that.
+func TestNTOWFv2UppercasesUnicodeUsername(t *testing.T) {
+	lower := hex.EncodeToString(ntowfv2("café", "Password", "Domain"))
+	upper := hex.EncodeToString(ntowfv2("CAFÉ", "Password", "Domain"))
+	if lower != upper {
+		t.Fatalf("NTOWFv2 not case-insensitive for non-ASCII username: %s != %s", lower, upper)
+	}
+}
+
 // TestCredSSPClientAuthHandshake runs the real client driver against an
 // independent mock CredSSP server that verifies the NTLMv2 proof, the sealed
 // public-key binding, and decrypts the delivered TSCredentials — i.e. it proves

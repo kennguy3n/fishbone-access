@@ -137,7 +137,8 @@ func (p *WebProxy) Handle(ctx context.Context, conn net.Conn) {
 		rec.Annotate(fmt.Sprintf("[upstream client init failed: %v]", err))
 		return
 	}
-	client.CloseIdleConnections()
+	// Close idle keep-alive connections to the upstream when the session ends so
+	// a long-lived gateway does not leak pooled sockets per closed session.
 	defer client.CloseIdleConnections()
 
 	// Form-login targets authenticate once per session by POSTing credentials to

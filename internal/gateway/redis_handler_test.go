@@ -350,8 +350,9 @@ func (c *concurrencyProbe) Write(p []byte) (int, error) {
 // writer funnels concurrent writes through its mutex, so the two relay goroutines
 // (the deny-reply injector and the upstream-reply copier) can never interleave
 // frame bytes on the socket. Run under -race this also guards the helper itself.
-// Regression cover for the concurrent-operator-write hazard in the Redis/Mongo
-// deny paths.
+// Regression cover for the concurrent-operator-write hazard in the MongoDB deny
+// path. (The Redis proxy no longer uses a second writer goroutine — it drives a
+// strictly sequential request/reply loop — so this helper now guards Mongo.)
 func TestLockedWriterSerializesConcurrentWrites(t *testing.T) {
 	probe := &concurrencyProbe{}
 	lw := newLockedWriter(probe)
@@ -370,6 +371,169 @@ func TestLockedWriterSerializesConcurrentWrites(t *testing.T) {
 
 	if got := probe.maxConcurrent.Load(); got > 1 {
 		t.Fatalf("lockedWriter allowed %d concurrent writes; deny and reply frames can interleave", got)
+	}
+}
+
+// mockRedisEchoUpstream authenticates like mockRedisUpstream but answers every
+// forwarded command with a simple-string echo of the command's first argument
+// (its key). That makes each reply individually identifiable, so a test can
+// prove the proxy returns replies in command order even when a denied command
+// sits between two forwarded ones.
+type mockRedisEchoUpstream struct {
+	wantPass string
+}
+
+func (m *mockRedisEchoUpstream) serve(conn net.Conn) {
+	defer conn.Close()
+	br := bufio.NewReader(conn)
+	args, _, err := readRESPCommand(br)
+	if err != nil {
+		return
+	}
+	if len(args) < 2 || !strings.EqualFold(args[0], "AUTH") || args[len(args)-1] != m.wantPass {
+		_, _ = conn.Write([]byte("-ERR upstream auth failed\r\n"))
+		return
+	}
+	_, _ = conn.Write([]byte("+OK\r\n"))
+	for {
+		args, _, err := readRESPCommand(br)
+		if err != nil {
+			return
+		}
+		if len(args) == 0 {
+			continue
+		}
+		key := ""
+		if len(args) > 1 {
+			key = args[1]
+		}
+		_, _ = conn.Write([]byte("+" + key + "\r\n"))
+	}
+}
+
+// TestRedisProxyPipelinedReplyOrdering proves replies are returned in command
+// order even when a denied command sits between two forwarded ones. The operator
+// pipelines three commands in a single write — GET a, DEL b (denied by policy),
+// GET c — and must read exactly "+a", the gateway deny error, then "+c", in that
+// order. The previous two-goroutine design could write the DEL-b deny error
+// before the upstream's "+a" reply landed, shifting every reply by one and
+// handing the operator the wrong answer; the sequential pump prevents that.
+func TestRedisProxyPipelinedReplyOrdering(t *testing.T) {
+	env := newProxyTestEnv(t)
+	env.seedDeny(t, "no-del", []string{"*"}, []string{"cmd:DEL *"})
+
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen upstream: %v", err)
+	}
+	defer upLn.Close()
+	up := &mockRedisEchoUpstream{wantPass: "upstream-secret"}
+	go func() {
+		for {
+			c, err := upLn.Accept()
+			if err != nil {
+				return
+			}
+			go up.serve(c)
+		}
+	}()
+
+	target := env.createTarget(t, models.PAMProtocolRedis, upLn.Addr().String(), pam.Secret{Password: "upstream-secret"})
+	token := env.mintToken(t, target.ID, "alice")
+
+	proxy, err := NewRedisProxy(RedisProxyConfig{
+		Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store,
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewRedisProxy: %v", err)
+	}
+
+	client, server := pipeConn(t)
+	defer client.Close()
+	go proxy.Handle(context.Background(), server)
+
+	cr := bufio.NewReader(client)
+	if _, err := client.Write(encodeRESPCommand("AUTH", token)); err != nil {
+		t.Fatalf("send AUTH: %v", err)
+	}
+	if line := readLine(t, cr); line != "+OK" {
+		t.Fatalf("auth ack = %q, want +OK", line)
+	}
+
+	// Pipeline three commands in a single write; DEL is denied by policy.
+	var pipeline []byte
+	pipeline = append(pipeline, encodeRESPCommand("GET", "a")...)
+	pipeline = append(pipeline, encodeRESPCommand("DEL", "b")...)
+	pipeline = append(pipeline, encodeRESPCommand("GET", "c")...)
+	if _, err := client.Write(pipeline); err != nil {
+		t.Fatalf("send pipeline: %v", err)
+	}
+
+	// Reply 1 must be the upstream echo for GET a.
+	if line := readLine(t, cr); line != "+a" {
+		t.Fatalf("reply 1 = %q, want +a (GET a)", line)
+	}
+	// Reply 2 must be the gateway deny for DEL b — NOT an upstream reply.
+	if line := readLine(t, cr); !strings.HasPrefix(line, "-ERR pam-gateway:") {
+		t.Fatalf("reply 2 = %q, want gateway deny for DEL b", line)
+	}
+	// Reply 3 must be the upstream echo for GET c.
+	if line := readLine(t, cr); line != "+c" {
+		t.Fatalf("reply 3 = %q, want +c (GET c)", line)
+	}
+
+	// Upstream must have seen GET a and GET c only, in order, never DEL.
+	_ = client.Close()
+}
+
+// TestReadRESPReply exercises the upstream reply reader across RESP2 and RESP3
+// reply types, proving it returns exactly one complete reply (recursing into
+// aggregates) and leaves any following bytes untouched, and that it fails closed
+// on an unknown reply type.
+func TestReadRESPReply(t *testing.T) {
+	cases := []struct {
+		name  string
+		in    string
+		want  string
+		trail string // bytes that must remain unread after one reply
+	}{
+		{"simple string", "+OK\r\n", "+OK\r\n", ""},
+		{"error", "-ERR nope\r\n", "-ERR nope\r\n", ""},
+		{"integer", ":42\r\n", ":42\r\n", ""},
+		{"bulk", "$5\r\nhello\r\n", "$5\r\nhello\r\n", ""},
+		{"null bulk", "$-1\r\n", "$-1\r\n", ""},
+		{"empty bulk", "$0\r\n\r\n", "$0\r\n\r\n", ""},
+		{"array", "*2\r\n$3\r\nfoo\r\n:7\r\n", "*2\r\n$3\r\nfoo\r\n:7\r\n", ""},
+		{"null array", "*-1\r\n", "*-1\r\n", ""},
+		{"nested array", "*1\r\n*2\r\n:1\r\n:2\r\n", "*1\r\n*2\r\n:1\r\n:2\r\n", ""},
+		{"resp3 null", "_\r\n", "_\r\n", ""},
+		{"resp3 boolean", "#t\r\n", "#t\r\n", ""},
+		{"resp3 double", ",3.14\r\n", ",3.14\r\n", ""},
+		{"resp3 map", "%1\r\n$1\r\na\r\n:1\r\n", "%1\r\n$1\r\na\r\n:1\r\n", ""},
+		{"resp3 set", "~2\r\n:1\r\n:2\r\n", "~2\r\n:1\r\n:2\r\n", ""},
+		{"verbatim", "=8\r\ntxt:abcd\r\n", "=8\r\ntxt:abcd\r\n", ""},
+		{"stops at one reply", "+first\r\n+second\r\n", "+first\r\n", "+second\r\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := bufio.NewReader(strings.NewReader(c.in))
+			got, err := readRESPReply(r)
+			if err != nil {
+				t.Fatalf("readRESPReply: %v", err)
+			}
+			if string(got) != c.want {
+				t.Fatalf("reply = %q, want %q", got, c.want)
+			}
+			rest, _ := r.ReadString(0) // drain remaining buffered bytes
+			if rest != c.trail {
+				t.Fatalf("trailing bytes = %q, want %q", rest, c.trail)
+			}
+		})
+	}
+
+	if _, err := readRESPReply(bufio.NewReader(strings.NewReader("@bogus\r\n"))); err == nil {
+		t.Fatal("expected error for unknown RESP reply type")
 	}
 }
 

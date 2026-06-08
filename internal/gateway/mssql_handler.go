@@ -260,23 +260,27 @@ func (p *MSSQLProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 		return nil, nil, errors.New("upstream requires encryption; set \"encrypt\":\"true\" on the target")
 	}
 
+	// Past this point LOGIN7 and the steady-state session ride on conn, which is
+	// the tls.Conn once TLS was negotiated. Close conn (not raw) on the error
+	// paths so the TLS layer sends a close_notify and tears itself down cleanly;
+	// when no TLS was negotiated conn is raw, so this is equivalent there.
 	user := credUser(leased)
 	database := decodeTargetConfig(leased.Target.Config)["database"]
 	if err := writeTDSMessage(conn, tdsLogin7, buildLogin7(user, leased.Secret.Password, database)); err != nil {
-		_ = raw.Close()
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("send login7: %w", err)
 	}
 	respType, resp, err := readTDSMessage(conn)
 	if err != nil {
-		_ = raw.Close()
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("read login response: %w", err)
 	}
 	if respType != tdsResponse {
-		_ = raw.Close()
+		_ = conn.Close()
 		return nil, nil, fmt.Errorf("unexpected login response type 0x%02x", respType)
 	}
 	if !tdsLoginSucceeded(resp) {
-		_ = raw.Close()
+		_ = conn.Close()
 		return nil, nil, errors.New("upstream rejected vault credential")
 	}
 	_ = raw.SetDeadline(time.Time{})

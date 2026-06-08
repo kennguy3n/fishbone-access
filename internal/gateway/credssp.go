@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/md4" //nolint:gosec,staticcheck // MD4 is the NTLM one-way function (NTOWF) per [MS-NLMP]; required by the protocol.
@@ -104,7 +105,7 @@ func ntowfv2(user, password, domain string) []byte {
 	ntlmHash := h.Sum(nil)
 
 	mac := hmac.New(md5.New, ntlmHash)
-	mac.Write(utf16LEBytes(toUpper(user)))
+	mac.Write(utf16LEBytes(strings.ToUpper(user)))
 	mac.Write(utf16LEBytes(domain))
 	return mac.Sum(nil)
 }
@@ -488,7 +489,11 @@ func credsspClientAuth(conn io.ReadWriter, pubKeyInfo []byte, user, password, do
 		return errors.New("credssp server public-key binding mismatch (possible MITM)")
 	}
 
-	authInfo := gssWrap(keys.clientSeal, keys.clientSigning, 1, marshalTSCredentials(domain, user, password))
+	creds, err := marshalTSCredentials(domain, user, password)
+	if err != nil {
+		return fmt.Errorf("marshal credentials: %w", err)
+	}
+	authInfo := gssWrap(keys.clientSeal, keys.clientSigning, 1, creds)
 	if err := writeTSRequest(conn, tsRequest{Version: credsspVersion, AuthInfo: authInfo}); err != nil {
 		return fmt.Errorf("send authinfo: %w", err)
 	}
@@ -506,8 +511,11 @@ func credsspBindingHash(magic, nonce, pubKeyInfo []byte) []byte {
 }
 
 // marshalTSCredentials encodes the password credential as DER TSCredentials with
-// UTF-16LE string fields ([MS-CSSP] 2.2.1.2).
-func marshalTSCredentials(domain, user, password string) []byte {
+// UTF-16LE string fields ([MS-CSSP] 2.2.1.2). An ASN.1 marshalling failure is
+// returned to the caller rather than swallowed, so the gateway never sends an
+// empty/garbage sealed AuthInfo (which the server would reject anyway) and the
+// authentication failure surfaces with a clear error.
+func marshalTSCredentials(domain, user, password string) ([]byte, error) {
 	pwCreds := tsPasswordCreds{
 		DomainName: utf16LEBytes(domain),
 		UserName:   utf16LEBytes(user),
@@ -515,14 +523,14 @@ func marshalTSCredentials(domain, user, password string) []byte {
 	}
 	inner, err := asn1.Marshal(pwCreds)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("marshal TSPasswordCreds: %w", err)
 	}
 	creds := tsCredentials{CredType: 1, Credentials: inner}
 	out, err := asn1.Marshal(creds)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("marshal TSCredentials: %w", err)
 	}
-	return out
+	return out, nil
 }
 
 // parseTSPasswordCreds decodes a TSCredentials DER blob into its password
@@ -605,18 +613,4 @@ func readDERElement(r io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	return append(out, content...), nil
-}
-
-// --- small string helpers -------------------------------------------------
-
-// toUpper upper-cases ASCII letters (NTLM upper-cases the username per the
-// Windows OEM/Unicode rules; ASCII upper is sufficient for typical accounts).
-func toUpper(s string) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'a' && c <= 'z' {
-			b[i] = c - 32
-		}
-	}
-	return string(b)
 }

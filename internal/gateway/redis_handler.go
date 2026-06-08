@@ -9,7 +9,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
@@ -255,31 +254,25 @@ func (p *RedisProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 	return conn, nil
 }
 
-// splice runs the steady-state RESP frame proxy. Operator commands are parsed
-// one at a time so each can be gated; upstream replies are copied raw and
-// recorded as output.
+// splice runs the steady-state RESP frame proxy as a single, strictly
+// sequential request/reply loop: it reads one operator command, gates it, and
+// either forwards it upstream and relays exactly one upstream reply, or answers
+// it locally with a synthetic error. Both directions are driven by one
+// goroutine on purpose.
+//
+// Redis carries no per-message correlation id; a client (especially a pipelined
+// one) pairs the Nth reply it reads with the Nth command it sent purely by
+// position. An earlier design ran the upstream→operator copy in a separate
+// goroutine from the deny-reply injector, so a denied command's synthetic error
+// could be written to the operator before or after an unrelated upstream reply,
+// shifting every subsequent reply by one and handing the operator the wrong
+// answer for a command. Driving reads and writes from one goroutine makes the
+// reply order match the command order exactly, which mirrors how a real Redis
+// connection processes a pipeline. The trade-off is that upstream I/O no longer
+// overlaps command parsing; for an audited admin proxy that is the correct
+// exchange.
 func (p *RedisProxy) splice(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
-	var wg sync.WaitGroup
-
-	// Both relay directions write to the operator connection: the command loop
-	// injects deny replies, the copy loop streams upstream replies. Funnel both
-	// through one lockedWriter so a deny frame and an upstream reply frame can
-	// never interleave their bytes on the socket.
-	operatorOut := newLockedWriter(operator)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		p.forwardOperatorCommands(ctx, operatorOut, operatorBuf, upstream, session, rec)
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		_, _ = io.Copy(operatorOut, rec.TeeReader(DirOutput, upstream))
-	}()
+	upstreamBuf := bufio.NewReader(upstream)
 
 	go func() {
 		<-ctx.Done()
@@ -287,32 +280,30 @@ func (p *RedisProxy) splice(ctx context.Context, operator net.Conn, operatorBuf 
 		_ = upstream.Close()
 	}()
 
-	wg.Wait()
+	defer cancel()
+	p.pump(ctx, operator, operatorBuf, upstream, upstreamBuf, session, rec)
 }
 
-// forwardOperatorCommands reads operator commands, gates each against policy,
-// and forwards the allowed ones upstream. A denied command is answered with a
-// RESP error and NOT forwarded; because Redis is strictly request/response the
-// stream stays in sync, so the session continues rather than being severed (the
-// operator simply cannot run that command).
-func (p *RedisProxy) forwardOperatorCommands(ctx context.Context, operator io.Writer, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
+// pump is the sequential request/reply loop described on splice. A denied
+// command is answered with a RESP error and NOT forwarded; its synthetic error
+// is this command's reply, written in command order, so pipelined clients stay
+// in lockstep and the session continues (the operator simply cannot run that
+// command) rather than being severed.
+func (p *RedisProxy) pump(ctx context.Context, operator io.Writer, operatorBuf *bufio.Reader, upstream net.Conn, upstreamBuf *bufio.Reader, session *models.PAMSession, rec *IORecorder) {
 	for {
 		args, raw, err := readRESPCommand(operatorBuf)
 		if err != nil {
 			return
 		}
 		if len(args) == 0 {
-			// Empty inline line: forward verbatim so we never desync the stream.
-			if _, err := upstream.Write(raw); err != nil {
-				return
-			}
+			// Empty inline line (bare CRLF) or null array: Redis produces no
+			// reply for it, so drop it without forwarding. Forwarding it and
+			// then blocking on a reply that never comes would stall the loop.
 			continue
 		}
 		command := redisCommandString(args)
 		rec.Record(DirInput, []byte(command+"\n"))
 
-		// QUIT is a control verb; record and forward it, then let the upstream
-		// close the connection.
 		decision, derr := p.sessions.LogCommand(ctx, session, command)
 		if derr != nil || !decision.Allowed() {
 			reason := decision.Reason
@@ -320,13 +311,34 @@ func (p *RedisProxy) forwardOperatorCommands(ctx context.Context, operator io.Wr
 				reason = "denied by command policy"
 			}
 			rec.Annotate(fmt.Sprintf("[command denied: %s]", reason))
+			// Not forwarded, so no upstream reply is consumed; the synthetic
+			// error stands in for this command's reply at the right position.
 			writeRESPError(operator, "ERR pam-gateway: "+reason)
 			continue
 		}
 		if _, err := upstream.Write(raw); err != nil {
 			return
 		}
+		if err := p.relayReply(operator, upstreamBuf, rec); err != nil {
+			return
+		}
 	}
+}
+
+// relayReply reads exactly one complete RESP reply from the upstream, records
+// it as output, and writes it verbatim to the operator. Reading one whole reply
+// (recursing into aggregate types) is what keeps the request/reply loop aligned
+// for the next command.
+func (p *RedisProxy) relayReply(operator io.Writer, upstreamBuf *bufio.Reader, rec *IORecorder) error {
+	reply, err := readRESPReply(upstreamBuf)
+	if err != nil {
+		return err
+	}
+	rec.Record(DirOutput, reply)
+	if _, err := operator.Write(reply); err != nil {
+		return err
+	}
+	return nil
 }
 
 // readUpstreamLine reads a single line terminated by '\n' directly from conn,
@@ -434,6 +446,109 @@ func readRESPCommand(r *bufio.Reader) (args []string, raw []byte, err error) {
 		args = append(args, string(payload[:blen]))
 	}
 	return args, buf, nil
+}
+
+// maxRESPReplyDepth bounds how deeply nested an upstream reply may be while the
+// proxy relays it. Aggregate replies (arrays, maps, sets, pushes) can nest, and
+// a hostile or buggy upstream announcing pathological nesting must not be able
+// to drive the gateway into unbounded recursion.
+const maxRESPReplyDepth = 64
+
+// readRESPReply reads exactly one complete RESP reply from r and returns its
+// raw bytes verbatim, so the proxy can relay it to the operator without
+// re-encoding. It understands both RESP2 and RESP3 reply types and recurses
+// into aggregate replies (arrays, sets, maps, pushes) so that "one reply" means
+// one whole value — which is what keeps the sequential request/reply loop
+// aligned with the next command. Definite-length forms only; the rarely used
+// RESP3 streamed forms (e.g. "$?") are rejected as a protocol error rather than
+// guessed at, which fails closed.
+func readRESPReply(r *bufio.Reader) ([]byte, error) {
+	return readRESPReplyDepth(r, 0)
+}
+
+func readRESPReplyDepth(r *bufio.Reader, depth int) ([]byte, error) {
+	if depth > maxRESPReplyDepth {
+		return nil, errors.New("gateway: RESP reply nesting too deep")
+	}
+	typ, err := r.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	switch typ {
+	case '+', '-', ':', '_', '#', ',', '(':
+		// Single-line replies: simple string, error, integer, null, boolean,
+		// double and big number all terminate at the first CRLF.
+		line, err := r.ReadBytes('\n')
+		if err != nil {
+			return nil, err
+		}
+		return append([]byte{typ}, line...), nil
+	case '$', '=', '!':
+		// Length-prefixed blobs: bulk string, verbatim string, blob error.
+		return readRESPBlobReply(r, typ)
+	case '*', '~', '>':
+		// Aggregates whose header is an element count: array, set, push.
+		return readRESPAggregateReply(r, typ, 1, depth)
+	case '%':
+		// Map: the header counts key/value pairs, so each unit is 2 elements.
+		return readRESPAggregateReply(r, typ, 2, depth)
+	default:
+		return nil, fmt.Errorf("gateway: unknown RESP reply type %q", typ)
+	}
+}
+
+// readRESPBlobReply reads a length-prefixed reply ($ bulk, = verbatim, ! blob
+// error). A negative length is the null bulk ("$-1") and has no payload.
+func readRESPBlobReply(r *bufio.Reader, typ byte) ([]byte, error) {
+	lenLine, err := r.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	out := append([]byte{typ}, lenLine...)
+	n, err := strconv.Atoi(strings.TrimRight(string(lenLine), "\r\n"))
+	if err != nil {
+		return nil, fmt.Errorf("gateway: malformed RESP bulk length: %w", err)
+	}
+	if n < 0 {
+		return out, nil
+	}
+	if n > maxRESPBulkLen {
+		return nil, fmt.Errorf("gateway: RESP bulk reply too large (%d bytes)", n)
+	}
+	payload := make([]byte, n+2) // payload + trailing CRLF
+	if _, err := io.ReadFull(r, payload); err != nil {
+		return nil, err
+	}
+	return append(out, payload...), nil
+}
+
+// readRESPAggregateReply reads an aggregate reply (array, set, push or map),
+// recursing into each element. perElem is 2 for maps (key+value per announced
+// count) and 1 otherwise. A negative count is the null aggregate ("*-1").
+func readRESPAggregateReply(r *bufio.Reader, typ byte, perElem, depth int) ([]byte, error) {
+	countLine, err := r.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	out := append([]byte{typ}, countLine...)
+	n, err := strconv.Atoi(strings.TrimRight(string(countLine), "\r\n"))
+	if err != nil {
+		return nil, fmt.Errorf("gateway: malformed RESP aggregate count: %w", err)
+	}
+	if n < 0 {
+		return out, nil
+	}
+	if n > maxRESPArrayLen {
+		return nil, fmt.Errorf("gateway: RESP aggregate too large (%d elements)", n)
+	}
+	for i := 0; i < n*perElem; i++ {
+		elem, err := readRESPReplyDepth(r, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, elem...)
+	}
+	return out, nil
 }
 
 // encodeRESPCommand encodes a command as a RESP multibulk array, the form every
