@@ -208,11 +208,14 @@ def test_adapt_system_prompt_noop_for_large_model():
     assert llm.adapt_system_prompt(None, "gpt-4o-mini") is None
 
 
-def test_adapt_system_prompt_preserves_none_for_compact_model():
-    # A caller that sends no system prompt must not have one synthesised, even
-    # for compact models: the helper only tunes an existing prompt.
+def test_adapt_system_prompt_preserves_falsy_for_compact_model():
+    # A caller that sends no system prompt (None) or an explicitly empty one
+    # ("") must not have one synthesised, even for compact models: the helper
+    # only tunes an existing, non-empty prompt. Preserving "" keeps it falsy so
+    # _chat_completion still drops it instead of sending an injected hint.
     assert llm.adapt_system_prompt(None, "Ternary-Bonsai-8B") is None
     assert llm.adapt_system_prompt(None, "ternary-bonsai-4b") is None
+    assert llm.adapt_system_prompt("", "Ternary-Bonsai-8B") == ""
 
 
 def test_call_llm_adapts_system_prompt_for_compact_model(monkeypatch):

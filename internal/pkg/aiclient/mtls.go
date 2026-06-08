@@ -48,6 +48,13 @@ const (
 	// defaults to defaultTimeout (15s). Operators with a tighter latency
 	// budget (e.g. an access-request approval flow that must not block long)
 	// can lower it; those running a slower self-hosted model can raise it.
+	//
+	// Note the layering with the agent's own per-call LLM timeout
+	// (skills/llm.py _LLM_TIMEOUT_SECONDS = 10s): keeping this above 10s lets
+	// the agent's in-process deterministic fallback fire before the Go client
+	// cancels the request. Setting it below 10s is still safe — the Go-side
+	// fallback (fallback.go) handles the cancellation — but the agent's own
+	// deterministic path no longer gets a chance to run first.
 	EnvTimeout = "ACCESS_AI_AGENT_TIMEOUT"
 )
 
