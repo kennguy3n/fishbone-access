@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -286,6 +287,89 @@ func TestRedisProxyWrongProtocolTokenRejected(t *testing.T) {
 	rows := env.sessionRows(t)
 	if len(rows) != 1 || rows[0].State != models.PAMSessionClosed {
 		t.Fatalf("orphaned session not reconciled closed: %+v", rows)
+	}
+}
+
+// TestRedisProxyOperatorAuthDeadline proves the operator-authentication phase is
+// bounded by a read deadline: a client that opens the connection but never sends
+// an AUTH must not pin the serving goroutine open indefinitely (a slowloris-style
+// resource exhaustion). With the pre-auth read deadline the proxy returns within
+// ~DialTimeout; without it Handle blocks forever in readRESPCommand and this test
+// hits its generous timeout. Regression cover for the missing pre-auth deadline.
+func TestRedisProxyOperatorAuthDeadline(t *testing.T) {
+	env := newProxyTestEnv(t)
+	proxy, err := NewRedisProxy(RedisProxyConfig{
+		Broker: env.broker, Sessions: env.sessions, Hub: env.hub, Store: env.store,
+		DialTimeout: 200 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("NewRedisProxy: %v", err)
+	}
+
+	client, server := pipeConn(t)
+	defer client.Close()
+
+	done := make(chan struct{})
+	go func() {
+		proxy.Handle(context.Background(), server)
+		close(done)
+	}()
+
+	// The client deliberately stays silent (never sends AUTH). Handle must abort
+	// on the read deadline well before this bound, which is many multiples of the
+	// 200ms DialTimeout.
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Handle did not return: operator auth read is not deadline-bounded (slowloris)")
+	}
+}
+
+// concurrencyProbe is an io.Writer that detects overlapping Write calls. It
+// widens the in-Write window with a tiny sleep so an unsynchronized writer would
+// reliably be caught with two writers in flight at once.
+type concurrencyProbe struct {
+	inFlight      atomic.Int32
+	maxConcurrent atomic.Int32
+}
+
+func (c *concurrencyProbe) Write(p []byte) (int, error) {
+	n := c.inFlight.Add(1)
+	for {
+		m := c.maxConcurrent.Load()
+		if n <= m || c.maxConcurrent.CompareAndSwap(m, n) {
+			break
+		}
+	}
+	time.Sleep(time.Microsecond)
+	c.inFlight.Add(-1)
+	return len(p), nil
+}
+
+// TestLockedWriterSerializesConcurrentWrites proves the shared operator-connection
+// writer funnels concurrent writes through its mutex, so the two relay goroutines
+// (the deny-reply injector and the upstream-reply copier) can never interleave
+// frame bytes on the socket. Run under -race this also guards the helper itself.
+// Regression cover for the concurrent-operator-write hazard in the Redis/Mongo
+// deny paths.
+func TestLockedWriterSerializesConcurrentWrites(t *testing.T) {
+	probe := &concurrencyProbe{}
+	lw := newLockedWriter(probe)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				_, _ = lw.Write([]byte("-ERR pam-gateway: denied\r\n"))
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := probe.maxConcurrent.Load(); got > 1 {
+		t.Fatalf("lockedWriter allowed %d concurrent writes; deny and reply frames can interleave", got)
 	}
 }
 

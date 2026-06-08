@@ -188,10 +188,13 @@ func (p *WebProxy) serveRequest(ctx context.Context, operator net.Conn, req *htt
 		// A denied request keeps the session usable for subsequent allowed
 		// paths, so the 403 is written keep-alive (Content-Length delimited, no
 		// Connection: close) and the connection survives unless the operator
-		// itself asked to close. The unread request body is drained by the
-		// deferred req.Body.Close above (Go's (*body).Close fully consumes the
-		// body), so the next http.ReadRequest on this keep-alive connection
-		// starts at the following request and the stream stays in sync.
+		// itself asked to close. The unread request body must be consumed before
+		// the next http.ReadRequest or the body bytes would be misparsed as the
+		// following request and desync the keep-alive stream. Drain it
+		// explicitly rather than relying on http.body.Close's internal draining
+		// (an undocumented net/http implementation detail): a bounded copy to
+		// io.Discard is the documented, version-stable way to consume it.
+		_, _ = io.Copy(io.Discard, req.Body)
 		writeHTTPDeny(operator, "pam-gateway: "+reason)
 		return !shouldClose(req)
 	}

@@ -95,8 +95,16 @@ func (p *RedisProxy) Handle(ctx context.Context, conn net.Conn) {
 	defer func() { _ = conn.Close() }()
 	clientAddr := conn.RemoteAddr().String()
 
+	// Bound operator authentication with a read deadline so a client that opens
+	// the TCP connection but never sends an AUTH cannot pin the serving
+	// goroutine open indefinitely (slowloris-style resource exhaustion). The
+	// deadline is cleared once authentication completes so steady-state proxying
+	// is not bounded by the dial timeout. Mirrors the RDP/VNC/MongoDB/MSSQL
+	// handlers, which all deadline their pre-auth read.
+	_ = conn.SetReadDeadline(time.Now().Add(p.dialTimeout))
 	br := bufio.NewReader(conn)
 	token, err := p.authenticateOperator(br, conn)
+	_ = conn.SetReadDeadline(time.Time{})
 	if err != nil {
 		logger.Warnf(ctx, "redis-proxy: operator auth from %s failed: %v", clientAddr, err)
 		return
@@ -253,18 +261,24 @@ func (p *RedisProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 func (p *RedisProxy) splice(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
 	var wg sync.WaitGroup
 
+	// Both relay directions write to the operator connection: the command loop
+	// injects deny replies, the copy loop streams upstream replies. Funnel both
+	// through one lockedWriter so a deny frame and an upstream reply frame can
+	// never interleave their bytes on the socket.
+	operatorOut := newLockedWriter(operator)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		p.forwardOperatorCommands(ctx, operator, operatorBuf, upstream, session, rec)
+		p.forwardOperatorCommands(ctx, operatorOut, operatorBuf, upstream, session, rec)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		_, _ = io.Copy(operator, rec.TeeReader(DirOutput, upstream))
+		_, _ = io.Copy(operatorOut, rec.TeeReader(DirOutput, upstream))
 	}()
 
 	go func() {
@@ -281,7 +295,7 @@ func (p *RedisProxy) splice(ctx context.Context, operator net.Conn, operatorBuf 
 // RESP error and NOT forwarded; because Redis is strictly request/response the
 // stream stays in sync, so the session continues rather than being severed (the
 // operator simply cannot run that command).
-func (p *RedisProxy) forwardOperatorCommands(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
+func (p *RedisProxy) forwardOperatorCommands(ctx context.Context, operator io.Writer, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
 		args, raw, err := readRESPCommand(operatorBuf)
 		if err != nil {

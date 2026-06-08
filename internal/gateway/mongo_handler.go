@@ -231,18 +231,26 @@ func (p *MongoProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession
 func (p *MongoProxy) splice(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder, cancel context.CancelFunc) {
 	var wg sync.WaitGroup
 
+	// Both relay directions write to the operator connection: the command loop
+	// injects deny replies, the copy loop streams upstream replies. Drivers
+	// correlate replies by responseTo so ordering is safe, but a raw net.Conn
+	// still does not serialize concurrent Writes — funnel both through one
+	// lockedWriter so the bytes of a deny frame and a reply frame cannot
+	// interleave on the socket.
+	operatorOut := newLockedWriter(operator)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		p.forwardOperatorCommands(ctx, operator, operatorBuf, upstream, session, rec)
+		p.forwardOperatorCommands(ctx, operatorOut, operatorBuf, upstream, session, rec)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		defer cancel()
-		_, _ = io.Copy(operator, rec.TeeReader(DirOutput, upstream))
+		_, _ = io.Copy(operatorOut, rec.TeeReader(DirOutput, upstream))
 	}()
 
 	go func() {
@@ -258,7 +266,7 @@ func (p *MongoProxy) splice(ctx context.Context, operator net.Conn, operatorBuf 
 // commands, and forwards the allowed ones verbatim to the upstream. A denied
 // command is answered locally with a MongoDB command error and never reaches
 // the upstream, keeping the stream framed and in sync.
-func (p *MongoProxy) forwardOperatorCommands(ctx context.Context, operator net.Conn, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
+func (p *MongoProxy) forwardOperatorCommands(ctx context.Context, operator io.Writer, operatorBuf *bufio.Reader, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
 		msg, err := readWireMessage(operatorBuf)
 		if err != nil {

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"io"
 	"sync"
 	"time"
 
@@ -42,6 +43,31 @@ func credUser(leased *pam.LeasedSession) string {
 		return leased.Target.Username
 	}
 	return leased.Secret.Username
+}
+
+// lockedWriter serializes concurrent writes to an underlying io.Writer with a
+// mutex. The steady-state proxy for the request/response protocols (Redis,
+// MongoDB) runs two goroutines that both write to the operator connection — one
+// copying upstream replies, the other injecting locally-generated deny replies
+// when a command is gated. A raw net.Conn does not serialize concurrent Write
+// calls, so without this wrapper the bytes of a deny frame and an upstream
+// reply frame could interleave on the wire and corrupt the stream. Every write
+// to the operator in those handlers goes through one shared lockedWriter so a
+// whole frame is emitted atomically relative to the other goroutine.
+type lockedWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+// newLockedWriter wraps w so concurrent Write calls are mutually exclusive.
+func newLockedWriter(w io.Writer) *lockedWriter { return &lockedWriter{w: w} }
+
+// Write implements io.Writer, holding the mutex for the duration of the
+// underlying write so a single Write is emitted without interleaving.
+func (lw *lockedWriter) Write(p []byte) (int, error) {
+	lw.mu.Lock()
+	defer lw.mu.Unlock()
+	return lw.w.Write(p)
 }
 
 // SessionHub tracks the privileged sessions currently proxied by this gateway
