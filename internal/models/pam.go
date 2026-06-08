@@ -14,7 +14,51 @@ const (
 	PAMProtocolPostgres = "postgres"
 	PAMProtocolMySQL    = "mysql"
 	PAMProtocolK8sExec  = "k8s-exec"
+	PAMProtocolRDP      = "rdp"
+	PAMProtocolVNC      = "vnc"
+	PAMProtocolMongoDB  = "mongodb"
+	PAMProtocolRedis    = "redis"
+	PAMProtocolMSSQL    = "mssql"
+	PAMProtocolHTTP     = "http"
 )
+
+// pamProtocols is the canonical, ordered set of wire protocols the gateway
+// supports. It is the single source of truth: the vault's validProtocol gate
+// (PAM target CRUD) and the DB-level CHECK constraint added in
+// 0011_pam_protocol_expansion.sql both derive their accepted set from here, so
+// adding a protocol is a one-line change plus a migration. Keep this in sync
+// with the listeners bound in cmd/pam-gateway and the CHECK migration.
+var pamProtocols = []string{
+	PAMProtocolSSH,
+	PAMProtocolPostgres,
+	PAMProtocolMySQL,
+	PAMProtocolK8sExec,
+	PAMProtocolRDP,
+	PAMProtocolVNC,
+	PAMProtocolMongoDB,
+	PAMProtocolRedis,
+	PAMProtocolMSSQL,
+	PAMProtocolHTTP,
+}
+
+// PAMProtocols returns the supported wire protocols in canonical order. The
+// returned slice is a copy so callers cannot mutate the package-level source of
+// truth.
+func PAMProtocols() []string {
+	out := make([]string, len(pamProtocols))
+	copy(out, pamProtocols)
+	return out
+}
+
+// IsValidPAMProtocol reports whether p is a supported PAM wire protocol.
+func IsValidPAMProtocol(p string) bool {
+	for _, proto := range pamProtocols {
+		if proto == p {
+			return true
+		}
+	}
+	return false
+}
 
 // PAM connect-token states. A token is minted "pending", flipped to "consumed"
 // the first time the gateway redeems it (one-shot), and "expired" once its

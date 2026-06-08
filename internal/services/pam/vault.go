@@ -313,14 +313,12 @@ func (v *Vault) auditTx(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID,
 	})
 }
 
-// validProtocol reports whether p is a supported PAM wire protocol.
+// validProtocol reports whether p is a supported PAM wire protocol. It defers
+// to models.IsValidPAMProtocol so the CRUD gate, the DB CHECK constraint, and
+// the bound gateway listeners all share one source of truth for the protocol
+// set (see internal/models/pam.go).
 func validProtocol(p string) bool {
-	switch p {
-	case models.PAMProtocolSSH, models.PAMProtocolPostgres, models.PAMProtocolMySQL, models.PAMProtocolK8sExec:
-		return true
-	default:
-		return false
-	}
+	return models.IsValidPAMProtocol(p)
 }
 
 // marshalMeta encodes audit metadata, tolerating a nil map (→ "{}").

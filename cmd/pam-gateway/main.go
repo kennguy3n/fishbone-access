@@ -41,6 +41,12 @@ var protocolPlan = []struct{ Name, Addr string }{
 	{"postgres", ":5432"},
 	{"mysql", ":3306"},
 	{"k8s-exec", ":8443"},
+	{"rdp", ":3389"},
+	{"vnc", ":5900"},
+	{"mongodb", ":27017"},
+	{"redis", ":6379"},
+	{"mssql", ":1433"},
+	{"http", ":8080"},
 }
 
 func main() {
@@ -91,7 +97,7 @@ func run() error {
 	return nil
 }
 
-// buildListeners constructs the PAM services and the four protocol
+// buildListeners constructs the PAM services and the ten protocol
 // ConnHandlers, returning the supervisor listener set.
 func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gateway.Listener, error) {
 	// Credential encryptor seals/opens per-target upstream credentials. FromKey
@@ -152,11 +158,47 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 		return nil, err
 	}
 
+	// Workstream 1 protocol proxies. Each follows the same pattern as the
+	// original four (token redemption, vault credential injection, session
+	// recording, 1C command gating, audit hash chain) and needs no operator-side
+	// TLS keypair: RDP/VNC carry their own transport security and the DB/cache
+	// wire protocols are proxied in clear text to the operator's native client.
+	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+	vncProxy, err := gateway.NewVNCProxy(gateway.VNCProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+	mongoProxy, err := gateway.NewMongoProxy(gateway.MongoProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+	redisProxy, err := gateway.NewRedisProxy(gateway.RedisProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+	mssqlProxy, err := gateway.NewMSSQLProxy(gateway.MSSQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+	webProxy, err := gateway.NewWebProxy(gateway.WebProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	if err != nil {
+		return nil, err
+	}
+
 	return []gateway.Listener{
 		{Name: "ssh", Addr: ":2222", Handler: sshProxy},
 		{Name: "postgres", Addr: ":5432", Handler: pgProxy},
 		{Name: "mysql", Addr: ":3306", Handler: myProxy},
 		{Name: "k8s-exec", Addr: ":8443", Handler: k8sProxy},
+		{Name: "rdp", Addr: ":3389", Handler: rdpProxy},
+		{Name: "vnc", Addr: ":5900", Handler: vncProxy},
+		{Name: "mongodb", Addr: ":27017", Handler: mongoProxy},
+		{Name: "redis", Addr: ":6379", Handler: redisProxy},
+		{Name: "mssql", Addr: ":1433", Handler: mssqlProxy},
+		{Name: "http", Addr: ":8080", Handler: webProxy},
 	}, nil
 }
 
