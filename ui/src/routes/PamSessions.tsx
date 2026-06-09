@@ -38,18 +38,25 @@ export function PamSessions() {
   );
   const [detail, setDetail] = useState<PamSession | null>(null);
 
-  const canTakeover = useMemo(() => {
+  // Mirror the server's RequirePermission semantics exactly: iam-core may model
+  // pam.takeover as a granular scope OR fold it into a role, and the middleware
+  // accepts it in either claim set (auth.go hasClaim(Scopes) || hasClaim(Roles)).
+  // Checking scopes alone would disable the controls for an operator who holds
+  // the capability via a role — a false-negative the server would have allowed.
+  const hasTakeoverPerm = useMemo(() => {
     const scopes = me.data?.scopes ?? [];
-    return scopes.includes(TAKEOVER_SCOPE) && !!me.data?.mfa_satisfied;
+    const roles = me.data?.roles ?? [];
+    return scopes.includes(TAKEOVER_SCOPE) || roles.includes(TAKEOVER_SCOPE);
   }, [me.data]);
+
+  const canTakeover = hasTakeoverPerm && !!me.data?.mfa_satisfied;
 
   const takeoverReason = useMemo(() => {
     if (!me.data) return "Checking authorization…";
-    if (!(me.data.scopes ?? []).includes(TAKEOVER_SCOPE))
-      return "Requires the pam.takeover permission.";
+    if (!hasTakeoverPerm) return "Requires the pam.takeover permission.";
     if (!me.data.mfa_satisfied) return "Requires step-up MFA.";
     return "";
-  }, [me.data]);
+  }, [me.data, hasTakeoverPerm]);
 
   const columns: Column<PamSession>[] = [
     {

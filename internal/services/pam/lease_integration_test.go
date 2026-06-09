@@ -18,7 +18,7 @@ import (
 )
 
 // TestLeaseLifecyclePostgres runs the full JIT lease state machine against a
-// real Postgres so the production migration (0012), the FOR UPDATE row lock in
+// real Postgres so the production migration (0013_pam_leases), the FOR UPDATE row lock in
 // loadForUpdate, the partial-index-backed expiry sweep, and the audit-chain
 // append are all exercised on the actual engine — none of which SQLite (the
 // hermetic unit-test backend) can model. It skips unless ACCESS_TEST_DATABASE_URL
