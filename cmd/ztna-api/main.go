@@ -39,7 +39,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -114,6 +116,26 @@ func run() error {
 	}
 
 	deps.Ready = ready
+
+	// RBAC authorization tier + step-up MFA. Both are backed by tables that
+	// only exist when a DB is configured, so they are wired only in the
+	// non-degraded path. The RBACService caches memberships per workspace
+	// (DefaultCacheTTL) to keep the per-request permission resolve off the DB.
+	// The composite step-up verifier today carries only a TOTP leg (the repo
+	// has no WebAuthn enrolment yet) and enforces single-use replay protection;
+	// a background loop tied to the signal context prunes expired used-code
+	// rows. AuthzMiddleware and the high-risk step-up gates are mounted by the
+	// router only when these deps are non-nil.
+	if deps.DB != nil {
+		deps.RBAC = authz.NewRBACService(deps.DB, authz.DefaultCacheTTL)
+		totpVerifier, err := mfa.NewTOTPMFAVerifier(deps.DB)
+		if err != nil {
+			return fmt.Errorf("totp verifier init: %w", err)
+		}
+		totpVerifier.StartUsedCodeCleanupLoop(ctx, mfa.DefaultCleanupInterval, mfa.DefaultTOTPUsedCodeRetention)
+		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
+		logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
+	}
 
 	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily
 	// orphan-account reconciliation. Run in-process (tied to the server's
