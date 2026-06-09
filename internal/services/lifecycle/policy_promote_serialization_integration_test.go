@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -165,6 +166,93 @@ func TestPromoteSerializesOnWorkspaceLock(t *testing.T) {
 	}
 	if active != 1 {
 		t.Fatalf("expected exactly 1 of the conflicting pair active, got %d", active)
+	}
+}
+
+// TestPromoteArchiveNoDeadlock guards the lock-ordering invariant the
+// workspace-promotion lock introduced: every policy mutation that takes both the
+// per-workspace advisory lock and a policy row lock must take the advisory lock
+// FIRST. Promote takes advisory (top of tx) then the row (loadPolicyTx); Archive
+// and UpdateDraft must do the same, otherwise Promote (advisory -> row) and
+// Archive (row -> advisory, via appendAudit) acquire the two locks in opposite
+// orders and a concurrent pair on the same policy deadlocks (Postgres aborts one
+// with SQLSTATE 40P01).
+//
+// The window is interleaving-dependent, so we hammer many independent policies,
+// racing Promote against Archive on each. With the consistent ordering in place
+// no operation ever aborts with a deadlock. With Archive/UpdateDraft reverted to
+// row-first ordering this reliably surfaces a 40P01 within a few dozen rounds.
+func TestPromoteArchiveNoDeadlock(t *testing.T) {
+	dsn := os.Getenv("ACCESS_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("ACCESS_TEST_DATABASE_URL not set; skipping Postgres promote/archive deadlock integration test")
+	}
+	ctx := context.Background()
+	db, err := database.Open(dsn)
+	if err != nil {
+		t.Fatalf("open postgres: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("sql db handle: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	sqlDB.SetMaxOpenConns(16)
+
+	if _, err := sqlDB.ExecContext(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`); err != nil {
+		t.Fatalf("reset schema: %v", err)
+	}
+	if _, err := migrations.Run(ctx, sqlDB); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	ws := seedWorkspace(t, db, "tenant-deadlock-"+uuid.NewString())
+	svc := NewPolicyService(db)
+
+	const rounds = 64
+	ids := make([]uuid.UUID, 0, rounds)
+	for i := 0; i < rounds; i++ {
+		def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "admin"})
+		p, err := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p", Definition: def, Actor: "admin"})
+		if err != nil {
+			t.Fatalf("create draft %d: %v", i, err)
+		}
+		if _, err := svc.Simulate(ctx, ws, p.ID); err != nil {
+			t.Fatalf("simulate draft %d: %v", i, err)
+		}
+		ids = append(ids, p.ID)
+	}
+
+	var wg sync.WaitGroup
+	errs := make(chan error, rounds*2)
+	start := make(chan struct{})
+	for _, id := range ids {
+		id := id
+		for _, op := range []func() error{
+			func() error { _, e := svc.Promote(ctx, ws, id, "admin", PromoteOptions{}); return e },
+			func() error { _, e := svc.Archive(ctx, ws, id, "admin"); return e },
+		} {
+			op := op
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				errs <- op()
+			}()
+		}
+	}
+	close(start) // release all goroutines together to maximize contention
+	wg.Wait()
+	close(errs)
+
+	// Promote-vs-Archive on the same policy legitimately races: one may win and
+	// the other observe a state-machine error (e.g. archived-before-promote).
+	// Those are expected. A Postgres deadlock (40P01) is NOT, and is what a
+	// reversed lock ordering would produce.
+	for e := range errs {
+		if e != nil && strings.Contains(e.Error(), "40P01") {
+			t.Fatalf("promote/archive race deadlocked (SQLSTATE 40P01) — lock ordering is inconsistent: %v", e)
+		}
 	}
 }
 

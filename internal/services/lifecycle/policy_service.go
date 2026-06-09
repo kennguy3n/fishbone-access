@@ -139,6 +139,15 @@ func (s *PolicyService) UpdateDraft(ctx context.Context, workspaceID, policyID u
 	now := s.now()
 	var pol *models.Policy
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Take the per-workspace advisory lock before the row lock so this orders
+		// consistently with Promote (advisory -> row). Without it, Promote
+		// (advisory then row) and this method (row then advisory, via appendAudit)
+		// would acquire the two locks in opposite orders and could deadlock on a
+		// concurrent operation against the same policy. The lock is reentrant, so
+		// the later appendAudit re-acquire is a no-op.
+		if err := lockWorkspace(ctx, tx, workspaceID); err != nil {
+			return err
+		}
 		loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 		if err != nil {
 			return err
@@ -400,6 +409,12 @@ func (s *PolicyService) Archive(ctx context.Context, workspaceID, policyID uuid.
 	now := s.now()
 	var pol *models.Policy
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Take the per-workspace advisory lock before the row lock so this orders
+		// consistently with Promote (advisory -> row) and cannot deadlock against
+		// it. The lock is reentrant, so the later appendAudit re-acquire is a no-op.
+		if err := lockWorkspace(ctx, tx, workspaceID); err != nil {
+			return err
+		}
 		loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 		if err != nil {
 			return err
