@@ -808,7 +808,14 @@ export function PolicyEditor() {
                 setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
               onKeyDown={(e) => {
-                if (e.key === "Enter" && mfaCode.trim().length >= 6) submitMfa();
+                // Mirror the submit button's disabled guard so a rapid double
+                // Enter cannot fire two concurrent promote() calls.
+                if (
+                  e.key === "Enter" &&
+                  mfaCode.trim().length >= 6 &&
+                  !promoteMut.isPending
+                )
+                  submitMfa();
               }}
             />
           </label>

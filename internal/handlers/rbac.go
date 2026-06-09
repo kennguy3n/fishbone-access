@@ -143,7 +143,16 @@ func (h *rbacHandlers) upsertMember(c *gin.Context) {
 		h.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, memberView{UserID: targetUserID, Role: string(role)})
+	// Return the full resource representation (with timestamps) so the PUT
+	// response matches the shape of the GET list. Re-read after the committed
+	// write; if the read fails, fall back to the known fields rather than
+	// failing an otherwise-successful mutation.
+	out := memberView{UserID: targetUserID, Role: string(role)}
+	if m, err := h.rbac.GetMembership(c.Request.Context(), ws, targetUserID); err == nil {
+		out.CreatedAt = m.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+		out.UpdatedAt = m.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 // deleteMember removes a member from the caller's workspace. Idempotent: a

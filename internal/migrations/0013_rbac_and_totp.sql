@@ -15,7 +15,8 @@
 --
 -- NOTE: the runner (internal/migrations/migrations.go) sorts embedded *.sql by
 -- their NNNN_ numeric prefix and keys schema_migrations by it, so each prefix
--- must be unique. The latest existing migration is 0011; WS1 continues at 0012.
+-- must be unique. The latest existing migration is 0012_access_risk_verdicts;
+-- WS1 continues at 0013.
 
 -- --- RBAC role assignments -------------------------------------------------
 CREATE TABLE IF NOT EXISTS workspace_members (
