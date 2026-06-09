@@ -189,6 +189,55 @@ func TestConnectorManagementTestConnectivityInternalFaultNotTagged(t *testing.T)
 	}
 }
 
+// TestCatalogueEntryForScopedConnectionEnrichment pins that the single-provider
+// detail path enriches connection state from a provider-scoped query: the
+// connected provider reports its row, an unconnected provider does not, and the
+// lookup never bleeds across tenants.
+func TestCatalogueEntryForScopedConnectionEnrichment(t *testing.T) {
+	// Register a mock under the real "okta" key (which has a curated descriptor)
+	// so Create succeeds and the descriptor lookup in CatalogueEntryFor resolves.
+	SwapConnector(t, "okta", &MockAccessConnector{})
+	db := newTestDB(t)
+	ctx := context.Background()
+	ws := uuid.New()
+
+	mgmt := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+	row, err := mgmt.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	cat := NewAccessConnectorCatalogueService(db)
+
+	// Connected provider → enriched with the row id + status.
+	entry, ok, err := cat.CatalogueEntryFor(ctx, ws, "okta")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor(okta) ok=%v err=%v", ok, err)
+	}
+	if !entry.Connected || entry.ConnectorID != row.ID.String() {
+		t.Errorf("okta entry not enriched with connection: %+v", entry)
+	}
+
+	// A different curated provider the workspace has NOT connected must report
+	// Connected=false — the provider-scoped query must not match okta's row.
+	other, ok, err := cat.CatalogueEntryFor(ctx, ws, "auth0")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor(auth0) ok=%v err=%v", ok, err)
+	}
+	if other.Connected {
+		t.Errorf("unconnected provider reported Connected=true: %+v", other)
+	}
+
+	// Cross-tenant: another workspace sees okta as not connected.
+	entryB, ok, err := cat.CatalogueEntryFor(ctx, uuid.New(), "okta")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor cross-tenant ok=%v err=%v", ok, err)
+	}
+	if entryB.Connected {
+		t.Errorf("cross-tenant entry reported Connected=true: %+v", entryB)
+	}
+}
+
 // TestConnectorManagementTestConnectivityJoinsErrors pins that when the provider
 // connectivity test fails AND persisting the resulting status fails, the
 // returned error surfaces BOTH causes. Previously only the DB error was

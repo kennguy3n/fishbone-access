@@ -145,6 +145,30 @@ func (s *AccessConnectorCatalogueService) connectedProviders(ctx context.Context
 	return connected, nil
 }
 
+// connectedProvider returns the freshest access_connectors row for a single
+// provider in the workspace. ok is false when the workspace has not connected
+// that provider (or the service has no DB), in which case the caller leaves the
+// entry as "not connected". Unlike connectedProviders this scopes the query to
+// one provider, so the single-provider detail path does not load the whole
+// workspace connector set just to read one row.
+func (s *AccessConnectorCatalogueService) connectedProvider(ctx context.Context, workspaceID uuid.UUID, provider string) (models.AccessConnector, bool, error) {
+	if s == nil || s.db == nil {
+		return models.AccessConnector{}, false, nil
+	}
+	var row models.AccessConnector
+	err := s.db.WithContext(ctx).
+		Where("workspace_id = ? AND provider = ?", workspaceID, provider).
+		Order("updated_at desc").
+		First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return models.AccessConnector{}, false, nil
+	}
+	if err != nil {
+		return models.AccessConnector{}, false, fmt.Errorf("access: load access_connector for catalogue detail: %w", err)
+	}
+	return row, true, nil
+}
+
 // CatalogueEntryFor returns the single catalogue entry for one provider,
 // enriched with the workspace's connection state, for the connector detail
 // page. The bool is false when the provider key has no curated catalog entry
@@ -159,11 +183,11 @@ func (s *AccessConnectorCatalogueService) CatalogueEntryFor(ctx context.Context,
 		return ConnectorCatalogueEntry{}, false, nil
 	}
 	entry := ConnectorCatalogueEntry{CapabilityDescriptor: d}
-	connected, err := s.connectedProviders(ctx, workspaceID)
+	row, connected, err := s.connectedProvider(ctx, workspaceID, provider)
 	if err != nil {
 		return ConnectorCatalogueEntry{}, false, err
 	}
-	if row, ok := connected[provider]; ok {
+	if connected {
 		entry.Connected = true
 		entry.ConnectorID = row.ID.String()
 		entry.Status = row.Status
