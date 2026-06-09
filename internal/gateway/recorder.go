@@ -82,6 +82,17 @@ type IORecorder struct {
 	monitors  map[int]LiveMonitor
 	nextMonID int
 
+	// pauseCond gates the operator→target (DirInput) byte path for the live
+	// soft-pause control. While paused is true, the input TeeReader blocks in
+	// waitWhilePaused before delivering bytes upstream, so an operator's
+	// keystrokes/statements are held (back-pressured in the kernel socket
+	// buffer — buffered, not dropped) until an operator resumes or the session
+	// is torn down. aborted releases blocked waiters on terminate so a paused
+	// session can still be killed; closed releases them on normal flush.
+	pauseCond *sync.Cond
+	paused    bool
+	aborted   bool
+
 	now func() time.Time
 }
 
@@ -92,12 +103,70 @@ func NewIORecorder(sessionID string, maxBytes int) *IORecorder {
 	if maxBytes <= 0 {
 		maxBytes = 64 << 20
 	}
-	return &IORecorder{
+	r := &IORecorder{
 		sessionID: sessionID,
 		maxBytes:  maxBytes,
 		monitors:  make(map[int]LiveMonitor),
 		now:       time.Now,
 	}
+	r.pauseCond = sync.NewCond(&r.mu)
+	return r
+}
+
+// Pause raises the soft-pause gate: the operator→target byte path blocks until
+// Resume, Interrupt, or Flush. It is idempotent and records a control frame so
+// the replay transcript shows exactly when the operator was frozen. Output
+// (target→operator) is intentionally NOT gated — a watching admin keeps seeing
+// the live screen — only operator input is withheld.
+func (r *IORecorder) Pause() {
+	r.mu.Lock()
+	already := r.paused
+	r.paused = true
+	r.mu.Unlock()
+	if !already {
+		r.Annotate("[session paused by administrator]")
+	}
+}
+
+// Resume lowers the soft-pause gate and wakes any blocked input read. It is
+// idempotent.
+func (r *IORecorder) Resume() {
+	r.mu.Lock()
+	was := r.paused
+	r.paused = false
+	r.pauseCond.Broadcast()
+	r.mu.Unlock()
+	if was {
+		r.Annotate("[session resumed by administrator]")
+	}
+}
+
+// IsPaused reports whether the input gate is currently raised.
+func (r *IORecorder) IsPaused() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.paused
+}
+
+// Interrupt permanently releases the pause gate without resuming normal flow:
+// it wakes any blocked input read so a paused session can be torn down by a
+// terminate. After Interrupt the gate never blocks again (the session is going
+// away). Idempotent.
+func (r *IORecorder) Interrupt() {
+	r.mu.Lock()
+	r.aborted = true
+	r.pauseCond.Broadcast()
+	r.mu.Unlock()
+}
+
+// waitWhilePaused blocks the calling (input-copy) goroutine while the gate is
+// raised, returning once the session is resumed, interrupted, or closed.
+func (r *IORecorder) waitWhilePaused() {
+	r.mu.Lock()
+	for r.paused && !r.aborted && !r.closed {
+		r.pauseCond.Wait()
+	}
+	r.mu.Unlock()
 }
 
 // Record appends one framed payload in the given direction. A zero-length
@@ -216,6 +285,9 @@ func (r *IORecorder) Flush(ctx context.Context, store ReplayStore) error {
 		return nil
 	}
 	r.closed = true
+	// Release any input read still blocked on the pause gate so a paused
+	// session does not leak a goroutine when it is flushed/torn down.
+	r.pauseCond.Broadcast()
 	snapshot := make([]byte, r.buf.Len())
 	copy(snapshot, r.buf.Bytes())
 	r.mu.Unlock()
@@ -237,6 +309,13 @@ type teeRecorder struct {
 }
 
 func (t *teeRecorder) Read(p []byte) (int, error) {
+	// Gate only the operator→target (input) direction: while the session is
+	// paused this blocks before pulling the next operator bytes, so nothing the
+	// operator types reaches upstream until an operator resumes. Output frames
+	// keep flowing so a watching admin sees the live screen throughout.
+	if t.dir == DirInput {
+		t.rec.waitWhilePaused()
+	}
 	n, err := t.src.Read(p)
 	if n > 0 {
 		t.rec.Record(t.dir, p[:n])

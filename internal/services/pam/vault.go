@@ -153,6 +153,30 @@ func (v *Vault) GetTarget(ctx context.Context, workspaceID, targetID uuid.UUID) 
 	}
 }
 
+// ListTargets returns a workspace's privileged targets newest-first. The
+// sealed credential envelope and key version are never returned to a list
+// caller (only the broker's OpenSecret path decrypts), so the catalog the
+// console renders carries connection metadata but no secret material. limit is
+// clamped to a sane page size.
+func (v *Vault) ListTargets(ctx context.Context, workspaceID uuid.UUID, limit int) ([]models.PAMTarget, error) {
+	if workspaceID == uuid.Nil {
+		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var rows []models.PAMTarget
+	if err := v.db.WithContext(ctx).
+		Select("id", "workspace_id", "name", "protocol", "address", "username", "config", "require_mfa", "lease_ttl_seconds", "secret_key_version", "created_at", "updated_at").
+		Where("workspace_id = ?", workspaceID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("pam: list targets: %w", err)
+	}
+	return rows, nil
+}
+
 // OpenSecret decrypts a target's credential for in-memory injection by the
 // proxy. It performs NO MFA gate — callers that reveal a secret to a human
 // (RevealSecret) or honour RequireMFA at connect time enforce step-up; this is

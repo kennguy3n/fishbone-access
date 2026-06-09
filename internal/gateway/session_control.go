@@ -91,6 +91,27 @@ type hubEntry struct {
 	startedAt   time.Time
 }
 
+// lookup returns the entry for sessionID under the hub lock.
+func (h *SessionHub) lookup(sessionID uuid.UUID) (*hubEntry, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	e, ok := h.sessions[sessionID]
+	return e, ok
+}
+
+// snapshotByWorkspace returns the live session ids this process is proxying,
+// grouped by workspace, so the reconciler can query the durable control intent
+// for each workspace's sessions in one round-trip.
+func (h *SessionHub) snapshotByWorkspace() map[uuid.UUID][]uuid.UUID {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := make(map[uuid.UUID][]uuid.UUID, len(h.sessions))
+	for id, e := range h.sessions {
+		out[e.workspaceID] = append(out[e.workspaceID], id)
+	}
+	return out
+}
+
 // NewSessionHub builds an empty hub.
 func NewSessionHub() *SessionHub {
 	return &SessionHub{sessions: make(map[uuid.UUID]*hubEntry)}
@@ -121,18 +142,45 @@ func (h *SessionHub) Register(sessionID, workspaceID uuid.UUID, subject string, 
 // session was active in this process. The cancel runs outside the lock so a
 // slow connection teardown cannot block other hub operations.
 func (h *SessionHub) Terminate(sessionID uuid.UUID) bool {
-	h.mu.Lock()
-	entry, ok := h.sessions[sessionID]
-	h.mu.Unlock()
+	entry, ok := h.lookup(sessionID)
 	if !ok {
 		return false
 	}
 	if entry.recorder != nil {
 		entry.recorder.Annotate("[session terminated by administrator]")
+		// Release any input read blocked on the pause gate so a paused session
+		// can still be killed (the cancel below would otherwise never be
+		// observed by a goroutine parked in waitWhilePaused).
+		entry.recorder.Interrupt()
 	}
 	if entry.cancel != nil {
 		entry.cancel()
 	}
+	return true
+}
+
+// Pause raises the soft-pause gate on a live session: the operator→target byte
+// path is held (buffered) until Resume or Terminate. It returns true when the
+// session is active in this process. Pausing is reversible and does not tear
+// the session down, so an operator can freeze a risky privileged session,
+// inspect it, then resume or kill it.
+func (h *SessionHub) Pause(sessionID uuid.UUID) bool {
+	entry, ok := h.lookup(sessionID)
+	if !ok || entry.recorder == nil {
+		return false
+	}
+	entry.recorder.Pause()
+	return true
+}
+
+// Resume lowers the soft-pause gate, letting operator input flow again. It
+// returns true when the session is active in this process.
+func (h *SessionHub) Resume(sessionID uuid.UUID) bool {
+	entry, ok := h.lookup(sessionID)
+	if !ok || entry.recorder == nil {
+		return false
+	}
+	entry.recorder.Resume()
 	return true
 }
 
@@ -155,6 +203,10 @@ type ActiveSession struct {
 	WorkspaceID uuid.UUID
 	Subject     string
 	StartedAt   time.Time
+	// Paused reports whether the operator→target byte path is currently held by
+	// an administrator soft-pause, so the live-sessions console can show a
+	// paused badge and offer Resume.
+	Paused bool
 }
 
 // ActiveInWorkspace lists the sessions this process is currently proxying for a
@@ -167,11 +219,16 @@ func (h *SessionHub) ActiveInWorkspace(workspaceID uuid.UUID) []ActiveSession {
 		if e.workspaceID != workspaceID {
 			continue
 		}
+		paused := false
+		if e.recorder != nil {
+			paused = e.recorder.IsPaused()
+		}
 		out = append(out, ActiveSession{
 			SessionID:   id,
 			WorkspaceID: e.workspaceID,
 			Subject:     e.subject,
 			StartedAt:   e.startedAt,
+			Paused:      paused,
 		})
 	}
 	return out

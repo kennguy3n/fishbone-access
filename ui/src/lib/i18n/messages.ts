@@ -25,6 +25,7 @@ export type MessageKey =
   | "nav.group.overview"
   | "nav.group.govern"
   | "nav.group.lifecycle"
+  | "nav.group.pam"
   | "nav.group.preferences"
   | "nav.dashboard"
   | "nav.policies"
@@ -33,6 +34,9 @@ export type MessageKey =
   | "nav.grants"
   | "nav.reviews"
   | "nav.directory"
+  | "nav.pam.targets"
+  | "nav.pam.leases"
+  | "nav.pam.sessions"
   | "nav.settings";
 
 type Catalog = Record<MessageKey, string>;
@@ -46,6 +50,7 @@ const en: Catalog = {
   "nav.group.overview": "Overview",
   "nav.group.govern": "Govern",
   "nav.group.lifecycle": "Lifecycle",
+  "nav.group.pam": "Privileged access",
   "nav.group.preferences": "Preferences",
   "nav.dashboard": "Dashboard",
   "nav.policies": "Access policies",
@@ -54,6 +59,9 @@ const en: Catalog = {
   "nav.grants": "Grants",
   "nav.reviews": "Access reviews",
   "nav.directory": "Directory",
+  "nav.pam.targets": "PAM targets",
+  "nav.pam.leases": "JIT leases",
+  "nav.pam.sessions": "Live sessions",
   "nav.settings": "Settings",
 };
 
@@ -66,6 +74,7 @@ const zhHans: Partial<Catalog> = {
   "nav.group.overview": "概览",
   "nav.group.govern": "治理",
   "nav.group.lifecycle": "生命周期",
+  "nav.group.pam": "特权访问",
   "nav.group.preferences": "偏好设置",
   "nav.dashboard": "概览",
   "nav.policies": "访问策略",
@@ -74,6 +83,9 @@ const zhHans: Partial<Catalog> = {
   "nav.grants": "授权",
   "nav.reviews": "访问审查",
   "nav.directory": "目录",
+  "nav.pam.targets": "PAM 目标",
+  "nav.pam.leases": "即时租约",
+  "nav.pam.sessions": "实时会话",
   "nav.settings": "设置",
 };
 
@@ -86,6 +98,7 @@ const zhHant: Partial<Catalog> = {
   "nav.group.overview": "概覽",
   "nav.group.govern": "治理",
   "nav.group.lifecycle": "生命週期",
+  "nav.group.pam": "特權存取",
   "nav.group.preferences": "偏好設定",
   "nav.dashboard": "概覽",
   "nav.policies": "存取原則",
@@ -94,6 +107,9 @@ const zhHant: Partial<Catalog> = {
   "nav.grants": "授權",
   "nav.reviews": "存取審查",
   "nav.directory": "目錄",
+  "nav.pam.targets": "PAM 目標",
+  "nav.pam.leases": "即時租約",
+  "nav.pam.sessions": "即時工作階段",
   "nav.settings": "設定",
 };
 
@@ -106,6 +122,7 @@ const ms: Partial<Catalog> = {
   "nav.group.overview": "Gambaran keseluruhan",
   "nav.group.govern": "Tadbir urus",
   "nav.group.lifecycle": "Kitar hayat",
+  "nav.group.pam": "Akses istimewa",
   "nav.group.preferences": "Keutamaan",
   "nav.dashboard": "Papan pemuka",
   "nav.policies": "Dasar akses",
@@ -114,6 +131,9 @@ const ms: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Semakan akses",
   "nav.directory": "Direktori",
+  "nav.pam.targets": "Sasaran PAM",
+  "nav.pam.leases": "Pajakan JIT",
+  "nav.pam.sessions": "Sesi langsung",
   "nav.settings": "Tetapan",
 };
 
@@ -126,6 +146,7 @@ const id: Partial<Catalog> = {
   "nav.group.overview": "Ikhtisar",
   "nav.group.govern": "Tata kelola",
   "nav.group.lifecycle": "Siklus hidup",
+  "nav.group.pam": "Akses istimewa",
   "nav.group.preferences": "Preferensi",
   "nav.dashboard": "Dasbor",
   "nav.policies": "Kebijakan akses",
@@ -134,6 +155,9 @@ const id: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Tinjauan akses",
   "nav.directory": "Direktori",
+  "nav.pam.targets": "Target PAM",
+  "nav.pam.leases": "Sewa JIT",
+  "nav.pam.sessions": "Sesi langsung",
   "nav.settings": "Pengaturan",
 };
 
@@ -146,6 +170,7 @@ const th: Partial<Catalog> = {
   "nav.group.overview": "ภาพรวม",
   "nav.group.govern": "การกำกับดูแล",
   "nav.group.lifecycle": "วงจรชีวิต",
+  "nav.group.pam": "การเข้าถึงสิทธิพิเศษ",
   "nav.group.preferences": "การตั้งค่าส่วนตัว",
   "nav.dashboard": "แดชบอร์ด",
   "nav.policies": "นโยบายการเข้าถึง",
@@ -154,6 +179,9 @@ const th: Partial<Catalog> = {
   "nav.grants": "สิทธิ์ที่ได้รับ",
   "nav.reviews": "การตรวจสอบการเข้าถึง",
   "nav.directory": "ไดเรกทอรี",
+  "nav.pam.targets": "เป้าหมาย PAM",
+  "nav.pam.leases": "สัญญาเช่า JIT",
+  "nav.pam.sessions": "เซสชันสด",
   "nav.settings": "การตั้งค่า",
 };
 
@@ -166,6 +194,7 @@ const vi: Partial<Catalog> = {
   "nav.group.overview": "Tổng quan",
   "nav.group.govern": "Quản trị",
   "nav.group.lifecycle": "Vòng đời",
+  "nav.group.pam": "Truy cập đặc quyền",
   "nav.group.preferences": "Tùy chọn",
   "nav.dashboard": "Bảng điều khiển",
   "nav.policies": "Chính sách truy cập",
@@ -174,6 +203,9 @@ const vi: Partial<Catalog> = {
   "nav.grants": "Quyền được cấp",
   "nav.reviews": "Đánh giá truy cập",
   "nav.directory": "Thư mục",
+  "nav.pam.targets": "Mục tiêu PAM",
+  "nav.pam.leases": "Hợp đồng JIT",
+  "nav.pam.sessions": "Phiên trực tiếp",
   "nav.settings": "Cài đặt",
 };
 
@@ -186,6 +218,7 @@ const ja: Partial<Catalog> = {
   "nav.group.overview": "概要",
   "nav.group.govern": "ガバナンス",
   "nav.group.lifecycle": "ライフサイクル",
+  "nav.group.pam": "特権アクセス",
   "nav.group.preferences": "環境設定",
   "nav.dashboard": "ダッシュボード",
   "nav.policies": "アクセスポリシー",
@@ -194,6 +227,9 @@ const ja: Partial<Catalog> = {
   "nav.grants": "付与",
   "nav.reviews": "アクセスレビュー",
   "nav.directory": "ディレクトリ",
+  "nav.pam.targets": "PAM ターゲット",
+  "nav.pam.leases": "JIT リース",
+  "nav.pam.sessions": "ライブセッション",
   "nav.settings": "設定",
 };
 
@@ -206,6 +242,7 @@ const ko: Partial<Catalog> = {
   "nav.group.overview": "개요",
   "nav.group.govern": "거버넌스",
   "nav.group.lifecycle": "수명 주기",
+  "nav.group.pam": "권한 액세스",
   "nav.group.preferences": "기본 설정",
   "nav.dashboard": "대시보드",
   "nav.policies": "액세스 정책",
@@ -214,6 +251,9 @@ const ko: Partial<Catalog> = {
   "nav.grants": "권한 부여",
   "nav.reviews": "액세스 검토",
   "nav.directory": "디렉터리",
+  "nav.pam.targets": "PAM 대상",
+  "nav.pam.leases": "JIT 리스",
+  "nav.pam.sessions": "실시간 세션",
   "nav.settings": "설정",
 };
 
@@ -226,6 +266,7 @@ const ar: Partial<Catalog> = {
   "nav.group.overview": "نظرة عامة",
   "nav.group.govern": "الحوكمة",
   "nav.group.lifecycle": "دورة الحياة",
+  "nav.group.pam": "الوصول المميّز",
   "nav.group.preferences": "التفضيلات",
   "nav.dashboard": "لوحة المعلومات",
   "nav.policies": "سياسات الوصول",
@@ -234,6 +275,9 @@ const ar: Partial<Catalog> = {
   "nav.grants": "المنح",
   "nav.reviews": "مراجعات الوصول",
   "nav.directory": "الدليل",
+  "nav.pam.targets": "أهداف PAM",
+  "nav.pam.leases": "عقود JIT",
+  "nav.pam.sessions": "الجلسات الحية",
   "nav.settings": "الإعدادات",
 };
 
@@ -246,6 +290,7 @@ const de: Partial<Catalog> = {
   "nav.group.overview": "Übersicht",
   "nav.group.govern": "Governance",
   "nav.group.lifecycle": "Lebenszyklus",
+  "nav.group.pam": "Privilegierter Zugriff",
   "nav.group.preferences": "Präferenzen",
   "nav.dashboard": "Dashboard",
   "nav.policies": "Zugriffsrichtlinien",
@@ -254,6 +299,9 @@ const de: Partial<Catalog> = {
   "nav.grants": "Berechtigungen",
   "nav.reviews": "Zugriffsüberprüfungen",
   "nav.directory": "Verzeichnis",
+  "nav.pam.targets": "PAM-Ziele",
+  "nav.pam.leases": "JIT-Leases",
+  "nav.pam.sessions": "Live-Sitzungen",
   "nav.settings": "Einstellungen",
 };
 
@@ -266,6 +314,7 @@ const fr: Partial<Catalog> = {
   "nav.group.overview": "Aperçu",
   "nav.group.govern": "Gouvernance",
   "nav.group.lifecycle": "Cycle de vie",
+  "nav.group.pam": "Accès à privilèges",
   "nav.group.preferences": "Préférences",
   "nav.dashboard": "Tableau de bord",
   "nav.policies": "Politiques d'accès",
@@ -274,6 +323,9 @@ const fr: Partial<Catalog> = {
   "nav.grants": "Attributions",
   "nav.reviews": "Revues d'accès",
   "nav.directory": "Annuaire",
+  "nav.pam.targets": "Cibles PAM",
+  "nav.pam.leases": "Baux JIT",
+  "nav.pam.sessions": "Sessions en direct",
   "nav.settings": "Paramètres",
 };
 

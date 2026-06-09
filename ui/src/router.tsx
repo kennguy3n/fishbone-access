@@ -69,6 +69,15 @@ const RequestDetail = lazyPage(() =>
 const Directory = lazyPage(() =>
   import("@/routes/Directory").then((m) => ({ default: m.Directory })),
 );
+const PamTargets = lazyPage(() =>
+  import("@/routes/PamTargets").then((m) => ({ default: m.PamTargets })),
+);
+const PamLeases = lazyPage(() =>
+  import("@/routes/PamLeases").then((m) => ({ default: m.PamLeases })),
+);
+const PamSessions = lazyPage(() =>
+  import("@/routes/PamSessions").then((m) => ({ default: m.PamSessions })),
+);
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
@@ -108,6 +117,9 @@ const appRoutes = [
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
   page("/directory", Directory),
+  page("/pam/targets", PamTargets),
+  page("/pam/leases", PamLeases),
+  page("/pam/sessions", PamSessions),
   page("/settings", Settings),
 ];
 

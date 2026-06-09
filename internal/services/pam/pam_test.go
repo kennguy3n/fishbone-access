@@ -651,9 +651,14 @@ func TestLogCommandContinuesSeqAfterPriorRow(t *testing.T) {
 	}
 }
 
-type fakeController struct{ terminated bool }
+type fakeController struct {
+	terminated bool
+	paused     bool
+}
 
 func (f *fakeController) Terminate(uuid.UUID) bool { f.terminated = true; return true }
+func (f *fakeController) Pause(uuid.UUID) bool     { f.paused = true; return true }
+func (f *fakeController) Resume(uuid.UUID) bool    { f.paused = false; return true }
 
 // --- step-up gate tests ---------------------------------------------------
 

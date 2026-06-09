@@ -1,0 +1,157 @@
+package gateway
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"sync"
+	"testing"
+	"time"
+)
+
+// memReplayStore is an in-memory ReplayStore + ReplayReader for round-trip
+// tests: it captures what Flush writes and serves it back to ParseReplay,
+// exercising the exact bytes the production filesystem/S3 stores would.
+type memReplayStore struct {
+	mu   sync.Mutex
+	data map[string][]byte
+}
+
+func newMemReplayStore() *memReplayStore { return &memReplayStore{data: map[string][]byte{}} }
+
+func (m *memReplayStore) PutReplay(_ context.Context, sessionID string, r io.Reader) error {
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.data[sessionID] = b
+	return nil
+}
+
+func (m *memReplayStore) GetReplay(_ context.Context, sessionID string) (io.ReadCloser, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	b, ok := m.data[sessionID]
+	if !ok {
+		return nil, io.EOF
+	}
+	return io.NopCloser(bytes.NewReader(b)), nil
+}
+
+// TestRecorderReplayRoundTrip records both directions, flushes to a store, then
+// parses the recording back and asserts frames round-trip with direction,
+// payload, and capture order preserved.
+func TestRecorderReplayRoundTrip(t *testing.T) {
+	rec := NewIORecorder("sess-1", 0)
+
+	rec.Record(DirInput, []byte("whoami\n"))
+	rec.Record(DirOutput, []byte("root\n"))
+	rec.Record(DirInput, []byte("exit\n"))
+
+	store := newMemReplayStore()
+	if err := rec.Flush(context.Background(), store); err != nil {
+		t.Fatalf("Flush: %v", err)
+	}
+
+	rc, err := store.GetReplay(context.Background(), "sess-1")
+	if err != nil {
+		t.Fatalf("GetReplay: %v", err)
+	}
+	defer rc.Close()
+	frames, err := ParseReplay(rc)
+	if err != nil {
+		t.Fatalf("ParseReplay: %v", err)
+	}
+	if len(frames) != 3 {
+		t.Fatalf("want 3 frames, got %d", len(frames))
+	}
+	want := []struct {
+		dir     string
+		payload string
+	}{
+		{"input", "whoami\n"},
+		{"output", "root\n"},
+		{"input", "exit\n"},
+	}
+	for idx, w := range want {
+		if frames[idx].Direction != w.dir || string(frames[idx].Payload) != w.payload {
+			t.Fatalf("frame %d: got (%q,%q), want (%q,%q)", idx, frames[idx].Direction, frames[idx].Payload, w.dir, w.payload)
+		}
+	}
+	// Frames are timestamp-ordered as written.
+	for idx := 1; idx < len(frames); idx++ {
+		if frames[idx].At.Before(frames[idx-1].At) {
+			t.Fatalf("frames out of order at %d", idx)
+		}
+	}
+}
+
+// TestRecorderPauseGateBlocksInput proves the soft-pause gate holds
+// operator→target (input) bytes while paused and releases them on resume, while
+// output continues to flow to watchers throughout.
+func TestRecorderPauseGateBlocksInput(t *testing.T) {
+	rec := NewIORecorder("sess-2", 0)
+
+	// An input reader that yields one chunk; the TeeReader gates it on pause.
+	src := bytes.NewReader([]byte("rm -rf /\n"))
+	gated := rec.TeeReader(DirInput, src)
+
+	rec.Pause()
+	if !rec.IsPaused() {
+		t.Fatal("recorder should report paused")
+	}
+
+	done := make(chan int, 1)
+	go func() {
+		buf := make([]byte, 64)
+		n, _ := gated.Read(buf) // blocks while paused
+		done <- n
+	}()
+
+	select {
+	case <-done:
+		t.Fatal("input read returned while paused; gate did not hold")
+	case <-time.After(100 * time.Millisecond):
+		// expected: still blocked
+	}
+
+	// Output keeps flowing while paused (a watching admin still sees the screen).
+	rec.Record(DirOutput, []byte("are you sure?\n"))
+
+	rec.Resume()
+	select {
+	case n := <-done:
+		if n == 0 {
+			t.Fatal("expected input bytes to flow after resume")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("input read did not unblock after resume")
+	}
+}
+
+// TestRecorderInterruptReleasesPausedInput confirms Interrupt (used by
+// terminate) releases a blocked input read so a paused session can still be
+// torn down without leaking the proxy goroutine.
+func TestRecorderInterruptReleasesPausedInput(t *testing.T) {
+	rec := NewIORecorder("sess-3", 0)
+	src := bytes.NewReader([]byte("data"))
+	gated := rec.TeeReader(DirInput, src)
+
+	rec.Pause()
+	done := make(chan struct{})
+	go func() {
+		buf := make([]byte, 16)
+		_, _ = gated.Read(buf)
+		close(done)
+	}()
+
+	rec.Interrupt()
+	select {
+	case <-done:
+		// released
+	case <-time.After(2 * time.Second):
+		t.Fatal("Interrupt did not release the paused input read")
+	}
+}

@@ -28,6 +28,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/gateway"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -128,6 +129,31 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 	hub := gateway.NewSessionHub()
 	sessions := pam.NewSessionManager(gdb, policy, hub)
 	broker := pam.NewBroker(gdb, vault, stepUp)
+
+	// JIT lease state machine. The AI client scores lease risk at request time
+	// (fail-OPEN advisory: an unconfigured/unreachable agent degrades to a
+	// deterministic fallback rather than blocking the request). Binding the
+	// lease service to the broker makes connect-token mint/redeem fail closed
+	// against a lease that expired or was revoked, and wiring the session
+	// manager as the lease's session terminator means a revoked or swept-expired
+	// lease tears down any session still brokering its credential.
+	ai, err := aiclient.NewAIClientFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("ai client init: %w", err)
+	}
+	if !ai.Configured() {
+		logger.Warnf(ctx, "pam-gateway: AI agent not configured; lease risk scoring uses deterministic fallback")
+	}
+	leases := pam.NewPAMLeaseService(gdb, ai)
+	leases.SetSessionTerminator(sessions)
+	broker.SetLeaseValidator(leases)
+
+	// Cross-process session-control reconciler: pause/terminate issued through
+	// the control-plane API land in the database; this loop applies that durable
+	// intent to the sessions THIS gateway process is proxying. Tied to ctx so it
+	// stops on shutdown.
+	reconciler := gateway.NewSessionReconciler(hub, sessions, 0)
+	go reconciler.Run(ctx)
 
 	store, err := buildReplayStore(ctx)
 	if err != nil {

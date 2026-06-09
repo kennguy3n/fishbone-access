@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -69,6 +70,24 @@ func (s *FilesystemReplayStore) PutReplay(ctx context.Context, sessionID string,
 	return nil
 }
 
+// GetReplay opens the recording for sessionID for the replay-retrieval API.
+// The caller must Close the returned reader. A missing recording surfaces as
+// os.ErrNotExist (mapped to 404 at the HTTP edge).
+func (s *FilesystemReplayStore) GetReplay(ctx context.Context, sessionID string) (io.ReadCloser, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	dest, err := s.resolve(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(dest) //nolint:gosec // path is constrained to base by resolve
+	if err != nil {
+		return nil, fmt.Errorf("gateway: FilesystemReplayStore.GetReplay: %w", err)
+	}
+	return f, nil
+}
+
 // resolve maps a session id to its on-disk path and defends against path
 // traversal: a crafted session id ("../../etc") must never let a write escape
 // the base directory.
@@ -116,4 +135,22 @@ func (s *MemoryReplayStore) Get(sessionID string) ([]byte, bool) {
 	defer s.mu.Unlock()
 	b, ok := s.data[ReplayKey(sessionID)]
 	return b, ok
+}
+
+// GetReplay returns the stored recording for sessionID as a ReadCloser so the
+// memory store satisfies ReplayReader for handler unit tests. A missing
+// recording surfaces as os.ErrNotExist.
+func (s *MemoryReplayStore) GetReplay(ctx context.Context, sessionID string) (io.ReadCloser, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	b, ok := s.data[ReplayKey(sessionID)]
+	s.mu.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("gateway: MemoryReplayStore.GetReplay %s: %w", sessionID, os.ErrNotExist)
+	}
+	dup := make([]byte, len(b))
+	copy(dup, b)
+	return io.NopCloser(bytes.NewReader(dup)), nil
 }

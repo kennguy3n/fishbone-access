@@ -62,6 +62,42 @@ func RequireMFA() gin.HandlerFunc {
 	}
 }
 
+// RequirePermission returns a middleware that authorizes the caller for a named
+// permission before the handler runs. It is fail-closed and must run after Auth:
+// a request with no validated claims is rejected 401, and a request whose token
+// does not carry the permission (in either its Scopes or Roles) is rejected 403.
+// Permission strings are the coarse capability names the control plane checks at
+// the route edge (e.g. "pam.takeover" for live-session pause/takeover/terminate).
+//
+// The check accepts the permission in either claim set: iam-core may model a
+// capability as a granular scope ("pam.takeover") or fold it into a role
+// ("pam.takeover" / "pam-operator" mapped upstream). Membership is exact-match
+// against the token's Scopes then Roles, so a missing or unrelated claim denies.
+func RequirePermission(permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims := ClaimsFromContext(c)
+		if claims == nil {
+			abort(c, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		if !hasClaim(claims.Scopes, permission) && !hasClaim(claims.Roles, permission) {
+			abort(c, http.StatusForbidden, "insufficient permission")
+			return
+		}
+		c.Next()
+	}
+}
+
+// hasClaim reports whether want is present in claim (exact match).
+func hasClaim(claim []string, want string) bool {
+	for _, c := range claim {
+		if c == want {
+			return true
+		}
+	}
+	return false
+}
+
 func bearerToken(header string) string {
 	const prefix = "Bearer "
 	if len(header) > len(prefix) && strings.EqualFold(header[:len(prefix)], prefix) {
