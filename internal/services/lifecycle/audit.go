@@ -32,8 +32,12 @@ func forUpdate(tx *gorm.DB) *gorm.DB {
 
 // workspaceLockNamespace salts the per-workspace advisory-lock key so it can
 // never collide with the migration runner's advisory lock (which uses a
-// different fixed key).
-const workspaceLockNamespace uint64 = 0x4155_4449_5443_4841 // "AUDITCHA"
+// different fixed key). The lock now serializes all per-workspace policy
+// mutations (promotion + audit-chain appends), not just audit appends; the
+// literal value must never change, or it would stop serializing against any
+// in-flight transaction still holding the old key. The "AUDITCHA" bytes are
+// just the mnemonic origin of the constant, not a limit on its scope.
+const workspaceLockNamespace uint64 = 0x4155_4449_5443_4841 // bytes "AUDITCHA"
 
 // lockWorkspace takes a transaction-scoped Postgres advisory lock keyed on the
 // workspace id, serializing the holders of this single per-workspace key. It
