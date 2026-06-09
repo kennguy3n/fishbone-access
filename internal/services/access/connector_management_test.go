@@ -82,6 +82,25 @@ func TestConnectorManagementCreateValidationFails(t *testing.T) {
 	}
 }
 
+// TestConnectorManagementNilEncryptorFailsClosed pins the constructor contract:
+// a nil CredentialEncryptor must not nil-panic mid-Create — it falls back to the
+// fail-closed disabled encryptor, so Create errors loudly with ErrSecretsDisabled
+// (and never persists plaintext) when a caller forgets to wire a DEK.
+func TestConnectorManagementNilEncryptorFailsClosed(t *testing.T) {
+	SwapConnector(t, "test-provider", &MockAccessConnector{})
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, nil, workers.NewPostgresQueue(db))
+
+	_, err := svc.Create(context.Background(), CreateConnectorInput{
+		WorkspaceID: uuid.New(),
+		Provider:    "test-provider",
+		Secrets:     map[string]interface{}{"token": "shh"},
+	})
+	if !errors.Is(err, ErrSecretsDisabled) {
+		t.Fatalf("Create with nil encryptor err = %v, want ErrSecretsDisabled (fail closed)", err)
+	}
+}
+
 func TestConnectorManagementTenantIsolation(t *testing.T) {
 	SwapConnector(t, "test-provider", &MockAccessConnector{})
 	svc := newMgmtService(t)
@@ -131,10 +150,16 @@ func TestConnectorManagementTestConnectivity(t *testing.T) {
 		t.Errorf("status = %q, want active", got.Status)
 	}
 
-	// Failure path → error status, error returned.
+	// Failure path → error status, error returned. The provider-side failure must
+	// wrap BOTH the original connect error (so callers can inspect the cause) and
+	// ErrConnectorConnectivity (so the handler surfaces it as a 502, not a 500).
 	mock.FuncConnect = func(context.Context, map[string]interface{}, map[string]interface{}) error { return connectErr }
-	if _, err := svc.TestConnectivity(ctx, ws, row.ID, nil); !errors.Is(err, connectErr) {
-		t.Errorf("TestConnectivity err = %v, want %v", err, connectErr)
+	gotErr := func() error { _, e := svc.TestConnectivity(ctx, ws, row.ID, nil); return e }()
+	if !errors.Is(gotErr, connectErr) {
+		t.Errorf("TestConnectivity err = %v, want it to wrap %v", gotErr, connectErr)
+	}
+	if !errors.Is(gotErr, ErrConnectorConnectivity) {
+		t.Errorf("provider connect failure must be tagged ErrConnectorConnectivity (so the handler returns 502): %v", gotErr)
 	}
 	got, _ = svc.Get(ctx, ws, row.ID)
 	if got.Status != ConnectorStatusError {
@@ -142,11 +167,135 @@ func TestConnectorManagementTestConnectivity(t *testing.T) {
 	}
 }
 
-// TestConnectorManagementTestConnectivityJoinsErrors pins that when the provider
-// connectivity test fails AND persisting the resulting status fails, the
-// returned error surfaces BOTH causes. Previously only the DB error was
-// returned, silently dropping the connectivity diagnosis an operator needs.
-func TestConnectorManagementTestConnectivityJoinsErrors(t *testing.T) {
+// failingDecryptEncryptor seals via the passthrough identity path (so Create
+// succeeds and the row carries a non-empty secret envelope) but fails to open,
+// simulating a platform-internal fault — e.g. a rotated or unavailable DEK — on
+// the subsequent TestConnectivity.
+type failingDecryptEncryptor struct{ PassthroughEncryptor }
+
+func (failingDecryptEncryptor) Decrypt(context.Context, string, []byte, []byte, int) ([]byte, error) {
+	return nil, errors.New("kms unavailable")
+}
+
+// TestConnectorManagementTestConnectivityInternalFaultNotTagged pins that an
+// error raised BEFORE the provider is contacted (here, secret decryption
+// failing in openConnector) is NOT tagged ErrConnectorConnectivity. The handler
+// keys its 502-vs-500 decision on that tag, so mis-tagging an internal fault
+// would leak encryption-layer details to the client as a 502.
+func TestConnectorManagementTestConnectivityInternalFaultNotTagged(t *testing.T) {
+	SwapConnector(t, "test-provider", &MockAccessConnector{})
+	db := newTestDB(t)
+	ctx := context.Background()
+	ws := uuid.New()
+
+	// Seal with passthrough so Create succeeds and the row has a non-empty
+	// secret envelope to decrypt later.
+	sealSvc := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+	row, err := sealSvc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// Open with an encryptor whose Decrypt fails: TestConnectivity must error at
+	// openConnector (an internal fault), before any provider call.
+	openSvc := NewConnectorManagementService(db, failingDecryptEncryptor{}, workers.NewPostgresQueue(db))
+	_, err = openSvc.TestConnectivity(ctx, ws, row.ID, nil)
+	if err == nil {
+		t.Fatal("TestConnectivity: expected an error from failed secret decryption, got nil")
+	}
+	if errors.Is(err, ErrConnectorConnectivity) {
+		t.Errorf("internal decrypt fault must NOT be tagged ErrConnectorConnectivity (the handler would leak it as a 502): %v", err)
+	}
+}
+
+// TestConnectorManagementCreateValidationTaggedErrValidation pins that a
+// connector Validate failure (a bad client-supplied config) is tagged
+// ErrValidation, so the handler maps it to 400 with the actionable message
+// rather than a generic 500. Validate is contractually offline, so a failure
+// is always a caller fault, never an internal one.
+func TestConnectorManagementCreateValidationTaggedErrValidation(t *testing.T) {
+	validationErr := errors.New("missing required field: client_id")
+	SwapConnector(t, "okta", &MockAccessConnector{
+		FuncValidate: func(context.Context, map[string]interface{}, map[string]interface{}) error {
+			return validationErr
+		},
+	})
+	db := newTestDB(t)
+	ctx := context.Background()
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+
+	_, err := svc.Create(ctx, CreateConnectorInput{
+		WorkspaceID: uuid.New(),
+		Provider:    "okta",
+		Secrets:     map[string]interface{}{"k": "v"},
+	})
+	if err == nil {
+		t.Fatal("Create with invalid config: want error, got nil")
+	}
+	if !errors.Is(err, ErrValidation) {
+		t.Errorf("Create validate failure must be tagged ErrValidation (so the handler returns 400, not 500): %v", err)
+	}
+	if !errors.Is(err, validationErr) {
+		t.Errorf("Create error must still wrap the underlying validation cause: %v", err)
+	}
+}
+
+// TestCatalogueEntryForScopedConnectionEnrichment pins that the single-provider
+// detail path enriches connection state from a provider-scoped query: the
+// connected provider reports its row, an unconnected provider does not, and the
+// lookup never bleeds across tenants.
+func TestCatalogueEntryForScopedConnectionEnrichment(t *testing.T) {
+	// Register a mock under the real "okta" key (which has a curated descriptor)
+	// so Create succeeds and the descriptor lookup in CatalogueEntryFor resolves.
+	SwapConnector(t, "okta", &MockAccessConnector{})
+	db := newTestDB(t)
+	ctx := context.Background()
+	ws := uuid.New()
+
+	mgmt := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+	row, err := mgmt.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	cat := NewAccessConnectorCatalogueService(db)
+
+	// Connected provider → enriched with the row id + status.
+	entry, ok, err := cat.CatalogueEntryFor(ctx, ws, "okta")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor(okta) ok=%v err=%v", ok, err)
+	}
+	if !entry.Connected || entry.ConnectorID != row.ID.String() {
+		t.Errorf("okta entry not enriched with connection: %+v", entry)
+	}
+
+	// A different curated provider the workspace has NOT connected must report
+	// Connected=false — the provider-scoped query must not match okta's row.
+	other, ok, err := cat.CatalogueEntryFor(ctx, ws, "auth0")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor(auth0) ok=%v err=%v", ok, err)
+	}
+	if other.Connected {
+		t.Errorf("unconnected provider reported Connected=true: %+v", other)
+	}
+
+	// Cross-tenant: another workspace sees okta as not connected.
+	entryB, ok, err := cat.CatalogueEntryFor(ctx, uuid.New(), "okta")
+	if err != nil || !ok {
+		t.Fatalf("CatalogueEntryFor cross-tenant ok=%v err=%v", ok, err)
+	}
+	if entryB.Connected {
+		t.Errorf("cross-tenant entry reported Connected=true: %+v", entryB)
+	}
+}
+
+// TestConnectorManagementTestConnectivityPersistFailureDoesNotLeak pins that when
+// the provider connectivity test fails AND persisting the resulting status fails,
+// the caller still receives the connectivity diagnostic (so it routes to a 502)
+// but the raw DB/persistence error is NOT folded into that client-facing error —
+// it would leak schema details (table/column names) in the 502 body. The
+// persistence failure is logged server-side instead.
+func TestConnectorManagementTestConnectivityPersistFailureDoesNotLeak(t *testing.T) {
 	connectErr := errors.New("auth failed")
 	mock := &MockAccessConnector{}
 	SwapConnector(t, "test-provider", mock)
@@ -172,11 +321,53 @@ func TestConnectorManagementTestConnectivityJoinsErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("TestConnectivity: expected error, got nil")
 	}
+	// The caller still gets the tagged connectivity diagnostic (→ 502).
 	if !errors.Is(err, connectErr) {
 		t.Errorf("returned error does not wrap connectivity error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "persist connectivity status") {
-		t.Errorf("returned error does not include the DB persistence failure: %v", err)
+	if !errors.Is(err, ErrConnectorConnectivity) {
+		t.Errorf("returned error is not tagged ErrConnectorConnectivity: %v", err)
+	}
+	// But the persistence failure must NOT bleed into the client-facing error:
+	// no "persist connectivity status" wrapper, no leaked table name.
+	if strings.Contains(err.Error(), "persist connectivity status") {
+		t.Errorf("persistence failure leaked into client-facing error: %v", err)
+	}
+	if strings.Contains(err.Error(), "access_connectors") {
+		t.Errorf("DB schema detail (table name) leaked into client-facing error: %v", err)
+	}
+}
+
+// TestConnectorManagementTestConnectivityMissingScopesIsDegradedNotError pins the
+// OpenAPI contract: a connector whose Connect succeeds but whose VerifyPermissions
+// reports unmet scopes is NOT a connectivity failure. TestConnectivity must return
+// the missing list with a NIL error (so the handler returns 200, not 502) and
+// persist the row as degraded (connected, but missing a grant) — never error.
+func TestConnectorManagementTestConnectivityMissingScopesIsDegradedNotError(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncVerifyPermissions: func(context.Context, map[string]interface{}, map[string]interface{}, []string) ([]string, error) {
+			return []string{"groups:read"}, nil
+		},
+	}
+	SwapConnector(t, "test-provider", mock)
+	svc := newMgmtService(t)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	missing, err := svc.TestConnectivity(ctx, ws, row.ID, []string{"users:read", "groups:read"})
+	if err != nil {
+		t.Fatalf("missing scopes must NOT be an error (handler returns 200), got: %v", err)
+	}
+	if len(missing) != 1 || missing[0] != "groups:read" {
+		t.Errorf("missing = %v, want [groups:read]", missing)
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.Status != ConnectorStatusDegraded {
+		t.Errorf("status = %q, want degraded (connected but missing a scope)", got.Status)
 	}
 }
 

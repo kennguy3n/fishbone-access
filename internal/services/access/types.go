@@ -52,6 +52,15 @@ var (
 	// onto HTTP 404.
 	ErrConnectorRowNotFound = errors.New("access: connector row not found by id")
 
+	// ErrConnectorConnectivity tags an error that originates from the provider
+	// side of a connectivity test — the connector's Connect / VerifyPermissions
+	// call failed, or required capabilities are missing. It is distinct from an
+	// internal platform fault (secret decryption, config unmarshal, DB write):
+	// handlers surface a connectivity error as HTTP 502 with the raw diagnostic
+	// (which is actionable for the operator), but route internal faults through
+	// the generic 500 path so encryption-layer details never leak to the client.
+	ErrConnectorConnectivity = errors.New("access: connector connectivity check failed")
+
 	// ErrAuditNotAvailable is returned by AccessAuditor implementations
 	// when the connected tenant/plan does not expose an audit log API
 	// (e.g. Slack Audit Logs requires Enterprise Grid). Callers treat

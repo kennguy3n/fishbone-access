@@ -2591,6 +2591,225 @@ label.field > span {
   box-shadow: var(--elev-raised);
 }
 
+/* --- Connectors: gallery, capability matrix, setup wizard --------------- */
+
+/* Three-up responsive grid for the connector gallery; collapses to fewer
+   columns on narrow viewports via auto-fit, like .grid--2 but denser. */
+.grid--3 {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.connector-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.connector-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.connector-card__title {
+  margin: 0;
+  font-size: 15px;
+}
+.connector-card__caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 24px;
+}
+.connector-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+/* The capability matrix can be wider than the content column at 12 columns,
+   so it scrolls horizontally inside its own container rather than stretching
+   the page. The first column (connector name) is sticky so the row stays
+   identifiable while scanning capabilities. */
+.matrix-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.table.matrix {
+  margin: 0;
+  min-width: 760px;
+}
+.matrix__rowhead {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  text-align: left;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.matrix__cap {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+  vertical-align: bottom;
+  max-width: 64px;
+  line-height: 1.25;
+}
+.matrix__cell {
+  text-align: center;
+}
+.matrix__row {
+  cursor: pointer;
+}
+.matrix__row:hover .matrix__rowhead,
+.matrix__row:hover td {
+  background: var(--bg-elev-2);
+}
+.matrix__name {
+  font-weight: 600;
+}
+.matrix__dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+}
+.matrix__dot--ok {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+.matrix__dot--no {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+/* Standalone field label (used on fieldset legends where the
+   `label.field > span` selector does not apply). */
+.field__label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+/* Advisory callouts for the setup plan: info = AI-degraded manual fallback,
+   ok = AI-generated. Mirrors badge tones at block scale. */
+.callout {
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+.callout--info {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: rgba(var(--brand-rgb), 0.3);
+}
+.callout--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+.setup-plan {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.setup-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.setup-step {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: var(--bg-elev);
+}
+.setup-step__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.setup-step__num {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--brand-strong);
+  color: #fff;
+}
+.setup-step__title {
+  margin: 0;
+  font-size: 14px;
+  flex: 1;
+}
+.setup-step__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.setup-step__pitfalls {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+.table--compact {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+
+.kv-editor {
+  border: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.kv-editor__row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.kv-editor__row > input:first-child {
+  flex: 0 0 38%;
+}
+.kv-editor__row > input {
+  flex: 1;
+}
+
 /* --- WS5: AI risk review surface --------------------------------------- */
 
 .risk-panel {
