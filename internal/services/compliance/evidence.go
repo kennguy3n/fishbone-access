@@ -2,8 +2,6 @@ package compliance
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -12,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
 // EvidenceRecord is one control-relevant event, projected from a row of the
@@ -266,16 +265,17 @@ func (s *EvidenceService) VerifyChain(ctx context.Context, workspaceID uuid.UUID
 	return out, nil
 }
 
-// recomputeChainHash reproduces appendAudit's pre-image exactly:
-// SHA256(prev_hash \n workspace \n action \n target \n metadata \n ts_micros).
-// created_at is already UTC-microsecond (appendAudit truncates before storing),
-// so UnixNano() here yields the same integer that was hashed at append time.
+// recomputeChainHash reproduces the appender's pre-image exactly by delegating
+// to lifecycle.ComputeChainHash — the single source of truth shared with
+// appendAudit — so the verifier can never drift from the writer. The stored
+// metadata is re-canonicalized first because the audit_events.metadata jsonb
+// column reorders keys and rewrites whitespace on read-back; canonicalizing
+// reproduces the exact bytes that were folded into the hash at append time.
 func recomputeChainHash(prevHash string, e *models.AuditEvent) string {
-	h := sha256.New()
-	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
-		prevHash, e.WorkspaceID, e.Action, e.TargetRef, string(e.Metadata),
-		e.CreatedAt.UTC().Truncate(time.Microsecond).UnixNano())
-	return hex.EncodeToString(h.Sum(nil))
+	return lifecycle.ComputeChainHash(
+		prevHash, e.WorkspaceID, e.Action, e.TargetRef,
+		lifecycle.CanonicalAuditMetadata(e.Metadata), e.CreatedAt,
+	)
 }
 
 // ControlCoverage is one framework control and how much evidence demonstrates

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
 	"github.com/kennguy3n/fishbone-access/internal/models"
@@ -63,12 +64,20 @@ func TestEvidenceStreamChainPostgres(t *testing.T) {
 		"access_grant.revoked",
 		"compliance.export",
 	}
+	// Every event carries rich, multi-key metadata. This is the regression guard
+	// for the jsonb round-trip: Postgres reorders object keys and rewrites
+	// whitespace/number formatting when it stores and returns jsonb, so a chain
+	// that hashed the caller's raw bytes (rather than the canonical form folded
+	// in by the appender) would fail to recompute here. The keys are deliberately
+	// supplied out of alphabetical order and with insignificant whitespace.
+	meta := datatypes.JSON([]byte(`{ "zeta": "last",  "alpha":"first", "item_count": 12, "nested": {"y": 2, "x": 1}, "reviewers": ["a@x.io","b@x.io"] }`))
 	for _, a := range actions {
 		if err := lifecycle.AppendAudit(ctx, db, time.Now(), lifecycle.AuditInput{
 			WorkspaceID: ws.ID,
 			Actor:       "auditor",
 			Action:      a,
 			TargetRef:   "t",
+			Metadata:    meta,
 		}); err != nil {
 			t.Fatalf("append %s: %v", a, err)
 		}

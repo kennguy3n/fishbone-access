@@ -69,6 +69,17 @@ const RequestDetail = lazyPage(() =>
 const Directory = lazyPage(() =>
   import("@/routes/Directory").then((m) => ({ default: m.Directory })),
 );
+const Campaigns = lazyPage(() =>
+  import("@/routes/Campaigns").then((m) => ({ default: m.Campaigns })),
+);
+const CampaignDetail = lazyPage(() =>
+  import("@/routes/CampaignDetail").then((m) => ({ default: m.CampaignDetail })),
+);
+const ComplianceEvidence = lazyPage(() =>
+  import("@/routes/ComplianceEvidence").then((m) => ({
+    default: m.ComplianceEvidence,
+  })),
+);
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
@@ -108,6 +119,9 @@ const appRoutes = [
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
   page("/directory", Directory),
+  page("/compliance/campaigns", Campaigns),
+  page("/compliance/campaigns/$campaignId", CampaignDetail),
+  page("/compliance/evidence", ComplianceEvidence),
   page("/settings", Settings),
 ];
 

@@ -1,10 +1,12 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -185,18 +187,29 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 		return fmt.Errorf("lifecycle: read audit chain head: %w", err)
 	}
 
-	h := sha256.New()
-	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
-		prevHash, e.WorkspaceID, e.Action, e.TargetRef, string(e.Metadata), now.UnixNano())
-	chainHash := hex.EncodeToString(h.Sum(nil))
+	// Canonicalize the metadata to a stable byte form BEFORE it is both hashed
+	// and persisted. The audit_events.metadata column is jsonb, and Postgres
+	// jsonb does NOT preserve the input byte representation — it reorders object
+	// keys and rewrites whitespace/number formatting on the way in. Hashing the
+	// caller's raw bytes while storing jsonb would therefore make every row that
+	// carries non-trivial metadata fail to recompute on read-back (the verifier
+	// would re-serialize a differently-ordered object). Folding the canonical
+	// form into both the hash AND the stored row makes the pre-image identical at
+	// append and verify time, independent of jsonb's internal normalization.
+	canonMeta := canonicalJSON(e.Metadata)
+	chainHash := ComputeChainHash(prevHash, e.WorkspaceID, e.Action, e.TargetRef, canonMeta, now)
 
+	stored := e.Metadata
+	if len(canonMeta) > 0 {
+		stored = datatypes.JSON(canonMeta)
+	}
 	row := &models.AuditEvent{
 		WorkspaceID: e.WorkspaceID,
 		ChainSeq:    prevSeq + 1,
 		Actor:       e.Actor,
 		Action:      e.Action,
 		TargetRef:   e.TargetRef,
-		Metadata:    e.Metadata,
+		Metadata:    stored,
 		PrevHash:    prevHash,
 		ChainHash:   chainHash,
 	}
@@ -206,4 +219,48 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 		return fmt.Errorf("lifecycle: insert audit event: %w", err)
 	}
 	return nil
+}
+
+// ComputeChainHash derives the SHA-256 chain hash for one audit event from its
+// linking pre-image:
+//
+//	SHA256(prevHash \n workspace \n action \n targetRef \n metadata \n ts_unixnano)
+//
+// It is the single source of truth for the pre-image so the appender and any
+// read-only verifier (the compliance evidence stream) can never drift. Callers
+// MUST pass the canonical metadata bytes (see CanonicalAuditMetadata) and a
+// timestamp; the timestamp is truncated to UTC microseconds here so the hashed
+// value matches what Postgres timestamptz persists (it keeps only microseconds).
+func ComputeChainHash(prevHash string, workspaceID uuid.UUID, action, targetRef string, metadata []byte, ts time.Time) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
+		prevHash, workspaceID, action, targetRef, string(metadata),
+		ts.UTC().Truncate(time.Microsecond).UnixNano())
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// CanonicalAuditMetadata returns a stable, canonical JSON encoding of raw so the
+// audit chain hash is invariant under the jsonb round-trip (Postgres reorders
+// object keys and rewrites whitespace/number formatting when it stores jsonb).
+// Re-canonicalizing the bytes read back from jsonb reproduces this exact form,
+// because Go's json.Marshal emits object keys in sorted order with no
+// insignificant whitespace. Empty/whitespace-only input maps to nil so a missing
+// metadata column hashes identically to an explicit empty value.
+func CanonicalAuditMetadata(raw []byte) []byte { return canonicalJSON(raw) }
+
+func canonicalJSON(raw []byte) []byte {
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil
+	}
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		// Not valid JSON: fall back to the raw bytes so a (malformed) value still
+		// hashes deterministically rather than silently dropping it.
+		return raw
+	}
+	canon, err := json.Marshal(v)
+	if err != nil {
+		return raw
+	}
+	return canon
 }

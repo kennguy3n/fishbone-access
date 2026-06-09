@@ -57,4 +57,16 @@ export const apiRequest = <T>(
     ...options,
   }).then(({ data }: AxiosResponse<T>) => data);
 
+/**
+ * apiDownload performs a request whose body is a binary attachment (e.g. the
+ * evidence-pack ZIP) and returns the full response so callers can read the
+ * Content-Disposition filename and any custom digest header — information that
+ * `apiRequest` discards by unwrapping to `.data`. The shared instance still
+ * applies the bearer token, Accept-Language, and 401 handling.
+ */
+export const apiDownload = (
+  config: AxiosRequestConfig,
+): Promise<AxiosResponse<Blob>> =>
+  instance<Blob>({ ...config, responseType: "blob" });
+
 export default apiRequest;

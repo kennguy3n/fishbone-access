@@ -15,7 +15,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
-import { apiRequest } from "./http-client";
+import { apiDownload, apiRequest } from "./http-client";
 
 // ---------------------------------------------------------------------------
 // Domain types (mirror internal/models + internal/services/lifecycle)
@@ -192,6 +192,17 @@ export const qk = {
   request: (id: string) => ["access-request", id] as const,
   requestHistory: (id: string) => ["access-request", id, "history"] as const,
   orphans: ["orphan-accounts"] as const,
+  evidence: (filter: EvidenceFilter) =>
+    ["compliance-evidence", filter] as const,
+  coverage: (framework: string, from?: string, to?: string) =>
+    ["compliance-coverage", framework, from ?? null, to ?? null] as const,
+  chainVerify: ["compliance-chain-verify"] as const,
+  campaigns: ["certification-campaigns"] as const,
+  campaign: (id: string) => ["certification-campaign", id] as const,
+  campaignItems: (id: string, reviewer?: string) =>
+    ["certification-campaign", id, "items", reviewer ?? ""] as const,
+  revocationPreview: (id: string) =>
+    ["certification-campaign", id, "revocation-preview"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -525,5 +536,406 @@ export function useOrphans() {
 export function useSetOrphanDisposition(id: string) {
   return useMutation<{ status: string }, ApiError, string>({
     mutationFn: (disposition) => setOrphanDisposition(id, disposition),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Compliance — evidence stream, certification campaigns, evidence-pack export
+// (mirror internal/services/compliance + internal/handlers/compliance.go)
+// ---------------------------------------------------------------------------
+
+/** Control-relevant classification of an audit-chain event (compliance.EvidenceKind). */
+export type EvidenceKind = string;
+
+/** Compliance frameworks the evidence pack can be mapped to. */
+export const FRAMEWORKS = ["SOC 2", "ISO 27001", "PCI-DSS"] as const;
+export type Framework = (typeof FRAMEWORKS)[number];
+
+/** One evidence record — a control-labelled view of an audit-chain entry. */
+export interface EvidenceRecord {
+  id: string;
+  workspace_id: string;
+  chain_seq: number;
+  kind: EvidenceKind;
+  action: string;
+  actor: string;
+  target_ref?: string;
+  metadata?: unknown;
+  prev_hash?: string;
+  chain_hash: string;
+  occurred_at: string;
+}
+
+export interface EvidenceFilter {
+  from?: string;
+  to?: string;
+  kinds?: EvidenceKind[];
+  controlled_only?: boolean;
+  limit?: number;
+}
+
+/** Result of recomputing the audit hash chain (compliance.ChainVerification). */
+export interface ChainVerification {
+  workspace_id: string;
+  ok: boolean;
+  length: number;
+  status: string;
+  broken_at_seq?: number;
+  reason?: string;
+}
+
+export interface ControlCoverage {
+  id: string;
+  title: string;
+  covered: boolean;
+  evidence_count: number;
+  by_kind?: Record<string, number>;
+  kinds: EvidenceKind[];
+}
+
+export interface FrameworkCoverage {
+  framework: Framework;
+  from?: string;
+  to?: string;
+  controls: ControlCoverage[];
+  controls_total: number;
+  controls_covered: number;
+  evidence_total: number;
+}
+
+export interface CertificationCampaign {
+  id: string;
+  workspace_id: string;
+  name: string;
+  state: string;
+  framework?: string;
+  scope_resource?: string;
+  scope_role?: string;
+  scope_connector_id?: string;
+  reviewers?: string[];
+  due_at?: string | null;
+  started_at?: string | null;
+  closed_at?: string | null;
+  overdue_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignItemView {
+  item_id: string;
+  grant_id: string;
+  resource_ref: string;
+  role: string;
+  subject: string;
+  reviewer?: string;
+  decision: string;
+  decided_by?: string;
+  decided_at?: string | null;
+  reason?: string;
+  revoked_at?: string | null;
+}
+
+export interface CampaignReport {
+  campaign_id: string;
+  name: string;
+  state: string;
+  framework?: string;
+  total: number;
+  pending: number;
+  certified: number;
+  revoked: number;
+  escalated: number;
+  due_at?: string | null;
+  overdue: boolean;
+  all_decided: boolean;
+}
+
+export interface RevocationPreview {
+  item_id: string;
+  grant_id: string;
+  resource_ref: string;
+  role: string;
+  subject: string;
+  decided_by: string;
+  reason: string;
+}
+
+export interface StartCampaignInput {
+  name: string;
+  framework?: string;
+  scope_resource?: string;
+  scope_role?: string;
+  scope_connector_id?: string;
+  reviewers?: string[];
+  due_at?: string | null;
+}
+
+export interface DecisionInput {
+  decision: "certify" | "revoke" | "escalate";
+  reason?: string;
+}
+
+// --- evidence stream + coverage + chain ---
+
+function evidenceParams(filter: EvidenceFilter): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filter.from) params.from = filter.from;
+  if (filter.to) params.to = filter.to;
+  if (filter.kinds && filter.kinds.length > 0)
+    params.kinds = filter.kinds.join(",");
+  if (filter.controlled_only) params.controlled_only = "true";
+  if (filter.limit != null) params.limit = String(filter.limit);
+  return params;
+}
+
+export const listEvidence = (filter: EvidenceFilter = {}) =>
+  call<{ records: EvidenceRecord[]; count: number }>({
+    url: "/compliance/evidence",
+    method: "GET",
+    params: evidenceParams(filter),
+  }).then((r) => r.records ?? []);
+
+export const getCoverage = (framework: string, from?: string, to?: string) =>
+  call<FrameworkCoverage>({
+    url: "/compliance/coverage",
+    method: "GET",
+    params: { framework, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+  });
+
+export const verifyChain = () =>
+  call<ChainVerification>({
+    url: "/compliance/chain/verify",
+    method: "GET",
+  });
+
+export function useEvidence(filter: EvidenceFilter = {}) {
+  return useQuery<EvidenceRecord[], ApiError>({
+    queryKey: qk.evidence(filter),
+    queryFn: () => listEvidence(filter),
+  });
+}
+
+export function useCoverage(
+  framework: string,
+  from?: string,
+  to?: string,
+  options?: Partial<UseQueryOptions<FrameworkCoverage, ApiError>>,
+) {
+  return useQuery<FrameworkCoverage, ApiError>({
+    queryKey: qk.coverage(framework, from, to),
+    queryFn: () => getCoverage(framework, from, to),
+    ...options,
+  });
+}
+
+export function useChainVerification(
+  options?: Partial<UseQueryOptions<ChainVerification, ApiError>>,
+) {
+  return useQuery<ChainVerification, ApiError>({
+    queryKey: qk.chainVerify,
+    queryFn: verifyChain,
+    ...options,
+  });
+}
+
+// --- certification campaigns ---
+
+export const listCampaigns = () =>
+  call<{ campaigns: CertificationCampaign[] }>({
+    url: "/compliance/campaigns",
+    method: "GET",
+  }).then((r) => r.campaigns ?? []);
+
+export const startCampaign = (body: StartCampaignInput) =>
+  call<{ campaign: CertificationCampaign; items: CampaignItemView[] }>({
+    url: "/compliance/campaigns",
+    method: "POST",
+    data: body,
+  });
+
+export const getCampaignReport = (id: string) =>
+  call<CampaignReport>({
+    url: `/compliance/campaigns/${id}`,
+    method: "GET",
+  });
+
+export const listCampaignItems = (id: string, reviewer?: string) =>
+  call<{ items: CampaignItemView[] }>({
+    url: `/compliance/campaigns/${id}/items`,
+    method: "GET",
+    params: reviewer ? { reviewer } : undefined,
+  }).then((r) => r.items ?? []);
+
+export const submitDecision = (
+  id: string,
+  itemID: string,
+  body: DecisionInput,
+) =>
+  call<{ status: string }>({
+    url: `/compliance/campaigns/${id}/items/${itemID}/decision`,
+    method: "POST",
+    data: body,
+  });
+
+export const previewRevocations = (id: string) =>
+  call<{ revocations: RevocationPreview[]; count: number }>({
+    url: `/compliance/campaigns/${id}/revocation-preview`,
+    method: "GET",
+  }).then((r) => r.revocations ?? []);
+
+export const closeCampaign = (id: string) =>
+  call<CampaignReport>({
+    url: `/compliance/campaigns/${id}/close`,
+    method: "POST",
+  });
+
+export const enforceOverdue = () =>
+  call<{ marked_overdue: number }>({
+    url: "/compliance/campaigns/overdue-enforce",
+    method: "POST",
+  });
+
+export function useCampaigns() {
+  return useQuery<CertificationCampaign[], ApiError>({
+    queryKey: qk.campaigns,
+    queryFn: listCampaigns,
+  });
+}
+
+export function useCampaignReport(
+  id: string | undefined,
+  options?: Partial<UseQueryOptions<CampaignReport, ApiError>>,
+) {
+  return useQuery<CampaignReport, ApiError>({
+    queryKey: qk.campaign(id ?? ""),
+    queryFn: () => getCampaignReport(id as string),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useCampaignItems(id: string | undefined, reviewer?: string) {
+  return useQuery<CampaignItemView[], ApiError>({
+    queryKey: qk.campaignItems(id ?? "", reviewer),
+    queryFn: () => listCampaignItems(id as string, reviewer),
+    enabled: !!id,
+  });
+}
+
+export function useRevocationPreview(
+  id: string | undefined,
+  options?: Partial<UseQueryOptions<RevocationPreview[], ApiError>>,
+) {
+  return useQuery<RevocationPreview[], ApiError>({
+    queryKey: qk.revocationPreview(id ?? ""),
+    queryFn: () => previewRevocations(id as string),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useStartCampaign() {
+  return useMutation<
+    { campaign: CertificationCampaign; items: CampaignItemView[] },
+    ApiError,
+    StartCampaignInput
+  >({
+    mutationFn: startCampaign,
+  });
+}
+
+export function useSubmitDecision(id: string) {
+  return useMutation<
+    { status: string },
+    ApiError,
+    { itemID: string; body: DecisionInput }
+  >({
+    mutationFn: ({ itemID, body }) => submitDecision(id, itemID, body),
+  });
+}
+
+export function useCloseCampaign(id: string) {
+  return useMutation<CampaignReport, ApiError, void>({
+    mutationFn: () => closeCampaign(id),
+  });
+}
+
+export function useEnforceOverdue() {
+  return useMutation<{ marked_overdue: number }, ApiError, void>({
+    mutationFn: enforceOverdue,
+  });
+}
+
+// --- evidence-pack export ---
+
+/**
+ * exportEvidencePack downloads a framework-mapped evidence pack as a ZIP. The
+ * route is gated server-side by RequirePermission("compliance.export") +
+ * step-up MFA, so a caller lacking either gets a 403 ApiError surfaced to the
+ * UI. Returns the digest the control plane stamped (X-Evidence-Pack-Digest),
+ * which the audit chain also records, so the operator can cross-check.
+ */
+export interface ExportPackInput {
+  framework: string;
+  from?: string;
+  to?: string;
+}
+
+export interface ExportedPack {
+  blob: Blob;
+  filename: string;
+  digest: string | null;
+}
+
+export async function exportEvidencePack(
+  body: ExportPackInput,
+): Promise<ExportedPack> {
+  try {
+    const res = await apiDownload({
+      url: "/compliance/export",
+      method: "POST",
+      data: body,
+    });
+    const blob = res.data;
+    const digest = (res.headers?.["x-evidence-pack-digest"] as string) ?? null;
+    const filename =
+      filenameFromDisposition(
+        res.headers?.["content-disposition"] as string | undefined,
+      ) ?? `evidence-pack-${body.framework.replace(/\s+/g, "_")}.zip`;
+    return { blob, filename, digest };
+  } catch (err) {
+    // A blob error response arrives as a Blob, not JSON — read it back so the
+    // server's message (e.g. "step-up MFA required") reaches the user.
+    throw await toApiErrorFromBlob(err);
+  }
+}
+
+function filenameFromDisposition(value?: string): string | null {
+  if (!value) return null;
+  const match = /filename="?([^"]+)"?/.exec(value);
+  return match ? match[1] : null;
+}
+
+async function toApiErrorFromBlob(err: unknown): Promise<ApiError> {
+  const ax = err as AxiosError<Blob>;
+  if (ax?.isAxiosError && ax.response?.data instanceof Blob) {
+    try {
+      const text = await ax.response.data.text();
+      const body = JSON.parse(text) as ApiErrorBody;
+      return new ApiError(
+        ax.response.status,
+        body.error ?? ax.message,
+        body.conflicts,
+      );
+    } catch {
+      return new ApiError(ax.response?.status ?? 0, ax.message);
+    }
+  }
+  return toApiError(err);
+}
+
+export function useExportEvidencePack() {
+  return useMutation<ExportedPack, ApiError, ExportPackInput>({
+    mutationFn: exportEvidencePack,
   });
 }

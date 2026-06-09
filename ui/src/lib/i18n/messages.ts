@@ -25,6 +25,7 @@ export type MessageKey =
   | "nav.group.overview"
   | "nav.group.govern"
   | "nav.group.lifecycle"
+  | "nav.group.compliance"
   | "nav.group.preferences"
   | "nav.dashboard"
   | "nav.policies"
@@ -33,6 +34,8 @@ export type MessageKey =
   | "nav.grants"
   | "nav.reviews"
   | "nav.directory"
+  | "nav.campaigns"
+  | "nav.evidence"
   | "nav.settings";
 
 type Catalog = Record<MessageKey, string>;
@@ -46,6 +49,7 @@ const en: Catalog = {
   "nav.group.overview": "Overview",
   "nav.group.govern": "Govern",
   "nav.group.lifecycle": "Lifecycle",
+  "nav.group.compliance": "Compliance",
   "nav.group.preferences": "Preferences",
   "nav.dashboard": "Dashboard",
   "nav.policies": "Access policies",
@@ -54,6 +58,8 @@ const en: Catalog = {
   "nav.grants": "Grants",
   "nav.reviews": "Access reviews",
   "nav.directory": "Directory",
+  "nav.campaigns": "Certification campaigns",
+  "nav.evidence": "Compliance evidence",
   "nav.settings": "Settings",
 };
 
@@ -66,6 +72,7 @@ const zhHans: Partial<Catalog> = {
   "nav.group.overview": "概览",
   "nav.group.govern": "治理",
   "nav.group.lifecycle": "生命周期",
+  "nav.group.compliance": "合规",
   "nav.group.preferences": "偏好设置",
   "nav.dashboard": "概览",
   "nav.policies": "访问策略",
@@ -74,6 +81,8 @@ const zhHans: Partial<Catalog> = {
   "nav.grants": "授权",
   "nav.reviews": "访问审查",
   "nav.directory": "目录",
+  "nav.campaigns": "认证活动",
+  "nav.evidence": "合规证据",
   "nav.settings": "设置",
 };
 
@@ -86,6 +95,7 @@ const zhHant: Partial<Catalog> = {
   "nav.group.overview": "概覽",
   "nav.group.govern": "治理",
   "nav.group.lifecycle": "生命週期",
+  "nav.group.compliance": "合規",
   "nav.group.preferences": "偏好設定",
   "nav.dashboard": "概覽",
   "nav.policies": "存取原則",
@@ -94,6 +104,8 @@ const zhHant: Partial<Catalog> = {
   "nav.grants": "授權",
   "nav.reviews": "存取審查",
   "nav.directory": "目錄",
+  "nav.campaigns": "認證活動",
+  "nav.evidence": "合規證據",
   "nav.settings": "設定",
 };
 
@@ -106,6 +118,7 @@ const ms: Partial<Catalog> = {
   "nav.group.overview": "Gambaran keseluruhan",
   "nav.group.govern": "Tadbir urus",
   "nav.group.lifecycle": "Kitar hayat",
+  "nav.group.compliance": "Pematuhan",
   "nav.group.preferences": "Keutamaan",
   "nav.dashboard": "Papan pemuka",
   "nav.policies": "Dasar akses",
@@ -114,6 +127,8 @@ const ms: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Semakan akses",
   "nav.directory": "Direktori",
+  "nav.campaigns": "Kempen pensijilan",
+  "nav.evidence": "Bukti pematuhan",
   "nav.settings": "Tetapan",
 };
 
@@ -126,6 +141,7 @@ const id: Partial<Catalog> = {
   "nav.group.overview": "Ikhtisar",
   "nav.group.govern": "Tata kelola",
   "nav.group.lifecycle": "Siklus hidup",
+  "nav.group.compliance": "Kepatuhan",
   "nav.group.preferences": "Preferensi",
   "nav.dashboard": "Dasbor",
   "nav.policies": "Kebijakan akses",
@@ -134,6 +150,8 @@ const id: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Tinjauan akses",
   "nav.directory": "Direktori",
+  "nav.campaigns": "Kampanye sertifikasi",
+  "nav.evidence": "Bukti kepatuhan",
   "nav.settings": "Pengaturan",
 };
 
@@ -146,6 +164,7 @@ const th: Partial<Catalog> = {
   "nav.group.overview": "ภาพรวม",
   "nav.group.govern": "การกำกับดูแล",
   "nav.group.lifecycle": "วงจรชีวิต",
+  "nav.group.compliance": "การปฏิบัติตามข้อกำหนด",
   "nav.group.preferences": "การตั้งค่าส่วนตัว",
   "nav.dashboard": "แดชบอร์ด",
   "nav.policies": "นโยบายการเข้าถึง",
@@ -154,6 +173,8 @@ const th: Partial<Catalog> = {
   "nav.grants": "สิทธิ์ที่ได้รับ",
   "nav.reviews": "การตรวจสอบการเข้าถึง",
   "nav.directory": "ไดเรกทอรี",
+  "nav.campaigns": "แคมเปญการรับรอง",
+  "nav.evidence": "หลักฐานการปฏิบัติตามข้อกำหนด",
   "nav.settings": "การตั้งค่า",
 };
 
@@ -166,6 +187,7 @@ const vi: Partial<Catalog> = {
   "nav.group.overview": "Tổng quan",
   "nav.group.govern": "Quản trị",
   "nav.group.lifecycle": "Vòng đời",
+  "nav.group.compliance": "Tuân thủ",
   "nav.group.preferences": "Tùy chọn",
   "nav.dashboard": "Bảng điều khiển",
   "nav.policies": "Chính sách truy cập",
@@ -174,6 +196,8 @@ const vi: Partial<Catalog> = {
   "nav.grants": "Quyền được cấp",
   "nav.reviews": "Đánh giá truy cập",
   "nav.directory": "Thư mục",
+  "nav.campaigns": "Chiến dịch chứng nhận",
+  "nav.evidence": "Bằng chứng tuân thủ",
   "nav.settings": "Cài đặt",
 };
 
@@ -186,6 +210,7 @@ const ja: Partial<Catalog> = {
   "nav.group.overview": "概要",
   "nav.group.govern": "ガバナンス",
   "nav.group.lifecycle": "ライフサイクル",
+  "nav.group.compliance": "コンプライアンス",
   "nav.group.preferences": "環境設定",
   "nav.dashboard": "ダッシュボード",
   "nav.policies": "アクセスポリシー",
@@ -194,6 +219,8 @@ const ja: Partial<Catalog> = {
   "nav.grants": "付与",
   "nav.reviews": "アクセスレビュー",
   "nav.directory": "ディレクトリ",
+  "nav.campaigns": "認証キャンペーン",
+  "nav.evidence": "コンプライアンス証跡",
   "nav.settings": "設定",
 };
 
@@ -206,6 +233,7 @@ const ko: Partial<Catalog> = {
   "nav.group.overview": "개요",
   "nav.group.govern": "거버넌스",
   "nav.group.lifecycle": "수명 주기",
+  "nav.group.compliance": "컴플라이언스",
   "nav.group.preferences": "기본 설정",
   "nav.dashboard": "대시보드",
   "nav.policies": "액세스 정책",
@@ -214,6 +242,8 @@ const ko: Partial<Catalog> = {
   "nav.grants": "권한 부여",
   "nav.reviews": "액세스 검토",
   "nav.directory": "디렉터리",
+  "nav.campaigns": "인증 캠페인",
+  "nav.evidence": "컴플라이언스 증거",
   "nav.settings": "설정",
 };
 
@@ -226,6 +256,7 @@ const ar: Partial<Catalog> = {
   "nav.group.overview": "نظرة عامة",
   "nav.group.govern": "الحوكمة",
   "nav.group.lifecycle": "دورة الحياة",
+  "nav.group.compliance": "الامتثال",
   "nav.group.preferences": "التفضيلات",
   "nav.dashboard": "لوحة المعلومات",
   "nav.policies": "سياسات الوصول",
@@ -234,6 +265,8 @@ const ar: Partial<Catalog> = {
   "nav.grants": "المنح",
   "nav.reviews": "مراجعات الوصول",
   "nav.directory": "الدليل",
+  "nav.campaigns": "حملات الاعتماد",
+  "nav.evidence": "أدلة الامتثال",
   "nav.settings": "الإعدادات",
 };
 
@@ -246,6 +279,7 @@ const de: Partial<Catalog> = {
   "nav.group.overview": "Übersicht",
   "nav.group.govern": "Governance",
   "nav.group.lifecycle": "Lebenszyklus",
+  "nav.group.compliance": "Compliance",
   "nav.group.preferences": "Präferenzen",
   "nav.dashboard": "Dashboard",
   "nav.policies": "Zugriffsrichtlinien",
@@ -254,6 +288,8 @@ const de: Partial<Catalog> = {
   "nav.grants": "Berechtigungen",
   "nav.reviews": "Zugriffsüberprüfungen",
   "nav.directory": "Verzeichnis",
+  "nav.campaigns": "Zertifizierungskampagnen",
+  "nav.evidence": "Compliance-Nachweise",
   "nav.settings": "Einstellungen",
 };
 
@@ -266,6 +302,7 @@ const fr: Partial<Catalog> = {
   "nav.group.overview": "Aperçu",
   "nav.group.govern": "Gouvernance",
   "nav.group.lifecycle": "Cycle de vie",
+  "nav.group.compliance": "Conformité",
   "nav.group.preferences": "Préférences",
   "nav.dashboard": "Tableau de bord",
   "nav.policies": "Politiques d'accès",
@@ -274,6 +311,8 @@ const fr: Partial<Catalog> = {
   "nav.grants": "Attributions",
   "nav.reviews": "Revues d'accès",
   "nav.directory": "Annuaire",
+  "nav.campaigns": "Campagnes de certification",
+  "nav.evidence": "Preuves de conformité",
   "nav.settings": "Paramètres",
 };
 
