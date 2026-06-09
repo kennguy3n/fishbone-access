@@ -158,7 +158,16 @@ func run() error {
 			joinCleanup()
 		}()
 		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
-		logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
+		if crypto.IsPassthrough(deps.Encryptor) {
+			// No DEK ⇒ the encryptor refuses to seal/open, so TOTP enrolment
+			// and every VerifyStepUp fail closed with ErrSecretsDisabled (503).
+			// The gate stays wired (fail-closed is correct), but make the
+			// degraded posture loud at boot rather than only surfacing on the
+			// first promote attempt.
+			logger.Warnf(ctx, "ztna-api: ACCESS_CREDENTIAL_DEK unset; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a DEK is configured)")
+		} else {
+			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
+		}
 	}
 
 	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily

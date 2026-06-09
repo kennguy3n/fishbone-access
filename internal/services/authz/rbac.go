@@ -13,7 +13,7 @@
 //   - WorkspaceRole: the membership tier a user holds within a workspace
 //     (owner / admin / security_admin / operator / auditor). Persisted on the
 //     workspace_members row (see internal/models WorkspaceMember + migration
-//     0012) and resolved per request by RBACService.
+//     0013) and resolved per request by RBACService.
 //
 //   - Permission: a typed string naming one guarded action
 //     (e.g. "policy.promote", "pam.connect"). Handlers reference these via the
