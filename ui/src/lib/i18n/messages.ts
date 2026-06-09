@@ -35,6 +35,7 @@ export type MessageKey =
   | "nav.grants"
   | "nav.reviews"
   | "nav.directory"
+  | "nav.rolesPermissions"
   | "nav.settings"
   // WS5 — access-request AI risk review surface.
   | "requests.risk.title"
@@ -75,6 +76,7 @@ const en: Catalog = {
   "nav.grants": "Grants",
   "nav.reviews": "Access reviews",
   "nav.directory": "Directory",
+  "nav.rolesPermissions": "Roles & permissions",
   "nav.settings": "Settings",
   "requests.risk.title": "AI risk review",
   "requests.risk.score": "Risk score",
@@ -113,6 +115,7 @@ const zhHans: Partial<Catalog> = {
   "nav.grants": "授权",
   "nav.reviews": "访问审查",
   "nav.directory": "目录",
+  "nav.rolesPermissions": "角色与权限",
   "nav.settings": "设置",
   "requests.risk.title": "AI 风险评审",
   "requests.risk.score": "风险评分",
@@ -151,6 +154,7 @@ const zhHant: Partial<Catalog> = {
   "nav.grants": "授權",
   "nav.reviews": "存取審查",
   "nav.directory": "目錄",
+  "nav.rolesPermissions": "角色與權限",
   "nav.settings": "設定",
   "requests.risk.title": "AI 風險審查",
   "requests.risk.score": "風險評分",
@@ -189,6 +193,7 @@ const ms: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Semakan akses",
   "nav.directory": "Direktori",
+  "nav.rolesPermissions": "Peranan & kebenaran",
   "nav.settings": "Tetapan",
   "requests.risk.title": "Semakan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -227,6 +232,7 @@ const id: Partial<Catalog> = {
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Tinjauan akses",
   "nav.directory": "Direktori",
+  "nav.rolesPermissions": "Peran & izin",
   "nav.settings": "Pengaturan",
   "requests.risk.title": "Tinjauan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -265,6 +271,7 @@ const th: Partial<Catalog> = {
   "nav.grants": "สิทธิ์ที่ได้รับ",
   "nav.reviews": "การตรวจสอบการเข้าถึง",
   "nav.directory": "ไดเรกทอรี",
+  "nav.rolesPermissions": "บทบาทและสิทธิ์",
   "nav.settings": "การตั้งค่า",
   "requests.risk.title": "การตรวจสอบความเสี่ยงด้วย AI",
   "requests.risk.score": "คะแนนความเสี่ยง",
@@ -303,6 +310,7 @@ const vi: Partial<Catalog> = {
   "nav.grants": "Quyền được cấp",
   "nav.reviews": "Đánh giá truy cập",
   "nav.directory": "Thư mục",
+  "nav.rolesPermissions": "Vai trò & quyền",
   "nav.settings": "Cài đặt",
   "requests.risk.title": "Đánh giá rủi ro bằng AI",
   "requests.risk.score": "Điểm rủi ro",
@@ -341,6 +349,7 @@ const ja: Partial<Catalog> = {
   "nav.grants": "付与",
   "nav.reviews": "アクセスレビュー",
   "nav.directory": "ディレクトリ",
+  "nav.rolesPermissions": "ロールと権限",
   "nav.settings": "設定",
   "requests.risk.title": "AI リスクレビュー",
   "requests.risk.score": "リスクスコア",
@@ -379,6 +388,7 @@ const ko: Partial<Catalog> = {
   "nav.grants": "권한 부여",
   "nav.reviews": "액세스 검토",
   "nav.directory": "디렉터리",
+  "nav.rolesPermissions": "역할 및 권한",
   "nav.settings": "설정",
   "requests.risk.title": "AI 위험 검토",
   "requests.risk.score": "위험 점수",
@@ -417,6 +427,7 @@ const ar: Partial<Catalog> = {
   "nav.grants": "المنح",
   "nav.reviews": "مراجعات الوصول",
   "nav.directory": "الدليل",
+  "nav.rolesPermissions": "الأدوار والأذونات",
   "nav.settings": "الإعدادات",
   "requests.risk.title": "مراجعة المخاطر بالذكاء الاصطناعي",
   "requests.risk.score": "درجة المخاطر",
@@ -455,6 +466,7 @@ const de: Partial<Catalog> = {
   "nav.grants": "Berechtigungen",
   "nav.reviews": "Zugriffsüberprüfungen",
   "nav.directory": "Verzeichnis",
+  "nav.rolesPermissions": "Rollen & Berechtigungen",
   "nav.settings": "Einstellungen",
   "requests.risk.title": "KI-Risikoprüfung",
   "requests.risk.score": "Risikobewertung",
@@ -493,6 +505,7 @@ const fr: Partial<Catalog> = {
   "nav.grants": "Attributions",
   "nav.reviews": "Revues d'accès",
   "nav.directory": "Annuaire",
+  "nav.rolesPermissions": "Rôles et autorisations",
   "nav.settings": "Paramètres",
   "requests.risk.title": "Évaluation des risques par l'IA",
   "requests.risk.score": "Score de risque",

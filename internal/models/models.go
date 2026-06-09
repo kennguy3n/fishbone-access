@@ -61,6 +61,83 @@ type TeamMember struct {
 	Role          string    `gorm:"not null;default:member" json:"role"`
 }
 
+// WorkspaceMember is the canonical source of truth for
+// (workspace_id, user_id) -> WorkspaceRole mappings, the persistence backing
+// the RBAC layer (see internal/services/authz). One row per
+// (workspace_id, user_id): the composite primary key prevents duplicate
+// enrolments and pins a user to at most one role per workspace. There is no
+// cross-workspace role concept — the platform is multi-tenant by workspace and
+// roles do not federate.
+//
+// Bootstrap: when a workspace is provisioned, exactly one row with role=owner
+// must be inserted for the creating user, otherwise no one can administer the
+// workspace (rbac.manage would always fail the authz check). The RBACService
+// rejects owner mutations that would leave the workspace ownerless.
+//
+// Unlike most models here it does NOT embed Base: the identity is the
+// composite (workspace_id, user_id) key, not a surrogate UUID, and rows are
+// hard-deleted (no soft-delete) because a removed membership must immediately
+// stop authorizing requests — a soft-deleted row that the RBAC query still
+// matched would be a fail-open bug. The role-change paper trail lives in the
+// per-workspace audit hash chain (audit_events), not on this row.
+type WorkspaceMember struct {
+	WorkspaceID uuid.UUID `gorm:"type:uuid;primaryKey" json:"workspace_id"`
+	UserID      string    `gorm:"type:varchar(255);primaryKey" json:"user_id"`
+	Role        string    `gorm:"type:varchar(32);not null;index;check:role IN ('owner','admin','security_admin','operator','auditor')" json:"role"`
+	CreatedAt   time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+// TableName pins the table name so the RBAC service and migration target the
+// same identifier regardless of GORM pluralization.
+func (WorkspaceMember) TableName() string { return "workspace_members" }
+
+// UserTOTPSecret stores a user's enrolled RFC 6238 TOTP shared secret, used by
+// the step-up MFA verifier (see internal/services/mfa). Each user has at most
+// one active secret per workspace; re-enrollment replaces the row. The secret
+// is workspace-scoped for tenant isolation and never serialized to JSON.
+//
+// Secret is sealed at rest with the DEK-backed AES-256-GCM envelope encryptor
+// (the same one used for connector credentials), bound via AAD to the owning
+// (workspace, user). It is never persisted in plaintext; the verifier seals on
+// write (SealTOTPSecret) and opens on read. The column widens to text to hold
+// the base64 envelope rather than the raw 16–32 char base32 secret.
+type UserTOTPSecret struct {
+	Base
+	WorkspaceID uuid.UUID  `gorm:"type:uuid;not null;index:idx_totp_secrets_ws_user,priority:1" json:"workspace_id"`
+	UserID      string     `gorm:"type:varchar(255);not null;index:idx_totp_secrets_ws_user,priority:2" json:"user_id"`
+	Secret      string     `gorm:"type:text;not null" json:"-"`
+	Verified    bool       `gorm:"not null;default:false" json:"verified"`
+	DisabledAt  *time.Time `json:"disabled_at,omitempty"`
+}
+
+// TableName pins the table name for the verifier's explicit lookups.
+func (UserTOTPSecret) TableName() string { return "user_totp_secrets" }
+
+// PAMTOTPUsedCode records a TOTP code accepted for a (workspace, user) so the
+// same code cannot be replayed within its remaining validity window. RFC 6238
+// codes are mathematically valid for the whole step plus any allowed skew step
+// (~90s with Period=30, Skew=1); without server-side tracking an observed code
+// could be reused inside that window.
+//
+// Anti-replay is enforced by the composite primary key (workspace_id, user_id,
+// code_hash): the verifier issues INSERT ... ON CONFLICT DO NOTHING after
+// validating the code and rejects the request when RowsAffected is zero. The
+// claim is atomic at the DB level, so two concurrent requests with the same
+// code resolve to exactly one success. Only a SHA-256 hash of the code is
+// stored (never the code itself, which is sensitive even after use). Rows are
+// pruned by a background sweep; falling behind only grows the table, never a
+// security regression.
+type PAMTOTPUsedCode struct {
+	WorkspaceID uuid.UUID `gorm:"type:uuid;primaryKey" json:"workspace_id"`
+	UserID      string    `gorm:"type:varchar(255);primaryKey" json:"user_id"`
+	CodeHash    string    `gorm:"type:varchar(64);primaryKey" json:"code_hash"`
+	UsedAt      time.Time `gorm:"not null;index:idx_pam_totp_used_codes_used_at" json:"used_at"`
+}
+
+// TableName pins the table name for the verifier and cleanup loop.
+func (PAMTOTPUsedCode) TableName() string { return "pam_totp_used_codes" }
+
 // AccessConnector is a configured integration with an external identity or
 // resource provider. SecretEnvelope is an AES-GCM sealed envelope (never
 // plaintext); SecretKeyVersion records which per-workspace DEK version sealed
@@ -312,5 +389,8 @@ func All() []any {
 		&PAMConnectToken{},
 		&PAMSession{},
 		&PAMSessionCommand{},
+		&WorkspaceMember{},
+		&UserTOTPSecret{},
+		&PAMTOTPUsedCode{},
 	}
 }

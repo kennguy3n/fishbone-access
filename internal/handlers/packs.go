@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/packs"
 )
 
@@ -14,12 +16,12 @@ import (
 // Listing the catalog is tenant-agnostic but stays behind auth for a uniform
 // surface; applying materializes drafts into the caller's workspace.
 func (h *lifecycleHandlers) registerPacks(g *gin.RouterGroup) {
-	g.GET("/packs", h.listPacks)
-	g.GET("/packs/:id", h.getPack)
+	g.GET("/packs", middleware.RequirePermission(authz.PermPackRead), h.listPacks)
+	g.GET("/packs/:id", middleware.RequirePermission(authz.PermPackRead), h.getPack)
 	// Apply only creates DRAFTS (no data-plane change), so — like POST
 	// /policies — it does not require step-up MFA. Each draft still has to be
 	// simulated and promoted (MFA-gated) before it can ever take effect.
-	g.POST("/packs/:id/apply", h.applyPack)
+	g.POST("/packs/:id/apply", middleware.RequirePermission(authz.PermPackApply), h.applyPack)
 }
 
 func (h *lifecycleHandlers) listPacks(c *gin.Context) {

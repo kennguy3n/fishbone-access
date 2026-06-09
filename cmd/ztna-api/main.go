@@ -40,7 +40,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -128,6 +130,45 @@ func run() error {
 	}
 
 	deps.Ready = ready
+
+	// RBAC authorization tier + step-up MFA. Both are backed by tables that
+	// only exist when a DB is configured, so they are wired only in the
+	// non-degraded path. The RBACService caches memberships per workspace
+	// (DefaultCacheTTL) to keep the per-request permission resolve off the DB.
+	// The composite step-up verifier today carries only a TOTP leg (the repo
+	// has no WebAuthn enrolment yet) and enforces single-use replay protection;
+	// a background loop tied to the signal context prunes expired used-code
+	// rows. AuthzMiddleware and the high-risk step-up gates are mounted by the
+	// router only when these deps are non-nil.
+	if deps.DB != nil {
+		deps.RBAC = authz.NewRBACService(deps.DB, authz.DefaultCacheTTL)
+		totpVerifier, err := mfa.NewTOTPMFAVerifier(deps.DB, deps.Encryptor)
+		if err != nil {
+			return fmt.Errorf("totp verifier init: %w", err)
+		}
+		// Give the cleanup loop its own cancellable context and join it on the
+		// way out, mirroring the scheduler below, so the goroutine is guaranteed
+		// to have stopped before the deferred DB-pool close runs (the pool's
+		// close defer was registered earlier, so this later-registered defer
+		// runs first under LIFO). This holds on every run() exit path.
+		cleanupCtx, cleanupCancel := context.WithCancel(ctx)
+		joinCleanup := totpVerifier.StartUsedCodeCleanupLoop(cleanupCtx, mfa.DefaultCleanupInterval, mfa.DefaultTOTPUsedCodeRetention)
+		defer func() {
+			cleanupCancel()
+			joinCleanup()
+		}()
+		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
+		if crypto.IsPassthrough(deps.Encryptor) {
+			// No DEK ⇒ the encryptor refuses to seal/open, so TOTP enrolment
+			// and every VerifyStepUp fail closed with ErrSecretsDisabled (503).
+			// The gate stays wired (fail-closed is correct), but make the
+			// degraded posture loud at boot rather than only surfacing on the
+			// first promote attempt.
+			logger.Warnf(ctx, "ztna-api: ACCESS_CREDENTIAL_DEK unset; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a DEK is configured)")
+		} else {
+			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
+		}
+	}
 
 	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily
 	// orphan-account reconciliation. Run in-process (tied to the server's
