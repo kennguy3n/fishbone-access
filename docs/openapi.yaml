@@ -28,6 +28,7 @@ tags:
   - name: access-requests
   - name: grants
   - name: policies
+  - name: packs
   - name: access-reviews
   - name: jml
   - name: orphans
@@ -316,6 +317,95 @@ paths:
         "200": { $ref: "#/components/responses/PolicyEnvelope" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /packs:
+    get:
+      tags: [packs]
+      summary: List curated policy packs
+      description: >
+        Returns the curated catalog of policy packs (compliance frameworks and
+        regional data-protection regimes). Optional filters narrow the result;
+        region/framework/industry match case-insensitively, and industry also
+        matches packs tagged "any".
+      parameters:
+        - in: query
+          name: tier
+          schema: { type: integer, enum: [1, 2, 3] }
+          description: 1 = global compliance, 2 = South-East Asia, 3 = rest of world.
+        - in: query
+          name: region
+          schema: { type: string }
+        - in: query
+          name: industry
+          schema: { type: string }
+        - in: query
+          name: framework
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packs:
+                    type: array
+                    items: { $ref: "#/components/schemas/Pack" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /packs/{id}:
+    parameters: [ { $ref: "#/components/parameters/PackIDPath" } ]
+    get:
+      tags: [packs]
+      summary: Get a single pack by id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pack: { $ref: "#/components/schemas/Pack" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /packs/{id}/apply:
+    parameters: [ { $ref: "#/components/parameters/PackIDPath" } ]
+    post:
+      tags: [packs]
+      summary: Apply a pack — materialize its templates as DRAFT policies
+      description: >
+        Creates one draft policy per selected template in the caller's
+        workspace, via the same lifecycle CreatePolicy path the editor uses, so
+        every materialized rule inherits the test-before-rollout guarantee
+        (each must still be simulated and promoted before it can take effect).
+        Omit template_keys (or send an empty array) to apply the whole pack.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                template_keys:
+                  type: array
+                  items: { type: string }
+                  description: Subset of template keys to apply; absent/empty = all.
+      responses:
+        "201":
+          description: Drafts created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applied:
+                    type: array
+                    items: { $ref: "#/components/schemas/AppliedPolicy" }
+                  count: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /access-reviews:
     post:
       tags: [access-reviews]
@@ -552,6 +642,12 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    PackIDPath:
+      name: id
+      in: path
+      required: true
+      description: Pack identifier. A human-readable catalog slug (e.g. "pci-dss-v4"), not a UUID.
+      schema: { type: string }
   requestBodies:
     Decision:
       required: false
@@ -691,6 +787,40 @@ components:
         definition: { type: object }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    PackTemplate:
+      type: object
+      properties:
+        key: { type: string }
+        name: { type: string }
+        summary: { type: string }
+        action: { type: string, enum: [grant, deny] }
+        subjects: { type: array, items: { type: string } }
+        resources: { type: array, items: { type: string } }
+        role: { type: string }
+        control:
+          type: string
+          description: Compliance control reference (e.g. "PCI-DSS 7.2").
+    Pack:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        authority:
+          type: string
+          description: Issuing/standards body (e.g. "PCI Security Standards Council").
+        description: { type: string }
+        tier: { type: integer, enum: [1, 2, 3] }
+        regions: { type: array, items: { type: string } }
+        industries: { type: array, items: { type: string } }
+        frameworks: { type: array, items: { type: string } }
+        templates:
+          type: array
+          items: { $ref: "#/components/schemas/PackTemplate" }
+    AppliedPolicy:
+      type: object
+      properties:
+        template_key: { type: string }
+        policy: { $ref: "#/components/schemas/Policy" }
     SimulationResult:
       type: object
       properties:

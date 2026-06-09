@@ -54,6 +54,12 @@ const Policies = lazyPage(() =>
 const PolicyEditor = lazyPage(() =>
   import("@/routes/PolicyEditor").then((m) => ({ default: m.PolicyEditor })),
 );
+const Packs = lazyPage(() =>
+  import("@/routes/Packs").then((m) => ({ default: m.Packs })),
+);
+const PackDetail = lazyPage(() =>
+  import("@/routes/PackDetail").then((m) => ({ default: m.PackDetail })),
+);
 const Requests = lazyPage(() =>
   import("@/routes/Requests").then((m) => ({ default: m.Requests })),
 );
@@ -97,6 +103,8 @@ const appRoutes = [
   page("/policies", Policies),
   page("/policies/new", PolicyEditor),
   page("/policies/$policyId", PolicyEditor),
+  page("/packs", Packs),
+  page("/packs/$packId", PackDetail),
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
   page("/directory", Directory),

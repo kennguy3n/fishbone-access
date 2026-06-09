@@ -2417,3 +2417,167 @@ label.field > span {
   border: 2px solid var(--surface);
   box-shadow: 0 0 0 1px var(--brand);
 }
+
+/* ---------------------------------------------------------------------------
+ * Policy packs (A-2): gallery cards, pack metadata, and the apply wizard's
+ * template list. Tokens are theme-aware so light/dark follow automatically.
+ * ------------------------------------------------------------------------- */
+.pack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.pack-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+.pack-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pack-card__title {
+  margin: 0;
+  font-size: 15px;
+}
+.pack-card__desc {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+}
+.pack-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pack-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.pack-meta__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+.pack-meta__item dt {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.pack-meta__item dd {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.template-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.template-row:hover {
+  border-color: var(--border);
+}
+.template-row.is-selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.template-row > input {
+  width: auto;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.template-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.template-row__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.template-row__summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.template-row__rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.template-row__chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.template-row__arrow {
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.template-row__control {
+  font-size: 11.5px;
+}
+.chip--subject {
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  border-color: var(--border-soft);
+}
+.chip--resource {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  border-color: var(--brand);
+}
+
+.pack-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.pack-select-all input {
+  width: auto;
+}
+.pack-apply-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--elev-raised);
+}
