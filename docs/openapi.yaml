@@ -33,6 +33,7 @@ tags:
   - name: jml
   - name: orphans
   - name: sso
+  - name: connectors
 paths:
   /me:
     get:
@@ -853,6 +854,191 @@ paths:
                   sso: { $ref: "#/components/schemas/SSOStatus" }
         "422": { $ref: "#/components/responses/Unprocessable" }
 
+  /connectors:
+    get:
+      tags: [connectors]
+      summary: Capability-matrix catalogue of every connector the binary ships
+      description: >
+        Returns one entry per registered connector — its curated metadata, the
+        five user-facing capability flags, and the type-asserted operational
+        capability flags — enriched with whether the calling workspace has
+        already connected the provider. Filters are ANDed.
+      parameters:
+        - { name: capability, in: query, required: false, schema: { type: string } }
+        - { name: tier, in: query, required: false, schema: { type: string } }
+        - { name: category, in: query, required: false, schema: { type: string } }
+        - name: connected
+          in: query
+          required: false
+          description: >
+            Tri-state filter on per-workspace connection state. Omitted returns
+            all providers; true returns only providers the workspace has already
+            connected; false returns only those it has not.
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connectors:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorCatalogueEntry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      tags: [connectors]
+      summary: Create a connector instance for the workspace
+      description: >
+        Validates the configuration against the provider connector (offline),
+        seals the secrets under the workspace DEK, and persists a pending row.
+        Call /connectors/{connectorID}/test to verify credentials live.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string }
+                display_name: { type: string }
+                config: { type: object, additionalProperties: true }
+                secrets: { type: object, additionalProperties: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessConnector" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /connectors/catalogue/facets:
+    get:
+      tags: [connectors]
+      summary: Distinct filter vocabularies for the catalogue UI
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogueFacets" }
+
+  /connectors/catalogue/{provider}:
+    parameters: [ { $ref: "#/components/parameters/ProviderPath" } ]
+    get:
+      tags: [connectors]
+      summary: Capability descriptor for one provider, with workspace state
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorCatalogueEntry" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /connectors/catalogue/{provider}/setup-wizard:
+    parameters: [ { $ref: "#/components/parameters/ProviderPath" } ]
+    post:
+      tags: [connectors]
+      summary: AI-assisted setup plan for a provider (advisory, fail-OPEN)
+      description: >
+        Consults the access-ai-agent connector_setup_assistant skill for a
+        guided, step-by-step setup plan. Fail-OPEN: a model outage yields a
+        degraded manual plan (HTTP 200, plan.degraded=true), never a 5xx. The
+        suggestion and its rationale are persisted to a workspace-scoped audit
+        trail.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                admin_intent: { type: string }
+                connector_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK (plan may be degraded when the model is unavailable)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorSetupResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /connectors/{connectorID}:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    get:
+      tags: [connectors]
+      summary: Get a connector instance by id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessConnector" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [connectors]
+      summary: Disconnect (soft-delete) a connector, clearing its sealed secrets
+      responses:
+        "204": { description: Disconnected }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /connectors/{connectorID}/test:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    post:
+      tags: [connectors]
+      summary: Test live connectivity (and optionally probe capabilities)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                capabilities:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Connection succeeded (missing lists any unmet capabilities)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  missing: { type: array, items: { type: string } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502":
+          description: Connectivity failed (credentials rejected or provider unreachable)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  error: { type: string }
+                  missing: { type: array, items: { type: string } }
+
+  /connectors/{connectorID}/sync:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    post:
+      tags: [connectors]
+      summary: Enqueue an identity-sync job for the connector
+      responses:
+        "202":
+          description: Accepted (job enqueued)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -875,6 +1061,12 @@ components:
       in: path
       required: true
       description: Pack identifier. A human-readable catalog slug (e.g. "pci-dss-v4"), not a UUID.
+      schema: { type: string }
+    ProviderPath:
+      name: provider
+      in: path
+      required: true
+      description: Connector provider key (e.g. "microsoft", "google-oauth2"), not a UUID.
       schema: { type: string }
   requestBodies:
     Decision:
@@ -1353,3 +1545,103 @@ components:
         supported: { type: boolean }
         enforced: { type: boolean }
         details: { type: string }
+    AccessConnector:
+      type: object
+      description: A workspace's connector instance. Secrets are never serialized.
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        provider: { type: string }
+        display_name: { type: string }
+        status: { type: string }
+        config: { type: object, additionalProperties: true }
+        last_synced_at: { type: string, format: date-time, nullable: true }
+    UserFacingCapabilities:
+      type: object
+      properties:
+        sync_identity: { type: boolean }
+        provision_access: { type: boolean }
+        list_entitlements: { type: boolean }
+        get_access_log: { type: boolean }
+        sso_federation: { type: boolean }
+    OperationalCapabilities:
+      type: object
+      description: >
+        Derived by type-asserting the registered connector against the optional
+        Go interfaces, so they can never drift from the shipped binary.
+      properties:
+        group_sync: { type: boolean }
+        identity_delta_sync: { type: boolean }
+        access_audit_stream: { type: boolean }
+        scim_provisioning: { type: boolean }
+        session_revoke: { type: boolean }
+        sso_enforcement_check: { type: boolean }
+        credential_renewal: { type: boolean }
+    ConnectorCatalogueEntry:
+      type: object
+      description: One row of the capability matrix, with workspace connection state.
+      properties:
+        provider: { type: string }
+        display_name: { type: string }
+        tier: { type: string, enum: [T1, T2, T3, T4, T5] }
+        category: { type: string }
+        registered: { type: boolean }
+        user_facing: { $ref: "#/components/schemas/UserFacingCapabilities" }
+        operational: { $ref: "#/components/schemas/OperationalCapabilities" }
+        connected: { type: boolean }
+        connector_id: { type: string }
+        status: { type: string }
+    CatalogueFacets:
+      type: object
+      properties:
+        tiers: { type: array, items: { type: string } }
+        categories: { type: array, items: { type: string } }
+        user_facing_capabilities: { type: array, items: { type: string } }
+        operational_capabilities: { type: array, items: { type: string } }
+    ConnectorSetupFieldMapping:
+      type: object
+      properties:
+        source: { type: string }
+        target: { type: string }
+        invert:
+          type: boolean
+          description: >
+            True when the source boolean has opposite polarity to the target
+            (e.g. Google `suspended` → platform `active`) and must be negated on
+            sync. Absent for the common non-inverted mapping.
+    ConnectorSetupStep:
+      type: object
+      properties:
+        step: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        required_scopes:
+          type: array
+          items: { type: string }
+          description: OAuth/API scopes the step requires. Omitted when empty (the server applies `omitempty`), so absence means "none for this step", not "unknown".
+        field_mappings:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectorSetupFieldMapping" }
+          description: IdP-attribute → platform-field mappings for the step. Omitted when empty.
+        common_pitfalls:
+          type: array
+          items: { type: string }
+          description: Known gotchas for the step. Omitted when empty.
+        estimated_minutes: { type: integer }
+    ConnectorSetupPlan:
+      type: object
+      properties:
+        strategy: { type: string }
+        explanation: { type: string }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/ConnectorSetupStep" }
+        model_used: { type: boolean }
+        degraded:
+          type: boolean
+          description: True when the AI agent was unavailable and the plan is the deterministic manual fallback.
+    ConnectorSetupResult:
+      type: object
+      properties:
+        suggestion_id: { type: string, format: uuid }
+        plan: { $ref: "#/components/schemas/ConnectorSetupPlan" }

@@ -57,6 +57,12 @@ const PolicyEditor = lazyPage(() =>
 const Packs = lazyPage(() =>
   import("@/routes/Packs").then((m) => ({ default: m.Packs })),
 );
+const Connectors = lazyPage(() =>
+  import("@/routes/Connectors").then((m) => ({ default: m.Connectors })),
+);
+const ConnectorSetup = lazyPage(() =>
+  import("@/routes/ConnectorSetup").then((m) => ({ default: m.ConnectorSetup })),
+);
 const PackDetail = lazyPage(() =>
   import("@/routes/PackDetail").then((m) => ({ default: m.PackDetail })),
 );
@@ -116,6 +122,8 @@ const appRoutes = [
   page("/policies/$policyId", PolicyEditor),
   page("/packs", Packs),
   page("/packs/$packId", PackDetail),
+  page("/connectors", Connectors),
+  page("/connectors/$provider/setup", ConnectorSetup),
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
   page("/workflows", Workflows),
