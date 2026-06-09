@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -308,14 +309,22 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 			if !opts.Force {
 				return &PromoteConflictError{Conflicts: hard}
 			}
+			// An override is a security-relevant action, so it must carry an
+			// audited justification — an empty reason is rejected rather than
+			// recorded as a blank audit entry.
+			if strings.TrimSpace(opts.Reason) == "" {
+				return fmt.Errorf("%w: a reason is required to override grant-vs-deny conflicts", ErrValidation)
+			}
 			meta := map[string]any{
 				"override":             true,
 				"reason":               opts.Reason,
 				"overridden_conflicts": len(hard),
 			}
-			if b, err := json.Marshal(meta); err == nil {
-				overrideMeta = datatypes.JSON(b)
+			b, err := json.Marshal(meta)
+			if err != nil {
+				return fmt.Errorf("lifecycle: marshal override metadata: %w", err)
 			}
+			overrideMeta = datatypes.JSON(b)
 		}
 
 		if err := tx.Model(&models.Policy{}).

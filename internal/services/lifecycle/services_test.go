@@ -601,6 +601,12 @@ func TestPromoteBlocksHardConflict(t *testing.T) {
 		t.Fatalf("expected PromoteConflictError with 1 grant_vs_deny conflict, got %v", err)
 	}
 
+	// A force override with no justification is rejected — an empty reason must
+	// never be recorded as a blank audit entry on a security override.
+	if _, err := svc.Promote(ctx, ws, grant.ID, "admin", PromoteOptions{Force: true, Reason: "  "}); !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected ErrValidation forcing override without a reason, got %v", err)
+	}
+
 	// Audited override clears the block.
 	promoted, err := svc.Promote(ctx, ws, grant.ID, "admin", PromoteOptions{Force: true, Reason: "reviewed: deny is being retired"})
 	if err != nil {

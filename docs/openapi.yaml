@@ -285,7 +285,10 @@ paths:
                   description: Override an unresolved grant-vs-deny conflict block.
                 reason:
                   type: string
-                  description: Audited justification, required in practice when force is true.
+                  description: >
+                    Audited justification for the override. Required (non-empty)
+                    when force is true — a forced promotion with a blank reason
+                    is rejected with 400 ErrValidation.
       responses:
         "200": { $ref: "#/components/responses/PolicyEnvelope" }
         "403": { $ref: "#/components/responses/Forbidden" }
