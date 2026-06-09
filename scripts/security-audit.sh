@@ -26,6 +26,16 @@ set -uo pipefail
 
 # ---- configuration (all overridable from the environment) -------------------
 SYFT_VERSION="${SYFT_VERSION:-v1.18.1}"
+# The syft installer is fetched from an IMMUTABLE commit pin, never a moving
+# branch: SYFT_INSTALLER_REF is the commit the SYFT_VERSION tag points to, and
+# the download is integrity-checked against SYFT_INSTALLER_SHA256 before it is
+# ever executed. This closes the supply-chain hole of piping a mutable
+# `…/main/install.sh` straight into a shell — a compromised upstream branch (or
+# a moved tag) cannot inject code here because both the ref and the bytes are
+# pinned. Bump all three together when upgrading syft (the SHA256 is printed by
+# `sha256sum` of the installer at that ref).
+SYFT_INSTALLER_REF="${SYFT_INSTALLER_REF:-5e16e5031a13f8a11057feb8544decebfc43b4ed}"
+SYFT_INSTALLER_SHA256="${SYFT_INSTALLER_SHA256:-709ae9171e3d44e456a111943c341d0bf0fd2176b41af124d019823a70c34a3f}"
 GOVULNCHECK_VERSION="${GOVULNCHECK_VERSION:-latest}"
 PIP_AUDIT_VERSION="${PIP_AUDIT_VERSION:-2.7.3}"
 NPM_AUDIT_LEVEL="${NPM_AUDIT_LEVEL:-high}"
@@ -107,10 +117,24 @@ fi
 # ---- single consolidated SBOM (syft) ----------------------------------------
 section "SBOM → ${SBOM_OUT} (CycloneDX, all ecosystems)"
 if ! command -v syft >/dev/null 2>&1; then
-	note "bootstrapping syft ${SYFT_VERSION} into ${TOOLBIN}"
-	curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh |
-		sh -s -- -b "$TOOLBIN" "$SYFT_VERSION" >/dev/null 2>&1 ||
-		{ note "syft install failed (network?)"; fail=1; }
+	note "bootstrapping syft ${SYFT_VERSION} into ${TOOLBIN} (installer pinned @ ${SYFT_INSTALLER_REF})"
+	installer="$(mktemp)"
+	# Fetch from the pinned commit, verify the bytes, THEN run — never pipe an
+	# unverified remote script into a shell.
+	if curl -sSfL "https://raw.githubusercontent.com/anchore/syft/${SYFT_INSTALLER_REF}/install.sh" -o "$installer"; then
+		got="$(sha256sum "$installer" | awk '{print $1}')"
+		if [ "$got" = "$SYFT_INSTALLER_SHA256" ]; then
+			sh "$installer" -b "$TOOLBIN" "$SYFT_VERSION" >/dev/null 2>&1 ||
+				{ note "syft install failed"; fail=1; }
+		else
+			note "syft installer checksum mismatch (want ${SYFT_INSTALLER_SHA256}, got ${got}); refusing to execute"
+			fail=1
+		fi
+	else
+		note "syft installer download failed (network?)"
+		fail=1
+	fi
+	rm -f "$installer"
 fi
 if command -v syft >/dev/null 2>&1; then
 	syft scan dir:. \

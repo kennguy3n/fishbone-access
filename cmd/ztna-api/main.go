@@ -96,9 +96,13 @@ func run() error {
 		}
 		deps.WorkspaceResolver = database.NewPgxWorkspaceConfigRepo(pool)
 		// Close the pgx pool on shutdown. It is queried only by RequireTenant on
-		// the HTTP request path, and every run() defer fires only after
-		// srv.Shutdown has drained in-flight requests, so no request can race
-		// this close.
+		// the HTTP request path. On the normal (signal) exit, run() returns only
+		// after srv.Shutdown has drained in-flight requests, so no request races
+		// this close. On the fatal-serve-error exit, run() returns without
+		// draining, but srv.Serve has already stopped so no new request can start;
+		// this close has exactly the same exposure as the GORM pool's deferred
+		// close above (both fire in LIFO order on the same path), so the pgx pool
+		// adds no shutdown race the process did not already have.
 		defer pool.Close()
 		logger.Infof(ctx, "ztna-api: pgxpool adapter enabled for workspace-config reads")
 	} else {
