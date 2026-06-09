@@ -28,9 +28,43 @@ ELEVATED_TAGS = {"prod", "production", "prd", "tier:1", "sensitive", "pii", "reg
 ALLOWED_SCORES = ("low", "medium", "high")
 _ORDER = {"low": 0, "medium": 1, "high": 2}
 
+# Routing-facing recommendation vocabulary, mirroring the Go
+# lifecycle.Recommendation* constants. The Go control plane re-derives the
+# authoritative recommendation from the normalized band (it never trusts this
+# field for an authorization decision); the agent emits it so the verdict is
+# self-describing and the contract is explicit.
+RECOMMENDATION_AUTO_APPROVE = "auto_approve_eligible"
+RECOMMENDATION_NEEDS_REVIEW = "needs_review"
+RECOMMENDATION_HIGH_RISK = "high_risk"
+
+# Canonical risk factor mirroring the Go lifecycle.SensitiveResourceRiskFactor
+# constant: the one factor that forces the security-review lane regardless of
+# the numeric band. Keeping the same vocabulary on both sides means the advisory
+# recommendation emitted here agrees with the authoritative Go routing.
+SENSITIVE_RESOURCE_FACTOR = "sensitive_resource"
+
 
 def _max_score(a: str, b: str) -> str:
     return a if _ORDER[a] >= _ORDER[b] else b
+
+
+def _recommendation(score: str, factors: list[str]) -> str:
+    """Mirror the Go control plane's lifecycle.recommendationFor exactly: the
+    canonical ``sensitive_resource`` factor forces high_risk regardless of the
+    numeric band (the Go router's sensitive_resource → security_review edge),
+    otherwise the recommendation follows the score band. The Go side re-derives
+    the authoritative recommendation, so this advisory field never drives an
+    authorization decision — keeping it in lock-step only avoids confusing a
+    reader who compares the two. An ``elevated_resource:`` factor (prod, pii,
+    …) only bumps the *score* one band; it does not by itself force high_risk,
+    matching Go, which escalates on ``sensitive_resource`` alone."""
+    if SENSITIVE_RESOURCE_FACTOR in factors:
+        return RECOMMENDATION_HIGH_RISK
+    if score == "high":
+        return RECOMMENDATION_HIGH_RISK
+    if score == "low":
+        return RECOMMENDATION_AUTO_APPROVE
+    return RECOMMENDATION_NEEDS_REVIEW
 
 
 def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
@@ -54,6 +88,14 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
         # medium→high, high→high (already capped). The ternary picks the next
         # band's floor and _max_score keeps the higher of the two.
         score = _max_score(score, "high" if score != "low" else "medium")
+
+    # The "sensitive" tag specifically forces the security-review lane on the Go
+    # side (lifecycle.SensitiveResourceRiskFactor → security_review, also re-added
+    # by withSensitiveFactor). Emit the canonical factor so the verdict carries
+    # the exact signal the Go router escalates on and the advisory recommendation
+    # agrees with it. Go de-dupes if it appends the same factor.
+    if "sensitive" in tags:
+        factors.append(SENSITIVE_RESOURCE_FACTOR)
 
     duration = payload.get("duration_hours")
     if isinstance(duration, int) and duration > 168:  # standing access (> 1 week)
@@ -116,4 +158,10 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         reason = f"rule-based risk={score} from {len(factors)} factor(s)"
 
-    return {"risk_score": score, "risk_factors": factors, "reason": reason}
+    recommendation = _recommendation(score, factors)
+    return {
+        "risk_score": score,
+        "risk_factors": factors,
+        "reason": reason,
+        "recommendation": recommendation,
+    }

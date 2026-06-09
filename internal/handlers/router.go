@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -48,6 +49,11 @@ type Deps struct {
 	// falls back to the GORM-backed resolver so the SQLite test path and
 	// degraded boots keep working unchanged.
 	WorkspaceResolver middleware.WorkspaceResolver
+	// AI is the access-ai-agent client (mTLS A2A) used by the lifecycle risk
+	// review to score elevation requests server-side. When nil the lifecycle
+	// handlers substitute an unconfigured client, so risk review degrades to
+	// the fail-open deterministic fallback instead of panicking.
+	AI *aiclient.AIClient
 }
 
 // NewRouter builds the Gin engine.
