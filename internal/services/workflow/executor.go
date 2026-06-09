@@ -172,7 +172,12 @@ func (e *Executor) Execute(ctx context.Context, p RunParams) (*RunResult, error)
 		result.Status = aggregateStatus(result.Steps)
 	}
 
-	if mode == ModeLive {
+	// Persist a run row only for a live run that actually matched and executed
+	// steps. A non-matching subject performs no side effects, so recording a row
+	// per non-match would let a high-frequency identity_event trigger bloat the
+	// workflow_runs table without adding audit value; the caller still receives
+	// the skipped RunResult synchronously.
+	if mode == ModeLive && result.Matched {
 		runID, err := e.persistRun(ctx, p, result, started)
 		if err != nil {
 			return nil, err
@@ -217,9 +222,10 @@ func (e *Executor) plan(doc Doc) []StepOutcome {
 func (e *Executor) runLive(ctx context.Context, p RunParams) []StepOutcome {
 	out := make([]StepOutcome, 0, len(p.Doc.Steps))
 	for i, s := range p.Doc.Steps {
-		o := e.runStep(ctx, p, i, s)
-		e.audit(ctx, p, o)
-		out = append(out, o)
+		out = append(out, e.runStep(ctx, p, i, s))
+		// Audit the appended element by pointer so an audit-append failure
+		// annotation lands on the outcome that is persisted, not a copy.
+		e.audit(ctx, p, &out[len(out)-1])
 	}
 	return out
 }
@@ -291,7 +297,7 @@ func (e *Executor) runStep(ctx context.Context, p RunParams, idx int, s Step) St
 	}
 }
 
-func (e *Executor) audit(ctx context.Context, p RunParams, o StepOutcome) {
+func (e *Executor) audit(ctx context.Context, p RunParams, o *StepOutcome) {
 	if p.Deps.Audit == nil {
 		return
 	}

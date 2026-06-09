@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -253,6 +254,53 @@ func TestExecute_LiveConditionsNotMatchedSkips(t *testing.T) {
 	}
 	if granter.calls != 0 {
 		t.Fatalf("granter called %d times for non-matching subject", granter.calls)
+	}
+	if res.RunID != nil {
+		t.Fatalf("non-matching live run persisted a run id %v, want none", res.RunID)
+	}
+	// A non-matching live run must not write a workflow_runs row (avoids
+	// table bloat from high-frequency identity events).
+	var count int64
+	db.Model(&models.WorkflowRun{}).Count(&count)
+	if count != 0 {
+		t.Fatalf("non-matching live run persisted %d rows, want 0", count)
+	}
+}
+
+func TestExecute_LiveAuditFailureAnnotatedOnPersistedRun(t *testing.T) {
+	db := execTestDB(t)
+	exec := NewExecutor(db)
+	// The audit sink fails on every append; the step's side effect still
+	// happened, so the outcome must be annotated rather than dropped — and the
+	// annotation must survive into the persisted run record.
+	auditor := &fakeAuditor{err: errors.New("audit store offline")}
+
+	doc := mustDoc(t, `{"kind":"joiner","trigger":"manual","steps":[
+		{"type":"notify","channel":"email","message":"welcome"}
+	]}`)
+
+	res, err := exec.Execute(context.Background(), RunParams{
+		WorkspaceID: uuid.New(),
+		Doc:         doc,
+		Subject:     Subject{ExternalID: "u1"},
+		Mode:        ModeLive,
+		Deps:        StepDeps{Notifier: &fakeNotifier{ref: "email"}, Audit: auditor},
+	})
+	if err != nil {
+		t.Fatalf("live run: %v", err)
+	}
+	if len(res.Steps) != 1 || !strings.Contains(res.Steps[0].Detail, "audit append failed") {
+		t.Fatalf("in-memory outcome not annotated: %+v", res.Steps)
+	}
+	if res.RunID == nil {
+		t.Fatal("live run did not persist a run id")
+	}
+	var run models.WorkflowRun
+	if err := db.First(&run, "id = ?", *res.RunID).Error; err != nil {
+		t.Fatalf("load persisted run: %v", err)
+	}
+	if !strings.Contains(string(run.Steps), "audit append failed") {
+		t.Fatalf("persisted run lost the audit-failure annotation: %s", run.Steps)
 	}
 }
 

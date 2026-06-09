@@ -297,8 +297,11 @@ func (c Condition) matches(subject Subject) bool {
 		_, ok := want[strings.ToLower(actual)]
 		return !ok
 	case OpIn:
+		// Symmetric with OpEquals and fail-closed: a missing/empty attribute
+		// must not satisfy a positive membership test, even if the author
+		// listed an empty value.
 		_, ok := want[strings.ToLower(actual)]
-		return ok
+		return ok && len(actual) > 0
 	case OpContains:
 		for _, g := range subject.multi(c.Attribute) {
 			if _, ok := want[strings.ToLower(g)]; ok {

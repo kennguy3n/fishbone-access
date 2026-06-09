@@ -240,3 +240,35 @@ func TestService_RunOnlyPublishedAndRecordsRun(t *testing.T) {
 		t.Fatalf("cross-tenant GetRun should be ErrNotFound, got %v", err)
 	}
 }
+
+func TestService_ListRunsHonoursLimit(t *testing.T) {
+	db := svcTestDB(t)
+	s := NewService(db)
+	ws := seedWS(t, db, "acme")
+
+	for i := 0; i < 3; i++ {
+		run := &models.WorkflowRun{
+			WorkspaceID:       ws,
+			WorkflowID:        uuid.New(),
+			WorkflowVersion:   1,
+			Trigger:           TriggerManual,
+			SubjectExternalID: "u1",
+			Mode:              ModeLive,
+			Status:            StatusSucceeded,
+			Steps:             datatypes.JSON(`[]`),
+		}
+		if err := db.Create(run).Error; err != nil {
+			t.Fatalf("seed run: %v", err)
+		}
+	}
+
+	// An explicit limit below the row count is honoured (the bug was the
+	// handler always passing 0, so the cap silently fell back to the default).
+	got, err := s.ListRuns(context.Background(), ws, 2)
+	if err != nil {
+		t.Fatalf("list runs: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("limited list returned %d runs, want 2", len(got))
+	}
+}

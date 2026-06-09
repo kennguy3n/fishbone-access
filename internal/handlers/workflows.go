@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -254,7 +255,18 @@ func (h *workflowHandlers) listRuns(c *gin.Context) {
 	if !ok {
 		return
 	}
-	rows, err := h.svc.ListRuns(c.Request.Context(), ws, 0)
+	limit := 0
+	if q := c.Query("limit"); q != "" {
+		// An unparseable limit is a client error, not a silent default
+		// (mirrors listPacks' tier handling).
+		n, err := strconv.Atoi(q)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+			return
+		}
+		limit = n
+	}
+	rows, err := h.svc.ListRuns(c.Request.Context(), ws, limit)
 	if err != nil {
 		h.fail(c, err)
 		return

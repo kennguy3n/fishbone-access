@@ -2,9 +2,11 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
@@ -64,8 +66,11 @@ func (s *Service) GetRun(ctx context.Context, workspaceID, runID uuid.UUID) (*mo
 	err := s.db.WithContext(ctx).
 		Where("workspace_id = ? AND id = ?", workspaceID, runID).
 		Take(&run).Error
-	if err != nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("workflow: load run: %w", err)
 	}
 	return &run, nil
 }

@@ -359,8 +359,10 @@ func (s *JMLService) RunKillSwitch(ctx context.Context, workspaceID uuid.UUID, u
 		result.Layers = append(result.Layers, entry)
 	}
 
-	// Layer 1: revoke every ShieldNet-managed grant for the user.
-	s.layerGrantRevoke(ctx, workspaceID, user, record)
+	// Layer 1: revoke every ShieldNet-managed grant for the user, attributed to
+	// the kill switch's actor ("scim" for the automatic lane, the admin for an
+	// emergency offboard / workflow step).
+	s.layerGrantRevoke(ctx, workspaceID, user, actor, record)
 	// Layer 2: remove the user from all internal teams.
 	s.layerTeamRemove(ctx, workspaceID, user, record)
 	// Layer 3: disable the user in iam-core (the identity provider).
@@ -376,7 +378,7 @@ func (s *JMLService) RunKillSwitch(ctx context.Context, workspaceID uuid.UUID, u
 	return result, nil
 }
 
-func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID, user string, record func(layer, status, detail string)) {
+func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID, user, actor string, record func(layer, status, detail string)) {
 	var grants []models.AccessGrant
 	if err := s.db.WithContext(ctx).
 		Where("workspace_id = ? AND iam_core_user_id = ? AND state = ? AND revoked_at IS NULL", workspaceID, user, GrantStateActive).
@@ -390,7 +392,7 @@ func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID
 	}
 	var failed int
 	for i := range grants {
-		if err := s.provisioner.RevokeGrant(ctx, workspaceID, grants[i].ID, "scim", "leaver kill switch"); err != nil {
+		if err := s.provisioner.RevokeGrant(ctx, workspaceID, grants[i].ID, actor, "leaver kill switch"); err != nil {
 			failed++
 		}
 	}
