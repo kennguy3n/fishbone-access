@@ -170,6 +170,46 @@ type Policy struct {
 	PromotedAt  *time.Time     `json:"promoted_at,omitempty"`
 }
 
+// Workflow is a declarative, versioned Joiner/Mover/Leaver automation with the
+// same draft → publish lifecycle as Policy: a draft never executes, only a
+// published workflow is run by the engine. Trigger records what fires it
+// (identity_event / schedule / manual). Definition holds the JSON workflow doc
+// (trigger + conditions + ordered steps); DraftSimulation caches the last
+// dry-run output while State is "draft" (cleared on every edit) and is the
+// test-before-publish artifact the Publish gate requires. PublishedAt is
+// stamped when a draft is published.
+type Workflow struct {
+	Base
+	WorkspaceID     uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	Name            string         `gorm:"not null" json:"name"`
+	Trigger         string         `gorm:"not null;default:manual" json:"trigger"`
+	State           string         `gorm:"not null;default:draft" json:"state"`
+	Version         int            `gorm:"not null;default:1" json:"version"`
+	Definition      datatypes.JSON `json:"definition"`
+	DraftSimulation datatypes.JSON `json:"draft_simulation,omitempty"`
+	PublishedAt     *time.Time     `json:"published_at,omitempty"`
+}
+
+// WorkflowRun is one live execution of a published workflow for a single
+// subject identity, recorded for the JML dashboard (recent runs, status,
+// per-step audit). Dry-run simulations are NOT persisted here — they have no
+// side effects and are cached on Workflow.DraftSimulation instead. Steps holds
+// the ordered per-step outcome breakdown; Status is the aggregate
+// (succeeded / partial / failed).
+type WorkflowRun struct {
+	Base
+	WorkspaceID       uuid.UUID      `gorm:"type:uuid;index;not null" json:"workspace_id"`
+	WorkflowID        uuid.UUID      `gorm:"type:uuid;index;not null" json:"workflow_id"`
+	WorkflowVersion   int            `gorm:"not null;default:1" json:"workflow_version"`
+	Trigger           string         `json:"trigger,omitempty"`
+	SubjectExternalID string         `gorm:"index" json:"subject_external_id"`
+	Mode              string         `gorm:"not null;default:live" json:"mode"`
+	Status            string         `gorm:"not null" json:"status"`
+	Steps             datatypes.JSON `json:"steps,omitempty"`
+	StartedAt         time.Time      `json:"started_at"`
+	CompletedAt       *time.Time     `json:"completed_at,omitempty"`
+}
+
 // AccessReviewItem is one per-grant certification decision within an
 // AccessReview campaign. StartCampaign enumerates the workspace's active grants
 // into pending items; reviewers then certify / revoke / escalate each one.
@@ -271,6 +311,8 @@ func All() []any {
 		&AccessReviewItem{},
 		&WorkflowApproval{},
 		&Policy{},
+		&Workflow{},
+		&WorkflowRun{},
 		&AccessOrphanAccount{},
 		&AuditEvent{},
 		&AccessSyncState{},

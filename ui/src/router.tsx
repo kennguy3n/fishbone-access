@@ -83,6 +83,17 @@ const ComplianceEvidence = lazyPage(() =>
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
+const Workflows = lazyPage(() =>
+  import("@/routes/Workflows").then((m) => ({ default: m.Workflows })),
+);
+const WorkflowBuilder = lazyPage(() =>
+  import("@/routes/WorkflowBuilder").then((m) => ({
+    default: m.WorkflowBuilder,
+  })),
+);
+const JmlRuns = lazyPage(() =>
+  import("@/routes/JmlRuns").then((m) => ({ default: m.JmlRuns })),
+);
 
 const rootRoute = createRootRoute({ component: Outlet });
 
@@ -118,6 +129,10 @@ const appRoutes = [
   page("/packs/$packId", PackDetail),
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
+  page("/workflows", Workflows),
+  page("/workflows/new", WorkflowBuilder),
+  page("/workflows/$workflowId", WorkflowBuilder),
+  page("/jml-runs", JmlRuns),
   page("/directory", Directory),
   page("/compliance/campaigns", Campaigns),
   page("/compliance/campaigns/$campaignId", CampaignDetail),
