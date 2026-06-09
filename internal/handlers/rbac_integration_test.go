@@ -178,6 +178,35 @@ func TestRBACAuditorReadAllowedWriteDenied(t *testing.T) {
 	}
 }
 
+// TestRBACWorkflowGating proves the WS3 workflow routes honor the workflow.read
+// / workflow.edit split: a read-only auditor may list workflows but cannot
+// author one or fire the emergency-offboard kill switch, while an edit-holder
+// (admin) clears the permission gate. This guards the separation of duties the
+// RBAC model defines for the workflow engine.
+func TestRBACWorkflowGating(t *testing.T) {
+	env := newRBACTestEnv(t)
+
+	// Auditor holds workflow.read → list is allowed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/workflows", "tok-auditor", nil); w.Code != http.StatusOK {
+		t.Fatalf("auditor GET workflows = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Auditor lacks workflow.edit → authoring and the kill switch are denied at
+	// the permission gate (before any handler logic runs).
+	body := map[string]any{"name": "wf", "definition": map[string]any{}}
+	if w := do(t, env.router, http.MethodPost, "/api/v1/workflows", "tok-auditor", body); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST workflows = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+	if w := do(t, env.router, http.MethodPost, "/api/v1/emergency-offboard", "tok-auditor", map[string]any{"user_external_id": "x", "reason": "y"}); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST emergency-offboard = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Admin holds workflow.edit → the permission gate admits the request (the
+	// create then succeeds; the point is it is NOT a 403 from RequirePermission).
+	if w := do(t, env.router, http.MethodPost, "/api/v1/workflows", "tok-admin", body); w.Code == http.StatusForbidden {
+		t.Fatalf("admin POST workflows = 403, want the permission gate to admit it; body=%s", w.Body.String())
+	}
+}
+
 func TestRBACListRolesRequiresMembership(t *testing.T) {
 	env := newRBACTestEnv(t)
 	if w := do(t, env.router, http.MethodGet, "/api/v1/rbac/roles", "tok-owner", nil); w.Code != http.StatusOK {
