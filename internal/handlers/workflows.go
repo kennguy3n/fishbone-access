@@ -323,11 +323,15 @@ func (h *workflowHandlers) emergencyOffboard(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"leaver": res})
 }
 
-// fail maps workflow sentinel errors to HTTP status codes. Unknown errors are
-// 500 and logged (never echoed) so an internal fault is not leaked.
+// fail maps sentinel errors to HTTP status codes. It bridges two packages: the
+// workflow service's own sentinels and the lifecycle sentinels that surface
+// through the emergency-offboard / run paths (which call JML + provisioning
+// services). Unknown errors are 500 and logged (never echoed) so an internal
+// fault is not leaked.
 func (h *workflowHandlers) fail(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, workflow.ErrValidation):
+	case errors.Is(err, workflow.ErrValidation),
+		errors.Is(err, lifecycle.ErrValidation):
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	case errors.Is(err, workflow.ErrNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})

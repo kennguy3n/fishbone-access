@@ -70,6 +70,16 @@ func (a grantAdapter) GrantRole(ctx context.Context, in GrantInput, actor string
 	if err != nil {
 		return "", err
 	}
+	// CreateRequest leaves the request in StateRequested, but Provision only
+	// accepts an approved request (the FSM forbids requested → provisioning).
+	// The workflow itself IS the authorization decision (request_approval is the
+	// human-gated variant), so auto-approve here — mirroring the JML joiner path
+	// (lifecycle.WorkflowService auto-approve lane), which approves before
+	// provisioning. Return the request id on failure so an operator can locate
+	// the half-completed request.
+	if err := a.requests.ApproveRequest(ctx, a.ws, req.ID, actor, "JML workflow automated grant"); err != nil {
+		return req.ID.String(), err
+	}
 	grant, err := a.prov.Provision(ctx, a.ws, req.ID, actor)
 	if err != nil {
 		// Surface the request id so an operator can find the half-completed

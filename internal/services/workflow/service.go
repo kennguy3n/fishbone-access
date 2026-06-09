@@ -284,10 +284,14 @@ func (s *Service) Publish(ctx context.Context, workspaceID, id uuid.UUID, actor 
 		if err := json.Unmarshal(loaded.DraftSimulation, &sim); err != nil {
 			return fmt.Errorf("workflow: decode cached simulation: %w", err)
 		}
-		// A simulation that surfaced a failed step must not be publishable.
-		// Re-validate the stored definition too, defending against a row written
-		// before a validation rule tightened.
-		if sim.Status == StatusFailed {
+		// A simulation that surfaced a failed step must not be publishable. A
+		// dry-run only ever produces StatusPlanned (matched) or StatusSkipped
+		// (not matched), so neither StatusFailed nor StatusPartial can arise from
+		// a genuine Simulate call — but both are checked defensively against a
+		// draft_simulation row corrupted out of band (direct DB write / a future
+		// change that lets a dry-run surface step failures). Either way, a cached
+		// run that recorded any step failure must never unlock publish.
+		if sim.Status == StatusFailed || sim.Status == StatusPartial {
 			return fmt.Errorf("%w: workflow %s", ErrSimulationFailed, id)
 		}
 		// The cached dry-run must have actually exercised the steps. A
