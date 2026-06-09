@@ -348,12 +348,21 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 			Updates(map[string]any{"state": models.CertificationStateClosed, "closed_at": now, "updated_at": now}).Error; err != nil {
 			return fmt.Errorf("compliance: close campaign: %w", err)
 		}
+		// Record the count of revokes this close is STAGING for teardown, not a
+		// success tally. This event commits atomically with the state change inside
+		// the transaction, whereas the revocations are applied post-commit (they
+		// touch external connectors and must not run under the row lock). Naming it
+		// "staged_revocations" keeps the evidence honest — it never overstates what
+		// was applied. The authoritative per-grant outcome is the individual
+		// access_grant.revoked event each RevokeGrant appends, and a partial
+		// teardown converges on re-close (idempotent RevokeGrant), so the applied
+		// count is always reconstructable from the chain.
 		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
 			WorkspaceID: workspaceID,
 			Actor:       actor,
 			Action:      "certification.campaign.closed",
 			TargetRef:   campaignID.String(),
-			Metadata:    mustJSON(map[string]any{"applied_revocations": len(pendingRevokes)}),
+			Metadata:    mustJSON(map[string]any{"staged_revocations": len(pendingRevokes)}),
 		})
 	})
 	if err != nil {

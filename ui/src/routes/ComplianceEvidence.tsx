@@ -258,7 +258,11 @@ function hasPermission(scopes: string[] | undefined, permission: string): boolea
     if (scope === "*" || scope === permission) return true;
     if (scope.endsWith(".*")) {
       const prefix = scope.slice(0, -1); // keep the trailing dot
-      if (permission.startsWith(prefix)) return true;
+      // Mirror the server's strict-length guard (permission.go): a prefix
+      // wildcard like "compliance.*" must match something AFTER the dot, so a
+      // bare "compliance." never satisfies it. Keeps this client check a
+      // faithful, non-divergent mirror of the authoritative server rule.
+      if (permission.length > prefix.length && permission.startsWith(prefix)) return true;
     }
   }
   return false;
