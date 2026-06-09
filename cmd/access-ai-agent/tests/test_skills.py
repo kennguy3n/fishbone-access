@@ -448,6 +448,26 @@ def test_connector_plan_surfaces_every_profile_pitfall():
         )
 
 
+def test_connector_profile_for_returns_isolated_copy():
+    # _profile_for must hand out an independent deep copy, never a reference into
+    # the module-level STRATEGY_PROFILE / _GENERIC_PROFILE globals: the agent is a
+    # long-lived process serving concurrent tenant requests, so a mutation of a
+    # returned profile must not leak into the shared state seen by later requests.
+    first = connector_setup_assistant._profile_for("microsoft")
+    first["scopes"].append("MUTATED")
+    first["field_mappings"][0]["target"] = "MUTATED"
+
+    second = connector_setup_assistant._profile_for("microsoft")
+    assert "MUTATED" not in second["scopes"]
+    assert second["field_mappings"][0]["target"] != "MUTATED"
+
+    # The generic fallback (strategy=None) must be isolated too.
+    g1 = connector_setup_assistant._profile_for(None)
+    g1["pitfalls"].append("MUTATED")
+    g2 = connector_setup_assistant._profile_for(None)
+    assert "MUTATED" not in g2["pitfalls"]
+
+
 def test_connector_model_used_flag_false_without_llm():
     # With no LLM configured the explanation is deterministic and model_used is
     # False, so the Go side can record that the plan was not model-enriched.

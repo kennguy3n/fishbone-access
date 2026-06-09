@@ -15,6 +15,7 @@ pattern used by the other skills.
 """
 from __future__ import annotations
 
+import copy
 import logging
 from typing import Any
 
@@ -168,9 +169,16 @@ def _strategy_for(provider: str) -> str | None:
 
 
 def _profile_for(strategy: str | None) -> dict[str, Any]:
+    # Return a deep copy, never a reference into the module-level STRATEGY_PROFILE
+    # / _GENERIC_PROFILE globals. The agent is a long-lived process serving
+    # concurrent requests, and callers (e.g. _plan_for) reach into the profile's
+    # nested field_mappings dicts; handing out the shared object would let any
+    # future in-place edit corrupt the global state across every tenant's
+    # subsequent requests. deepcopy makes each call's profile independent — the
+    # profiles are tiny, so the cost is negligible.
     if strategy is None:
-        return _GENERIC_PROFILE
-    return STRATEGY_PROFILE.get(strategy, _GENERIC_PROFILE)
+        return copy.deepcopy(_GENERIC_PROFILE)
+    return copy.deepcopy(STRATEGY_PROFILE.get(strategy, _GENERIC_PROFILE))
 
 
 def _deterministic(payload: dict[str, Any]) -> str:
