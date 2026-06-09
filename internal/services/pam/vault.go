@@ -13,9 +13,22 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
+
+// standaloneAuditor appends one audit event in its own transaction. The Vault
+// uses it for standalone events (target create, secret reveal, token mint)
+// whose state change has already committed. In production this is the pgxpool
+// adapter's AuditAppender (database.PgxAuditRepo), wired via SetAuditor; when
+// nil the Vault falls back to the GORM lifecycle.AppendAudit path used by the
+// SQLite unit tests and degraded boots. Both backends append to the SAME
+// per-workspace hash chain through the shared auditchain primitives, so the
+// standalone event chains correctly regardless of which one is active.
+type standaloneAuditor interface {
+	AppendAudit(ctx context.Context, now time.Time, in database.AuditInput) error
+}
 
 // ErrTargetNotFound is returned when a target does not exist in the workspace.
 // A target in another workspace is indistinguishable from a missing one, so
@@ -57,10 +70,11 @@ type CreateTargetInput struct {
 // target's own id bound as AAD), gates secret reveal behind step-up MFA, and
 // supports in-place rotation. All reads and writes are workspace-scoped.
 type Vault struct {
-	db     *gorm.DB
-	enc    access.CredentialEncryptor
-	stepUp *StepUpGate
-	now    func() time.Time
+	db      *gorm.DB
+	enc     access.CredentialEncryptor
+	stepUp  *StepUpGate
+	now     func() time.Time
+	auditor standaloneAuditor
 }
 
 // NewVault wires a vault. enc MUST be a real encryptor (the fail-closed
@@ -75,6 +89,19 @@ func NewVault(db *gorm.DB, enc access.CredentialEncryptor, stepUp *StepUpGate) *
 func (v *Vault) SetClock(now func() time.Time) {
 	if now != nil {
 		v.now = now
+	}
+}
+
+// SetAuditor routes standalone audit appends through a (typically pgxpool)
+// AuditAppender instead of the default GORM path. Production wires the pgx
+// adapter here so the audit-log table's standalone writes run on pgx; the
+// in-transaction appends (auditTx) stay on GORM because they must commit
+// atomically with the GORM state change that produced them — the incremental
+// GORM→pgx migration starts with the standalone path. A nil argument is
+// ignored, leaving the GORM fallback in place.
+func (v *Vault) SetAuditor(a standaloneAuditor) {
+	if a != nil {
+		v.auditor = a
 	}
 }
 
@@ -284,6 +311,15 @@ func (v *Vault) audit(ctx context.Context, workspaceID uuid.UUID, actor, action,
 	md, err := marshalMeta(meta)
 	if err != nil {
 		return err
+	}
+	if v.auditor != nil {
+		return v.auditor.AppendAudit(ctx, v.now(), database.AuditInput{
+			WorkspaceID: workspaceID,
+			Actor:       actor,
+			Action:      action,
+			TargetRef:   targetRef,
+			Metadata:    md,
+		})
 	}
 	return lifecycle.AppendAudit(ctx, v.db, v.now(), lifecycle.AuditInput{
 		WorkspaceID: workspaceID,

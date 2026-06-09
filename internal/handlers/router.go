@@ -16,6 +16,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/webui"
@@ -41,6 +42,12 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// WorkspaceResolver is the tenant→workspace lookup RequireTenant runs on
+	// every authenticated request. When set (production wires the pgxpool
+	// adapter here) it takes precedence; when nil and DB is present, NewRouter
+	// falls back to the GORM-backed resolver so the SQLite test path and
+	// degraded boots keep working unchanged.
+	WorkspaceResolver middleware.WorkspaceResolver
 }
 
 // NewRouter builds the Gin engine.
@@ -72,9 +79,13 @@ func NewRouter(deps Deps) *gin.Engine {
 	// It is only mounted when both a validator and a DB are present; without a
 	// DB the routes are absent (the /api/v1 group already 503s in degraded
 	// mode).
-	if deps.Validator != nil && deps.DB != nil {
+	resolver := deps.WorkspaceResolver
+	if resolver == nil && deps.DB != nil {
+		resolver = database.NewGormWorkspaceConfigRepo(deps.DB)
+	}
+	if deps.Validator != nil && resolver != nil {
 		scoped := api.Group("")
-		scoped.Use(middleware.RequireTenant(deps.DB))
+		scoped.Use(middleware.RequireTenant(resolver))
 		newLifecycleHandlers(deps).register(scoped)
 	}
 

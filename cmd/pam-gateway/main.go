@@ -83,7 +83,19 @@ func run() error {
 		}
 	}()
 
-	listeners, err := buildListeners(ctx, cfg, gdb)
+	// Open a pgxpool alongside GORM and route the Vault's standalone audit
+	// appends through the pgxpool adapter (WS10 GORM→pgx migration). The chain
+	// bookkeeping is shared via the auditchain package, so a standalone event
+	// written on pgx links into the same per-workspace hash chain as the
+	// in-transaction (GORM) appends. The pool is closed after the supervisor
+	// returns, so no listener can race the close.
+	pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBMaxOpenConns), cfg.DBConnMaxLifetime, 0)
+	if err != nil {
+		return fmt.Errorf("pgx pool setup: %w", err)
+	}
+	defer pool.Close()
+
+	listeners, err := buildListeners(ctx, cfg, gdb, database.NewPgxAuditRepo(pool))
 	if err != nil {
 		return fmt.Errorf("build listeners: %w", err)
 	}
@@ -99,7 +111,7 @@ func run() error {
 
 // buildListeners constructs the PAM services and the ten protocol
 // ConnHandlers, returning the supervisor listener set.
-func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gateway.Listener, error) {
+func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, auditor database.AuditAppender) ([]gateway.Listener, error) {
 	// Credential encryptor seals/opens per-target upstream credentials. FromKey
 	// returns a fail-closed encryptor when no DEK is set, so a target with a
 	// sealed secret cannot be opened in a misconfigured boot.
@@ -124,6 +136,9 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 	}
 
 	vault := pam.NewVault(gdb, enc, stepUp)
+	// Route standalone audit appends (target create, secret reveal, token mint)
+	// through the pgxpool adapter; in-transaction appends stay on GORM.
+	vault.SetAuditor(auditor)
 	policy := pam.NewCommandPolicyEvaluator(gdb, 5*time.Second)
 	hub := gateway.NewSessionHub()
 	sessions := pam.NewSessionManager(gdb, policy, hub)

@@ -37,7 +37,14 @@ func requireTenantTestDB(t *testing.T) (*gorm.DB, uuid.UUID) {
 // has no other source for a workspace id.
 func scopedRouter(v TokenValidator, db *gorm.DB) *gin.Engine {
 	r := gin.New()
-	r.Use(Auth(v), ResolveTenant(), RequireTenant(db))
+	// Mirror production wiring (handlers.NewRouter): a resolver is built only
+	// when a DB is present, so a nil DB yields a nil resolver and RequireTenant
+	// fails closed with 503 rather than dereferencing a nil handle.
+	var resolver WorkspaceResolver
+	if db != nil {
+		resolver = database.NewGormWorkspaceConfigRepo(db)
+	}
+	r.Use(Auth(v), ResolveTenant(), RequireTenant(resolver))
 	r.GET("/scoped", func(c *gin.Context) {
 		ws, ok := WorkspaceFromContext(c)
 		if !ok {

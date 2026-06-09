@@ -78,6 +78,25 @@ func run() error {
 				_ = sqlDB.Close()
 			}
 		}()
+
+		// Open a pgxpool alongside the GORM pool and route RequireTenant's
+		// tenant→workspace resolution through the pgxpool adapter (WS10 GORM→pgx
+		// migration, starting with the workspace-config read on the hot path of
+		// every authenticated request). The rest of the control plane still
+		// queries through GORM; the two pools share the same Postgres and the
+		// adapter honours the identical contract (same query, same
+		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged.
+		pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBMaxOpenConns), cfg.DBConnMaxLifetime, 0)
+		if err != nil {
+			return fmt.Errorf("pgx pool setup: %w", err)
+		}
+		deps.WorkspaceResolver = database.NewPgxWorkspaceConfigRepo(pool)
+		// Close the pgx pool on shutdown. It is queried only by RequireTenant on
+		// the HTTP request path, and every run() defer fires only after
+		// srv.Shutdown has drained in-flight requests, so no request can race
+		// this close.
+		defer pool.Close()
+		logger.Infof(ctx, "ztna-api: pgxpool adapter enabled for workspace-config reads")
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")
 	}
