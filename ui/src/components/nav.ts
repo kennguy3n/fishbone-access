@@ -51,6 +51,13 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    labelId: "nav.group.compliance",
+    items: [
+      { labelId: "nav.campaigns", to: "/compliance/campaigns", icon: "audit" },
+      { labelId: "nav.evidence", to: "/compliance/evidence", icon: "compliance" },
+    ],
+  },
+  {
     labelId: "nav.group.preferences",
     items: [
       {

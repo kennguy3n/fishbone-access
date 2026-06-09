@@ -84,6 +84,17 @@ const PamLeases = lazyPage(() =>
 const PamSessions = lazyPage(() =>
   import("@/routes/PamSessions").then((m) => ({ default: m.PamSessions })),
 );
+const Campaigns = lazyPage(() =>
+  import("@/routes/Campaigns").then((m) => ({ default: m.Campaigns })),
+);
+const CampaignDetail = lazyPage(() =>
+  import("@/routes/CampaignDetail").then((m) => ({ default: m.CampaignDetail })),
+);
+const ComplianceEvidence = lazyPage(() =>
+  import("@/routes/ComplianceEvidence").then((m) => ({
+    default: m.ComplianceEvidence,
+  })),
+);
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
@@ -148,6 +159,9 @@ const appRoutes = [
   page("/pam/targets", PamTargets),
   page("/pam/leases", PamLeases),
   page("/pam/sessions", PamSessions),
+  page("/compliance/campaigns", Campaigns),
+  page("/compliance/campaigns/$campaignId", CampaignDetail),
+  page("/compliance/evidence", ComplianceEvidence),
   page("/settings", Settings),
   page("/settings/roles", RolesPermissions),
 ];

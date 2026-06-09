@@ -112,6 +112,7 @@ func NewRouter(deps Deps) *gin.Engine {
 		newConnectorHandlers(deps).register(scoped)
 		newPAMHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
+		newComplianceHandlers(deps).register(scoped)
 	}
 
 	// Serve the embedded Access console (SPA) when the binary was built with
