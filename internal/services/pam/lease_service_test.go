@@ -267,6 +267,78 @@ func TestExpireLeasesSweep(t *testing.T) {
 	}
 }
 
+// TestExpireSweepLosesToConcurrentRevoke pins the scan→claim TOCTOU guard: if a
+// lease is revoked after the sweep's (non-transactional) due scan but before its
+// per-lease claim, revoke must win. The sweep must not stamp expired_at or
+// append a pam.lease.expired event, because revoke already recorded the terminal
+// transition — a spurious expiry row would pollute the tamper-evident chain.
+func TestExpireSweepLosesToConcurrentRevoke(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	target := seedLeaseTarget(t, v, ws, "box")
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	cur := now
+	leases := NewPAMLeaseService(db, nil)
+	leases.SetClock(func() time.Time { return cur })
+
+	lease, err := leases.RequestLease(context.Background(), RequestLeaseInput{
+		WorkspaceID: ws, TargetID: target.ID, Subject: "alice", RequestedBy: "alice", TTL: time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("RequestLease: %v", err)
+	}
+	if _, err := leases.ApproveLease(context.Background(), ws, lease.ID, "carol", time.Minute); err != nil {
+		t.Fatalf("ApproveLease: %v", err)
+	}
+
+	// Advance past the TTL so the lease is due for the sweep, then revoke it in
+	// the scan→claim window via the test seam.
+	cur = now.Add(2 * time.Minute)
+	revoked := false
+	leases.afterScan = func() {
+		if revoked {
+			return
+		}
+		revoked = true
+		if _, err := leases.RevokeLease(context.Background(), ws, lease.ID, "carol", "killed early"); err != nil {
+			t.Fatalf("concurrent RevokeLease: %v", err)
+		}
+	}
+
+	n, err := leases.ExpireLeases(context.Background(), ws)
+	if err != nil {
+		t.Fatalf("ExpireLeases: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("sweep expired a lease that was revoked in the scan→claim window: n=%d (want 0)", n)
+	}
+
+	// Derived state is revoked, and expired_at was never stamped.
+	got, err := leases.GetLease(context.Background(), ws, lease.ID)
+	if err != nil {
+		t.Fatalf("GetLease: %v", err)
+	}
+	if got.State != models.PAMLeaseStateRevoked {
+		t.Fatalf("want revoked, got %q", got.State)
+	}
+	if got.ExpiredAt != nil {
+		t.Fatalf("expired_at was stamped on a revoked lease: %v", got.ExpiredAt)
+	}
+
+	// The audit chain holds the revoke transition but no spurious expiry.
+	var expiredAudits, revokedAudits int64
+	db.Model(&models.AuditEvent{}).Where("workspace_id = ? AND action = ?", ws, "pam.lease.expired").Count(&expiredAudits)
+	db.Model(&models.AuditEvent{}).Where("workspace_id = ? AND action = ?", ws, "pam.lease.revoked").Count(&revokedAudits)
+	if expiredAudits != 0 {
+		t.Fatalf("spurious pam.lease.expired audit on a revoked lease: %d", expiredAudits)
+	}
+	if revokedAudits != 1 {
+		t.Fatalf("want 1 pam.lease.revoked audit, got %d", revokedAudits)
+	}
+}
+
 // TestLeaseBoundSecretActiveOnly proves the credential is brokered only while
 // the lease is live: a token bound to a lease that is revoked or expired before
 // redemption fails closed.

@@ -72,9 +72,11 @@ type PAMLease struct {
 	RequestID *uuid.UUID `gorm:"type:uuid;index" json:"request_id,omitempty"`
 	// ApprovedBy is the iam-core subject that approved the lease (audited).
 	ApprovedBy string `json:"approved_by,omitempty"`
-	// RequestedTTLSeconds is the access window the requester asked for; the
-	// approver may override it at approval time. The effective expiry is
-	// ExpiresAt, computed from the approval instant + the granted TTL.
+	// RequestedTTLSeconds is the access window the requester asked for. It is
+	// set once at request time and never overwritten — an approver who grants a
+	// different window (via duration override) does not mutate this field, so it
+	// stays the durable record of the original ask. The granted window is
+	// ExpiresAt (the effective expiry); the granted TTL is ExpiresAt-GrantedAt.
 	RequestedTTLSeconds int `gorm:"not null;default:0" json:"requested_ttl_seconds"`
 
 	// RiskLevel/RiskFactors/RiskReason/RiskDegraded capture the request-time AI

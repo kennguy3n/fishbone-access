@@ -82,6 +82,11 @@ type PAMLeaseService struct {
 	notifier   LeaseNotifier
 	terminator LeaseSessionTerminator
 	now        func() time.Time
+	// afterScan is a test-only seam: when non-nil it runs once in ExpireLeases
+	// after the (non-transactional) due-lease scan and before the per-lease
+	// claim loop, letting a test deterministically inject a concurrent revoke
+	// into the scan→claim window. nil in production.
+	afterScan func()
 }
 
 // NewPAMLeaseService wires a lease service. ai may be nil (degraded boot): the
@@ -256,28 +261,32 @@ func (s *PAMLeaseService) ApproveLease(ctx context.Context, workspaceID, leaseID
 			return fmt.Errorf("%w: cannot approve lease %s", ErrLeaseTerminal, leaseID)
 		}
 
+		// The granted window may differ from the requester's ask (an approver can
+		// shorten/extend via durationOverride). We do NOT write it back over
+		// requested_ttl_seconds: that column stays the immutable record of what
+		// was asked for, and the granted window is captured durably by expires_at
+		// (granted TTL == expires_at - granted_at). The approve audit records the
+		// granted TTL explicitly below.
 		ttl := s.resolveApprovalTTL(durationOverride, lease.RequestedTTLSeconds)
 		expires := now.Add(ttl)
 		if err := tx.Model(&models.PAMLease{}).
 			Where("workspace_id = ? AND id = ? AND granted_at IS NULL AND revoked_at IS NULL", workspaceID, leaseID).
 			Updates(map[string]any{
-				"granted_at":            now,
-				"expires_at":            expires,
-				"approved_by":           approverID,
-				"requested_ttl_seconds": int(ttl.Seconds()),
-				"updated_at":            now,
+				"granted_at":  now,
+				"expires_at":  expires,
+				"approved_by": approverID,
+				"updated_at":  now,
 			}).Error; err != nil {
 			return fmt.Errorf("pam: approve lease: %w", err)
 		}
 		lease.GrantedAt = &now
 		lease.ExpiresAt = &expires
 		lease.ApprovedBy = approverID
-		lease.RequestedTTLSeconds = int(ttl.Seconds())
 		out = lease
 		return s.auditTx(ctx, tx, workspaceID, approverID, "pam.lease.approved", leaseID.String(), map[string]any{
 			"subject":     lease.Subject,
 			"expires_at":  expires.Format(time.RFC3339),
-			"ttl_seconds": lease.RequestedTTLSeconds,
+			"ttl_seconds": int(ttl.Seconds()),
 		})
 	})
 	if err != nil {
@@ -371,6 +380,10 @@ func (s *PAMLeaseService) ExpireLeases(ctx context.Context, workspaceID uuid.UUI
 		return 0, fmt.Errorf("pam: scan expired leases: %w", err)
 	}
 
+	if s.afterScan != nil {
+		s.afterScan()
+	}
+
 	expired := 0
 	for i := range due {
 		lease := &due[i]
@@ -380,9 +393,15 @@ func (s *PAMLeaseService) ExpireLeases(ctx context.Context, workspaceID uuid.UUI
 		// already claimed it (RowsAffected == 0) we skip the audit/teardown so
 		// the side-effects run once. expired_at is a bookkeeping marker only —
 		// the derived "expired" state still comes from expires_at.
+		//
+		// The claim re-checks revoked_at IS NULL inside the transaction (the
+		// scan above is non-transactional): if RevokeLease lands between the
+		// scan and this claim, revoke wins (it already stamped, audited, and tore
+		// down the session), so we must not also stamp expired_at and append a
+		// misleading pam.lease.expired event to the tamper-evident chain.
 		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			res := tx.Model(&models.PAMLease{}).
-				Where("workspace_id = ? AND id = ? AND expired_at IS NULL", workspaceID, lease.ID).
+				Where("workspace_id = ? AND id = ? AND expired_at IS NULL AND revoked_at IS NULL", workspaceID, lease.ID).
 				Updates(map[string]any{"expired_at": now, "updated_at": now})
 			if res.Error != nil {
 				return fmt.Errorf("pam: claim expired lease: %w", res.Error)
