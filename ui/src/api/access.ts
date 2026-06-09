@@ -252,6 +252,7 @@ export const qk = {
   requestHistory: (id: string) => ["access-request", id, "history"] as const,
   orphans: ["orphan-accounts"] as const,
   rbacRoles: ["rbac", "roles"] as const,
+  rbacPermissions: ["rbac", "permissions"] as const,
   rbacMembers: ["rbac", "members"] as const,
   connectors: (filter: ConnectorCatalogueFilter) =>
     ["connectors", filter] as const,
@@ -680,6 +681,36 @@ export const listRbacMembers = () =>
   call<{ members: RbacMember[] }>({ url: "/rbac/members", method: "GET" }).then(
     (r) => r.members ?? [],
   );
+
+/** The caller's resolved workspace role and the concrete permission set it
+ * grants — the exact set the server's RequirePermission gates enforce. */
+export interface MyPermissions {
+  role: string;
+  permissions: string[];
+}
+
+export const getMyPermissions = () =>
+  call<MyPermissions>({ url: "/rbac/permissions", method: "GET" }).then((r) => ({
+    role: r.role ?? "",
+    permissions: r.permissions ?? [],
+  }));
+
+// useMyPermissions resolves the caller's RBAC permission set so the UI can gate
+// affordances against the server's actual authority. retry:false so a 404 (the
+// RBAC tier isn't mounted — server gates then no-op) resolves quickly to the
+// undefined state, which callers treat as "unenforced → allow" rather than a
+// false-negative.
+export function useMyPermissions(
+  options?: Partial<UseQueryOptions<MyPermissions, ApiError>>,
+) {
+  return useQuery<MyPermissions, ApiError>({
+    queryKey: qk.rbacPermissions,
+    queryFn: getMyPermissions,
+    staleTime: 5 * 60_000,
+    retry: false,
+    ...options,
+  });
+}
 
 export const assignRbacMember = (userId: string, role: string) =>
   call<RbacMember>({

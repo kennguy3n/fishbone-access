@@ -34,6 +34,11 @@ func newRBACHandlers(rbac *authz.RBACService) *rbacHandlers {
 // flat permission cannot express that row-conditional rule.
 func (h *rbacHandlers) register(g *gin.RouterGroup) {
 	g.GET("/rbac/roles", middleware.RequirePermission(authz.PermRBACRead), h.listRoles)
+	// The caller's own resolved role + permission set. Every authenticated
+	// member may read their own permissions (the UI renders permission-gated
+	// affordances from it), so it carries no RequirePermission gate beyond
+	// workspace membership.
+	g.GET("/rbac/permissions", h.myPermissions)
 	g.GET("/rbac/members", middleware.RequirePermission(authz.PermRBACRead), h.listMembers)
 	g.PUT("/rbac/members/:userID", middleware.RequirePermission(authz.PermRBACManage), h.upsertMember)
 	g.DELETE("/rbac/members/:userID", middleware.RequirePermission(authz.PermRBACManage), h.deleteMember)
@@ -77,6 +82,25 @@ func (h *rbacHandlers) listRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"roles":       roles,
 		"permissions": allPerms,
+	})
+}
+
+// myPermissions returns the caller's resolved workspace role and the concrete
+// permission set that role grants — the exact set the per-route
+// RequirePermission gates enforce (AuthzMiddleware put both on the context). The
+// UI checks affordances (e.g. the compliance evidence export button) against
+// this resolved set so the client's enabled/disabled state matches the server's
+// authority, instead of guessing from JWT scopes which no longer drive RBAC.
+func (h *rbacHandlers) myPermissions(c *gin.Context) {
+	role, _ := middleware.RoleFromContext(c)
+	perms, _ := middleware.PermissionsFromContext(c)
+	strs := make([]string, 0, len(perms))
+	for _, p := range perms.Slice() {
+		strs = append(strs, string(p))
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"role":        string(role),
+		"permissions": strs,
 	})
 }
 

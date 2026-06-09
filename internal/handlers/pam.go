@@ -42,10 +42,20 @@ type pamHandlers struct {
 func newPAMHandlers(deps Deps) *pamHandlers {
 	db := deps.DB
 
-	enc, err := access.CredentialEncryptorFromKey(os.Getenv("ACCESS_CREDENTIAL_DEK"))
-	if err != nil {
-		logger.Errorf(context.Background(), "pam: credential encryptor init: %v (vault operations will fail closed)", err)
-		enc = access.NewDisabledEncryptor()
+	// Prefer the shared access-stack encryptor the main binary already built
+	// from ACCESS_CREDENTIAL_DEK so the PAM vault seals/opens with the exact
+	// same key as the connector stack and a single construction point owns DEK
+	// loading (a future config-file override or DEK rotation then propagates
+	// here for free). Fall back to building it from the environment for the
+	// legacy/test callers that construct the handlers from a bare Deps.
+	enc := deps.ConnectorEncryptor
+	if enc == nil {
+		built, err := access.CredentialEncryptorFromKey(os.Getenv("ACCESS_CREDENTIAL_DEK"))
+		if err != nil {
+			logger.Errorf(context.Background(), "pam: credential encryptor init: %v (vault operations will fail closed)", err)
+			built = access.NewDisabledEncryptor()
+		}
+		enc = built
 	}
 
 	var stepUp *pam.StepUpGate
@@ -58,13 +68,21 @@ func newPAMHandlers(deps Deps) *pamHandlers {
 	evaluator := pam.NewCommandPolicyEvaluator(db, 5*time.Second)
 	sessions := pam.NewSessionManager(db, evaluator, nil)
 
-	ai, aiErr := aiclient.NewAIClientFromEnv()
-	if aiErr != nil {
-		// A half-configured mTLS setup is the only error path; degrade to an
-		// unconfigured client so lease risk scoring uses the deterministic
-		// fallback (fail-OPEN advisory) rather than failing the whole API boot.
-		logger.Errorf(context.Background(), "pam: AI client init: %v (risk scoring degrades to fallback)", aiErr)
-		ai = aiclient.NewAIClient("", nil, "")
+	// Reuse the shared AI client (same mTLS A2A config the lifecycle risk review
+	// and connector setup wizard use) rather than constructing a second one, so
+	// there is one client per process. Fall back to an env-built client for the
+	// bare-Deps callers; either way lease risk scoring is fail-OPEN advisory.
+	ai := deps.AI
+	if ai == nil {
+		built, aiErr := aiclient.NewAIClientFromEnv()
+		if aiErr != nil {
+			// A half-configured mTLS setup is the only error path; degrade to an
+			// unconfigured client so lease risk scoring uses the deterministic
+			// fallback (fail-OPEN advisory) rather than failing the whole API boot.
+			logger.Errorf(context.Background(), "pam: AI client init: %v (risk scoring degrades to fallback)", aiErr)
+			built = aiclient.NewAIClient("", nil, "")
+		}
+		ai = built
 	}
 	leases := pam.NewPAMLeaseService(db, ai)
 	leases.SetSessionTerminator(sessions)

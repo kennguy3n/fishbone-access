@@ -188,6 +188,49 @@ func TestRBACListRolesRequiresMembership(t *testing.T) {
 	}
 }
 
+// TestRBACMyPermissions proves /rbac/permissions returns the caller's resolved
+// role + the exact permission set the per-route RequirePermission gates enforce
+// (so the UI can gate affordances honestly), and that it fails closed for a
+// non-member like every other tenant-scoped route.
+func TestRBACMyPermissions(t *testing.T) {
+	env := newRBACTestEnv(t)
+
+	w := do(t, env.router, http.MethodGet, "/api/v1/rbac/permissions", "tok-auditor", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("auditor GET rbac/permissions = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var got struct {
+		Role        string   `json:"role"`
+		Permissions []string `json:"permissions"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v; body=%s", err, w.Body.String())
+	}
+	if got.Role != string(authz.RoleAuditor) {
+		t.Fatalf("role = %q, want %q", got.Role, authz.RoleAuditor)
+	}
+	// The payload must equal the authoritative resolved set exactly — the same
+	// set AuthzMiddleware seeds and RequirePermission checks against.
+	want := authz.PermissionsForRole(authz.RoleAuditor)
+	if len(got.Permissions) != len(want) {
+		t.Fatalf("permission count = %d, want %d; got=%v", len(got.Permissions), len(want), got.Permissions)
+	}
+	for _, p := range got.Permissions {
+		if !want.Has(authz.Permission(p)) {
+			t.Fatalf("unexpected permission %q in resolved set %v", p, got.Permissions)
+		}
+	}
+	// The compliance-export affordance the UI gates on is present for an auditor.
+	if !contains(w.Body.String(), string(authz.PermComplianceExport)) {
+		t.Fatalf("auditor should resolve %s; body=%s", authz.PermComplianceExport, w.Body.String())
+	}
+
+	// Fail closed: a valid token with no membership row is denied at AuthzMiddleware.
+	if s := do(t, env.router, http.MethodGet, "/api/v1/rbac/permissions", "tok-stranger", nil); s.Code != http.StatusForbidden {
+		t.Fatalf("non-member GET rbac/permissions = %d, want 403", s.Code)
+	}
+}
+
 // TestRBACManageGate proves rbac.manage is required to mutate members: the
 // auditor (rbac.read only) may list but not assign.
 func TestRBACManageGate(t *testing.T) {
