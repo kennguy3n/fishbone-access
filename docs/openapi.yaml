@@ -1264,11 +1264,18 @@ components:
         step: { type: integer }
         title: { type: string }
         description: { type: string }
-        required_scopes: { type: array, items: { type: string } }
+        required_scopes:
+          type: array
+          items: { type: string }
+          description: OAuth/API scopes the step requires. Omitted when empty (the server applies `omitempty`), so absence means "none for this step", not "unknown".
         field_mappings:
           type: array
           items: { $ref: "#/components/schemas/ConnectorSetupFieldMapping" }
-        common_pitfalls: { type: array, items: { type: string } }
+          description: IdP-attribute → platform-field mappings for the step. Omitted when empty.
+        common_pitfalls:
+          type: array
+          items: { type: string }
+          description: Known gotchas for the step. Omitted when empty.
         estimated_minutes: { type: integer }
     ConnectorSetupPlan:
       type: object
