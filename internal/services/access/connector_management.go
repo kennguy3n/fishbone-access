@@ -164,6 +164,15 @@ func (s *ConnectorManagementService) TestConnectivity(ctx context.Context, works
 			connectErr = fmt.Errorf("access: missing capabilities: %v", missing)
 		}
 	}
+	// Everything above this point that errored (loadConnector, GetAccessConnector,
+	// openConnector) returned early as an internal/registry fault. connectErr is
+	// the only error that originates from the provider side, so tag it with
+	// ErrConnectorConnectivity: the handler surfaces that as a 502 with the raw
+	// diagnostic, while untagged faults fall through to a generic 500 and never
+	// leak the decrypt/config internals to the client.
+	if connectErr != nil {
+		connectErr = fmt.Errorf("%w: %w", ErrConnectorConnectivity, connectErr)
+	}
 
 	status := ConnectorStatusActive
 	if connectErr != nil {

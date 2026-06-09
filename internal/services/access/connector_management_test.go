@@ -131,14 +131,61 @@ func TestConnectorManagementTestConnectivity(t *testing.T) {
 		t.Errorf("status = %q, want active", got.Status)
 	}
 
-	// Failure path → error status, error returned.
+	// Failure path → error status, error returned. The provider-side failure must
+	// wrap BOTH the original connect error (so callers can inspect the cause) and
+	// ErrConnectorConnectivity (so the handler surfaces it as a 502, not a 500).
 	mock.FuncConnect = func(context.Context, map[string]interface{}, map[string]interface{}) error { return connectErr }
-	if _, err := svc.TestConnectivity(ctx, ws, row.ID, nil); !errors.Is(err, connectErr) {
-		t.Errorf("TestConnectivity err = %v, want %v", err, connectErr)
+	gotErr := func() error { _, e := svc.TestConnectivity(ctx, ws, row.ID, nil); return e }()
+	if !errors.Is(gotErr, connectErr) {
+		t.Errorf("TestConnectivity err = %v, want it to wrap %v", gotErr, connectErr)
+	}
+	if !errors.Is(gotErr, ErrConnectorConnectivity) {
+		t.Errorf("provider connect failure must be tagged ErrConnectorConnectivity (so the handler returns 502): %v", gotErr)
 	}
 	got, _ = svc.Get(ctx, ws, row.ID)
 	if got.Status != ConnectorStatusError {
 		t.Errorf("status = %q, want error", got.Status)
+	}
+}
+
+// failingDecryptEncryptor seals via the passthrough identity path (so Create
+// succeeds and the row carries a non-empty secret envelope) but fails to open,
+// simulating a platform-internal fault — e.g. a rotated or unavailable DEK — on
+// the subsequent TestConnectivity.
+type failingDecryptEncryptor struct{ PassthroughEncryptor }
+
+func (failingDecryptEncryptor) Decrypt(context.Context, string, []byte, []byte, int) ([]byte, error) {
+	return nil, errors.New("kms unavailable")
+}
+
+// TestConnectorManagementTestConnectivityInternalFaultNotTagged pins that an
+// error raised BEFORE the provider is contacted (here, secret decryption
+// failing in openConnector) is NOT tagged ErrConnectorConnectivity. The handler
+// keys its 502-vs-500 decision on that tag, so mis-tagging an internal fault
+// would leak encryption-layer details to the client as a 502.
+func TestConnectorManagementTestConnectivityInternalFaultNotTagged(t *testing.T) {
+	SwapConnector(t, "test-provider", &MockAccessConnector{})
+	db := newTestDB(t)
+	ctx := context.Background()
+	ws := uuid.New()
+
+	// Seal with passthrough so Create succeeds and the row has a non-empty
+	// secret envelope to decrypt later.
+	sealSvc := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+	row, err := sealSvc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// Open with an encryptor whose Decrypt fails: TestConnectivity must error at
+	// openConnector (an internal fault), before any provider call.
+	openSvc := NewConnectorManagementService(db, failingDecryptEncryptor{}, workers.NewPostgresQueue(db))
+	_, err = openSvc.TestConnectivity(ctx, ws, row.ID, nil)
+	if err == nil {
+		t.Fatal("TestConnectivity: expected an error from failed secret decryption, got nil")
+	}
+	if errors.Is(err, ErrConnectorConnectivity) {
+		t.Errorf("internal decrypt fault must NOT be tagged ErrConnectorConnectivity (the handler would leak it as a 502): %v", err)
 	}
 }
 

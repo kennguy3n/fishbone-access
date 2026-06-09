@@ -242,19 +242,22 @@ func (h *connectorHandlers) testConnector(c *gin.Context) {
 	}
 	missing, err := h.mgmt.TestConnectivity(c.Request.Context(), ws, id, body.Capabilities)
 	if err != nil {
-		// A not-found / validation error is the caller's fault (4xx). Any other
-		// error here is the provider rejecting the credentials or being
-		// unreachable: report it as a connectivity failure (502) with the
-		// missing capabilities, not a generic 500.
-		if errors.Is(err, access.ErrConnectorRowNotFound) || errors.Is(err, access.ErrConnectorNotFound) {
-			h.fail(c, err)
+		// Only a provider-side failure (tagged ErrConnectorConnectivity by
+		// TestConnectivity) is a 502: the raw diagnostic + missing capabilities
+		// are actionable for the operator fixing their credentials/scopes. Every
+		// other error — not-found/registry (4xx) or an internal fault such as
+		// secret decryption or config unmarshal — is routed through fail, which
+		// maps it to the right status and returns a generic message for 500s so
+		// encryption-layer internals never leak to the client.
+		if errors.Is(err, access.ErrConnectorConnectivity) {
+			c.JSON(http.StatusBadGateway, gin.H{
+				"ok":      false,
+				"error":   err.Error(),
+				"missing": missing,
+			})
 			return
 		}
-		c.JSON(http.StatusBadGateway, gin.H{
-			"ok":      false,
-			"error":   err.Error(),
-			"missing": missing,
-		})
+		h.fail(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "missing": missing})
