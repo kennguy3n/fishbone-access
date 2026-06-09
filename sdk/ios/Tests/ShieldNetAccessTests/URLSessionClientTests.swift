@@ -236,6 +236,45 @@ final class URLSessionClientTests: XCTestCase {
         XCTAssertTrue(URLProtocolStub.captured.isEmpty)
     }
 
+    func testWhitespaceOnlyTokenMapsToUnauthenticatedWithoutNetwork() async {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [URLProtocolStub.self]
+        let session = URLSession(configuration: config)
+        let wsToken = URLSessionAccessClient(
+            baseURL: URL(string: "https://access.test/api/v1")!,
+            session: session,
+            authTokenProvider: { "   " }
+        )
+        await assertThrows(.unauthenticated) { _ = try await wsToken.me() }
+        XCTAssertTrue(URLProtocolStub.captured.isEmpty)
+    }
+
+    func testListEnvelopesTolerateJSONNull() async throws {
+        // A defensive parity check: a `null`/missing array decodes to empty
+        // rather than throwing (mirrors Android's optJSONArray behaviour).
+        respond(200, #"{"requests":null}"#)
+        let rows = try await client.listRequests()
+        XCTAssertTrue(rows.isEmpty)
+
+        respond(200, #"{}"#)
+        let history = try await client.requestHistory(id: "r1")
+        XCTAssertTrue(history.isEmpty)
+    }
+
+    func testBaseURLWithMultipleTrailingSlashesIsNormalized() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [URLProtocolStub.self]
+        let session = URLSession(configuration: config)
+        let messy = URLSessionAccessClient(
+            baseURL: URL(string: "https://access.test//")!,
+            session: session,
+            authTokenProvider: { "tok" }
+        )
+        URLProtocolStub.handler = { _ in (200, Data(#"{"user_id":"u1","tenant_id":"t1"}"#.utf8)) }
+        _ = try await messy.me()
+        XCTAssertEqual(URLProtocolStub.captured.first?.url?.path, "/api/v1/me")
+    }
+
     // Asserts the block throws the expected `AccessSDKError`.
     private func assertThrows(
         _ expected: AccessSDKError,

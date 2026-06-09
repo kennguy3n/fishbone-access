@@ -188,7 +188,20 @@ class OkHttpAccessClientTest {
     }
 
     @Test
+    fun `revokeGrant accepts the server's status body`() = runBlocking {
+        // The real handler returns {"status":"revoked"}; revokeGrant ignores the
+        // body and simply succeeds on 2xx.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"revoked"}"""))
+        client.revokeGrant("g1", reason = "done")
+        val recorded = server.takeRequest()
+        assertEquals("/api/v1/grants/g1/revoke", recorded.path)
+        assertTrue(recorded.body.readUtf8().contains("\"reason\":\"done\""))
+    }
+
+    @Test
     fun `revokeGrant tolerates an empty body`() = runBlocking {
+        // Defensive: even if a future/proxy response omits the body, a 2xx still
+        // counts as success (allowEmpty = true).
         server.enqueue(MockResponse().setResponseCode(200).setBody(""))
         client.revokeGrant("g1", reason = "done")
         val recorded = server.takeRequest()
@@ -261,6 +274,25 @@ class OkHttpAccessClientTest {
         )
         assertFailsWith<AccessSDKException.Unauthenticated> { runBlocking { noTokenClient.me() } }
         assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `malformed baseUrl on a POST surfaces typed InvalidInput`() {
+        // A non-HTTP(S) base produces an unparseable URL. Both GET and POST must
+        // fail closed with AccessSDKException.InvalidInput rather than leaking
+        // OkHttp's raw IllegalArgumentException.
+        val badClient = OkHttpAccessClient(
+            baseUrl = "ftp://example.com",
+            authTokenProvider = { "tok" },
+        )
+        assertFailsWith<AccessSDKException.InvalidInput> {
+            runBlocking {
+                badClient.createRequest(CreateAccessRequest(targetUserId = "u1", resourceRef = "res"))
+            }
+        }
+        assertFailsWith<AccessSDKException.InvalidInput> {
+            runBlocking { badClient.me() }
+        }
     }
 
     @Test

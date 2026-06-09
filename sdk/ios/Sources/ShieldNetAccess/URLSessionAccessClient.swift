@@ -33,9 +33,12 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
         authTokenProvider: @Sendable @escaping () async throws -> String
     ) {
         // Normalise to a `<root>/api/v1` base exactly once so callers may pass
-        // either form. We compare the trimmed path suffix to avoid doubling.
+        // either form. Strip ALL trailing slashes (matching the Android SDK's
+        // `trimEnd('/')`) so a base like `https://host//` doesn't yield a
+        // double slash before `/api/v1`.
         let trimmed = baseURL.absoluteString.trimmingCharacters(in: .whitespaces)
-        let noSlash = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
+        var noSlash = trimmed
+        while noSlash.hasSuffix("/") { noSlash.removeLast() }
         let normalized = noSlash.hasSuffix("/api/v1") ? noSlash : noSlash + "/api/v1"
         self.apiBase = URL(string: normalized) ?? baseURL
         self.session = session
@@ -126,9 +129,28 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
         enum CodingKeys: String, CodingKey { case reason }
     }
     private struct RequestEnvelope: Decodable { let request: AccessRequest }
-    private struct RequestsEnvelope: Decodable { let requests: [AccessRequest] }
     private struct GrantEnvelope: Decodable { let grant: AccessGrant }
-    private struct HistoryEnvelope: Decodable { let history: [StateHistoryEntry] }
+
+    // The list envelopes decode a JSON `null` or a missing key to an empty
+    // array rather than throwing. The current server always emits `[]` (GORM's
+    // Find initialises the slice), but this keeps the iOS SDK as resilient as
+    // the Android SDK, whose `optJSONArray` path already tolerates `null`.
+    private struct RequestsEnvelope: Decodable {
+        let requests: [AccessRequest]
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            requests = try c.decodeIfPresent([AccessRequest].self, forKey: .requests) ?? []
+        }
+        enum CodingKeys: String, CodingKey { case requests }
+    }
+    private struct HistoryEnvelope: Decodable {
+        let history: [StateHistoryEntry]
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            history = try c.decodeIfPresent([StateHistoryEntry].self, forKey: .history) ?? []
+        }
+        enum CodingKeys: String, CodingKey { case history }
+    }
     private struct CreateEnvelope: Decodable {
         let request: AccessRequest
         let workflow: WorkflowDecision?
@@ -173,7 +195,12 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
         } catch {
             throw AccessSDKError.unauthenticated
         }
-        guard !token.isEmpty else { throw AccessSDKError.unauthenticated }
+        // Reject empty *and* whitespace-only tokens (parity with the Android
+        // SDK's `isBlank()` check) so we fail closed locally instead of sending
+        // a `Bearer    ` header and burning a round-trip on a guaranteed 401.
+        guard !token.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw AccessSDKError.unauthenticated
+        }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
     }

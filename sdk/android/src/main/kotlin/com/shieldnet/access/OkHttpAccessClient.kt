@@ -141,25 +141,30 @@ class OkHttpAccessClient(
     private suspend fun getObject(path: String): JSONObject = parseObject(get(path))
 
     private suspend fun get(path: String): String {
-        val url = (apiBase + path).toHttpUrlOrNull()
-            ?: throw AccessSDKException.InvalidInput("invalid URL for path $path")
-        val req = Request.Builder()
-            .url(url)
-            .header("Accept", "application/json")
-            .header("Authorization", "Bearer ${fetchToken()}")
+        val req = newRequest(path)
             .get()
             .build()
         return execute(req, allowEmpty = false)
     }
 
     private suspend fun post(path: String, body: String, allowEmpty: Boolean = false): String {
-        val req = Request.Builder()
-            .url(apiBase + path)
-            .header("Accept", "application/json")
-            .header("Authorization", "Bearer ${fetchToken()}")
+        val req = newRequest(path)
             .post(body.toRequestBody(JSON_MEDIA))
             .build()
         return execute(req, allowEmpty)
+    }
+
+    // Build a request with the bearer token attached, validating the URL up
+    // front so a misconfigured baseUrl surfaces as a typed
+    // AccessSDKException.InvalidInput on every verb (GET and POST alike) rather
+    // than OkHttp's raw IllegalArgumentException.
+    private suspend fun newRequest(path: String): Request.Builder {
+        val url = (apiBase + path).toHttpUrlOrNull()
+            ?: throw AccessSDKException.InvalidInput("invalid URL for path $path")
+        return Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer ${fetchToken()}")
     }
 
     private suspend fun fetchToken(): String =
