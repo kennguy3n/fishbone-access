@@ -332,6 +332,15 @@ var rolePermissionSlices = map[WorkspaceRole][]Permission{
 		// Access-governance + PAM administration. No member management
 		// (PermRBACManage), no connector infrastructure
 		// (PermConnectorManage), no workspace lifecycle.
+		//
+		// Separation of duties: this is the approver role
+		// (PermRequestApprove/Deny), so it deliberately does NOT hold
+		// PermRequestCreate / PermRequestCancel — an approver must not be
+		// able to raise AND then approve their own elevation request. A
+		// security_admin who needs access is themselves a requester and
+		// holds RoleOperator (which carries PermRequestCreate); the
+		// governance seat stays a pure reviewer. Granting create here would
+		// reopen the self-approval path, so it is excluded by design.
 		PermRequestRead, PermRequestApprove, PermRequestDeny, PermRequestProvision, PermRequestAdmin,
 		PermGrantRead, PermGrantRevoke, PermGrantAdmin,
 		PermPolicyRead, PermPolicyWrite, PermPolicySimulate, PermPolicyPromote, PermPolicyArchive,
