@@ -266,11 +266,46 @@ paths:
     post:
       tags: [policies]
       summary: Promote a draft to active (idempotent, step-up MFA required)
+      description: >
+        Enforces test-before-rollout. The draft must have been simulated since
+        its last edit (otherwise 409 ErrPolicyNotSimulated), and must have no
+        unresolved grant-vs-deny conflicts with live policies (otherwise 409
+        with a conflicts array). A reviewed conflict can be overridden by
+        sending {"force": true, "reason": "..."}; the reason is recorded in the
+        audit chain.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  description: Override an unresolved grant-vs-deny conflict block.
+                reason:
+                  type: string
+                  description: >
+                    Audited justification for the override. Required (non-empty)
+                    when force is true — a forced promotion with a blank reason
+                    is rejected with 400 ErrValidation.
       responses:
         "200": { $ref: "#/components/responses/PolicyEnvelope" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
+        "409":
+          description: >
+            Not promotable — the draft has not been simulated, or has unresolved
+            grant-vs-deny conflicts (the response carries a conflicts array).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  conflicts:
+                    type: array
+                    items: { $ref: "#/components/schemas/PolicyConflict" }
 
   /policies/{id}/archive:
     parameters: [ { $ref: "#/components/parameters/IDPath" } ]

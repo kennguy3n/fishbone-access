@@ -175,13 +175,20 @@ func TestPolicyPromoteRequiresMFA(t *testing.T) {
 	}
 	id := created.Policy.ID.String()
 
-	// Promote without MFA → 403.
+	// Promote without MFA → 403 (the MFA gate runs in middleware, before the
+	// handler's test-before-rollout checks).
 	w = do(t, r, http.MethodPost, "/api/v1/policies/"+id+"/promote", "tok-a", nil)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("promote without MFA = %d, want 403", w.Code)
 	}
 
-	// Promote with MFA → 200.
+	// Access policies must be simulated before they can be rolled out.
+	w = do(t, r, http.MethodPost, "/api/v1/policies/"+id+"/simulate", "tok-a", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("simulate = %d, want 200, body=%s", w.Code, w.Body.String())
+	}
+
+	// Promote with MFA after simulation → 200.
 	w = do(t, r, http.MethodPost, "/api/v1/policies/"+id+"/promote", "tok-a-mfa", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("promote with MFA = %d, want 200, body=%s", w.Code, w.Body.String())

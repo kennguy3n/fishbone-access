@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -381,17 +382,27 @@ func TestPolicyDraftSimulatePromoteIdempotent(t *testing.T) {
 		t.Fatal("expected DraftImpact cached after simulate")
 	}
 
-	p2, err := svc.Promote(ctx, ws, pol.ID, "admin")
+	p2, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{})
 	if err != nil {
 		t.Fatalf("Promote: %v", err)
 	}
 	if p2.State != PolicyStateActive || p2.PromotedAt == nil {
 		t.Fatalf("expected active+promoted, got %s %v", p2.State, p2.PromotedAt)
 	}
+	if len(p2.DraftImpact) != 0 {
+		t.Fatalf("expected DraftImpact cleared on promotion, got %s", p2.DraftImpact)
+	}
+	var afterPromote models.Policy
+	if err := db.Where("workspace_id = ? AND id = ?", ws, pol.ID).Take(&afterPromote).Error; err != nil {
+		t.Fatalf("reload promoted: %v", err)
+	}
+	if len(afterPromote.DraftImpact) != 0 {
+		t.Fatalf("expected persisted DraftImpact NULL after promotion, got %s", afterPromote.DraftImpact)
+	}
 	firstPromoted := *p2.PromotedAt
 
 	// Idempotent: promoting again returns unchanged (same PromotedAt).
-	p3, err := svc.Promote(ctx, ws, pol.ID, "admin")
+	p3, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{})
 	if err != nil {
 		t.Fatalf("Promote idempotent: %v", err)
 	}
@@ -415,7 +426,10 @@ func TestUpdateDraftOnNonDraftReturnsNotEditable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePolicy: %v", err)
 	}
-	if _, err := svc.Promote(ctx, ws, pol.ID, "admin"); err != nil {
+	if _, err := svc.Simulate(ctx, ws, pol.ID); err != nil {
+		t.Fatalf("Simulate: %v", err)
+	}
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); err != nil {
 		t.Fatalf("Promote: %v", err)
 	}
 
@@ -456,7 +470,10 @@ func TestConflictDetectorGrantVsDeny(t *testing.T) {
 	// Active deny policy on (u1, app:db).
 	denyDef := mustJSON(t, PolicyDefinition{Action: "deny", Subjects: []string{"u1"}, Resources: []string{"app:db"}})
 	deny, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "deny", Definition: denyDef, Actor: "admin"})
-	if _, err := svc.Promote(ctx, ws, deny.ID, "admin"); err != nil {
+	if _, err := svc.Simulate(ctx, ws, deny.ID); err != nil {
+		t.Fatalf("simulate deny: %v", err)
+	}
+	if _, err := svc.Promote(ctx, ws, deny.ID, "admin", PromoteOptions{}); err != nil {
 		t.Fatalf("promote deny: %v", err)
 	}
 
@@ -470,6 +487,152 @@ func TestConflictDetectorGrantVsDeny(t *testing.T) {
 	}
 	if len(sim.Conflicts) != 1 || sim.Conflicts[0].Kind != ConflictGrantVsDeny {
 		t.Fatalf("expected 1 grant_vs_deny conflict, got %+v", sim.Conflicts)
+	}
+}
+
+// TestPromoteRequiresSimulation proves the test-before-rollout guard: a draft
+// that has never been simulated cannot be promoted, and editing a simulated
+// draft (which clears the cached impact) re-arms the guard.
+func TestPromoteRequiresSimulation(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "reader"})
+	pol, err := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p1", Definition: def, Actor: "admin"})
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+
+	// Never simulated → promotion is refused.
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); !errors.Is(err, ErrPolicyNotSimulated) {
+		t.Fatalf("expected ErrPolicyNotSimulated promoting an unsimulated draft, got %v", err)
+	}
+
+	// Simulate, then promotion succeeds.
+	if _, err := svc.Simulate(ctx, ws, pol.ID); err != nil {
+		t.Fatalf("Simulate: %v", err)
+	}
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); err != nil {
+		t.Fatalf("Promote after simulate: %v", err)
+	}
+}
+
+// TestPromoteReSimulateAfterEdit proves an edit invalidates a prior simulation:
+// once UpdateDraft clears DraftImpact, promotion is refused until the draft is
+// simulated again.
+func TestPromoteReSimulateAfterEdit(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "reader"})
+	pol, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p1", Definition: def, Actor: "admin"})
+	if _, err := svc.Simulate(ctx, ws, pol.ID); err != nil {
+		t.Fatalf("Simulate: %v", err)
+	}
+
+	// Edit the draft — this clears the cached simulation.
+	def2 := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1", "u2"}, Resources: []string{"app:db"}, Role: "reader"})
+	if _, err := svc.UpdateDraft(ctx, ws, pol.ID, "", def2, "admin"); err != nil {
+		t.Fatalf("UpdateDraft: %v", err)
+	}
+
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); !errors.Is(err, ErrPolicyNotSimulated) {
+		t.Fatalf("expected ErrPolicyNotSimulated after editing a simulated draft, got %v", err)
+	}
+}
+
+// TestPromoteReChecksSimulationUnderLock proves the simulate-before-rollout
+// guard reads the row's live state inside the promote transaction (not a stale
+// pre-read). Clearing DraftImpact out-of-band — exactly the state a concurrent
+// UpdateDraft would leave behind, the TOCTOU the row lock closes — makes a
+// previously-simulated draft un-promotable.
+func TestPromoteReChecksSimulationUnderLock(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "reader"})
+	pol, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p1", Definition: def, Actor: "admin"})
+	if _, err := svc.Simulate(ctx, ws, pol.ID); err != nil {
+		t.Fatalf("Simulate: %v", err)
+	}
+
+	// Out-of-band clear of the cached impact (what an interleaved UpdateDraft
+	// would do between a naive pre-read and the write).
+	if err := db.Model(&models.Policy{}).
+		Where("workspace_id = ? AND id = ?", ws, pol.ID).
+		Update("draft_impact", nil).Error; err != nil {
+		t.Fatalf("clear draft_impact: %v", err)
+	}
+
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); !errors.Is(err, ErrPolicyNotSimulated) {
+		t.Fatalf("expected ErrPolicyNotSimulated when impact cleared under lock, got %v", err)
+	}
+}
+
+// TestPromoteBlocksHardConflict proves a grant-vs-deny conflict with a live
+// policy blocks promotion, and that an audited force override clears the block
+// and records the reason in the audit chain.
+func TestPromoteBlocksHardConflict(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	// Live deny on (u1, app:db).
+	denyDef := mustJSON(t, PolicyDefinition{Action: "deny", Subjects: []string{"u1"}, Resources: []string{"app:db"}})
+	deny, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "deny", Definition: denyDef, Actor: "admin"})
+	if _, err := svc.Simulate(ctx, ws, deny.ID); err != nil {
+		t.Fatalf("simulate deny: %v", err)
+	}
+	if _, err := svc.Promote(ctx, ws, deny.ID, "admin", PromoteOptions{}); err != nil {
+		t.Fatalf("promote deny: %v", err)
+	}
+
+	// Conflicting grant draft over the same pair, simulated.
+	grantDef := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "admin"})
+	grant, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "grant", Definition: grantDef, Actor: "admin"})
+	if _, err := svc.Simulate(ctx, ws, grant.ID); err != nil {
+		t.Fatalf("simulate grant: %v", err)
+	}
+
+	// Promotion is blocked, and the typed error carries the conflict.
+	_, err := svc.Promote(ctx, ws, grant.ID, "admin", PromoteOptions{})
+	if !errors.Is(err, ErrPolicyHasConflicts) {
+		t.Fatalf("expected ErrPolicyHasConflicts, got %v", err)
+	}
+	var ce *PromoteConflictError
+	if !errors.As(err, &ce) || len(ce.Conflicts) != 1 || ce.Conflicts[0].Kind != ConflictGrantVsDeny {
+		t.Fatalf("expected PromoteConflictError with 1 grant_vs_deny conflict, got %v", err)
+	}
+
+	// A force override with no justification is rejected — an empty reason must
+	// never be recorded as a blank audit entry on a security override.
+	if _, err := svc.Promote(ctx, ws, grant.ID, "admin", PromoteOptions{Force: true, Reason: "  "}); !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected ErrValidation forcing override without a reason, got %v", err)
+	}
+
+	// Audited override clears the block.
+	promoted, err := svc.Promote(ctx, ws, grant.ID, "admin", PromoteOptions{Force: true, Reason: "reviewed: deny is being retired"})
+	if err != nil {
+		t.Fatalf("forced Promote: %v", err)
+	}
+	if promoted.State != PolicyStateActive {
+		t.Fatalf("expected active after forced promote, got %s", promoted.State)
+	}
+
+	// The override is recorded in the audit chain.
+	var ev models.AuditEvent
+	if err := db.Where("workspace_id = ? AND action = ?", ws, "policy.promoted_with_override").Take(&ev).Error; err != nil {
+		t.Fatalf("expected an override audit event: %v", err)
+	}
+	if len(ev.Metadata) == 0 || !strings.Contains(string(ev.Metadata), "reviewed: deny is being retired") {
+		t.Fatalf("override audit metadata missing reason: %s", string(ev.Metadata))
 	}
 }
 

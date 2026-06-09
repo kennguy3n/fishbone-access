@@ -1,10 +1,12 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -201,27 +203,99 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 	result := SimulationResult{Impact: impact, Conflicts: conflicts}
 
 	if pol.State == PolicyStateDraft {
-		if b, err := json.Marshal(impact); err == nil {
-			now := s.now()
-			if err := s.db.WithContext(ctx).
-				Model(&models.Policy{}).
-				Where("workspace_id = ? AND id = ?", workspaceID, policyID).
-				Updates(map[string]any{"draft_impact": datatypes.JSON(b), "updated_at": now}).Error; err != nil {
-				return SimulationResult{}, fmt.Errorf("lifecycle: cache draft impact: %w", err)
+		b, err := json.Marshal(impact)
+		if err != nil {
+			return SimulationResult{}, fmt.Errorf("lifecycle: marshal draft impact: %w", err)
+		}
+		now := s.now()
+		// Persist the impact under the row lock, but only if the definition we
+		// simulated is still the current one. Without the guard, a concurrent
+		// UpdateDraft (which locks the row and clears DraftImpact on edit) could
+		// commit between our read above and this write, and we would overwrite
+		// its nil clear with impact computed from the now-stale definition —
+		// falsely marking a since-edited draft as "simulated" and letting it
+		// pass Promote's simulate-before-rollout gate.
+		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
+			if err != nil {
+				return err
 			}
+			if loaded.State != PolicyStateDraft || !bytes.Equal([]byte(loaded.Definition), []byte(pol.Definition)) {
+				return nil // edited or no longer a draft since we simulated; leave the cache as-is
+			}
+			return tx.Model(&models.Policy{}).
+				Where("workspace_id = ? AND id = ?", workspaceID, policyID).
+				Updates(map[string]any{"draft_impact": datatypes.JSON(b), "updated_at": now}).Error
+		})
+		if err != nil {
+			return SimulationResult{}, fmt.Errorf("lifecycle: cache draft impact: %w", err)
 		}
 	}
 	return result, nil
+}
+
+// PromoteOptions carries optional promotion controls. Force overrides the
+// grant-vs-deny conflict block (the simulation requirement is never waivable);
+// Reason is the audited justification recorded on the override.
+type PromoteOptions struct {
+	Force  bool
+	Reason string
+}
+
+// PromoteConflictError is returned when promotion is blocked by unresolved
+// grant-vs-deny conflicts. It carries the offending conflicts so the caller can
+// surface them, and satisfies errors.Is(err, ErrPolicyHasConflicts).
+type PromoteConflictError struct {
+	Conflicts []PolicyConflict
+}
+
+func (e *PromoteConflictError) Error() string {
+	return fmt.Sprintf("%v: %d unresolved grant-vs-deny conflict(s) block promotion", ErrPolicyHasConflicts, len(e.Conflicts))
+}
+
+// Is lets callers match this typed error against the ErrPolicyHasConflicts
+// sentinel (e.g. the REST layer's status mapping).
+func (e *PromoteConflictError) Is(target error) bool {
+	return target == ErrPolicyHasConflicts
+}
+
+// Unwrap exposes the sentinel so errors.Is also works through wrapping.
+func (e *PromoteConflictError) Unwrap() error { return ErrPolicyHasConflicts }
+
+// hardConflicts filters a conflict set down to the security-relevant
+// grant-vs-deny disagreements (redundant overlaps are informational and never
+// block promotion).
+func hardConflicts(in []PolicyConflict) []PolicyConflict {
+	var out []PolicyConflict
+	for _, c := range in {
+		if c.Kind == ConflictGrantVsDeny {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // Promote flips a draft policy to active and stamps PromotedAt. It is
 // idempotent: promoting an already-active policy is a no-op that returns the
 // policy unchanged (so a retried promotion does not bump the version or restamp
 // the timestamp). An archived policy cannot be promoted.
-func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.UUID, actor string) (*models.Policy, error) {
+//
+// Promotion enforces test-before-rollout for drafts: the draft must have been
+// simulated since its last edit (a non-empty DraftImpact, which UpdateDraft
+// clears on every edit, proves this), and it must not have unresolved
+// grant-vs-deny conflicts with live policies. Conflicts are re-scanned at
+// promote time so a conflict introduced by another policy promoted after this
+// draft was simulated is still caught. A reviewed conflict can be overridden
+// with opts.Force, which records the reason in the audit chain.
+func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.UUID, actor string, opts PromoteOptions) (*models.Policy, error) {
 	now := s.now()
 	var pol *models.Policy
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// loadPolicyTx locks the row FOR UPDATE, which serializes with
+		// UpdateDraft (it locks the same row before clearing DraftImpact). All
+		// test-before-rollout checks below therefore run against the committed,
+		// locked state — there is no TOCTOU window where a concurrent edit could
+		// clear DraftImpact or change the definition after we've checked it.
 		loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 		if err != nil {
 			return err
@@ -233,24 +307,73 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 		case PolicyStateArchived:
 			return fmt.Errorf("%w: archived policy %s", ErrPolicyNotPromotable, policyID)
 		}
+
+		// Draft: enforce simulate-before-rollout against the locked row.
+		overrideMeta := datatypes.JSON(nil)
+		if len(loaded.DraftImpact) == 0 {
+			return fmt.Errorf("%w: draft %s", ErrPolicyNotSimulated, policyID)
+		}
+		def, err := ParsePolicyDefinition(loaded.Definition)
+		if err != nil {
+			return err
+		}
+		// Re-scan conflicts at promote time (within the tx, against the locked
+		// definition) so a conflict introduced after this draft was simulated is
+		// still caught.
+		conflicts, err := s.conflict.DetectConflictsTx(ctx, tx, workspaceID, policyID, def)
+		if err != nil {
+			return err
+		}
+		if hard := hardConflicts(conflicts); len(hard) > 0 {
+			if !opts.Force {
+				return &PromoteConflictError{Conflicts: hard}
+			}
+			// An override is a security-relevant action, so it must carry an
+			// audited justification — an empty reason is rejected rather than
+			// recorded as a blank audit entry.
+			if strings.TrimSpace(opts.Reason) == "" {
+				return fmt.Errorf("%w: a reason is required to override grant-vs-deny conflicts", ErrValidation)
+			}
+			meta := map[string]any{
+				"override":             true,
+				"reason":               opts.Reason,
+				"overridden_conflicts": len(hard),
+			}
+			b, err := json.Marshal(meta)
+			if err != nil {
+				return fmt.Errorf("lifecycle: marshal override metadata: %w", err)
+			}
+			overrideMeta = datatypes.JSON(b)
+		}
+
 		if err := tx.Model(&models.Policy{}).
 			Where("workspace_id = ? AND id = ?", workspaceID, policyID).
 			Updates(map[string]any{
 				"state":       PolicyStateActive,
 				"promoted_at": now,
 				"updated_at":  now,
+				// Clear the draft-only simulation cache: it described the draft
+				// and is meaningless (and misleading in API responses) once the
+				// policy is active.
+				"draft_impact": gorm.Expr("NULL"),
 			}).Error; err != nil {
 			return fmt.Errorf("lifecycle: promote policy: %w", err)
 		}
 		loaded.State = PolicyStateActive
 		loaded.PromotedAt = &now
 		loaded.UpdatedAt = now
+		loaded.DraftImpact = nil
 		pol = loaded
+		action := "policy.promoted"
+		if overrideMeta != nil {
+			action = "policy.promoted_with_override"
+		}
 		return appendAudit(ctx, tx, now, auditEntry{
 			WorkspaceID: workspaceID,
 			Actor:       actor,
-			Action:      "policy.promoted",
+			Action:      action,
 			TargetRef:   policyID.String(),
+			Metadata:    overrideMeta,
 		})
 	})
 	if err != nil {
