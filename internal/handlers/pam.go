@@ -121,12 +121,16 @@ func (h *pamHandlers) register(g *gin.RouterGroup) {
 	pamG.GET("/targets/:id", h.getTarget)
 	pamG.POST("/targets", h.createTarget)
 
-	// Leases.
+	// Leases. Approve and revoke open and close a privileged access window, so
+	// they are step-up-MFA gated (mirroring policies/:id/promote); request,
+	// list, get, and the operator-triggered expire sweep are not. Finer-grained
+	// RBAC (a distinct approver permission / separation-of-duties) is layered on
+	// at integration alongside the other cross-workspace RBAC wiring.
 	pamG.POST("/leases", h.requestLease)
 	pamG.GET("/leases", h.listLeases)
 	pamG.GET("/leases/:id", h.getLease)
-	pamG.POST("/leases/:id/approve", h.approveLease)
-	pamG.POST("/leases/:id/revoke", h.revokeLease)
+	pamG.POST("/leases/:id/approve", middleware.RequireMFA(), h.approveLease)
+	pamG.POST("/leases/:id/revoke", middleware.RequireMFA(), h.revokeLease)
 	pamG.POST("/leases/expire", h.expireLeases)
 
 	// Connect tokens (mint).

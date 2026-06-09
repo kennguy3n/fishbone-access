@@ -228,6 +228,7 @@ func (m *SessionManager) setPause(ctx context.Context, workspaceID, sessionID uu
 	}
 	// Flip the flag and audit atomically, gated on the flag actually changing
 	// so a repeated pause/resume does not append a duplicate audit row.
+	var changed bool
 	if err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&models.PAMSession{}).
 			Where("workspace_id = ? AND id = ? AND state = ? AND paused = ?", workspaceID, sessionID, models.PAMSessionActive, !paused).
@@ -238,6 +239,7 @@ func (m *SessionManager) setPause(ctx context.Context, workspaceID, sessionID uu
 		if res.RowsAffected == 0 {
 			return nil
 		}
+		changed = true
 		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
 			WorkspaceID: workspaceID,
 			Actor:       adminActor,
@@ -249,7 +251,11 @@ func (m *SessionManager) setPause(ctx context.Context, workspaceID, sessionID uu
 		return err
 	}
 
-	if m.controller != nil {
+	// Drive the in-process gate only on an actual transition. The hub's
+	// Pause/Resume are idempotent, but skipping the no-op case avoids taking the
+	// hub + recorder locks (and a pause-cond broadcast) when the durable flag
+	// was already at the requested state.
+	if changed && m.controller != nil {
 		if paused {
 			m.controller.Pause(sessionID)
 		} else {

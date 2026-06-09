@@ -42,6 +42,7 @@ func pamTestDeps(t *testing.T) Deps {
 	return Deps{
 		Validator: mapValidator{byToken: map[string]*iamcore.Claims{
 			"tok-a":          {Subject: "user-a", TenantID: "tenant-a"},
+			"tok-a-mfa":      {Subject: "user-a", TenantID: "tenant-a", MFASatisfied: true},
 			"tok-a-perm":     {Subject: "user-a", TenantID: "tenant-a", Scopes: []string{"pam.takeover"}},
 			"tok-a-perm-mfa": {Subject: "user-a", TenantID: "tenant-a", Scopes: []string{"pam.takeover"}, MFASatisfied: true},
 			"tok-b-perm-mfa": {Subject: "user-b", TenantID: "tenant-b", Scopes: []string{"pam.takeover"}, MFASatisfied: true},
@@ -198,8 +199,15 @@ func TestLeaseEndpointsHappyPath(t *testing.T) {
 		t.Fatalf("want requested, got %q", lease.State)
 	}
 
-	// Approve.
+	// Approve and revoke are step-up-MFA gated: a token without satisfied MFA is
+	// rejected before the state machine runs.
 	w = do(t, r, http.MethodPost, "/api/v1/pam/leases/"+lease.ID.String()+"/approve", "tok-a", nil)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("approve without MFA: want 403, got %d (%s)", w.Code, w.Body.String())
+	}
+
+	// Approve (with step-up MFA).
+	w = do(t, r, http.MethodPost, "/api/v1/pam/leases/"+lease.ID.String()+"/approve", "tok-a-mfa", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("approve lease: want 200, got %d (%s)", w.Code, w.Body.String())
 	}
@@ -210,8 +218,8 @@ func TestLeaseEndpointsHappyPath(t *testing.T) {
 		t.Fatalf("want approved, got %q", lease.State)
 	}
 
-	// Revoke.
-	w = do(t, r, http.MethodPost, "/api/v1/pam/leases/"+lease.ID.String()+"/revoke", "tok-a", map[string]any{"reason": "done"})
+	// Revoke (step-up MFA gated).
+	w = do(t, r, http.MethodPost, "/api/v1/pam/leases/"+lease.ID.String()+"/revoke", "tok-a-mfa", map[string]any{"reason": "done"})
 	if w.Code != http.StatusOK {
 		t.Fatalf("revoke lease: want 200, got %d (%s)", w.Code, w.Body.String())
 	}

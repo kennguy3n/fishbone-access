@@ -63,7 +63,11 @@ const maxReplayFramePayload = 32 << 20
 // frames decoded so far with io.ErrUnexpectedEOF, so a partial recording is
 // still replayable up to the cut.
 func ParseReplay(r io.Reader) ([]ReplayFrame, error) {
-	var frames []ReplayFrame
+	// Non-nil so an empty recording (a session opened then torn down before any
+	// I/O) marshals to a JSON [] rather than null. The replay API contract is
+	// that "frames" is always an array, so the console can read .length without
+	// a nil guard.
+	frames := make([]ReplayFrame, 0)
 	var hdr [frameHeaderLen]byte
 	for {
 		if _, err := io.ReadFull(r, hdr[:]); err != nil {

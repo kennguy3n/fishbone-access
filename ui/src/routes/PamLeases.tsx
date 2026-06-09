@@ -10,6 +10,7 @@ import {
   useRequestPamLease,
   useApprovePamLease,
   useRevokePamLease,
+  useMe,
   type PamLease,
   type PamLeaseState,
   type RequestPamLeaseInput,
@@ -319,6 +320,7 @@ function LeaseDetailModal({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  const me = useMe();
   const approveMut = useApprovePamLease(lease.id);
   const revokeMut = useRevokePamLease(lease.id);
   const [reason, setReason] = useState("");
@@ -326,6 +328,13 @@ function LeaseDetailModal({
   const terminal = TERMINAL.includes(lease.state);
   const canApprove = lease.state === "requested";
   const canRevoke = !terminal;
+  // Approve/revoke open and close a privileged window, so the server step-up-MFA
+  // gates them. Mirror that here so an operator without satisfied MFA sees a
+  // disabled control with a reason rather than a 403 toast.
+  const mfaSatisfied = !!me.data?.mfa_satisfied;
+  const mfaReason = !me.data
+    ? "Checking authorization…"
+    : "Requires step-up MFA.";
 
   const approve = async () => {
     try {
@@ -365,7 +374,8 @@ function LeaseDetailModal({
           {canApprove && (
             <button
               className="btn btn--primary"
-              disabled={approveMut.isPending}
+              disabled={approveMut.isPending || !mfaSatisfied}
+              title={mfaSatisfied ? undefined : mfaReason}
               onClick={approve}
             >
               Approve
@@ -374,7 +384,8 @@ function LeaseDetailModal({
           {canRevoke && (
             <button
               className="btn btn--danger"
-              disabled={revokeMut.isPending}
+              disabled={revokeMut.isPending || !mfaSatisfied}
+              title={mfaSatisfied ? undefined : mfaReason}
               onClick={revoke}
             >
               Revoke

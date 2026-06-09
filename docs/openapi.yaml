@@ -729,7 +729,8 @@ paths:
       description: |
         Grants the requested (or overridden) TTL window. The transition is
         appended to the workspace audit hash chain. Only a `requested` lease can
-        be approved.
+        be approved. Requires step-up MFA (a token without satisfied MFA is
+        rejected with 403).
       requestBody:
         required: false
         content:
@@ -755,7 +756,8 @@ paths:
       summary: Revoke a JIT lease
       description: |
         Kills a lease early (terminal). Any session still running on the lease
-        is torn down and the credential can no longer be brokered.
+        is torn down and the credential can no longer be brokered. Requires
+        step-up MFA (a token without satisfied MFA is rejected with 403).
       requestBody:
         required: false
         content:
@@ -770,6 +772,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PAMLease" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 

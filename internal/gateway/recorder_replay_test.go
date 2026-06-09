@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"sync"
 	"testing"
@@ -85,6 +86,30 @@ func TestRecorderReplayRoundTrip(t *testing.T) {
 		if frames[idx].At.Before(frames[idx-1].At) {
 			t.Fatalf("frames out of order at %d", idx)
 		}
+	}
+}
+
+// TestParseReplayEmptyIsEmptyArray guards the replay API contract: an empty
+// recording (a session opened then torn down before any I/O) must decode to a
+// non-nil empty slice so it marshals to JSON [] rather than null. A null would
+// crash the console's frames.length read.
+func TestParseReplayEmptyIsEmptyArray(t *testing.T) {
+	frames, err := ParseReplay(bytes.NewReader(nil))
+	if err != nil {
+		t.Fatalf("ParseReplay(empty): %v", err)
+	}
+	if frames == nil {
+		t.Fatalf("ParseReplay(empty) returned a nil slice; want non-nil empty slice")
+	}
+	if len(frames) != 0 {
+		t.Fatalf("want 0 frames, got %d", len(frames))
+	}
+	b, err := json.Marshal(frames)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(b) != "[]" {
+		t.Fatalf("empty frames marshalled to %s, want []", b)
 	}
 }
 
