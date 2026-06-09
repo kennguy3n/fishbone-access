@@ -244,7 +244,13 @@ def _plan_for(provider: str, strategy: str | None) -> list[dict[str, Any]]:
             ),
             "required_scopes": [],
             "field_mappings": [],
-            "common_pitfalls": pitfalls[2:3],
+            # Steps 1-2 take the first two pitfalls (registration, scopes); this
+            # credential step takes the third AND absorbs any beyond it. The
+            # open-ended slice (not [2:3]) guarantees a profile that later grows a
+            # 4th pitfall surfaces it instead of silently dropping it. Behaviour
+            # is unchanged for today's 2-3-pitfall profiles. A guard test
+            # (test_connector_plan_surfaces_every_profile_pitfall) pins this.
+            "common_pitfalls": pitfalls[2:],
             "estimated_minutes": 3,
         },
         {

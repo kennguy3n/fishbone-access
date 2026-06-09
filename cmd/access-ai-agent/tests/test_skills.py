@@ -431,6 +431,23 @@ def test_connector_group_scoped_provider_mentions_groups():
     assert "and groups" in scope_step["description"]
 
 
+def test_connector_plan_surfaces_every_profile_pitfall():
+    # Every pitfall curated for a strategy profile must appear somewhere in the
+    # generated steps. The steps distribute pitfalls by position (step 1/2 take
+    # the first two, step 3 absorbs the rest), so a profile that grows a 4th
+    # pitfall must NOT silently drop it. Cover every strategy slug, including the
+    # ones with the most pitfalls, so this fails loudly if the distribution
+    # logic ever stops being exhaustive.
+    for provider in ("microsoft", "google", "okta", "github", "zoho", "totally-unknown"):
+        out = connector_setup_assistant.run({"provider": provider})
+        profile = connector_setup_assistant._profile_for(out["strategy"])
+        emitted = {p for s in out["steps"] for p in s["common_pitfalls"]}
+        assert set(profile["pitfalls"]) <= emitted, (
+            f"{provider}: pitfalls dropped from the plan: "
+            f"{set(profile['pitfalls']) - emitted}"
+        )
+
+
 def test_connector_model_used_flag_false_without_llm():
     # With no LLM configured the explanation is deterministic and model_used is
     # False, so the Go side can record that the plan was not model-enriched.
