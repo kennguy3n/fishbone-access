@@ -186,6 +186,8 @@ export const qk = {
   me: ["me"] as const,
   policies: ["policies"] as const,
   policy: (id: string) => ["policy", id] as const,
+  packs: (filter: PackFilter) => ["packs", filter] as const,
+  pack: (id: string) => ["pack", id] as const,
   requests: ["access-requests"] as const,
   request: (id: string) => ["access-request", id] as const,
   requestHistory: (id: string) => ["access-request", id, "history"] as const,
@@ -315,6 +317,99 @@ export function usePromotePolicy(id: string) {
 export function useArchivePolicy(id: string) {
   return useMutation<Policy, ApiError, void>({
     mutationFn: () => archivePolicy(id),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Policy packs — curated templates that materialize as DRAFT policies
+// ---------------------------------------------------------------------------
+
+/** One smart-default access rule inside a pack. */
+export interface PackTemplate {
+  key: string;
+  name: string;
+  summary: string;
+  action: PolicyAction;
+  subjects: string[];
+  resources: string[];
+  role?: string;
+  control: string;
+}
+
+export interface Pack {
+  id: string;
+  name: string;
+  authority: string;
+  description: string;
+  tier: 1 | 2 | 3;
+  regions: string[];
+  industries: string[];
+  frameworks: string[];
+  templates: PackTemplate[];
+}
+
+export interface PackFilter {
+  tier?: number;
+  region?: string;
+  industry?: string;
+  framework?: string;
+}
+
+/** A draft materialized from a pack template, paired with its source key. */
+export interface AppliedPolicy {
+  template_key: string;
+  policy: Policy;
+}
+
+export const listPacks = (filter: PackFilter = {}) => {
+  const params = new URLSearchParams();
+  if (filter.tier) params.set("tier", String(filter.tier));
+  if (filter.region) params.set("region", filter.region);
+  if (filter.industry) params.set("industry", filter.industry);
+  if (filter.framework) params.set("framework", filter.framework);
+  const qs = params.toString();
+  return call<{ packs: Pack[] }>({
+    url: qs ? `/packs?${qs}` : "/packs",
+    method: "GET",
+  }).then((r) => r.packs ?? []);
+};
+
+export const getPack = (id: string) =>
+  call<{ pack: Pack }>({ url: `/packs/${id}`, method: "GET" }).then(
+    (r) => r.pack,
+  );
+
+export const applyPack = (id: string, templateKeys?: string[]) =>
+  call<{ applied: AppliedPolicy[]; count: number }>({
+    url: `/packs/${id}/apply`,
+    method: "POST",
+    // Omit the field entirely (rather than send []) when applying the whole
+    // pack — the API treats empty/absent as "all templates".
+    data: templateKeys && templateKeys.length ? { template_keys: templateKeys } : {},
+  });
+
+export function usePacks(filter: PackFilter = {}) {
+  return useQuery<Pack[], ApiError>({
+    queryKey: qk.packs(filter),
+    queryFn: () => listPacks(filter),
+  });
+}
+
+export function usePack(id: string | undefined) {
+  return useQuery<Pack, ApiError>({
+    queryKey: qk.pack(id ?? ""),
+    queryFn: () => getPack(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useApplyPack(id: string) {
+  return useMutation<
+    { applied: AppliedPolicy[]; count: number },
+    ApiError,
+    string[] | undefined
+  >({
+    mutationFn: (templateKeys) => applyPack(id, templateKeys),
   });
 }
 

@@ -27,7 +27,10 @@ export const NAV: NavGroup[] = [
   },
   {
     labelId: "nav.group.govern",
-    items: [{ labelId: "nav.policies", to: "/policies", icon: "policy" }],
+    items: [
+      { labelId: "nav.policies", to: "/policies", icon: "policy" },
+      { labelId: "nav.packs", to: "/packs", icon: "compliance" },
+    ],
   },
   {
     labelId: "nav.group.lifecycle",

@@ -13,6 +13,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/packs"
 )
 
 // lifecycleHandlers holds the access-lifecycle services and serves their REST
@@ -30,6 +31,7 @@ type lifecycleHandlers struct {
 	orphans  *lifecycle.OrphanReconciler
 	expiry   *lifecycle.ExpiryEnforcer
 	sso      *lifecycle.SSOEnforcementChecker
+	packs    *packs.ApplyService
 }
 
 // newLifecycleHandlers wires the lifecycle services off the shared DB pool, the
@@ -41,16 +43,18 @@ func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 	requests := lifecycle.NewAccessRequestService(db)
 	workflow := lifecycle.NewWorkflowService(requests)
 	prov := lifecycle.NewAccessProvisioningService(db, requests, resolver)
+	policies := lifecycle.NewPolicyService(db)
 	return &lifecycleHandlers{
 		requests: requests,
 		workflow: workflow,
-		policies: lifecycle.NewPolicyService(db),
+		policies: policies,
 		prov:     prov,
 		reviews:  lifecycle.NewReviewService(db, prov),
 		jml:      lifecycle.NewJMLService(db, requests, workflow, prov, resolver, deps.Disabler),
 		orphans:  lifecycle.NewOrphanReconciler(db, resolver),
 		expiry:   lifecycle.NewExpiryEnforcer(db, prov),
 		sso:      lifecycle.NewSSOEnforcementChecker(db, resolver),
+		packs:    packs.NewApplyService(policies),
 	}
 }
 
@@ -98,6 +102,9 @@ func (h *lifecycleHandlers) register(g *gin.RouterGroup) {
 
 	// SSO enforcement.
 	g.GET("/connectors/:connectorID/sso-status", h.ssoStatus)
+
+	// Policy packs (curated templates that materialize as drafts).
+	h.registerPacks(g)
 }
 
 // --- access requests ---
