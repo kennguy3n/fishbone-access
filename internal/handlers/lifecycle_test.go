@@ -15,6 +15,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
 // mapValidator maps a bearer token to a fixed set of claims, so a single router
@@ -54,7 +55,13 @@ func lifecycleTestDeps(t *testing.T) Deps {
 		}},
 		DB:        db,
 		Encryptor: crypto.PassthroughEncryptor{},
-		Ready:     ready,
+		// Connector-instance ops (Create/TestConnectivity/TriggerSync) need a
+		// non-nil credential encryptor; without one they fail with an opaque
+		// "credential encryptor is required" 500. The catalogue/wizard tests
+		// don't seal secrets, but wire a passthrough here so a future handler
+		// test that does create a connector gets working deps, not a surprise.
+		ConnectorEncryptor: access.PassthroughEncryptor{},
+		Ready:              ready,
 	}
 }
 
