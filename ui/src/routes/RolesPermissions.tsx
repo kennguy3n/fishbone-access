@@ -117,6 +117,13 @@ export function RolesPermissions() {
   if (rolesQ.isLoading || membersQ.isLoading) return <LoadingState />;
   if (rolesQ.error)
     return <ErrorState error={rolesQ.error} onRetry={() => rolesQ.refetch()} />;
+  // A non-403 members error (403 is handled by `forbidden` above) must surface
+  // as an error, not fall through to the "No members yet" empty state, which
+  // would misrepresent a failed fetch as an empty workspace.
+  if (membersQ.error)
+    return (
+      <ErrorState error={membersQ.error} onRetry={() => membersQ.refetch()} />
+    );
   if (!catalog) return <ErrorState error={new Error("No role catalogue")} />;
 
   const resourceGroups = groupByResource(catalog.permissions);

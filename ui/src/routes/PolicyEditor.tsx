@@ -21,14 +21,23 @@ import {
 } from "@/api/access";
 import { formatDateTime } from "@/lib/format";
 
-// The promote route is gated by RequireStepUpMFA. A missing assertion comes
-// back as 400 ("step-up MFA assertion required"); a wrong/replayed code as 403
-// ("step-up MFA verification failed"). We branch on status + message so an
-// unrelated 400/403 (e.g. validation) still surfaces as a plain error.
+// The promote route's middleware chain is RequirePermission -> RequireMFA ->
+// RequireStepUpMFA -> handler, so THREE distinct auth failures can come back and
+// must be told apart by their exact server messages, not a loose /step-up mfa/
+// match (which collides across all three and caused an infinite TOTP prompt):
+//   - RequireStepUpMFA, missing header  -> 400 "step-up MFA assertion required"
+//   - RequireStepUpMFA, wrong/replayed  -> 403 "step-up MFA verification failed"
+//   - RequireMFA, JWT lacks the claim   -> 403 "step-up MFA required"
+// Only the first two are answered with the TOTP modal; the third means the
+// session itself needs MFA re-authentication, so prompting for a code would loop
+// forever (the header never satisfies the JWT-claim gate). Anchored phrases keep
+// each predicate disjoint.
 const isStepUpRequired = (err: ApiError) =>
-  err.status === 400 && /step-up mfa/i.test(err.message);
+  err.status === 400 && /step-up mfa assertion required/i.test(err.message);
 const isStepUpFailed = (err: ApiError) =>
-  err.status === 403 && /step-up mfa/i.test(err.message);
+  err.status === 403 && /step-up mfa verification failed/i.test(err.message);
+const isSessionMfaRequired = (err: ApiError) =>
+  err.status === 403 && /^step-up mfa required$/i.test(err.message.trim());
 
 // Subject/resource entry prefixes the operator can pick from. The backend
 // treats these as opaque refs (cartesian product of subjects × resources); the
@@ -354,10 +363,13 @@ export function PolicyEditor() {
       if (err instanceof ApiError && isStepUpRequired(err)) {
         // The high-risk promote needs a fresh step-up assertion. Remember the
         // (force, reason) context so the modal's retry matches this attempt,
-        // then prompt for the TOTP code.
+        // then prompt for the TOTP code. Close the conflict-override modal first
+        // so the MFA modal does not stack on top of it (the override reason is
+        // already captured in pendingPromote).
         setPendingPromote({ force, reason });
         setMfaError(null);
         setMfaCode("");
+        setOverrideOpen(false);
         setMfaOpen(true);
         return;
       }
@@ -367,7 +379,20 @@ export function PolicyEditor() {
         setPendingPromote({ force, reason });
         setMfaError(err.message);
         setMfaCode("");
+        setOverrideOpen(false);
         setMfaOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && isSessionMfaRequired(err)) {
+        // The session's own MFA claim is unsatisfied (not a step-up failure).
+        // A TOTP code cannot satisfy the JWT-claim gate, so close any prompt and
+        // tell the operator to re-authenticate rather than looping the modal.
+        setMfaOpen(false);
+        setOverrideOpen(false);
+        toast.error(
+          "Session needs MFA",
+          "Your session is not MFA-verified. Sign out and sign back in with MFA, then retry the promotion.",
+        );
         return;
       }
       toast.error("Could not promote", errMessage(err));
