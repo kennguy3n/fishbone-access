@@ -244,7 +244,12 @@ export const simulatePolicy = (id: string) =>
   call<{ simulation: SimulationResult }>({
     url: `/policies/${id}/simulate`,
     method: "POST",
-  }).then((r) => r.simulation);
+  }).then((r) => ({
+    // The API omits an empty conflict slice as JSON null (idiomatic Go); the
+    // UI treats conflicts as an always-present array, so normalize here.
+    ...r.simulation,
+    conflicts: r.simulation.conflicts ?? [],
+  }));
 
 export interface PromoteInput {
   force?: boolean;
