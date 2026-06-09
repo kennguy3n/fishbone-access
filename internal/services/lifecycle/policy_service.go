@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -202,14 +203,32 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 	result := SimulationResult{Impact: impact, Conflicts: conflicts}
 
 	if pol.State == PolicyStateDraft {
-		if b, err := json.Marshal(impact); err == nil {
-			now := s.now()
-			if err := s.db.WithContext(ctx).
-				Model(&models.Policy{}).
-				Where("workspace_id = ? AND id = ?", workspaceID, policyID).
-				Updates(map[string]any{"draft_impact": datatypes.JSON(b), "updated_at": now}).Error; err != nil {
-				return SimulationResult{}, fmt.Errorf("lifecycle: cache draft impact: %w", err)
+		b, err := json.Marshal(impact)
+		if err != nil {
+			return SimulationResult{}, fmt.Errorf("lifecycle: marshal draft impact: %w", err)
+		}
+		now := s.now()
+		// Persist the impact under the row lock, but only if the definition we
+		// simulated is still the current one. Without the guard, a concurrent
+		// UpdateDraft (which locks the row and clears DraftImpact on edit) could
+		// commit between our read above and this write, and we would overwrite
+		// its nil clear with impact computed from the now-stale definition —
+		// falsely marking a since-edited draft as "simulated" and letting it
+		// pass Promote's simulate-before-rollout gate.
+		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
+			if err != nil {
+				return err
 			}
+			if loaded.State != PolicyStateDraft || !bytes.Equal([]byte(loaded.Definition), []byte(pol.Definition)) {
+				return nil // edited or no longer a draft since we simulated; leave the cache as-is
+			}
+			return tx.Model(&models.Policy{}).
+				Where("workspace_id = ? AND id = ?", workspaceID, policyID).
+				Updates(map[string]any{"draft_impact": datatypes.JSON(b), "updated_at": now}).Error
+		})
+		if err != nil {
+			return SimulationResult{}, fmt.Errorf("lifecycle: cache draft impact: %w", err)
 		}
 	}
 	return result, nil
