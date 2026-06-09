@@ -579,7 +579,8 @@ func (h *pamHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, pam.ErrLeaseNotFound),
 		errors.Is(err, pam.ErrSessionNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-	case errors.Is(err, pam.ErrLeaseTerminal):
+	case errors.Is(err, pam.ErrLeaseTerminal),
+		errors.Is(err, pam.ErrSessionNotActive):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, pam.ErrLeaseNotApproved):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})

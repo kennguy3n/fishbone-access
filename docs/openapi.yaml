@@ -1082,6 +1082,7 @@ paths:
         "200": { description: Paused }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /pam/sessions/{id}/resume:
     parameters: [ { $ref: "#/components/parameters/IDPath" } ]
@@ -1095,6 +1096,7 @@ paths:
         "200": { description: Resumed }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /pam/sessions/{id}/terminate:
     parameters: [ { $ref: "#/components/parameters/IDPath" } ]

@@ -273,6 +273,53 @@ func TestGateReaderGatesWithoutRecording(t *testing.T) {
 	}
 }
 
+// TestRecorderPauseResumeAnnotationsOrdered proves the pause/resume control
+// markers are written to the durable transcript exactly once per state change
+// and in flip order, and that idempotent re-pauses/re-resumes add no duplicate
+// markers. The annotation is appended in the same critical section as the
+// paused-flag flip, so it can never invert relative to a concurrent transition.
+func TestRecorderPauseResumeAnnotationsOrdered(t *testing.T) {
+	rec := NewIORecorder(context.Background(), "sess-anno", 0)
+
+	rec.Pause()
+	rec.Pause() // idempotent: must not add a second "[paused]" marker
+	rec.Resume()
+	rec.Resume() // idempotent: must not add a second "[resumed]" marker
+
+	store := newMemReplayStore()
+	if err := rec.Flush(context.Background(), store); err != nil {
+		t.Fatalf("Flush: %v", err)
+	}
+	rc, err := store.GetReplay(context.Background(), "sess-anno")
+	if err != nil {
+		t.Fatalf("GetReplay: %v", err)
+	}
+	defer rc.Close()
+	frames, err := ParseReplay(rc)
+	if err != nil {
+		t.Fatalf("ParseReplay: %v", err)
+	}
+
+	var control []string
+	for _, f := range frames {
+		if f.Direction == "control" {
+			control = append(control, string(f.Payload))
+		}
+	}
+	want := []string{
+		"[session paused by administrator]",
+		"[session resumed by administrator]",
+	}
+	if len(control) != len(want) {
+		t.Fatalf("control frames = %v, want exactly %v", control, want)
+	}
+	for i := range want {
+		if control[i] != want[i] {
+			t.Fatalf("control frame %d = %q, want %q (order matters)", i, control[i], want[i])
+		}
+	}
+}
+
 // TestRecorderContextCancelReleasesPausedInput is the regression guard for the
 // paused-session goroutine leak: when a session ends naturally while paused
 // (the upstream hangs up, so the copy goroutine's deferred cancel fires) there

@@ -427,6 +427,68 @@ func (s *PAMLeaseService) ExpireLeases(ctx context.Context, workspaceID uuid.UUI
 	return expired, nil
 }
 
+// ExpireDueLeases sweeps lapsed leases across EVERY workspace and returns the
+// total expired. It is the global TTL-enforcement entry point: it finds the
+// distinct workspaces that currently own at least one due lease and runs the
+// per-workspace ExpireLeases for each, inheriting that path's idempotent,
+// concurrency-safe claim (so two gateways sweeping at once never double-audit a
+// lease). Visiting only workspaces with due leases keeps a single pass cheap
+// even at thousands of tenants. A per-workspace failure is logged and the sweep
+// continues so one bad tenant cannot starve the rest.
+func (s *PAMLeaseService) ExpireDueLeases(ctx context.Context) (int, error) {
+	now := s.now().UTC()
+	var workspaceIDs []uuid.UUID
+	if err := s.db.WithContext(ctx).
+		Model(&models.PAMLease{}).
+		Where("granted_at IS NOT NULL AND revoked_at IS NULL AND expired_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ?", now).
+		Distinct().
+		Pluck("workspace_id", &workspaceIDs).Error; err != nil {
+		return 0, fmt.Errorf("pam: scan workspaces with due leases: %w", err)
+	}
+	total := 0
+	for _, ws := range workspaceIDs {
+		n, err := s.ExpireLeases(ctx, ws)
+		if err != nil {
+			logger.Errorf(ctx, "pam: expire leases for workspace %s: %v", ws, err)
+			continue
+		}
+		total += n
+	}
+	return total, nil
+}
+
+// RunExpirySweep runs ExpireDueLeases on a ticker until ctx is cancelled. It is
+// the unattended global sweeper a multi-tenant deployment needs so an expired
+// lease's live sessions are torn down promptly without every tenant polling the
+// on-demand POST /pam/leases/expire endpoint. interval <= 0 selects a 30s
+// default. It sweeps once immediately on start so a gateway restart does not
+// wait a full interval to reap leases that lapsed while it was down, and it is
+// resilient: a sweep error is logged and the loop continues. Safe to run in
+// every gateway process — the per-lease claim makes concurrent sweeps idempotent.
+func (s *PAMLeaseService) RunExpirySweep(ctx context.Context, interval time.Duration) {
+	if s == nil {
+		return
+	}
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	if _, err := s.ExpireDueLeases(ctx); err != nil {
+		logger.Errorf(ctx, "pam: initial lease expiry sweep: %v", err)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := s.ExpireDueLeases(ctx); err != nil {
+				logger.Errorf(ctx, "pam: lease expiry sweep: %v", err)
+			}
+		}
+	}
+}
+
 // GetLease loads a single lease scoped to its workspace, with the derived state
 // stamped.
 func (s *PAMLeaseService) GetLease(ctx context.Context, workspaceID, leaseID uuid.UUID) (*models.PAMLease, error) {

@@ -155,6 +155,13 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB) ([]gat
 	reconciler := gateway.NewSessionReconciler(hub, sessions, 0)
 	go reconciler.Run(ctx)
 
+	// Global JIT-lease TTL enforcement: the per-workspace POST /pam/leases/expire
+	// is the on-demand entry point, but a multi-tenant deployment needs an
+	// unattended sweeper so a lapsed lease's live sessions are reaped promptly
+	// without every tenant polling. Idempotent per-lease claims make this safe to
+	// run in every gateway process. Tied to ctx so it stops on shutdown.
+	go leases.RunExpirySweep(ctx, 0)
+
 	store, err := buildReplayStore(ctx)
 	if err != nil {
 		return nil, err

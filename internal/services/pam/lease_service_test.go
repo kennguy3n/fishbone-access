@@ -267,6 +267,62 @@ func TestExpireLeasesSweep(t *testing.T) {
 	}
 }
 
+// TestExpireDueLeasesGlobalSweep verifies the global TTL sweep reaps lapsed
+// leases across EVERY workspace (not just the caller's), visits only workspaces
+// that actually have due leases, and is idempotent.
+func TestExpireDueLeasesGlobalSweep(t *testing.T) {
+	db := newTestDB(t)
+	wsA := seedWorkspace(t, db, "tenant-a")
+	wsB := seedWorkspace(t, db, "tenant-b")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	targetA := seedLeaseTarget(t, v, wsA, "box-a")
+	targetB := seedLeaseTarget(t, v, wsB, "box-b")
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	cur := now
+	leases := NewPAMLeaseService(db, nil)
+	leases.SetClock(func() time.Time { return cur })
+
+	grant := func(ws, targetID uuid.UUID, subject string) {
+		lease, err := leases.RequestLease(context.Background(), RequestLeaseInput{
+			WorkspaceID: ws, TargetID: targetID, Subject: subject, RequestedBy: subject, TTL: time.Minute,
+		})
+		if err != nil {
+			t.Fatalf("RequestLease(%s): %v", subject, err)
+		}
+		if _, err := leases.ApproveLease(context.Background(), ws, lease.ID, "carol", time.Minute); err != nil {
+			t.Fatalf("ApproveLease(%s): %v", subject, err)
+		}
+	}
+	grant(wsA, targetA.ID, "alice")
+	grant(wsB, targetB.ID, "bob")
+
+	// Before TTL: a global sweep finds no due leases in any workspace.
+	if n, err := leases.ExpireDueLeases(context.Background()); err != nil || n != 0 {
+		t.Fatalf("pre-TTL global sweep: n=%d err=%v (want 0, nil)", n, err)
+	}
+
+	// After TTL: a single global sweep expires both tenants' leases.
+	cur = now.Add(2 * time.Minute)
+	n, err := leases.ExpireDueLeases(context.Background())
+	if err != nil || n != 2 {
+		t.Fatalf("global sweep: n=%d err=%v (want 2, nil)", n, err)
+	}
+	// Idempotent: re-running expires nothing more.
+	if n, err := leases.ExpireDueLeases(context.Background()); err != nil || n != 0 {
+		t.Fatalf("re-sweep: n=%d err=%v (want 0, nil)", n, err)
+	}
+
+	// Both workspaces recorded exactly one expiry on their own chains.
+	for _, ws := range []uuid.UUID{wsA, wsB} {
+		var auditCount int64
+		db.Model(&models.AuditEvent{}).Where("workspace_id = ? AND action = ?", ws, "pam.lease.expired").Count(&auditCount)
+		if auditCount != 1 {
+			t.Fatalf("workspace %s: want 1 expiry audit, got %d", ws, auditCount)
+		}
+	}
+}
+
 // TestExpireSweepLosesToConcurrentRevoke pins the scan→claim TOCTOU guard: if a
 // lease is revoked after the sweep's (non-transactional) due scan but before its
 // per-lease claim, revoke must win. The sweep must not stamp expired_at or

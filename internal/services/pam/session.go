@@ -17,6 +17,13 @@ import (
 // ErrSessionNotFound is returned when a session does not exist in the workspace.
 var ErrSessionNotFound = errors.New("pam: session not found")
 
+// ErrSessionNotActive is returned when a control action (pause/resume) is
+// attempted on a session that is no longer active. It is a state-machine
+// conflict — the session exists but has already ended — so it maps to 409
+// Conflict at the HTTP edge, mirroring ErrLeaseTerminal, rather than a 400 that
+// would imply a malformed request.
+var ErrSessionNotActive = errors.New("pam: session is not active")
+
 // LiveController is the gateway-side capability the session manager uses to
 // terminate a live connection when an admin kills an active session. The
 // gateway's takeover hub implements it; defining the interface here keeps the
@@ -219,7 +226,7 @@ func (m *SessionManager) setPause(ctx context.Context, workspaceID, sessionID uu
 		return fmt.Errorf("pam: load session: %w", err)
 	}
 	if session.State != models.PAMSessionActive {
-		return fmt.Errorf("%w: session is not active", ErrValidation)
+		return fmt.Errorf("%w (state %s)", ErrSessionNotActive, session.State)
 	}
 
 	md, err := marshalMeta(map[string]any{"session_id": sessionID.String(), "paused": paused})

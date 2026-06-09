@@ -152,26 +152,41 @@ func (r *IORecorder) watchContext(ctx context.Context) {
 // (target→operator) is intentionally NOT gated — a watching admin keeps seeing
 // the live screen — only operator input is withheld.
 func (r *IORecorder) Pause() {
+	note := []byte("[session paused by administrator]")
 	r.mu.Lock()
-	already := r.paused
-	r.paused = true
-	r.mu.Unlock()
-	if !already {
-		r.Annotate("[session paused by administrator]")
+	if r.paused {
+		r.mu.Unlock()
+		return
 	}
+	r.paused = true
+	// Append the annotation in the SAME critical section as the flag flip so the
+	// durable transcript order can never invert relative to a concurrent Resume:
+	// whichever of Pause/Resume wins the lock both flips the flag and writes its
+	// marker first. (Doing the Annotate after unlocking — as a separate Record —
+	// left a window where a racing Resume could record "[resumed]" before this
+	// "[paused]", misleading a forensic replay even though the gate state itself
+	// was correct.)
+	at, monitors := r.annotateLocked(note)
+	r.mu.Unlock()
+	fanOutControl(monitors, at, note)
 }
 
 // Resume lowers the soft-pause gate and wakes any blocked input read. It is
 // idempotent.
 func (r *IORecorder) Resume() {
+	note := []byte("[session resumed by administrator]")
 	r.mu.Lock()
-	was := r.paused
+	if !r.paused {
+		r.mu.Unlock()
+		return
+	}
 	r.paused = false
 	r.pauseCond.Broadcast()
+	// Flip + annotate atomically — see Pause for why the marker is written under
+	// the same lock rather than via a post-unlock Record.
+	at, monitors := r.annotateLocked(note)
 	r.mu.Unlock()
-	if was {
-		r.Annotate("[session resumed by administrator]")
-	}
+	fanOutControl(monitors, at, note)
 }
 
 // IsPaused reports whether the input gate is currently raised.
@@ -326,6 +341,33 @@ func (r *IORecorder) AddMonitor(m LiveMonitor) (remove func()) {
 // so the transcript explains itself.
 func (r *IORecorder) Annotate(note string) {
 	r.Record(DirControl, []byte(note))
+}
+
+// annotateLocked appends a control-direction annotation to the durable buffer
+// while the caller already holds r.mu, then snapshots the live monitors to fan
+// out to. The caller MUST release r.mu before invoking the returned monitors
+// (a monitor must never run under r.mu — see Record). Recording the frame under
+// the same lock as a state change keeps the two ordered atomically in the
+// transcript; the returned timestamp is the frame's capture instant so a
+// post-unlock fan-out carries the same time.
+func (r *IORecorder) annotateLocked(note []byte) (time.Time, []LiveMonitor) {
+	at := r.now()
+	if !r.closed {
+		r.appendLocked(DirControl, at, note)
+	}
+	monitors := make([]LiveMonitor, 0, len(r.monitors))
+	for _, m := range r.monitors {
+		monitors = append(monitors, m)
+	}
+	return at, monitors
+}
+
+// fanOutControl delivers a control frame to live monitors. It MUST be called
+// without holding r.mu so a slow takeover watcher cannot stall the proxied path.
+func fanOutControl(monitors []LiveMonitor, at time.Time, note []byte) {
+	for _, m := range monitors {
+		m.OnFrame(DirControl, at, note)
+	}
 }
 
 // Bytes returns a copy of the recording captured so far. Primarily for tests
