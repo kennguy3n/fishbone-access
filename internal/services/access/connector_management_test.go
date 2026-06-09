@@ -82,6 +82,25 @@ func TestConnectorManagementCreateValidationFails(t *testing.T) {
 	}
 }
 
+// TestConnectorManagementNilEncryptorFailsClosed pins the constructor contract:
+// a nil CredentialEncryptor must not nil-panic mid-Create — it falls back to the
+// fail-closed disabled encryptor, so Create errors loudly with ErrSecretsDisabled
+// (and never persists plaintext) when a caller forgets to wire a DEK.
+func TestConnectorManagementNilEncryptorFailsClosed(t *testing.T) {
+	SwapConnector(t, "test-provider", &MockAccessConnector{})
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, nil, workers.NewPostgresQueue(db))
+
+	_, err := svc.Create(context.Background(), CreateConnectorInput{
+		WorkspaceID: uuid.New(),
+		Provider:    "test-provider",
+		Secrets:     map[string]interface{}{"token": "shh"},
+	})
+	if !errors.Is(err, ErrSecretsDisabled) {
+		t.Fatalf("Create with nil encryptor err = %v, want ErrSecretsDisabled (fail closed)", err)
+	}
+}
+
 func TestConnectorManagementTenantIsolation(t *testing.T) {
 	SwapConnector(t, "test-provider", &MockAccessConnector{})
 	svc := newMgmtService(t)

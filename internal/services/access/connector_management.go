@@ -60,9 +60,21 @@ type ConnectorManagementService struct {
 }
 
 // NewConnectorManagementService builds the service. enc seals/opens connector
-// secrets; queue schedules sync/provision/revoke jobs (may be nil if the caller
-// never triggers background work).
+// secrets; a nil enc falls back to the fail-closed disabled encryptor (so a
+// missing DEK wiring errors loudly rather than persisting plaintext or
+// panicking). queue schedules sync/provision/revoke jobs (may be nil if the
+// caller never triggers background work).
 func NewConnectorManagementService(db *gorm.DB, enc CredentialEncryptor, queue JobEnqueuer) *ConnectorManagementService {
+	// A nil encryptor must fail CLOSED, not nil-panic mid-Create/openConnector:
+	// substitute the disabled encryptor so a forgotten DEK wiring surfaces as a
+	// loud ErrSecretsDisabled (never a plaintext write or a crash). The
+	// production binaries pass CredentialEncryptorFromKey (which yields the
+	// disabled encryptor for an empty key, never nil) and tests pass
+	// PassthroughEncryptor, so this guard only trips if a future caller forgets
+	// to wire one — and when it does, the platform stays secure by default.
+	if enc == nil {
+		enc = NewDisabledEncryptor()
+	}
 	return &ConnectorManagementService{db: db, enc: enc, queue: queue}
 }
 
