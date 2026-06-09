@@ -70,9 +70,10 @@ func TestServeRealAsset(t *testing.T) {
 	if w.Body.String() != "console.log(1)" {
 		t.Errorf("body = %q, want the asset contents", w.Body.String())
 	}
-	// Real, content-hashed assets are not forced no-cache (they're immutable).
-	if cc := w.Header().Get("Cache-Control"); cc == "no-cache" {
-		t.Errorf("asset Cache-Control = %q, should not be no-cache", cc)
+	// Content-hashed assets under /assets/ are served immutable so browsers
+	// can cache them indefinitely instead of revalidating on every load.
+	if cc := w.Header().Get("Cache-Control"); cc != "public, max-age=31536000, immutable" {
+		t.Errorf("asset Cache-Control = %q, want immutable long-lived caching", cc)
 	}
 }
 

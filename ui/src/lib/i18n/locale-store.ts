@@ -20,7 +20,14 @@ export function getStoredLocale(): Locale | null {
 
 export function storeLocale(locale: Locale): void {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, locale);
+  // Guard the write like setTheme does: a restricted or full localStorage
+  // (e.g. Safari private mode quota) throws, and a failure to persist the
+  // preference must not break the in-session locale change.
+  try {
+    localStorage.setItem(STORAGE_KEY, locale);
+  } catch {
+    /* persistence is best-effort; the in-memory locale still applies */
+  }
 }
 
 // detectInitialLocale picks the startup locale: an explicit stored

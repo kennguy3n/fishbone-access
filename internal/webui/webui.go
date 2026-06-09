@@ -79,6 +79,14 @@ func Register(r *gin.Engine) {
 						serveIndex(c)
 						return
 					}
+					// Vite emits content-hashed filenames under /assets/ (e.g.
+					// index-BIXEH4__.js); the hash changes whenever the content
+					// does, so these are safe to cache forever. embed.FS sets no
+					// modtime, so the file server would otherwise send them with
+					// no Cache-Control and force a revalidation on every load.
+					if strings.HasPrefix(name, "assets/") {
+						c.Header("Cache-Control", "public, max-age=31536000, immutable")
+					}
 					fileServer.ServeHTTP(c.Writer, req)
 					return
 				}

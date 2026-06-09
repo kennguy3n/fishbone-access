@@ -32,6 +32,9 @@ export function decodeJwt(token: string): JwtClaims | null {
 }
 
 export function isExpired(claims: JwtClaims | null): boolean {
-  if (!claims?.exp) return false;
+  // Distinguish "no exp claim" from exp:0: use == null so a token with
+  // exp:0 (expired at the Unix epoch) is correctly treated as expired
+  // rather than as "never expires".
+  if (claims?.exp == null) return false;
   return claims.exp * 1000 <= Date.now();
 }
