@@ -60,6 +60,15 @@ const DefaultCacheTTL = 60 * time.Second
 // repeated non-member JWT lookups under adversarial traffic.
 const DefaultNegativeCacheTTL = 5 * time.Second
 
+// DefaultMaxCacheEntries bounds the in-memory membership cache so a long-running
+// process cannot grow it without limit. JWTs are validated by iam-core before
+// reaching us, so keys are real (workspace, user) pairs; at 5k SME tenants the
+// live working set is far below this. The cap is the backstop against pathological
+// churn (e.g. rotating user IDs in otherwise-valid tokens filling the negative
+// cache): an entry holds a role + four small fields, so ~200k entries is well
+// under a few tens of MB. Eviction only forces a DB re-read, never a wrong answer.
+const DefaultMaxCacheEntries = 200_000
+
 // withRowLock applies SELECT ... FOR UPDATE on Postgres so concurrent
 // membership mutations on the same row serialize past the last-owner guard
 // instead of racing. No-op on SQLite (the test path serializes writers with a
@@ -125,6 +134,7 @@ type RBACService struct {
 	db               *gorm.DB
 	cacheTTL         time.Duration
 	negativeCacheTTL time.Duration
+	maxCacheEntries  int
 	now              func() time.Time // injectable for tests
 
 	mu    sync.RWMutex
@@ -150,9 +160,51 @@ func NewRBACService(db *gorm.DB, cacheTTL time.Duration) *RBACService {
 		db:               db,
 		cacheTTL:         cacheTTL,
 		negativeCacheTTL: negTTL,
+		maxCacheEntries:  DefaultMaxCacheEntries,
 		now:              time.Now,
 		cache:            make(map[membershipCacheKey]membershipCacheEntry),
 	}
+}
+
+// SetMaxCacheEntries overrides the cache size bound. Test-only escape hatch so a
+// test can exercise eviction at a small cap; values <= 0 are ignored.
+func (s *RBACService) SetMaxCacheEntries(n int) {
+	if n <= 0 {
+		return
+	}
+	s.mu.Lock()
+	s.maxCacheEntries = n
+	s.mu.Unlock()
+}
+
+// storeCacheEntry writes entry under the cache lock while bounding the map to
+// maxCacheEntries. When inserting a new key would exceed the cap we first sweep
+// expired entries (cheap, and the common case since negative entries expire in
+// seconds); if the map is still full of live entries we then evict as we scan
+// until there is room. Go randomizes map iteration order, so the fallback is a
+// crude random eviction. Evicting a live entry only forces a DB re-read on its
+// next access — never a wrong answer, since the DB stays the source of truth.
+func (s *RBACService) storeCacheEntry(key membershipCacheKey, entry membershipCacheEntry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.cache[key]; !exists && len(s.cache) >= s.maxCacheEntries {
+		now := s.now()
+		for k, e := range s.cache {
+			if len(s.cache) < s.maxCacheEntries {
+				break
+			}
+			if !e.expiresAt.After(now) {
+				delete(s.cache, k)
+			}
+		}
+		for k := range s.cache {
+			if len(s.cache) < s.maxCacheEntries {
+				break
+			}
+			delete(s.cache, k)
+		}
+	}
+	s.cache[key] = entry
 }
 
 // SetClock overrides the time source. Test-only; production callers leave the
@@ -218,12 +270,10 @@ func (s *RBACService) GetMembership(ctx context.Context, workspaceID uuid.UUID, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if s.cacheTTL > 0 && s.negativeCacheTTL > 0 {
 				key := membershipCacheKey{workspaceID: workspaceID, userID: userID}
-				s.mu.Lock()
-				s.cache[key] = membershipCacheEntry{
+				s.storeCacheEntry(key, membershipCacheEntry{
 					notFound:  true,
 					expiresAt: s.now().Add(s.negativeCacheTTL),
-				}
-				s.mu.Unlock()
+				})
 			}
 			return nil, ErrMembershipNotFound
 		}
@@ -241,14 +291,12 @@ func (s *RBACService) GetMembership(ctx context.Context, workspaceID uuid.UUID, 
 
 	if s.cacheTTL > 0 {
 		key := membershipCacheKey{workspaceID: workspaceID, userID: userID}
-		s.mu.Lock()
-		s.cache[key] = membershipCacheEntry{
+		s.storeCacheEntry(key, membershipCacheEntry{
 			role:      role,
 			createdAt: row.CreatedAt,
 			updatedAt: row.UpdatedAt,
 			expiresAt: s.now().Add(s.cacheTTL),
-		}
-		s.mu.Unlock()
+		})
 	}
 
 	return &Membership{

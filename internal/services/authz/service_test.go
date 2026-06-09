@@ -112,6 +112,65 @@ func TestGetMembershipNegativeCache(t *testing.T) {
 	}
 }
 
+// TestMembershipCacheBounded proves the in-memory cache never grows past its
+// configured cap under a flood of distinct non-member lookups (the DoS shape the
+// negative cache absorbs), and that eviction reclaims expired entries first so a
+// live, recently-resolved member survives the churn.
+func TestMembershipCacheBounded(t *testing.T) {
+	svc, db := newTestService(t, 60*time.Second)
+	now := time.Unix(1_700_000_000, 0)
+	svc.SetClock(func() time.Time { return now })
+	const cap = 8
+	svc.SetMaxCacheEntries(cap)
+
+	ws := uuid.New()
+	// A real member, resolved once so it occupies a live positive entry.
+	if err := svc.UpsertMember(ctx(), ws, "live-user", RoleAdmin, SystemActor); err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+	if _, err := svc.GetMembership(ctx(), ws, "live-user"); err != nil {
+		t.Fatalf("prime live member: %v", err)
+	}
+
+	// Flood with far more distinct non-members than the cap. Each populates a
+	// short-lived negative entry; the bound must hold throughout.
+	for i := 0; i < cap*20; i++ {
+		ghost := "ghost-" + uuid.NewString()
+		if _, err := svc.GetMembership(ctx(), ws, ghost); !errors.Is(err, ErrMembershipNotFound) {
+			t.Fatalf("ghost lookup err = %v, want ErrMembershipNotFound", err)
+		}
+		svc.mu.RLock()
+		size := len(svc.cache)
+		svc.mu.RUnlock()
+		if size > cap {
+			t.Fatalf("cache size %d exceeded cap %d", size, cap)
+		}
+	}
+
+	// Advance past the negative TTL so the flooded entries are all expired, then
+	// trigger one more populate: the expired-entry sweep must keep us bounded.
+	now = now.Add(10 * time.Second)
+	if _, err := svc.GetMembership(ctx(), ws, "ghost-final"); !errors.Is(err, ErrMembershipNotFound) {
+		t.Fatalf("final ghost err = %v, want ErrMembershipNotFound", err)
+	}
+	svc.mu.RLock()
+	size := len(svc.cache)
+	svc.mu.RUnlock()
+	if size > cap {
+		t.Fatalf("post-sweep cache size %d exceeded cap %d", size, cap)
+	}
+
+	// The live member must still resolve correctly regardless of eviction (the
+	// DB remains the source of truth, so a re-read is transparent).
+	if err := db.Where("workspace_id = ? AND user_id = ?", ws, "live-user").
+		First(&models.WorkspaceMember{}).Error; err != nil {
+		t.Fatalf("live member row must persist: %v", err)
+	}
+	if m, err := svc.GetMembership(ctx(), ws, "live-user"); err != nil || m.Role != RoleAdmin {
+		t.Fatalf("live member resolve = (%v, %v), want admin", m, err)
+	}
+}
+
 func TestUpsertMemberRoleChangeAudited(t *testing.T) {
 	svc, db := newTestService(t, 0)
 	ws := uuid.New()
