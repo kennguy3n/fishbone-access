@@ -628,7 +628,10 @@ func defaultReason(reason, fallback string) string {
 }
 
 // likePrefix escapes LIKE metacharacters in a scope prefix so a literal "_" or
-// "%" in a resource ref can't widen the match, then appends the wildcard.
+// "%" in a resource ref can't widen the match, then appends the wildcard. The
+// result is always passed through a parameterized `?` placeholder with an
+// explicit ESCAPE '\\', so this is the only injection surface and all three
+// metacharacters (\\, %, _) are escaped here — there is no SQL-injection path.
 func likePrefix(prefix string) string {
 	var b []byte
 	for i := 0; i < len(prefix); i++ {
