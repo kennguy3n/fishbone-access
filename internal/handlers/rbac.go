@@ -159,7 +159,16 @@ func (h *rbacHandlers) deleteMember(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "user id is required"})
 		return
 	}
-	if err := h.rbac.DeleteMember(c.Request.Context(), ws, targetUserID, actor(c)); err != nil {
+
+	actorRole, ok := middleware.RoleFromContext(c)
+	if !ok {
+		// AuthzMiddleware must have run for this route to be reachable; absence
+		// is a wiring bug — fail closed.
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "no authorization context"})
+		return
+	}
+
+	if err := h.rbac.DeleteMemberAs(c.Request.Context(), ws, targetUserID, actorRole, actor(c)); err != nil {
 		h.fail(c, err)
 		return
 	}

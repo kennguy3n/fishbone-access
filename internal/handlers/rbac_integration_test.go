@@ -215,6 +215,31 @@ func TestRBACOwnerEscalationForbidden(t *testing.T) {
 	}
 }
 
+// TestRBACDeleteOwnerEscalationForbidden proves the delete path enforces the
+// same row-conditional rule as assignment: an admin (who holds rbac.manage)
+// cannot remove an owner, even when a co-owner remains so the last-owner guard
+// is not what is doing the rejecting. Without the guard this would be a 204.
+func TestRBACDeleteOwnerEscalationForbidden(t *testing.T) {
+	env := newRBACTestEnv(t)
+	// Owner mints a co-owner so two owners exist.
+	if w := do(t, env.router, http.MethodPut, "/api/v1/rbac/members/co-owner", "tok-owner", map[string]any{"role": "owner"}); w.Code != http.StatusOK {
+		t.Fatalf("owner mint co-owner = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Admin cannot delete an owner — fails closed with 403.
+	if w := do(t, env.router, http.MethodDelete, "/api/v1/rbac/members/co-owner", "tok-admin", nil); w.Code != http.StatusForbidden {
+		t.Fatalf("admin delete owner = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+	// The co-owner must still be present.
+	got := do(t, env.router, http.MethodGet, "/api/v1/rbac/members", "tok-owner", nil)
+	if !contains(got.Body.String(), "co-owner") {
+		t.Fatalf("co-owner should survive forbidden delete: %s", got.Body.String())
+	}
+	// An owner can remove the co-owner.
+	if w := do(t, env.router, http.MethodDelete, "/api/v1/rbac/members/co-owner", "tok-owner", nil); w.Code != http.StatusNoContent {
+		t.Fatalf("owner delete co-owner = %d, want 204; body=%s", w.Code, w.Body.String())
+	}
+}
+
 // TestRBACMembersCrossTenantIsolation proves the member listing is workspace
 // scoped: tenant-a's owner never sees tenant-b's members and vice versa.
 func TestRBACMembersCrossTenantIsolation(t *testing.T) {

@@ -224,6 +224,55 @@ func TestDeleteMemberLastOwnerProtected(t *testing.T) {
 	}
 }
 
+func TestDeleteMemberAsOwnerEscalationForbidden(t *testing.T) {
+	svc, _ := newTestService(t, 0)
+	ws := uuid.New()
+	// Two owners so the last-owner guard does not mask the escalation guard.
+	if err := svc.UpsertMember(ctx(), ws, "owner-1", RoleOwner, SystemActor); err != nil {
+		t.Fatalf("seed owner-1: %v", err)
+	}
+	if err := svc.UpsertMember(ctx(), ws, "owner-2", RoleOwner, SystemActor); err != nil {
+		t.Fatalf("seed owner-2: %v", err)
+	}
+	// A non-owner actor must not be able to remove an owner, even when a
+	// co-owner remains (so this is not the last-owner path).
+	err := svc.DeleteMemberAs(ctx(), ws, "owner-2", RoleAdmin, "admin-actor")
+	if !errors.Is(err, ErrOwnerEscalationForbidden) {
+		t.Fatalf("admin deleting owner err = %v, want ErrOwnerEscalationForbidden", err)
+	}
+	// The owner row must still be present.
+	if _, err := svc.GetMembership(ctx(), ws, "owner-2"); err != nil {
+		t.Fatalf("owner-2 should still exist after forbidden delete: %v", err)
+	}
+	// An owner actor can remove a co-owner.
+	if err := svc.DeleteMemberAs(ctx(), ws, "owner-2", RoleOwner, "owner-actor"); err != nil {
+		t.Fatalf("owner deleting co-owner: %v", err)
+	}
+}
+
+func TestDeleteMemberAsNonOwnerCanRemoveNonOwner(t *testing.T) {
+	svc, _ := newTestService(t, 0)
+	ws := uuid.New()
+	if err := svc.UpsertMember(ctx(), ws, "operator-1", RoleOperator, SystemActor); err != nil {
+		t.Fatalf("seed operator: %v", err)
+	}
+	// An admin removing a non-owner is allowed.
+	if err := svc.DeleteMemberAs(ctx(), ws, "operator-1", RoleAdmin, "admin-actor"); err != nil {
+		t.Fatalf("admin deleting operator: %v", err)
+	}
+}
+
+func TestDeleteMemberAsRequiresActorContext(t *testing.T) {
+	svc, _ := newTestService(t, 0)
+	ws := uuid.New()
+	if err := svc.DeleteMemberAs(ctx(), ws, "u", "", "actor"); !errors.Is(err, ErrInvalidRole) {
+		t.Fatalf("empty actorRole err = %v, want ErrInvalidRole", err)
+	}
+	if err := svc.DeleteMemberAs(ctx(), ws, "u", RoleAdmin, ""); !errors.Is(err, ErrValidation) {
+		t.Fatalf("empty actorUserID err = %v, want ErrValidation", err)
+	}
+}
+
 func TestDeleteMemberIdempotent(t *testing.T) {
 	svc, _ := newTestService(t, 0)
 	ws := uuid.New()

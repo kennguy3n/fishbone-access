@@ -71,6 +71,26 @@ func withRowLock(tx *gorm.DB) *gorm.DB {
 	return tx
 }
 
+// countOtherOwnersLocked returns the number of owner rows in the workspace
+// other than excludeUserID, locking those rows FOR UPDATE so concurrent
+// demotions/removals of different owners serialize past the last-owner guard.
+//
+// It deliberately uses a row-returning SELECT (Pluck of user_id) rather than
+// COUNT(*): Postgres rejects FOR UPDATE on an aggregate query
+// ("FOR UPDATE is not allowed with aggregate functions"), so a locked COUNT
+// would error at runtime on the production dialect. Plucking the matched
+// owners' ids locks the actual rows and counts them in Go, which serializes
+// correctly on Postgres and is a no-op lock on SQLite (test path).
+func countOtherOwnersLocked(tx *gorm.DB, workspaceID uuid.UUID, excludeUserID string) (int64, error) {
+	var ownerIDs []string
+	if err := withRowLock(tx).Model(&models.WorkspaceMember{}).
+		Where("workspace_id = ? AND user_id != ? AND role = ?", workspaceID, excludeUserID, string(RoleOwner)).
+		Pluck("user_id", &ownerIDs).Error; err != nil {
+		return 0, err
+	}
+	return int64(len(ownerIDs)), nil
+}
+
 type membershipCacheKey struct {
 	workspaceID uuid.UUID
 	userID      string
@@ -341,10 +361,8 @@ func (s *RBACService) upsertMember(ctx context.Context, workspaceID uuid.UUID, u
 		// so concurrent demotes of other owners serialize and re-read the
 		// post-commit owner set.
 		if isUpdate && existing.Role == string(RoleOwner) && role != RoleOwner {
-			var otherOwnerCount int64
-			if err := withRowLock(tx).Model(&models.WorkspaceMember{}).
-				Where("workspace_id = ? AND user_id != ? AND role = ?", workspaceID, userID, string(RoleOwner)).
-				Count(&otherOwnerCount).Error; err != nil {
+			otherOwnerCount, err := countOtherOwnersLocked(tx, workspaceID, userID)
+			if err != nil {
 				return fmt.Errorf("authz: count other owners: %w", err)
 			}
 			if otherOwnerCount == 0 {
@@ -387,15 +405,46 @@ func (s *RBACService) upsertMember(ctx context.Context, workspaceID uuid.UUID, u
 	return nil
 }
 
-// DeleteMember removes the (workspaceID, userID) row. Enforces the last-owner
-// invariant. Idempotent: a delete against a non-member returns nil and emits no
-// audit event. actorUserID is the audit actor (empty -> SystemActor).
+// DeleteMember removes the (workspaceID, userID) row on the trusted-caller path
+// (no actor-role privilege check). Enforces the last-owner invariant.
+// Idempotent: a delete against a non-member returns nil and emits no audit
+// event. actorUserID is the audit actor (empty -> SystemActor). HTTP handlers
+// MUST use DeleteMemberAs so the owner-escalation check runs atomically with
+// the delete.
 func (s *RBACService) DeleteMember(ctx context.Context, workspaceID uuid.UUID, userID, actorUserID string) error {
+	return s.deleteMember(ctx, workspaceID, userID, "", actorUserID)
+}
+
+// DeleteMemberAs is the HTTP-facing variant that enforces the actor-role
+// privilege check inside the same transaction as the delete. It fails closed
+// with ErrOwnerEscalationForbidden when a non-owner attempts to remove an
+// existing owner — mirroring UpsertMemberAs so an admin cannot escalate by
+// deleting an owner. Empty actorRole is rejected with ErrInvalidRole and empty
+// actorUserID with ErrValidation — HTTP handlers stamp both from the authz
+// context.
+func (s *RBACService) DeleteMemberAs(ctx context.Context, workspaceID uuid.UUID, userID string, actorRole WorkspaceRole, actorUserID string) error {
+	if actorRole == "" {
+		return fmt.Errorf("%w: actor role is required for DeleteMemberAs", ErrInvalidRole)
+	}
+	if actorUserID == "" {
+		return fmt.Errorf("%w: actor_user_id is required for DeleteMemberAs", ErrValidation)
+	}
+	return s.deleteMember(ctx, workspaceID, userID, actorRole, actorUserID)
+}
+
+// deleteMember is the shared implementation. actorRole == "" disables the
+// owner-escalation guard (trusted-caller path); any non-empty actorRole is
+// enforced inside the transaction. The last-owner invariant is enforced
+// unconditionally.
+func (s *RBACService) deleteMember(ctx context.Context, workspaceID uuid.UUID, userID string, actorRole WorkspaceRole, actorUserID string) error {
 	if s == nil {
 		return fmt.Errorf("authz: nil service")
 	}
 	if workspaceID == uuid.Nil || userID == "" {
 		return fmt.Errorf("authz: workspaceID and userID are required")
+	}
+	if actorRole != "" && !actorRole.IsValid() {
+		return fmt.Errorf("%w: actor role %q", ErrInvalidRole, actorRole)
 	}
 
 	now := s.now()
@@ -412,11 +461,16 @@ func (s *RBACService) DeleteMember(ctx context.Context, workspaceID uuid.UUID, u
 			return fmt.Errorf("authz: read existing membership: %w", err)
 		}
 
+		// Owner-escalation guard (HTTP path only): only an owner may remove an
+		// existing owner. Runs after the row is locked so a non-owner cannot
+		// race the removal of an owner peer.
+		if actorRole != "" && actorRole != RoleOwner && existing.Role == string(RoleOwner) {
+			return ErrOwnerEscalationForbidden
+		}
+
 		if existing.Role == string(RoleOwner) {
-			var otherOwnerCount int64
-			if err := withRowLock(tx).Model(&models.WorkspaceMember{}).
-				Where("workspace_id = ? AND user_id != ? AND role = ?", workspaceID, userID, string(RoleOwner)).
-				Count(&otherOwnerCount).Error; err != nil {
+			otherOwnerCount, err := countOtherOwnersLocked(tx, workspaceID, userID)
+			if err != nil {
 				return fmt.Errorf("authz: count other owners: %w", err)
 			}
 			if otherOwnerCount == 0 {
