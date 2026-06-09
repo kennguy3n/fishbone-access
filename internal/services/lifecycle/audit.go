@@ -30,24 +30,36 @@ func forUpdate(tx *gorm.DB) *gorm.DB {
 	return tx
 }
 
-// auditChainLockNamespace salts the per-workspace advisory-lock key so it can
+// workspaceLockNamespace salts the per-workspace advisory-lock key so it can
 // never collide with the migration runner's advisory lock (which uses a
 // different fixed key).
-const auditChainLockNamespace uint64 = 0x4155_4449_5443_4841 // "AUDITCHA"
+const workspaceLockNamespace uint64 = 0x4155_4449_5443_4841 // "AUDITCHA"
 
-// lockAuditChain serializes audit appends per workspace on Postgres by taking a
-// transaction-scoped advisory lock keyed on the workspace id. Without it, two
-// concurrent transactions at READ COMMITTED could both read the same chain head
-// and fork the hash chain. The lock is released automatically when tx commits
-// or rolls back. On non-Postgres dialects (e.g. the SQLite test path, which
-// serializes writers with a single global write lock) this is a no-op.
-func lockAuditChain(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID) error {
+// lockWorkspace takes a transaction-scoped Postgres advisory lock keyed on the
+// workspace id, serializing the holders of this single per-workspace key. It
+// underpins two invariants:
+//
+//   - Audit-chain integrity: without it, two concurrent transactions at READ
+//     COMMITTED could both read the same chain head and fork the hash chain
+//     (see appendAudit).
+//   - Promotion serialization: two different drafts promoted concurrently each
+//     only FOR UPDATE-lock their own row, so neither sees the other as it
+//     re-scans conflicts — a grant/deny pair could both go active. Taking this
+//     lock at the top of Promote forces promotions in a workspace to run one at
+//     a time, so the second promotion's re-scan sees the first as ACTIVE.
+//
+// pg_advisory_xact_lock is reentrant within a transaction, so a Promote that
+// has already taken the lock and then calls appendAudit (which takes it again)
+// is harmless. The lock is released automatically when the tx commits or rolls
+// back. On non-Postgres dialects (e.g. the SQLite test path, which serializes
+// writers with a single global write lock) this is a no-op.
+func lockWorkspace(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID) error {
 	if tx.Dialector == nil || tx.Name() != "postgres" {
 		return nil
 	}
-	key := int64(binary.BigEndian.Uint64(workspaceID[:8]) ^ auditChainLockNamespace)
+	key := int64(binary.BigEndian.Uint64(workspaceID[:8]) ^ workspaceLockNamespace)
 	if err := tx.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(?)", key).Error; err != nil {
-		return fmt.Errorf("lifecycle: lock audit chain: %w", err)
+		return fmt.Errorf("lifecycle: lock workspace: %w", err)
 	}
 	return nil
 }
@@ -118,8 +130,8 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	}
 
 	// Serialize concurrent appends in this workspace so the read-head/insert
-	// pair below is atomic and the chain cannot fork (see lockAuditChain).
-	if err := lockAuditChain(ctx, tx, e.WorkspaceID); err != nil {
+	// pair below is atomic and the chain cannot fork (see lockWorkspace).
+	if err := lockWorkspace(ctx, tx, e.WorkspaceID); err != nil {
 		return err
 	}
 

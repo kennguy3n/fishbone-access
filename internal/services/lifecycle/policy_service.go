@@ -291,6 +291,18 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 	now := s.now()
 	var pol *models.Policy
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Serialize all promotions in this workspace before doing anything else.
+		// The row-level FOR UPDATE below only guards this one draft; it does NOT
+		// stop a *different* draft from promoting concurrently. Two conflicting
+		// drafts (a grant and a deny on the same pair) would each FOR UPDATE
+		// their own row, and each conflict re-scan would see the other as still
+		// a draft — so both could go active and silently defeat conflict
+		// detection. Taking the per-workspace advisory lock here forces
+		// promotions to run one at a time, so the second promotion's re-scan
+		// runs only after the first has committed and observes it as ACTIVE.
+		if err := lockWorkspace(ctx, tx, workspaceID); err != nil {
+			return err
+		}
 		// loadPolicyTx locks the row FOR UPDATE, which serializes with
 		// UpdateDraft (it locks the same row before clearing DraftImpact). All
 		// test-before-rollout checks below therefore run against the committed,
