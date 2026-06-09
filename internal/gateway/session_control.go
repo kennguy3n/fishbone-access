@@ -184,6 +184,33 @@ func (h *SessionHub) Resume(sessionID uuid.UUID) bool {
 	return true
 }
 
+// ApplyControl reconciles one in-process session to the durable control intent
+// (the cross-process path used by SessionReconciler). A session whose row is no
+// longer active is severed; otherwise the soft-pause gate is moved to match
+// paused only when it differs from the recorder's current state. The
+// differs-check matters because the reconciler runs on every tick for every
+// live session: without it a steady-state, unchanged session would broadcast on
+// the pause cond and emit a control frame on each pass. Sessions not proxied by
+// this process are ignored.
+func (h *SessionHub) ApplyControl(sessionID uuid.UUID, active, paused bool) {
+	if !active {
+		h.Terminate(sessionID)
+		return
+	}
+	entry, ok := h.lookup(sessionID)
+	if !ok || entry.recorder == nil {
+		return
+	}
+	if entry.recorder.IsPaused() == paused {
+		return
+	}
+	if paused {
+		entry.recorder.Pause()
+	} else {
+		entry.recorder.Resume()
+	}
+}
+
 // Monitor attaches a live monitor to an active session, returning a detach func
 // and whether the session was found. An admin takeover UI calls this to watch
 // the streamed transcript in real time.

@@ -135,10 +135,8 @@ func TestApproveTerminalRejected(t *testing.T) {
 	}
 
 	// A lease revoked after approval is terminal and cannot be re-approved.
-	// (An approved lease whose TTL merely lapsed is NOT re-approvable either,
-	// but that path is the idempotent no-op — re-approval never extends a
-	// window — so the terminal guard is exercised via revoke, the only way to
-	// reach a terminal state that is not already granted-and-live.)
+	// (An approved lease whose TTL has lapsed is terminal too — covered by
+	// TestApproveExpiredLeaseRejected; here we exercise the revoke path.)
 	l2, err := leases.RequestLease(context.Background(), RequestLeaseInput{
 		WorkspaceID: ws, TargetID: target.ID, Subject: "bob", RequestedBy: "bob", TTL: time.Minute,
 	})
@@ -153,6 +151,65 @@ func TestApproveTerminalRejected(t *testing.T) {
 	}
 	if _, err := leases.ApproveLease(context.Background(), ws, l2.ID, "carol", 0); !errors.Is(err, ErrLeaseTerminal) {
 		t.Fatalf("approve of revoked-after-approval lease: want ErrLeaseTerminal, got %v", err)
+	}
+}
+
+// TestDurationHoursCeil verifies the risk-scorer duration is rounded up to whole
+// hours so a sub-hour or fractional window is never understated (a 30-minute
+// lease is one hour of exposure, not zero — the old int(ttl/time.Hour) truncated
+// it to 0). Risk is monotonic in duration, so rounding down is never acceptable.
+func TestDurationHoursCeil(t *testing.T) {
+	cases := []struct {
+		in   time.Duration
+		want int
+	}{
+		{0, 0},
+		{-time.Hour, 0},
+		{time.Minute, 1},
+		{30 * time.Minute, 1},
+		{time.Hour, 1},
+		{90 * time.Minute, 2},
+		{2 * time.Hour, 2},
+		{8*time.Hour + time.Second, 9},
+	}
+	for _, c := range cases {
+		if got := durationHoursCeil(c.in); got != c.want {
+			t.Errorf("durationHoursCeil(%s) = %d, want %d", c.in, got, c.want)
+		}
+	}
+}
+
+// TestApproveExpiredLeaseRejected guards the ApproveLease idempotency boundary:
+// a lease that was approved and then let its TTL lapse is terminal (Expired), so
+// a re-approval must fail-closed with ErrLeaseTerminal rather than fall into the
+// granted-and-live idempotent no-op and answer a silent success. Without the
+// liveness clause on that guard an expired-but-granted lease would match it.
+func TestApproveExpiredLeaseRejected(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	target := seedLeaseTarget(t, v, ws, "box")
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	cur := now
+	leases := NewPAMLeaseService(db, nil)
+	leases.SetClock(func() time.Time { return cur })
+
+	lease, err := leases.RequestLease(context.Background(), RequestLeaseInput{
+		WorkspaceID: ws, TargetID: target.ID, Subject: "alice", RequestedBy: "alice", TTL: time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("RequestLease: %v", err)
+	}
+	if _, err := leases.ApproveLease(context.Background(), ws, lease.ID, "carol", time.Minute); err != nil {
+		t.Fatalf("ApproveLease: %v", err)
+	}
+
+	// Advance past the granted window so the lease derives to Expired.
+	cur = now.Add(2 * time.Minute)
+	got, err := leases.ApproveLease(context.Background(), ws, lease.ID, "carol", 0)
+	if !errors.Is(err, ErrLeaseTerminal) {
+		t.Fatalf("approve of expired lease: want ErrLeaseTerminal, got lease=%v err=%v", got, err)
 	}
 }
 

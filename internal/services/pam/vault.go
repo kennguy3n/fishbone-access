@@ -167,7 +167,7 @@ func (v *Vault) ListTargets(ctx context.Context, workspaceID uuid.UUID, limit in
 	}
 	var rows []models.PAMTarget
 	if err := v.db.WithContext(ctx).
-		Select("id", "workspace_id", "name", "protocol", "address", "username", "config", "require_mfa", "lease_ttl_seconds", "secret_key_version", "created_at", "updated_at").
+		Select("id", "workspace_id", "name", "protocol", "address", "username", "config", "require_mfa", "lease_ttl_seconds", "secret_rotated_at", "created_at", "updated_at").
 		Where("workspace_id = ?", workspaceID).
 		Order("created_at DESC").
 		Limit(limit).

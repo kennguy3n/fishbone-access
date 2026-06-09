@@ -72,15 +72,10 @@ func (r *SessionReconciler) reconcileOnce(ctx context.Context) {
 			continue
 		}
 		for id, intent := range intents {
-			switch {
-			case !intent.Active:
-				// Row terminated/closed out from under the proxy → sever it.
-				r.hub.Terminate(id)
-			case intent.Paused:
-				r.hub.Pause(id)
-			default:
-				r.hub.Resume(id)
-			}
+			// ApplyControl severs a no-longer-active session and otherwise moves
+			// the pause gate only on an actual change, so a steady-state tick
+			// over unchanged sessions does no per-session recorder work.
+			r.hub.ApplyControl(id, intent.Active, intent.Paused)
 		}
 	}
 }

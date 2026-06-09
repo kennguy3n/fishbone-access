@@ -174,7 +174,7 @@ func (s *PAMLeaseService) RequestLease(ctx context.Context, in RequestLeaseInput
 		Role:               target.Username,
 		ResourceExternalID: target.Name,
 		ResourceTags:       []string{"pam", target.Protocol},
-		DurationHours:      int(ttl / time.Hour),
+		DurationHours:      durationHoursCeil(ttl),
 		Justification:      in.Reason,
 	}, false)
 
@@ -242,8 +242,12 @@ func (s *PAMLeaseService) ApproveLease(ctx context.Context, workspaceID, leaseID
 		now := s.now().UTC()
 
 		// Idempotent: an already-granted, still-live lease is returned as-is so a
-		// retried approval is a no-op rather than extending the window.
-		if lease.GrantedAt != nil && lease.RevokedAt == nil {
+		// retried approval is a no-op rather than extending the window. Liveness
+		// is part of the guard: a granted lease whose TTL has lapsed is terminal,
+		// not idempotently-approvable, so it must fall through to the IsTerminal
+		// check below and surface ErrLeaseTerminal (409) rather than a silent 200.
+		if lease.GrantedAt != nil && lease.RevokedAt == nil &&
+			(lease.ExpiresAt == nil || lease.ExpiresAt.After(now)) {
 			out = lease
 			return nil
 		}
@@ -565,6 +569,18 @@ func (s *PAMLeaseService) terminateLeaseSessions(ctx context.Context, workspaceI
 	if err := s.terminator.TerminateLeaseSessions(ctx, workspaceID, leaseID, reason); err != nil {
 		logger.Errorf(ctx, "pam: terminate sessions for lease %s: %v", leaseID, err)
 	}
+}
+
+// durationHoursCeil reports an access window in whole hours, rounding up. The
+// risk scorer's DurationHours is an int and risk is monotonic in duration, so a
+// sub-hour or fractional window must never be truncated down (a 30-minute lease
+// is one hour of exposure, not zero; 90 minutes is two, not one). Returns 0 only
+// for a non-positive duration, which the TTL resolvers never produce.
+func durationHoursCeil(d time.Duration) int {
+	if d <= 0 {
+		return 0
+	}
+	return int((d + time.Hour - 1) / time.Hour)
 }
 
 func (s *PAMLeaseService) resolveRequestTTL(req time.Duration, targetTTLSeconds int) time.Duration {
