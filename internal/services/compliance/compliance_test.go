@@ -65,6 +65,38 @@ func seedGrant(t *testing.T, db *gorm.DB, workspaceID, connectorID uuid.UUID, su
 	return g.ID
 }
 
+// seedPolicy inserts a policy row. The pack writer only reads policy rows for
+// the export snapshot, so a directly-inserted row is sufficient.
+func seedPolicy(t *testing.T, db *gorm.DB, workspaceID uuid.UUID, name string) uuid.UUID {
+	t.Helper()
+	p := &models.Policy{WorkspaceID: workspaceID, Name: name, State: "active", Version: 1}
+	if err := db.Create(p).Error; err != nil {
+		t.Fatalf("seed policy: %v", err)
+	}
+	return p.ID
+}
+
+// seedRevokedGrant inserts a grant already revoked at revokedAt, so the pack
+// writer's "active at any point in the period" filter (revoked_at >= from) is
+// exercised — the exact branch the cross-tenant OR-precedence guard covers.
+func seedRevokedGrant(t *testing.T, db *gorm.DB, workspaceID, connectorID uuid.UUID, subject, resource string, grantedAt, revokedAt time.Time) uuid.UUID {
+	t.Helper()
+	g := &models.AccessGrant{
+		WorkspaceID:   workspaceID,
+		ConnectorID:   connectorID,
+		IAMCoreUserID: subject,
+		ResourceRef:   resource,
+		Role:          "reader",
+		State:         lifecycle.GrantStateRevoked,
+		GrantedAt:     grantedAt.UTC(),
+		RevokedAt:     &revokedAt,
+	}
+	if err := db.Create(g).Error; err != nil {
+		t.Fatalf("seed revoked grant: %v", err)
+	}
+	return g.ID
+}
+
 // appendEvent appends one audit event to a workspace's hash chain through the
 // real lifecycle appender, so the chain bookkeeping (seq, prev/chain hash,
 // micro-truncated timestamp) matches production exactly.

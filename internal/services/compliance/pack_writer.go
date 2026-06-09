@@ -218,7 +218,7 @@ func (pw *PackWriter) streamGrants(ctx context.Context, zw *zip.Writer, opts Exp
 		q = q.Where("granted_at < ?", opts.To.UTC())
 	}
 	if opts.From != nil {
-		q = q.Where("revoked_at IS NULL OR revoked_at >= ?", opts.From.UTC())
+		q = q.Where("(revoked_at IS NULL OR revoked_at >= ?)", opts.From.UTC())
 	}
 	q = q.Order("granted_at asc, id asc")
 	return pw.streamRows(zw, "access-grants.jsonl",
@@ -234,7 +234,7 @@ func (pw *PackWriter) streamCampaigns(ctx context.Context, zw *zip.Writer, opts 
 		cq = cq.Where("created_at < ?", opts.To.UTC())
 	}
 	if opts.From != nil {
-		cq = cq.Where("closed_at IS NULL OR closed_at >= ?", opts.From.UTC())
+		cq = cq.Where("(closed_at IS NULL OR closed_at >= ?)", opts.From.UTC())
 	}
 	cq = cq.Order("created_at asc, id asc")
 	campInfo, err := pw.streamRows(zw, "certification-campaigns.jsonl",
@@ -251,7 +251,7 @@ func (pw *PackWriter) streamCampaigns(ctx context.Context, zw *zip.Writer, opts 
 		sub = sub.Where("created_at < ?", opts.To.UTC())
 	}
 	if opts.From != nil {
-		sub = sub.Where("closed_at IS NULL OR closed_at >= ?", opts.From.UTC())
+		sub = sub.Where("(closed_at IS NULL OR closed_at >= ?)", opts.From.UTC())
 	}
 	iq := pw.db.WithContext(ctx).Model(&models.CertificationItem{}).
 		Where("workspace_id = ? AND campaign_id IN (?)", opts.WorkspaceID, sub).
@@ -273,7 +273,7 @@ func (pw *PackWriter) streamPolicies(ctx context.Context, zw *zip.Writer, opts E
 		q = q.Where("created_at < ?", opts.To.UTC())
 	}
 	if opts.From != nil {
-		q = q.Where("updated_at >= ? OR deleted_at IS NULL", opts.From.UTC())
+		q = q.Where("(updated_at >= ? OR deleted_at IS NULL)", opts.From.UTC())
 	}
 	q = q.Order("created_at asc, id asc")
 	return pw.streamRows(zw, "policies.jsonl",

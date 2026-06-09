@@ -26,6 +26,16 @@ import (
 // is additionally gated by step-up MFA.
 const compliancePermissionExport = "compliance.export"
 
+// Evidence-timeline read bounds. The dashboard timeline is always capped so a
+// single request can never materialise a whole workspace's audit chain: an
+// absent or 0 limit falls back to evidenceDefaultLimit, and any explicit limit
+// is clamped to evidenceMaxLimit (full-history export goes through the streamed
+// pack writer, not this endpoint).
+const (
+	evidenceDefaultLimit = 200
+	evidenceMaxLimit     = 1000
+)
+
 // complianceHandlers serves the WS6 compliance surface: the evidence stream /
 // coverage / chain-verification read APIs, full certification campaigns, and
 // the framework-mapped evidence-pack export. Like the lifecycle handlers, every
@@ -108,15 +118,22 @@ func (h *complianceHandlers) listEvidence(c *gin.Context) {
 			}
 		}
 	}
+	// The timeline read is always bounded: an absent or 0 limit falls back to
+	// the default, and any request is capped at the hard ceiling so no caller
+	// (incl. limit=0) can stream a whole workspace's chain unbounded.
+	filter.Limit = evidenceDefaultLimit
 	if raw := c.Query("limit"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
 			return
 		}
-		filter.Limit = n
-	} else {
-		filter.Limit = 200 // bounded default for the dashboard timeline
+		if n > 0 {
+			filter.Limit = n
+		}
+	}
+	if filter.Limit > evidenceMaxLimit {
+		filter.Limit = evidenceMaxLimit
 	}
 
 	records, err := h.evidence.Stream(c.Request.Context(), ws, filter)
@@ -204,7 +221,7 @@ func (h *complianceHandlers) startCampaign(c *gin.Context) {
 		failCompliance(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"campaign": campaign, "items": items})
+	c.JSON(http.StatusCreated, gin.H{"campaign": campaign, "item_count": items})
 }
 
 func (h *complianceHandlers) listCampaigns(c *gin.Context) {

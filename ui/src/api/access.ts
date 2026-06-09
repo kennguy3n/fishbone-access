@@ -747,7 +747,7 @@ export const listCampaigns = () =>
   }).then((r) => r.campaigns ?? []);
 
 export const startCampaign = (body: StartCampaignInput) =>
-  call<{ campaign: CertificationCampaign; items: CampaignItemView[] }>({
+  call<{ campaign: CertificationCampaign; item_count: number }>({
     url: "/compliance/campaigns",
     method: "POST",
     data: body,
@@ -836,7 +836,7 @@ export function useRevocationPreview(
 
 export function useStartCampaign() {
   return useMutation<
-    { campaign: CertificationCampaign; items: CampaignItemView[] },
+    { campaign: CertificationCampaign; item_count: number },
     ApiError,
     StartCampaignInput
   >({

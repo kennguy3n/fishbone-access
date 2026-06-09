@@ -202,7 +202,7 @@ function CreateCampaignModal({
     try {
       const res = await startMut.mutateAsync(body);
       toast.success(
-        `Campaign created with ${res.items.length} item${res.items.length === 1 ? "" : "s"}`,
+        `Campaign created with ${res.item_count} item${res.item_count === 1 ? "" : "s"}`,
         "Reviewers can now certify or revoke each grant in scope.",
       );
       onCreated(res.campaign.id);

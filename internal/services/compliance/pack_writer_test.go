@@ -10,6 +10,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 )
 
 // readZip reads a zip archive from b into a name->bytes map.
@@ -163,6 +164,64 @@ func TestWritePackCrossTenantExcludesOtherTenant(t *testing.T) {
 	// Defensive: ws B's target ref must not appear anywhere in the stream.
 	if bytes.Contains(files["evidence.jsonl"], []byte("\"pb\"")) {
 		t.Fatalf("cross-tenant evidence leak")
+	}
+}
+
+// TestWritePackCrossTenantWithPeriodFilter guards the workspace scope on the
+// period-filtered code path specifically: streamGrants/streamCampaigns/
+// streamPolicies add an OR predicate (revoked_at/closed_at/deleted_at ...) only
+// when opts.From is set. Without explicit parentheses GORM's AND/OR precedence
+// would let that OR branch escape the workspace_id filter and pull other
+// tenants' rows into the pack. Tenant B is seeded with rows that match each OR
+// branch; tenant A's export over a bounded period must contain none of them.
+func TestWritePackCrossTenantWithPeriodFilter(t *testing.T) {
+	db := newTestDB(t)
+	wsA := seedWorkspace(t, db, "tenant-a")
+	wsB := seedWorkspace(t, db, "tenant-b")
+	ctx := context.Background()
+
+	from := time.Now().Add(-24 * time.Hour).UTC()
+	to := time.Now().Add(24 * time.Hour).UTC()
+
+	// Tenant A: one in-period event so its pack is non-empty.
+	appendEvent(t, db, wsA, "policy.promoted", "pa")
+
+	// Tenant B rows that each match an OR branch of the period filter:
+	//   - policy with deleted_at IS NULL  → streamPolicies OR branch
+	//   - grant revoked inside the period → streamGrants  OR branch
+	//   - running campaign (closed_at NULL) → streamCampaigns OR branch
+	seedPolicy(t, db, wsB, "tenant-b-secret-policy")
+	connB := seedConnector(t, db, wsB, "fake")
+	seedRevokedGrant(t, db, wsB, connB, "ub-secret", "tenant-b-resource", from, time.Now().UTC())
+	if _, _, err := NewCertificationService(db, newFakeRevoker(db)).
+		StartCampaign(ctx, wsB, CampaignInput{Name: "tenant-b-campaign"}, "auditor"); err != nil {
+		t.Fatalf("seed tenant B campaign: %v", err)
+	}
+
+	pw := NewPackWriter(db, NewEvidenceService(db))
+	var buf bytes.Buffer
+	if _, err := pw.WritePack(ctx, &buf, ExportOptions{
+		WorkspaceID: wsA, Framework: FrameworkSOC2, From: &from, To: &to, GeneratedBy: "auditor",
+	}); err != nil {
+		t.Fatalf("WritePack: %v", err)
+	}
+	files := readZip(t, buf.Bytes())
+
+	// Tenant A has no grants/campaigns/policies of its own, so every entity file
+	// must be empty. A non-zero count here means tenant B's rows leaked through
+	// the OR branch.
+	for _, f := range []string{"access-grants.jsonl", "certification-campaigns.jsonl", "certification-items.jsonl", "policies.jsonl"} {
+		if got := countLines(files[f]); got != 0 {
+			t.Fatalf("cross-tenant leak: %s has %d rows for tenant A (expected 0)", f, got)
+		}
+	}
+	// Defensive: none of tenant B's identifiers may appear anywhere in the pack.
+	for _, marker := range []string{"tenant-b-secret-policy", "ub-secret", "tenant-b-resource", "tenant-b-campaign"} {
+		for name, data := range files {
+			if bytes.Contains(data, []byte(marker)) {
+				t.Fatalf("cross-tenant leak: marker %q found in %s", marker, name)
+			}
+		}
 	}
 }
 
