@@ -268,44 +268,14 @@ func hardConflicts(in []PolicyConflict) []PolicyConflict {
 // draft was simulated is still caught. A reviewed conflict can be overridden
 // with opts.Force, which records the reason in the audit chain.
 func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.UUID, actor string, opts PromoteOptions) (*models.Policy, error) {
-	// Pre-flight guard (read-only): enforce simulate-before-rollout for drafts
-	// before opening the write transaction. An active/archived policy skips
-	// this — Promote stays idempotent on an already-promoted policy.
-	pre, err := s.GetPolicy(ctx, workspaceID, policyID)
-	if err != nil {
-		return nil, err
-	}
-	overrideMeta := datatypes.JSON(nil)
-	if pre.State == PolicyStateDraft {
-		if len(pre.DraftImpact) == 0 {
-			return nil, fmt.Errorf("%w: draft %s", ErrPolicyNotSimulated, policyID)
-		}
-		def, err := ParsePolicyDefinition(pre.Definition)
-		if err != nil {
-			return nil, err
-		}
-		conflicts, err := s.conflict.DetectConflicts(ctx, workspaceID, policyID, def)
-		if err != nil {
-			return nil, err
-		}
-		if hard := hardConflicts(conflicts); len(hard) > 0 {
-			if !opts.Force {
-				return nil, &PromoteConflictError{Conflicts: hard}
-			}
-			meta := map[string]any{
-				"override":             true,
-				"reason":               opts.Reason,
-				"overridden_conflicts": len(hard),
-			}
-			if b, err := json.Marshal(meta); err == nil {
-				overrideMeta = datatypes.JSON(b)
-			}
-		}
-	}
-
 	now := s.now()
 	var pol *models.Policy
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// loadPolicyTx locks the row FOR UPDATE, which serializes with
+		// UpdateDraft (it locks the same row before clearing DraftImpact). All
+		// test-before-rollout checks below therefore run against the committed,
+		// locked state — there is no TOCTOU window where a concurrent edit could
+		// clear DraftImpact or change the definition after we've checked it.
 		loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 		if err != nil {
 			return err
@@ -317,6 +287,37 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 		case PolicyStateArchived:
 			return fmt.Errorf("%w: archived policy %s", ErrPolicyNotPromotable, policyID)
 		}
+
+		// Draft: enforce simulate-before-rollout against the locked row.
+		overrideMeta := datatypes.JSON(nil)
+		if len(loaded.DraftImpact) == 0 {
+			return fmt.Errorf("%w: draft %s", ErrPolicyNotSimulated, policyID)
+		}
+		def, err := ParsePolicyDefinition(loaded.Definition)
+		if err != nil {
+			return err
+		}
+		// Re-scan conflicts at promote time (within the tx, against the locked
+		// definition) so a conflict introduced after this draft was simulated is
+		// still caught.
+		conflicts, err := s.conflict.DetectConflictsTx(ctx, tx, workspaceID, policyID, def)
+		if err != nil {
+			return err
+		}
+		if hard := hardConflicts(conflicts); len(hard) > 0 {
+			if !opts.Force {
+				return &PromoteConflictError{Conflicts: hard}
+			}
+			meta := map[string]any{
+				"override":             true,
+				"reason":               opts.Reason,
+				"overridden_conflicts": len(hard),
+			}
+			if b, err := json.Marshal(meta); err == nil {
+				overrideMeta = datatypes.JSON(b)
+			}
+		}
+
 		if err := tx.Model(&models.Policy{}).
 			Where("workspace_id = ? AND id = ?", workspaceID, policyID).
 			Updates(map[string]any{

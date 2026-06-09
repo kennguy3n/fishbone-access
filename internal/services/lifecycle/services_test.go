@@ -535,6 +535,36 @@ func TestPromoteReSimulateAfterEdit(t *testing.T) {
 	}
 }
 
+// TestPromoteReChecksSimulationUnderLock proves the simulate-before-rollout
+// guard reads the row's live state inside the promote transaction (not a stale
+// pre-read). Clearing DraftImpact out-of-band — exactly the state a concurrent
+// UpdateDraft would leave behind, the TOCTOU the row lock closes — makes a
+// previously-simulated draft un-promotable.
+func TestPromoteReChecksSimulationUnderLock(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := mustJSON(t, PolicyDefinition{Action: "grant", Subjects: []string{"u1"}, Resources: []string{"app:db"}, Role: "reader"})
+	pol, _ := svc.CreatePolicy(ctx, CreatePolicyInput{WorkspaceID: ws, Name: "p1", Definition: def, Actor: "admin"})
+	if _, err := svc.Simulate(ctx, ws, pol.ID); err != nil {
+		t.Fatalf("Simulate: %v", err)
+	}
+
+	// Out-of-band clear of the cached impact (what an interleaved UpdateDraft
+	// would do between a naive pre-read and the write).
+	if err := db.Model(&models.Policy{}).
+		Where("workspace_id = ? AND id = ?", ws, pol.ID).
+		Update("draft_impact", nil).Error; err != nil {
+		t.Fatalf("clear draft_impact: %v", err)
+	}
+
+	if _, err := svc.Promote(ctx, ws, pol.ID, "admin", PromoteOptions{}); !errors.Is(err, ErrPolicyNotSimulated) {
+		t.Fatalf("expected ErrPolicyNotSimulated when impact cleared under lock, got %v", err)
+	}
+}
+
 // TestPromoteBlocksHardConflict proves a grant-vs-deny conflict with a live
 // policy blocks promotion, and that an audited force override clears the block
 // and records the reason in the audit chain.

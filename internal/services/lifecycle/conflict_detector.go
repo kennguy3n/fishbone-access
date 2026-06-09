@@ -47,12 +47,24 @@ func NewConflictDetector(db *gorm.DB) *ConflictDetector {
 // with def. A grant-vs-deny disagreement is always reported; a same-action
 // overlap is reported as redundant. Output is deterministic (sorted).
 func (d *ConflictDetector) DetectConflicts(ctx context.Context, workspaceID, excludeID uuid.UUID, def PolicyDefinition) ([]PolicyConflict, error) {
+	return d.detectConflicts(ctx, d.db, workspaceID, excludeID, def)
+}
+
+// DetectConflictsTx is DetectConflicts scoped to an existing transaction, so the
+// active-policy scan reads the same snapshot as a row that has already been
+// locked FOR UPDATE in tx. Promote uses this to re-scan conflicts against the
+// locked draft definition without a TOCTOU window.
+func (d *ConflictDetector) DetectConflictsTx(ctx context.Context, tx *gorm.DB, workspaceID, excludeID uuid.UUID, def PolicyDefinition) ([]PolicyConflict, error) {
+	return d.detectConflicts(ctx, tx, workspaceID, excludeID, def)
+}
+
+func (d *ConflictDetector) detectConflicts(ctx context.Context, db *gorm.DB, workspaceID, excludeID uuid.UUID, def PolicyDefinition) ([]PolicyConflict, error) {
 	if workspaceID == uuid.Nil {
 		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
 	}
 
 	var policies []models.Policy
-	if err := d.db.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Where("workspace_id = ? AND state = ? AND id <> ?", workspaceID, PolicyStateActive, excludeID).
 		Find(&policies).Error; err != nil {
 		return nil, fmt.Errorf("lifecycle: load policies for conflict scan: %w", err)
