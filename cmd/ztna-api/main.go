@@ -105,10 +105,23 @@ func run() error {
 	}
 	deps.Encryptor = enc
 
-	// AI client (mTLS A2A) for the lifecycle risk review baked into the
-	// elevation request flow. NewAIClientFromEnv returns an unconfigured client
-	// (→ fail-open deterministic "needs review" fallback) when no agent is set,
-	// and errors only on a half-configured mTLS setup (fatal misconfiguration).
+	// Access-stack credential encryptor for the connector-management surface.
+	// It is the same encryptor the access-connector-worker builds from the
+	// same DEK, so a connector created through the API seals its secrets in a
+	// form the worker can open when it runs the sync — without it the two
+	// stacks would diverge and a created connector could never be synced.
+	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	if err != nil {
+		return fmt.Errorf("connector credential encryptor init: %w", err)
+	}
+	deps.ConnectorEncryptor = connEnc
+
+	// AI client (mTLS A2A) shared by the lifecycle risk review baked into the
+	// elevation request flow and the connector setup wizard. NewAIClientFromEnv
+	// returns an unconfigured client (→ fail-open deterministic fallback) when no
+	// agent is set, and errors only on a half-configured mTLS setup (fatal
+	// misconfiguration). Both consumers are fail-OPEN, so an unconfigured client
+	// degrades gracefully rather than blocking boot.
 	ai, err := aiclient.NewAIClientFromEnv()
 	if err != nil {
 		return fmt.Errorf("ai client init: %w", err)

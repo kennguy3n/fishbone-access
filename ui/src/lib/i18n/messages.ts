@@ -29,6 +29,7 @@ export type MessageKey =
   | "nav.dashboard"
   | "nav.policies"
   | "nav.packs"
+  | "nav.connectors"
   | "nav.requests"
   | "nav.workflows"
   | "nav.jmlRuns"
@@ -70,6 +71,7 @@ const en: Catalog = {
   "nav.dashboard": "Dashboard",
   "nav.policies": "Access policies",
   "nav.packs": "Policy packs",
+  "nav.connectors": "Connectors",
   "nav.requests": "Access requests",
   "nav.workflows": "JML workflows",
   "nav.jmlRuns": "JML runs",
@@ -109,6 +111,7 @@ const zhHans: Partial<Catalog> = {
   "nav.dashboard": "概览",
   "nav.policies": "访问策略",
   "nav.packs": "策略包",
+  "nav.connectors": "连接器",
   "nav.requests": "访问请求",
   "nav.workflows": "JML 工作流",
   "nav.jmlRuns": "JML 运行记录",
@@ -148,6 +151,7 @@ const zhHant: Partial<Catalog> = {
   "nav.dashboard": "概覽",
   "nav.policies": "存取原則",
   "nav.packs": "原則套件",
+  "nav.connectors": "連接器",
   "nav.requests": "存取請求",
   "nav.workflows": "JML 工作流程",
   "nav.jmlRuns": "JML 執行記錄",
@@ -187,6 +191,7 @@ const ms: Partial<Catalog> = {
   "nav.dashboard": "Papan pemuka",
   "nav.policies": "Dasar akses",
   "nav.packs": "Pek dasar",
+  "nav.connectors": "Penyambung",
   "nav.requests": "Permintaan akses",
   "nav.workflows": "Aliran kerja JML",
   "nav.jmlRuns": "Larian JML",
@@ -226,6 +231,7 @@ const id: Partial<Catalog> = {
   "nav.dashboard": "Dasbor",
   "nav.policies": "Kebijakan akses",
   "nav.packs": "Paket kebijakan",
+  "nav.connectors": "Konektor",
   "nav.requests": "Permintaan akses",
   "nav.workflows": "Alur kerja JML",
   "nav.jmlRuns": "Eksekusi JML",
@@ -265,6 +271,7 @@ const th: Partial<Catalog> = {
   "nav.dashboard": "แดชบอร์ด",
   "nav.policies": "นโยบายการเข้าถึง",
   "nav.packs": "ชุดนโยบาย",
+  "nav.connectors": "ตัวเชื่อมต่อ",
   "nav.requests": "คำขอการเข้าถึง",
   "nav.workflows": "เวิร์กโฟลว์ JML",
   "nav.jmlRuns": "การทำงาน JML",
@@ -304,6 +311,7 @@ const vi: Partial<Catalog> = {
   "nav.dashboard": "Bảng điều khiển",
   "nav.policies": "Chính sách truy cập",
   "nav.packs": "Gói chính sách",
+  "nav.connectors": "Trình kết nối",
   "nav.requests": "Yêu cầu truy cập",
   "nav.workflows": "Quy trình JML",
   "nav.jmlRuns": "Lần chạy JML",
@@ -343,6 +351,7 @@ const ja: Partial<Catalog> = {
   "nav.dashboard": "ダッシュボード",
   "nav.policies": "アクセスポリシー",
   "nav.packs": "ポリシーパック",
+  "nav.connectors": "コネクタ",
   "nav.requests": "アクセスリクエスト",
   "nav.workflows": "JML ワークフロー",
   "nav.jmlRuns": "JML 実行履歴",
@@ -382,6 +391,7 @@ const ko: Partial<Catalog> = {
   "nav.dashboard": "대시보드",
   "nav.policies": "액세스 정책",
   "nav.packs": "정책 팩",
+  "nav.connectors": "커넥터",
   "nav.requests": "액세스 요청",
   "nav.workflows": "JML 워크플로",
   "nav.jmlRuns": "JML 실행",
@@ -421,6 +431,7 @@ const ar: Partial<Catalog> = {
   "nav.dashboard": "لوحة المعلومات",
   "nav.policies": "سياسات الوصول",
   "nav.packs": "حزم السياسات",
+  "nav.connectors": "الموصلات",
   "nav.requests": "طلبات الوصول",
   "nav.workflows": "مهام سير عمل JML",
   "nav.jmlRuns": "عمليات تشغيل JML",
@@ -460,6 +471,7 @@ const de: Partial<Catalog> = {
   "nav.dashboard": "Dashboard",
   "nav.policies": "Zugriffsrichtlinien",
   "nav.packs": "Richtlinienpakete",
+  "nav.connectors": "Konnektoren",
   "nav.requests": "Zugriffsanfragen",
   "nav.workflows": "JML-Workflows",
   "nav.jmlRuns": "JML-Ausführungen",
@@ -499,6 +511,7 @@ const fr: Partial<Catalog> = {
   "nav.dashboard": "Tableau de bord",
   "nav.policies": "Politiques d'accès",
   "nav.packs": "Packs de règles",
+  "nav.connectors": "Connecteurs",
   "nav.requests": "Demandes d'accès",
   "nav.workflows": "Workflows JML",
   "nav.jmlRuns": "Exécutions JML",
