@@ -42,12 +42,17 @@ func (s *Service) Run(ctx context.Context, workspaceID, id uuid.UUID, subject Su
 	})
 }
 
-// ListRuns returns the workspace's workflow runs, newest first, capped at
-// limit (a sane default is applied when limit <= 0). Backs the JML dashboard's
-// "recent runs" view.
+// ListRuns returns the workspace's workflow runs, newest first. limit <= 0
+// applies the default page size (50); a limit above the OpenAPI-declared
+// maximum (200) is clamped to that maximum rather than reset to the default, so
+// an over-large request still returns as much as the contract allows. Backs the
+// JML dashboard's "recent runs" view.
 func (s *Service) ListRuns(ctx context.Context, workspaceID uuid.UUID, limit int) ([]models.WorkflowRun, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+	switch {
+	case limit <= 0:
+		limit = 50 // default page size
+	case limit > 200:
+		limit = 200 // clamp to the OpenAPI-declared maximum, not back to the default
 	}
 	var out []models.WorkflowRun
 	if err := s.db.WithContext(ctx).

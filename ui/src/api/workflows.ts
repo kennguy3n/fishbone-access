@@ -175,7 +175,9 @@ export interface WorkflowInput {
 export const wfqk = {
   workflows: ["workflows"] as const,
   workflow: (id: string) => ["workflow", id] as const,
-  runs: ["workflow-runs"] as const,
+  // The limit is part of the key so two callers with different page sizes get
+  // distinct cache entries instead of one serving the other's stale rows.
+  runs: (limit?: number) => ["workflow-runs", limit ?? null] as const,
   run: (id: string) => ["workflow-run", id] as const,
 };
 
@@ -341,7 +343,7 @@ export function useRunWorkflow(id: string) {
 
 export function useRuns(limit?: number) {
   return useQuery<WorkflowRun[], ApiError>({
-    queryKey: wfqk.runs,
+    queryKey: wfqk.runs(limit),
     queryFn: () => listRuns(limit),
   });
 }

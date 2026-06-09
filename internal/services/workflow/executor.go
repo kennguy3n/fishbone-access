@@ -367,8 +367,12 @@ func done(o StepOutcome, ref string, err error, detail string) StepOutcome {
 	return o
 }
 
-// aggregateStatus reduces per-step outcomes to a run status: succeeded when no
-// step failed, failed when every actioned step failed, partial otherwise.
+// aggregateStatus reduces per-step outcomes to a run status: failed when every
+// actioned step failed, partial when some failed, succeeded when at least one
+// step ran and none failed, and skipped when no step actioned at all (every
+// step was skipped, e.g. a run wired with no dependencies). Reporting an
+// all-skipped run as "succeeded" would falsely imply work was done, so it is
+// surfaced as "skipped" instead.
 func aggregateStatus(steps []StepOutcome) string {
 	var failed, done int
 	for _, s := range steps {
@@ -380,11 +384,13 @@ func aggregateStatus(steps []StepOutcome) string {
 		}
 	}
 	switch {
-	case failed == 0:
-		return StatusSucceeded
-	case done == 0:
+	case failed > 0 && done == 0:
 		return StatusFailed
-	default:
+	case failed > 0:
 		return StatusPartial
+	case done == 0:
+		return StatusSkipped
+	default:
+		return StatusSucceeded
 	}
 }

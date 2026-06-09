@@ -241,8 +241,12 @@ func (p *JobProcessor) decideReviewItem(ctx context.Context, workspaceID, review
 // handleWorkflowRun executes a published JML workflow live for the payload's
 // subject. It builds the step dependencies bound to the run's workspace + actor
 // and drives the same Service.Run the manual API uses. A run that completes but
-// has step failures returns an error so the job retries (every step is
+// has any step failure (StatusFailed when every step failed, StatusPartial when
+// only some did) returns an error so the job retries (every step is
 // idempotent); Service.Run also persists a workflow_runs row for the dashboard.
+// Retrying on StatusPartial is essential for a leaver: a kill switch whose
+// session-revoke succeeds but SCIM-deprovision fails must not be marked done,
+// which would leave the user partially offboarded.
 func (p *JobProcessor) handleWorkflowRun(ctx context.Context, job workers.Job) error {
 	var payload workflowRunPayload
 	if err := json.Unmarshal(job.Payload, &payload); err != nil {
@@ -261,7 +265,7 @@ func (p *JobProcessor) handleWorkflowRun(ctx context.Context, job workers.Job) e
 	if err != nil {
 		return fmt.Errorf("workflow_engine: job %s: run workflow %s: %w", job.ID, workflowID, err)
 	}
-	if result != nil && result.Status == workflow.StatusFailed {
+	if result != nil && (result.Status == workflow.StatusFailed || result.Status == workflow.StatusPartial) {
 		return fmt.Errorf("workflow_engine: job %s: workflow %s run %s had step failures", job.ID, workflowID, result.RunID)
 	}
 	return nil

@@ -284,12 +284,19 @@ func (s *Service) Publish(ctx context.Context, workspaceID, id uuid.UUID, actor 
 		if err := json.Unmarshal(loaded.DraftSimulation, &sim); err != nil {
 			return fmt.Errorf("workflow: decode cached simulation: %w", err)
 		}
-		// A simulation that surfaced a failed step must not be publishable; only
-		// a clean (planned/succeeded) or conditionally-skipped dry-run unlocks
-		// the gate. Re-validate the stored definition too, defending against a
-		// row written before a validation rule tightened.
+		// A simulation that surfaced a failed step must not be publishable.
+		// Re-validate the stored definition too, defending against a row written
+		// before a validation rule tightened.
 		if sim.Status == StatusFailed {
 			return fmt.Errorf("%w: workflow %s", ErrSimulationFailed, id)
+		}
+		// The cached dry-run must have actually exercised the steps. A
+		// non-matching sample (StatusSkipped) only confirms the conditions
+		// filtered it out and never plans a single step, so it does not satisfy
+		// the test-before-publish guardrail — require a matching simulation (a
+		// workflow with no conditions matches every subject).
+		if !sim.Matched {
+			return fmt.Errorf("%w: workflow %s", ErrSimulationNotMatched, id)
 		}
 		if _, err := ParseDoc(loaded.Definition); err != nil {
 			return err

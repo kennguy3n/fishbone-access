@@ -548,7 +548,16 @@ export function WorkflowBuilder() {
   const simulatedSinceEdit =
     !isNew && !!workflow?.draft_simulation && !dirty;
   const simulationFailed = workflow?.draft_simulation?.status === "failed";
-  const canPublish = isDraft && simulatedSinceEdit && !simulationFailed && !dirty;
+  // A non-matching dry-run never exercises the steps, so the server rejects a
+  // publish gated only on it; require a matching simulation here too so the
+  // button reflects the real gate instead of failing on click.
+  const simulationMatched = workflow?.draft_simulation?.matched === true;
+  const canPublish =
+    isDraft &&
+    simulatedSinceEdit &&
+    !simulationFailed &&
+    simulationMatched &&
+    !dirty;
 
   const createMut = useCreateWorkflow();
   const updateMut = useUpdateWorkflow(workflowId ?? "");
@@ -1055,7 +1064,9 @@ export function WorkflowBuilder() {
                       {simulatedSinceEdit
                         ? simulationFailed
                           ? "Last dry-run had failures — fix them to publish."
-                          : "Dry-run passed for the sample identity."
+                          : !simulationMatched
+                            ? "Sample didn't match the conditions — simulate a matching identity to publish."
+                            : "Dry-run passed for the sample identity."
                         : "Required before publishing — runs a no-side-effect dry-run."}
                     </p>
                   </div>
@@ -1081,7 +1092,9 @@ export function WorkflowBuilder() {
                       ? "Simulate the current draft before publishing."
                       : simulationFailed
                         ? "The last dry-run had failures."
-                        : undefined
+                        : !simulationMatched
+                          ? "Simulate a sample identity that matches the conditions before publishing."
+                          : undefined
                   }
                 >
                   {publishMut.isPending ? <Spinner /> : "Publish"}

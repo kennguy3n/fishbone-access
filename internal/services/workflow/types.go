@@ -283,6 +283,14 @@ func (d Doc) Matches(subject Subject) bool {
 	return true
 }
 
+// matches evaluates one predicate against the subject. Positive operators
+// (eq/in/contains) are fail-closed: a missing or empty attribute never
+// satisfies them, so a workflow only acts on a subject whose attribute is
+// actually present and matching. The negative operators (neq/not_contains) are
+// the logical complement and therefore treat an absent attribute as
+// "not equal"/"does not contain" — e.g. a subject with no department satisfies
+// `department neq Finance`. This asymmetry is intentional: a positive match
+// must be proven, while a negative match is the default for absent data.
 func (c Condition) matches(subject Subject) bool {
 	actual := subject.attribute(c.Attribute)
 	want := make(map[string]struct{}, len(c.Values))

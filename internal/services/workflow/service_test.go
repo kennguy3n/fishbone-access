@@ -180,6 +180,43 @@ func TestService_PublishBlockedWhenSimulationFailed(t *testing.T) {
 	}
 }
 
+func TestService_PublishRequiresMatchingSimulation(t *testing.T) {
+	db := svcTestDB(t)
+	s := NewService(db)
+	ws := seedWS(t, db, "acme")
+	// A conditioned workflow: only a Finance subject matches.
+	condDef := `{"kind":"joiner","trigger":"manual",
+		"conditions":[{"attribute":"department","operator":"eq","values":["Finance"]}],
+		"steps":[{"type":"notify","channel":"email","message":"welcome"}]}`
+	wf := mustCreate(t, s, ws, "finance-onboarding", condDef)
+
+	// Simulating a non-matching sample caches a skipped result. It proves the
+	// conditions filter the sample out but never exercises the steps, so it must
+	// NOT unlock publish (test-before-publish guardrail).
+	sim, err := s.Simulate(context.Background(), ws, wf.ID, Subject{ExternalID: "u1", Department: "Sales"})
+	if err != nil {
+		t.Fatalf("simulate non-match: %v", err)
+	}
+	if sim.Matched {
+		t.Fatal("expected sample not to match the Finance condition")
+	}
+	if _, err := s.Publish(context.Background(), ws, wf.ID, "admin"); !errors.Is(err, ErrSimulationNotMatched) {
+		t.Fatalf("publish on non-matching simulation should be ErrSimulationNotMatched, got %v", err)
+	}
+
+	// Simulating a matching sample exercises the steps and unlocks publish.
+	if _, err := s.Simulate(context.Background(), ws, wf.ID, Subject{ExternalID: "u2", Department: "Finance"}); err != nil {
+		t.Fatalf("simulate match: %v", err)
+	}
+	pub, err := s.Publish(context.Background(), ws, wf.ID, "admin")
+	if err != nil {
+		t.Fatalf("publish after matching simulation: %v", err)
+	}
+	if pub.State != StatePublished {
+		t.Fatalf("expected published, got %q", pub.State)
+	}
+}
+
 func TestService_ArchiveStopsPublishAndRun(t *testing.T) {
 	db := svcTestDB(t)
 	s := NewService(db)
@@ -246,7 +283,9 @@ func TestService_ListRunsHonoursLimit(t *testing.T) {
 	s := NewService(db)
 	ws := seedWS(t, db, "acme")
 
-	for i := 0; i < 3; i++ {
+	// Seed more than the default page size (50) so the clamp path is testable.
+	const seeded = 51
+	for i := 0; i < seeded; i++ {
 		run := &models.WorkflowRun{
 			WorkspaceID:       ws,
 			WorkflowID:        uuid.New(),
@@ -270,5 +309,15 @@ func TestService_ListRunsHonoursLimit(t *testing.T) {
 	}
 	if len(got) != 2 {
 		t.Fatalf("limited list returned %d runs, want 2", len(got))
+	}
+
+	// A limit above the maximum clamps to 200 (not back to the default 50), so
+	// all 51 seeded rows are returned rather than a truncated 50.
+	all, err := s.ListRuns(context.Background(), ws, 1000)
+	if err != nil {
+		t.Fatalf("list runs over-max: %v", err)
+	}
+	if len(all) != seeded {
+		t.Fatalf("over-max list returned %d runs, want %d (clamped to 200, not 50)", len(all), seeded)
 	}
 }

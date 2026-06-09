@@ -38,6 +38,14 @@ var (
 	// cleanly must not be published.
 	ErrSimulationFailed = errors.New("workflow: last simulation reported failures")
 
+	// ErrSimulationNotMatched is returned when Publish is gated on a dry-run
+	// whose sample identity did not match the workflow's conditions. A
+	// non-matching simulation only proves the conditions filtered the sample
+	// out; it never exercises the steps, so it cannot satisfy the
+	// test-before-publish guardrail. The admin must simulate a sample that
+	// matches the conditions (a workflow with no conditions matches everyone).
+	ErrSimulationNotMatched = errors.New("workflow: last simulation did not match the workflow conditions")
+
 	// ErrNotRunnable is returned when a live run is requested for a workflow
 	// that is not published. Only a published workflow executes (a draft is
 	// dry-run only); this is fail-closed so an unreviewed draft can never

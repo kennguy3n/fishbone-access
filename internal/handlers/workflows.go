@@ -241,9 +241,11 @@ func (h *workflowHandlers) run(c *gin.Context) {
 		h.fail(c, err)
 		return
 	}
-	// A live run that completed every step but had failures is not an opaque
-	// 500: return the per-step breakdown so an operator can act on it.
-	if result != nil && result.Status == workflow.StatusFailed {
+	// A live run that completed but had any step failure (all steps failed =
+	// StatusFailed, or a mix = StatusPartial) is not an opaque 500: return the
+	// per-step breakdown so an operator can act on it. Both map to 500 to honor
+	// the OpenAPI contract that a completed-with-failures run is a server error.
+	if result != nil && (result.Status == workflow.StatusFailed || result.Status == workflow.StatusPartial) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"run": result})
 		return
 	}
@@ -333,6 +335,7 @@ func (h *workflowHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, workflow.ErrNotSimulated),
 		errors.Is(err, workflow.ErrNotPublishable),
 		errors.Is(err, workflow.ErrSimulationFailed),
+		errors.Is(err, workflow.ErrSimulationNotMatched),
 		errors.Is(err, workflow.ErrNotRunnable):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	default:

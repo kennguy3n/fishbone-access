@@ -267,6 +267,34 @@ func TestExecute_LiveConditionsNotMatchedSkips(t *testing.T) {
 	}
 }
 
+func TestExecute_LiveAllStepsSkippedAggregatesToSkipped(t *testing.T) {
+	db := execTestDB(t)
+	exec := NewExecutor(db)
+	// A matched live run whose only step has no wired dependency must not be
+	// reported as "succeeded" (which would imply work was done); an all-skipped
+	// run aggregates to "skipped".
+	doc := mustDoc(t, `{"kind":"joiner","trigger":"manual","steps":[
+		{"type":"notify","channel":"email","message":"welcome"}
+	]}`)
+
+	res, err := exec.Execute(context.Background(), RunParams{
+		WorkspaceID: uuid.New(),
+		Doc:         doc,
+		Subject:     Subject{ExternalID: "u1"},
+		Mode:        ModeLive,
+		Deps:        StepDeps{}, // no Notifier wired -> the step is skipped
+	})
+	if err != nil {
+		t.Fatalf("live run: %v", err)
+	}
+	if len(res.Steps) != 1 || res.Steps[0].Status != StatusSkipped {
+		t.Fatalf("expected a single skipped step, got %+v", res.Steps)
+	}
+	if res.Status != StatusSkipped {
+		t.Fatalf("aggregate status = %q, want skipped", res.Status)
+	}
+}
+
 func TestExecute_LiveAuditFailureAnnotatedOnPersistedRun(t *testing.T) {
 	db := execTestDB(t)
 	exec := NewExecutor(db)
