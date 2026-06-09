@@ -1,0 +1,5 @@
+.gradle/
+build/
+example/build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties

@@ -98,6 +98,54 @@ export interface AccessRequestHistoryEntry {
   created_at: string;
 }
 
+// Routing-facing AI recommendation, mirroring the Go
+// lifecycle.Recommendation* constants. The control plane derives this
+// authoritatively from the normalized risk band; the UI only ever displays it
+// and NEVER uses it to silently auto-approve a high-risk request.
+export type RiskRecommendation =
+  | "auto_approve_eligible"
+  | "needs_review"
+  | "high_risk";
+
+// RiskVerdict is one immutable AI risk assessment persisted against a request.
+// `degraded` is true when the AI agent was unreachable and the fail-open
+// fallback supplied the verdict (never auto_approve_eligible), so the UI can
+// distinguish an AI-derived score from a degraded one.
+export interface RiskVerdict {
+  id: string;
+  request_id: string;
+  score: string;
+  recommendation: RiskRecommendation;
+  factors?: string[];
+  rationale?: string;
+  source: string;
+  degraded: boolean;
+  created_at: string;
+}
+
+// AnomalyFlag is one advisory observation from the anomaly-detection skill
+// surfaced against an approved elevation. Advisory only — never an enforcement
+// gate.
+export interface AnomalyFlag {
+  id: string;
+  request_id: string;
+  grant_id?: string;
+  kind: string;
+  severity?: string;
+  reason?: string;
+  confidence?: number;
+  created_at: string;
+}
+
+// WorkflowDecision is the routing outcome returned by the create flow: which
+// lane the request was placed in and whether it was auto-approved (true only
+// for the low-risk auto_approve lane).
+export interface WorkflowDecision {
+  step_type: string;
+  reason: string;
+  approved: boolean;
+}
+
 export interface AccessGrant {
   id: string;
   workspace_id: string;
@@ -142,11 +190,22 @@ export interface Me {
 export class ApiError extends Error {
   readonly status: number;
   readonly conflicts?: PolicyConflict[];
-  constructor(status: number, message: string, conflicts?: PolicyConflict[]) {
+  // The full parsed response body. Some endpoints return a structured payload
+  // alongside a non-2xx status that callers need (e.g. the workflow /run 500
+  // carries the per-step failure breakdown under `run`); preserving the raw
+  // body here keeps it from being discarded by the generic error path.
+  readonly details?: unknown;
+  constructor(
+    status: number,
+    message: string,
+    conflicts?: PolicyConflict[],
+    details?: unknown,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.conflicts = conflicts;
+    this.details = details;
   }
 }
 
@@ -163,7 +222,7 @@ export function toApiError(err: unknown): ApiError {
     const body = ax.response?.data;
     const message =
       body?.error ?? ax.message ?? "Request failed. Please try again.";
-    return new ApiError(status, message, body?.conflicts);
+    return new ApiError(status, message, body?.conflicts, body);
   }
   if (err instanceof Error) return new ApiError(0, err.message);
   return new ApiError(0, "Unknown error");
@@ -423,11 +482,21 @@ export const listRequests = () =>
     method: "GET",
   }).then((r) => r.requests ?? []);
 
+// RequestDetailResult is the request plus its operative AI risk verdict and any
+// advisory anomaly flags. `risk` is absent for requests created before WS5 (no
+// verdict was ever persisted); `anomalies` is empty until an approved elevation
+// is scored by the anomaly skill.
+export interface RequestDetailResult {
+  request: AccessRequest;
+  risk?: RiskVerdict;
+  anomalies?: AnomalyFlag[];
+}
+
 export const getRequest = (id: string) =>
-  call<{ request: AccessRequest }>({
+  call<RequestDetailResult>({
     url: `/access-requests/${id}`,
     method: "GET",
-  }).then((r) => r.request);
+  });
 
 export const getRequestHistory = (id: string) =>
   call<{ history: AccessRequestHistoryEntry[] }>({
@@ -441,14 +510,27 @@ export interface CreateRequestInput {
   resource_ref: string;
   role?: string;
   justification: string;
+  // Model-input signals for the server-side AI risk review. The client never
+  // supplies a risk level — the AI gate is the sole source of the verdict.
+  resource_tags?: string[];
+  duration_hours?: number;
+}
+
+// CreateRequestResult carries the created request, the AI risk verdict produced
+// synchronously by the server-side gate, and the routing decision so the create
+// flow can show the risk panel inline immediately after submission.
+export interface CreateRequestResult {
+  request: AccessRequest;
+  risk: RiskVerdict;
+  workflow: WorkflowDecision;
 }
 
 export const createRequest = (body: CreateRequestInput) =>
-  call<{ request: AccessRequest }>({
+  call<CreateRequestResult>({
     url: "/access-requests",
     method: "POST",
     data: body,
-  }).then((r) => r.request);
+  });
 
 type RequestAction = "approve" | "deny" | "cancel" | "provision";
 
@@ -467,7 +549,7 @@ export function useAccessRequests() {
 }
 
 export function useAccessRequest(id: string | undefined) {
-  return useQuery<AccessRequest, ApiError>({
+  return useQuery<RequestDetailResult, ApiError>({
     queryKey: qk.request(id ?? ""),
     queryFn: () => getRequest(id as string),
     enabled: !!id,
@@ -483,7 +565,7 @@ export function useRequestHistory(id: string | undefined) {
 }
 
 export function useCreateRequest() {
-  return useMutation<AccessRequest, ApiError, CreateRequestInput>({
+  return useMutation<CreateRequestResult, ApiError, CreateRequestInput>({
     mutationFn: createRequest,
   });
 }

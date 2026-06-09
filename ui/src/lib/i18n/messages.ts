@@ -31,13 +31,32 @@ export type MessageKey =
   | "nav.policies"
   | "nav.packs"
   | "nav.requests"
+  | "nav.workflows"
+  | "nav.jmlRuns"
   | "nav.grants"
   | "nav.reviews"
   | "nav.directory"
   | "nav.pam.targets"
   | "nav.pam.leases"
   | "nav.pam.sessions"
-  | "nav.settings";
+  | "nav.settings"
+  // WS5 — access-request AI risk review surface.
+  | "requests.risk.title"
+  | "requests.risk.score"
+  | "requests.risk.recommendation"
+  | "requests.risk.factors"
+  | "requests.risk.rationale"
+  | "requests.risk.degraded"
+  | "requests.risk.none"
+  | "requests.rec.autoApprove"
+  | "requests.rec.needsReview"
+  | "requests.rec.highRisk"
+  | "requests.anomalies.title"
+  | "requests.anomalies.none"
+  | "requests.stepup.required"
+  | "requests.stepup.satisfied"
+  | "requests.create.tags"
+  | "requests.create.duration";
 
 type Catalog = Record<MessageKey, string>;
 
@@ -56,6 +75,8 @@ const en: Catalog = {
   "nav.policies": "Access policies",
   "nav.packs": "Policy packs",
   "nav.requests": "Access requests",
+  "nav.workflows": "JML workflows",
+  "nav.jmlRuns": "JML runs",
   "nav.grants": "Grants",
   "nav.reviews": "Access reviews",
   "nav.directory": "Directory",
@@ -63,6 +84,22 @@ const en: Catalog = {
   "nav.pam.leases": "JIT leases",
   "nav.pam.sessions": "Live sessions",
   "nav.settings": "Settings",
+  "requests.risk.title": "AI risk review",
+  "requests.risk.score": "Risk score",
+  "requests.risk.recommendation": "Recommendation",
+  "requests.risk.factors": "Risk factors",
+  "requests.risk.rationale": "AI rationale",
+  "requests.risk.degraded": "AI scoring unavailable — defaulted to human review.",
+  "requests.risk.none": "No AI verdict for this request.",
+  "requests.rec.autoApprove": "Auto-approve eligible",
+  "requests.rec.needsReview": "Needs review",
+  "requests.rec.highRisk": "High risk",
+  "requests.anomalies.title": "Anomaly flags",
+  "requests.anomalies.none": "No anomaly flags.",
+  "requests.stepup.required": "High-risk — step-up MFA required to approve.",
+  "requests.stepup.satisfied": "Step-up MFA satisfied.",
+  "requests.create.tags": "Resource tags (optional)",
+  "requests.create.duration": "Duration in hours (optional)",
 };
 
 const zhHans: Partial<Catalog> = {
@@ -80,6 +117,8 @@ const zhHans: Partial<Catalog> = {
   "nav.policies": "访问策略",
   "nav.packs": "策略包",
   "nav.requests": "访问请求",
+  "nav.workflows": "JML 工作流",
+  "nav.jmlRuns": "JML 运行记录",
   "nav.grants": "授权",
   "nav.reviews": "访问审查",
   "nav.directory": "目录",
@@ -87,6 +126,22 @@ const zhHans: Partial<Catalog> = {
   "nav.pam.leases": "即时租约",
   "nav.pam.sessions": "实时会话",
   "nav.settings": "设置",
+  "requests.risk.title": "AI 风险评审",
+  "requests.risk.score": "风险评分",
+  "requests.risk.recommendation": "建议",
+  "requests.risk.factors": "风险因素",
+  "requests.risk.rationale": "AI 评审理由",
+  "requests.risk.degraded": "AI 评分不可用 — 已默认转人工评审。",
+  "requests.risk.none": "此请求没有 AI 评审结果。",
+  "requests.rec.autoApprove": "符合自动批准条件",
+  "requests.rec.needsReview": "需要人工评审",
+  "requests.rec.highRisk": "高风险",
+  "requests.anomalies.title": "异常标记",
+  "requests.anomalies.none": "无异常标记。",
+  "requests.stepup.required": "高风险 — 批准需要二次 MFA 验证。",
+  "requests.stepup.satisfied": "已完成二次 MFA 验证。",
+  "requests.create.tags": "资源标签（可选）",
+  "requests.create.duration": "时长（小时，可选）",
 };
 
 const zhHant: Partial<Catalog> = {
@@ -104,6 +159,8 @@ const zhHant: Partial<Catalog> = {
   "nav.policies": "存取原則",
   "nav.packs": "原則套件",
   "nav.requests": "存取請求",
+  "nav.workflows": "JML 工作流程",
+  "nav.jmlRuns": "JML 執行記錄",
   "nav.grants": "授權",
   "nav.reviews": "存取審查",
   "nav.directory": "目錄",
@@ -111,6 +168,22 @@ const zhHant: Partial<Catalog> = {
   "nav.pam.leases": "即時租約",
   "nav.pam.sessions": "即時工作階段",
   "nav.settings": "設定",
+  "requests.risk.title": "AI 風險審查",
+  "requests.risk.score": "風險評分",
+  "requests.risk.recommendation": "建議",
+  "requests.risk.factors": "風險因素",
+  "requests.risk.rationale": "AI 審查理由",
+  "requests.risk.degraded": "AI 評分無法使用 — 已預設轉人工審查。",
+  "requests.risk.none": "此請求沒有 AI 審查結果。",
+  "requests.rec.autoApprove": "符合自動核准條件",
+  "requests.rec.needsReview": "需要人工審查",
+  "requests.rec.highRisk": "高風險",
+  "requests.anomalies.title": "異常標記",
+  "requests.anomalies.none": "無異常標記。",
+  "requests.stepup.required": "高風險 — 核准需要二次 MFA 驗證。",
+  "requests.stepup.satisfied": "已完成二次 MFA 驗證。",
+  "requests.create.tags": "資源標籤（選填）",
+  "requests.create.duration": "時長（小時，選填）",
 };
 
 const ms: Partial<Catalog> = {
@@ -128,6 +201,8 @@ const ms: Partial<Catalog> = {
   "nav.policies": "Dasar akses",
   "nav.packs": "Pek dasar",
   "nav.requests": "Permintaan akses",
+  "nav.workflows": "Aliran kerja JML",
+  "nav.jmlRuns": "Larian JML",
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Semakan akses",
   "nav.directory": "Direktori",
@@ -135,6 +210,22 @@ const ms: Partial<Catalog> = {
   "nav.pam.leases": "Pajakan JIT",
   "nav.pam.sessions": "Sesi langsung",
   "nav.settings": "Tetapan",
+  "requests.risk.title": "Semakan risiko AI",
+  "requests.risk.score": "Skor risiko",
+  "requests.risk.recommendation": "Saranan",
+  "requests.risk.factors": "Faktor risiko",
+  "requests.risk.rationale": "Rasional AI",
+  "requests.risk.degraded": "Pemarkahan AI tidak tersedia — lalai kepada semakan manusia.",
+  "requests.risk.none": "Tiada keputusan AI untuk permintaan ini.",
+  "requests.rec.autoApprove": "Layak auto-lulus",
+  "requests.rec.needsReview": "Perlu semakan",
+  "requests.rec.highRisk": "Risiko tinggi",
+  "requests.anomalies.title": "Penanda anomali",
+  "requests.anomalies.none": "Tiada penanda anomali.",
+  "requests.stepup.required": "Risiko tinggi — MFA tambahan diperlukan untuk meluluskan.",
+  "requests.stepup.satisfied": "MFA tambahan dipenuhi.",
+  "requests.create.tags": "Tag sumber (pilihan)",
+  "requests.create.duration": "Tempoh dalam jam (pilihan)",
 };
 
 const id: Partial<Catalog> = {
@@ -152,6 +243,8 @@ const id: Partial<Catalog> = {
   "nav.policies": "Kebijakan akses",
   "nav.packs": "Paket kebijakan",
   "nav.requests": "Permintaan akses",
+  "nav.workflows": "Alur kerja JML",
+  "nav.jmlRuns": "Eksekusi JML",
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Tinjauan akses",
   "nav.directory": "Direktori",
@@ -159,6 +252,22 @@ const id: Partial<Catalog> = {
   "nav.pam.leases": "Sewa JIT",
   "nav.pam.sessions": "Sesi langsung",
   "nav.settings": "Pengaturan",
+  "requests.risk.title": "Tinjauan risiko AI",
+  "requests.risk.score": "Skor risiko",
+  "requests.risk.recommendation": "Rekomendasi",
+  "requests.risk.factors": "Faktor risiko",
+  "requests.risk.rationale": "Alasan AI",
+  "requests.risk.degraded": "Penilaian AI tidak tersedia — dialihkan ke tinjauan manusia.",
+  "requests.risk.none": "Tidak ada putusan AI untuk permintaan ini.",
+  "requests.rec.autoApprove": "Memenuhi syarat persetujuan otomatis",
+  "requests.rec.needsReview": "Perlu ditinjau",
+  "requests.rec.highRisk": "Risiko tinggi",
+  "requests.anomalies.title": "Tanda anomali",
+  "requests.anomalies.none": "Tidak ada tanda anomali.",
+  "requests.stepup.required": "Risiko tinggi — MFA tambahan diperlukan untuk menyetujui.",
+  "requests.stepup.satisfied": "MFA tambahan terpenuhi.",
+  "requests.create.tags": "Tag sumber (opsional)",
+  "requests.create.duration": "Durasi dalam jam (opsional)",
 };
 
 const th: Partial<Catalog> = {
@@ -176,6 +285,8 @@ const th: Partial<Catalog> = {
   "nav.policies": "นโยบายการเข้าถึง",
   "nav.packs": "ชุดนโยบาย",
   "nav.requests": "คำขอการเข้าถึง",
+  "nav.workflows": "เวิร์กโฟลว์ JML",
+  "nav.jmlRuns": "การทำงาน JML",
   "nav.grants": "สิทธิ์ที่ได้รับ",
   "nav.reviews": "การตรวจสอบการเข้าถึง",
   "nav.directory": "ไดเรกทอรี",
@@ -183,6 +294,22 @@ const th: Partial<Catalog> = {
   "nav.pam.leases": "สัญญาเช่า JIT",
   "nav.pam.sessions": "เซสชันสด",
   "nav.settings": "การตั้งค่า",
+  "requests.risk.title": "การตรวจสอบความเสี่ยงด้วย AI",
+  "requests.risk.score": "คะแนนความเสี่ยง",
+  "requests.risk.recommendation": "คำแนะนำ",
+  "requests.risk.factors": "ปัจจัยความเสี่ยง",
+  "requests.risk.rationale": "เหตุผลจาก AI",
+  "requests.risk.degraded": "ไม่สามารถให้คะแนนด้วย AI ได้ — เปลี่ยนเป็นการตรวจสอบโดยมนุษย์",
+  "requests.risk.none": "ไม่มีผลการประเมินจาก AI สำหรับคำขอนี้",
+  "requests.rec.autoApprove": "เข้าเกณฑ์อนุมัติอัตโนมัติ",
+  "requests.rec.needsReview": "ต้องตรวจสอบ",
+  "requests.rec.highRisk": "ความเสี่ยงสูง",
+  "requests.anomalies.title": "ธงความผิดปกติ",
+  "requests.anomalies.none": "ไม่มีธงความผิดปกติ",
+  "requests.stepup.required": "ความเสี่ยงสูง — ต้องใช้ MFA เพิ่มเติมเพื่ออนุมัติ",
+  "requests.stepup.satisfied": "ผ่าน MFA เพิ่มเติมแล้ว",
+  "requests.create.tags": "แท็กทรัพยากร (ไม่บังคับ)",
+  "requests.create.duration": "ระยะเวลาเป็นชั่วโมง (ไม่บังคับ)",
 };
 
 const vi: Partial<Catalog> = {
@@ -200,6 +327,8 @@ const vi: Partial<Catalog> = {
   "nav.policies": "Chính sách truy cập",
   "nav.packs": "Gói chính sách",
   "nav.requests": "Yêu cầu truy cập",
+  "nav.workflows": "Quy trình JML",
+  "nav.jmlRuns": "Lần chạy JML",
   "nav.grants": "Quyền được cấp",
   "nav.reviews": "Đánh giá truy cập",
   "nav.directory": "Thư mục",
@@ -207,6 +336,22 @@ const vi: Partial<Catalog> = {
   "nav.pam.leases": "Hợp đồng JIT",
   "nav.pam.sessions": "Phiên trực tiếp",
   "nav.settings": "Cài đặt",
+  "requests.risk.title": "Đánh giá rủi ro bằng AI",
+  "requests.risk.score": "Điểm rủi ro",
+  "requests.risk.recommendation": "Khuyến nghị",
+  "requests.risk.factors": "Yếu tố rủi ro",
+  "requests.risk.rationale": "Lý do của AI",
+  "requests.risk.degraded": "Không thể chấm điểm bằng AI — chuyển sang đánh giá thủ công.",
+  "requests.risk.none": "Không có kết quả AI cho yêu cầu này.",
+  "requests.rec.autoApprove": "Đủ điều kiện tự động phê duyệt",
+  "requests.rec.needsReview": "Cần xem xét",
+  "requests.rec.highRisk": "Rủi ro cao",
+  "requests.anomalies.title": "Cờ bất thường",
+  "requests.anomalies.none": "Không có cờ bất thường.",
+  "requests.stepup.required": "Rủi ro cao — cần MFA bổ sung để phê duyệt.",
+  "requests.stepup.satisfied": "Đã đáp ứng MFA bổ sung.",
+  "requests.create.tags": "Thẻ tài nguyên (tùy chọn)",
+  "requests.create.duration": "Thời lượng theo giờ (tùy chọn)",
 };
 
 const ja: Partial<Catalog> = {
@@ -224,6 +369,8 @@ const ja: Partial<Catalog> = {
   "nav.policies": "アクセスポリシー",
   "nav.packs": "ポリシーパック",
   "nav.requests": "アクセスリクエスト",
+  "nav.workflows": "JML ワークフロー",
+  "nav.jmlRuns": "JML 実行履歴",
   "nav.grants": "付与",
   "nav.reviews": "アクセスレビュー",
   "nav.directory": "ディレクトリ",
@@ -231,6 +378,22 @@ const ja: Partial<Catalog> = {
   "nav.pam.leases": "JIT リース",
   "nav.pam.sessions": "ライブセッション",
   "nav.settings": "設定",
+  "requests.risk.title": "AI リスクレビュー",
+  "requests.risk.score": "リスクスコア",
+  "requests.risk.recommendation": "推奨",
+  "requests.risk.factors": "リスク要因",
+  "requests.risk.rationale": "AI の根拠",
+  "requests.risk.degraded": "AI スコアリングが利用できません — 人によるレビューに切り替えました。",
+  "requests.risk.none": "このリクエストの AI 判定はありません。",
+  "requests.rec.autoApprove": "自動承認の対象",
+  "requests.rec.needsReview": "レビューが必要",
+  "requests.rec.highRisk": "高リスク",
+  "requests.anomalies.title": "異常フラグ",
+  "requests.anomalies.none": "異常フラグはありません。",
+  "requests.stepup.required": "高リスク — 承認には追加の MFA が必要です。",
+  "requests.stepup.satisfied": "追加の MFA を満たしています。",
+  "requests.create.tags": "リソースタグ（任意）",
+  "requests.create.duration": "期間（時間、任意）",
 };
 
 const ko: Partial<Catalog> = {
@@ -248,6 +411,8 @@ const ko: Partial<Catalog> = {
   "nav.policies": "액세스 정책",
   "nav.packs": "정책 팩",
   "nav.requests": "액세스 요청",
+  "nav.workflows": "JML 워크플로",
+  "nav.jmlRuns": "JML 실행",
   "nav.grants": "권한 부여",
   "nav.reviews": "액세스 검토",
   "nav.directory": "디렉터리",
@@ -255,6 +420,22 @@ const ko: Partial<Catalog> = {
   "nav.pam.leases": "JIT 리스",
   "nav.pam.sessions": "실시간 세션",
   "nav.settings": "설정",
+  "requests.risk.title": "AI 위험 검토",
+  "requests.risk.score": "위험 점수",
+  "requests.risk.recommendation": "권장 사항",
+  "requests.risk.factors": "위험 요인",
+  "requests.risk.rationale": "AI 근거",
+  "requests.risk.degraded": "AI 점수 산정을 사용할 수 없어 사람 검토로 전환했습니다.",
+  "requests.risk.none": "이 요청에 대한 AI 판정이 없습니다.",
+  "requests.rec.autoApprove": "자동 승인 대상",
+  "requests.rec.needsReview": "검토 필요",
+  "requests.rec.highRisk": "높은 위험",
+  "requests.anomalies.title": "이상 플래그",
+  "requests.anomalies.none": "이상 플래그가 없습니다.",
+  "requests.stepup.required": "높은 위험 — 승인하려면 추가 MFA가 필요합니다.",
+  "requests.stepup.satisfied": "추가 MFA가 충족되었습니다.",
+  "requests.create.tags": "리소스 태그 (선택 사항)",
+  "requests.create.duration": "기간(시간, 선택 사항)",
 };
 
 const ar: Partial<Catalog> = {
@@ -272,6 +453,8 @@ const ar: Partial<Catalog> = {
   "nav.policies": "سياسات الوصول",
   "nav.packs": "حزم السياسات",
   "nav.requests": "طلبات الوصول",
+  "nav.workflows": "مهام سير عمل JML",
+  "nav.jmlRuns": "عمليات تشغيل JML",
   "nav.grants": "المنح",
   "nav.reviews": "مراجعات الوصول",
   "nav.directory": "الدليل",
@@ -279,6 +462,22 @@ const ar: Partial<Catalog> = {
   "nav.pam.leases": "عقود JIT",
   "nav.pam.sessions": "الجلسات الحية",
   "nav.settings": "الإعدادات",
+  "requests.risk.title": "مراجعة المخاطر بالذكاء الاصطناعي",
+  "requests.risk.score": "درجة المخاطر",
+  "requests.risk.recommendation": "التوصية",
+  "requests.risk.factors": "عوامل المخاطر",
+  "requests.risk.rationale": "مبرر الذكاء الاصطناعي",
+  "requests.risk.degraded": "تعذّر تقييم الذكاء الاصطناعي — تم التحويل إلى المراجعة البشرية.",
+  "requests.risk.none": "لا يوجد حكم للذكاء الاصطناعي لهذا الطلب.",
+  "requests.rec.autoApprove": "مؤهل للموافقة التلقائية",
+  "requests.rec.needsReview": "يحتاج إلى مراجعة",
+  "requests.rec.highRisk": "مخاطر عالية",
+  "requests.anomalies.title": "علامات الشذوذ",
+  "requests.anomalies.none": "لا توجد علامات شذوذ.",
+  "requests.stepup.required": "مخاطر عالية — يلزم تحقق MFA إضافي للموافقة.",
+  "requests.stepup.satisfied": "تم استيفاء تحقق MFA الإضافي.",
+  "requests.create.tags": "وسوم المورد (اختياري)",
+  "requests.create.duration": "المدة بالساعات (اختياري)",
 };
 
 const de: Partial<Catalog> = {
@@ -296,6 +495,8 @@ const de: Partial<Catalog> = {
   "nav.policies": "Zugriffsrichtlinien",
   "nav.packs": "Richtlinienpakete",
   "nav.requests": "Zugriffsanfragen",
+  "nav.workflows": "JML-Workflows",
+  "nav.jmlRuns": "JML-Ausführungen",
   "nav.grants": "Berechtigungen",
   "nav.reviews": "Zugriffsüberprüfungen",
   "nav.directory": "Verzeichnis",
@@ -303,6 +504,22 @@ const de: Partial<Catalog> = {
   "nav.pam.leases": "JIT-Leases",
   "nav.pam.sessions": "Live-Sitzungen",
   "nav.settings": "Einstellungen",
+  "requests.risk.title": "KI-Risikoprüfung",
+  "requests.risk.score": "Risikobewertung",
+  "requests.risk.recommendation": "Empfehlung",
+  "requests.risk.factors": "Risikofaktoren",
+  "requests.risk.rationale": "KI-Begründung",
+  "requests.risk.degraded": "KI-Bewertung nicht verfügbar — auf menschliche Prüfung umgestellt.",
+  "requests.risk.none": "Kein KI-Urteil für diese Anfrage.",
+  "requests.rec.autoApprove": "Für automatische Genehmigung geeignet",
+  "requests.rec.needsReview": "Prüfung erforderlich",
+  "requests.rec.highRisk": "Hohes Risiko",
+  "requests.anomalies.title": "Anomaliemarkierungen",
+  "requests.anomalies.none": "Keine Anomaliemarkierungen.",
+  "requests.stepup.required": "Hohes Risiko — Step-up-MFA zur Genehmigung erforderlich.",
+  "requests.stepup.satisfied": "Step-up-MFA erfüllt.",
+  "requests.create.tags": "Ressourcen-Tags (optional)",
+  "requests.create.duration": "Dauer in Stunden (optional)",
 };
 
 const fr: Partial<Catalog> = {
@@ -320,6 +537,8 @@ const fr: Partial<Catalog> = {
   "nav.policies": "Politiques d'accès",
   "nav.packs": "Packs de règles",
   "nav.requests": "Demandes d'accès",
+  "nav.workflows": "Workflows JML",
+  "nav.jmlRuns": "Exécutions JML",
   "nav.grants": "Attributions",
   "nav.reviews": "Revues d'accès",
   "nav.directory": "Annuaire",
@@ -327,6 +546,22 @@ const fr: Partial<Catalog> = {
   "nav.pam.leases": "Baux JIT",
   "nav.pam.sessions": "Sessions en direct",
   "nav.settings": "Paramètres",
+  "requests.risk.title": "Évaluation des risques par l'IA",
+  "requests.risk.score": "Score de risque",
+  "requests.risk.recommendation": "Recommandation",
+  "requests.risk.factors": "Facteurs de risque",
+  "requests.risk.rationale": "Justification de l'IA",
+  "requests.risk.degraded": "Évaluation IA indisponible — basculé vers une revue humaine.",
+  "requests.risk.none": "Aucun verdict de l'IA pour cette demande.",
+  "requests.rec.autoApprove": "Éligible à l'approbation automatique",
+  "requests.rec.needsReview": "Revue nécessaire",
+  "requests.rec.highRisk": "Risque élevé",
+  "requests.anomalies.title": "Indicateurs d'anomalie",
+  "requests.anomalies.none": "Aucun indicateur d'anomalie.",
+  "requests.stepup.required": "Risque élevé — MFA renforcée requise pour approuver.",
+  "requests.stepup.satisfied": "MFA renforcée satisfaite.",
+  "requests.create.tags": "Étiquettes de ressource (facultatif)",
+  "requests.create.duration": "Durée en heures (facultatif)",
 };
 
 const CATALOGS: Record<Locale, Partial<Catalog>> = {

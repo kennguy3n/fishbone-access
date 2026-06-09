@@ -65,6 +65,7 @@ paths:
                 type: object
                 properties:
                   request: { $ref: "#/components/schemas/AccessRequest" }
+                  risk: { $ref: "#/components/schemas/AccessRiskVerdict" }
                   workflow: { $ref: "#/components/schemas/WorkflowDecision" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -101,6 +102,10 @@ paths:
                 type: object
                 properties:
                   request: { $ref: "#/components/schemas/AccessRequest" }
+                  risk: { $ref: "#/components/schemas/AccessRiskVerdict" }
+                  anomalies:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccessRequestAnomalyFlag" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /access-requests/{id}/history:
@@ -127,9 +132,14 @@ paths:
     post:
       tags: [access-requests]
       summary: Approve a request
+      description: |
+        Approves a request. A high-risk verdict gates approval behind step-up
+        MFA (fail-CLOSED): without a satisfied MFA claim on the token the call
+        is rejected with 403, regardless of request body.
       requestBody: { $ref: "#/components/requestBodies/Decision" }
       responses:
         "200": { $ref: "#/components/responses/RequestEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
@@ -551,6 +561,224 @@ paths:
                   error: { type: string }
                   leaver: { $ref: "#/components/schemas/LeaverResult" }
 
+  /workflows:
+    post:
+      tags: [jml]
+      summary: Create a draft JML workflow
+      description: >
+        Persists a new no-code Joiner/Mover/Leaver workflow as a draft
+        (version 1). The definition is validated; a malformed document is
+        rejected so it can never be simulated, published, or executed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowInput" }
+      responses:
+        "201": { $ref: "#/components/responses/WorkflowEnvelope" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      tags: [jml]
+      summary: List workflows
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflows:
+                    type: array
+                    items: { $ref: "#/components/schemas/Workflow" }
+
+  /workflows/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [jml]
+      summary: Get a workflow
+      responses:
+        "200": { $ref: "#/components/responses/WorkflowEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [jml]
+      summary: Update a draft workflow (drafts only)
+      description: >
+        Replaces a draft's definition and clears the cached simulation, which
+        re-locks the publish gate (the draft must be re-simulated after any
+        edit). Only drafts are editable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowInput" }
+      responses:
+        "200": { $ref: "#/components/responses/WorkflowEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /workflows/{id}/simulate:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [jml]
+      summary: Dry-run a workflow for a sample identity (no side effects)
+      description: >
+        Runs the workflow's current definition against a sample subject WITHOUT
+        any side effects and returns the ordered "what would happen" plan. For a
+        draft it caches the result, which unlocks the publish gate
+        (test-before-publish).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowSubject" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  simulation: { $ref: "#/components/schemas/WorkflowRunResult" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workflows/{id}/publish:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [jml]
+      summary: Publish a draft workflow (idempotent, step-up MFA required)
+      description: >
+        Enforces test-before-publish: the draft must have been simulated since
+        its last edit (otherwise 409), and that dry-run must not have reported
+        failures. Only a published workflow is executed by the engine.
+      responses:
+        "200": { $ref: "#/components/responses/WorkflowEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /workflows/{id}/archive:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [jml]
+      summary: Archive a workflow (idempotent)
+      responses:
+        "200": { $ref: "#/components/responses/WorkflowEnvelope" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workflows/{id}/run:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [jml]
+      summary: Run a published workflow live for a subject (step-up MFA required)
+      description: >
+        Executes a published workflow for the given subject, performing real
+        side effects, appending per-step audit, and persisting a run record. A
+        draft or archived workflow cannot run (409).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkflowSubject" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { $ref: "#/components/schemas/WorkflowRunResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500":
+          description: >
+            The run completed but one or more steps failed; the body carries the
+            per-step breakdown so an operator can act on it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { $ref: "#/components/schemas/WorkflowRunResult" }
+
+  /workflow-runs:
+    get:
+      tags: [jml]
+      summary: List recent workflow runs (JML dashboard)
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: "#/components/schemas/WorkflowRun" }
+
+  /workflow-runs/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [jml]
+      summary: Get one workflow run (per-step audit view)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { $ref: "#/components/schemas/WorkflowRun" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /emergency-offboard:
+    post:
+      tags: [jml]
+      summary: Standalone six-layer leaver kill switch (step-up MFA required)
+      description: >
+        Runs the six-layer leaver kill switch for a single identity as an
+        emergency offboard, independent of any workflow. Gated by step-up MFA
+        and audited. Returns the per-layer breakdown; a partial failure is a 500
+        carrying the same breakdown so an operator can act on it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_external_id]
+              properties:
+                user_external_id: { type: string }
+                reason: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leaver: { $ref: "#/components/schemas/LeaverResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500":
+          description: One or more kill-switch layers failed; body carries the breakdown.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  leaver: { $ref: "#/components/schemas/LeaverResult" }
+
   /connectors/{connectorID}/orphan-scan:
     parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
     post:
@@ -931,6 +1159,14 @@ components:
             type: object
             properties:
               policy: { $ref: "#/components/schemas/Policy" }
+    WorkflowEnvelope:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              workflow: { $ref: "#/components/schemas/Workflow" }
     BadRequest:
       description: Validation error
       content:
@@ -968,7 +1204,7 @@ components:
         error: { type: string }
     CreateAccessRequest:
       type: object
-      required: [target_user_id, resource_ref]
+      required: [resource_ref, role]
       properties:
         target_user_id: { type: string }
         connector_id: { type: string, format: uuid, nullable: true }
@@ -979,6 +1215,10 @@ components:
         risk_factors:
           type: array
           items: { type: string }
+        resource_tags:
+          type: array
+          items: { type: string }
+        duration_hours: { type: integer, minimum: 1 }
     AccessRequest:
       type: object
       properties:
@@ -993,7 +1233,7 @@ components:
         risk_level: { type: string }
         state:
           type: string
-          enum: [requested, approved, denied, cancelled, provisioning, provisioned, active, provision_failed, revoked, expired]
+          enum: [requested, ai_reviewed, approved, denied, cancelled, provisioning, provisioned, active, provision_failed, revoked, expired]
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     StateHistoryEntry:
@@ -1012,6 +1252,41 @@ components:
         step_type: { type: string, enum: [auto_approve, manager_approval, security_review] }
         reason: { type: string }
         approved: { type: boolean }
+    AccessRiskVerdict:
+      type: object
+      description: |
+        Immutable, workspace-scoped AI risk assessment persisted against a
+        request for audit. `degraded` is true when the AI agent was unreachable
+        and the fail-open fallback supplied the verdict (never auto-approve).
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        score: { type: string, enum: [low, medium, high] }
+        recommendation: { type: string, enum: [auto_approve_eligible, needs_review, high_risk] }
+        factors:
+          type: array
+          items: { type: string }
+        rationale: { type: string }
+        inputs: { type: object, additionalProperties: true }
+        source: { type: string }
+        degraded: { type: boolean }
+        created_at: { type: string, format: date-time }
+    AccessRequestAnomalyFlag:
+      type: object
+      description: |
+        Advisory anomaly observation surfaced by the anomaly-detection skill on
+        an approved elevation. Never changes the FSM state.
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        grant_id: { type: string, format: uuid, nullable: true }
+        kind: { type: string }
+        severity: { type: string }
+        reason: { type: string }
+        confidence: { type: number }
+        created_at: { type: string, format: date-time }
     AccessGrant:
       type: object
       properties:
@@ -1170,6 +1445,131 @@ components:
                 enum: [grant_revoke, team_remove, iam_core_disable, session_revoke, scim_deprovision, identity_disable]
               status: { type: string, enum: [done, skipped, failed] }
               detail: { type: string }
+    WorkflowStep:
+      type: object
+      required: [type]
+      description: >
+        One ordered action. Fields are a strongly-typed superset across step
+        types; the per-type required fields are enforced server-side.
+      properties:
+        type:
+          type: string
+          enum: [grant_role, provision_connector, request_approval, notify, start_access_review, run_kill_switch]
+        name: { type: string }
+        connector_id: { type: string, format: uuid }
+        resource_ref: { type: string }
+        role: { type: string }
+        approver_role: { type: string }
+        channel: { type: string }
+        message: { type: string }
+        review_name: { type: string }
+    WorkflowCondition:
+      type: object
+      required: [attribute, operator, values]
+      description: One ANDed attribute predicate gating which identities the workflow acts on.
+      properties:
+        attribute: { type: string }
+        operator: { type: string, enum: [eq, neq, in, contains, not_contains] }
+        values:
+          type: array
+          items: { type: string }
+    WorkflowDefinition:
+      type: object
+      required: [kind, trigger, steps]
+      properties:
+        kind: { type: string, enum: [joiner, mover, leaver] }
+        trigger: { type: string, enum: [identity_event, schedule, manual] }
+        conditions:
+          type: array
+          items: { $ref: "#/components/schemas/WorkflowCondition" }
+        steps:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/WorkflowStep" }
+    WorkflowInput:
+      type: object
+      required: [name, definition]
+      properties:
+        name: { type: string }
+        definition: { $ref: "#/components/schemas/WorkflowDefinition" }
+    WorkflowSubject:
+      type: object
+      required: [external_id]
+      description: The identity (real for a live run, sample for a dry-run) a workflow targets.
+      properties:
+        external_id: { type: string }
+        email: { type: string }
+        display_name: { type: string }
+        department: { type: string }
+        groups:
+          type: array
+          items: { type: string }
+        attributes:
+          type: object
+          additionalProperties: { type: string }
+    Workflow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name: { type: string }
+        trigger: { type: string, enum: [identity_event, schedule, manual] }
+        state: { type: string, enum: [draft, published, archived] }
+        version: { type: integer }
+        definition: { $ref: "#/components/schemas/WorkflowDefinition" }
+        published_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    KillSwitchLayer:
+      type: object
+      description: One layer outcome of the six-layer kill switch surfaced in a run.
+      properties:
+        layer:
+          type: string
+          enum: [grant_revoke, team_remove, iam_core_disable, session_revoke, scim_deprovision, identity_disable]
+        status: { type: string, enum: [planned, done, skipped, failed] }
+        detail: { type: string }
+    WorkflowStepOutcome:
+      type: object
+      properties:
+        index: { type: integer }
+        type: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [planned, done, skipped, failed] }
+        detail: { type: string }
+        ref: { type: string }
+        layers:
+          type: array
+          description: Present only for a run_kill_switch step.
+          items: { $ref: "#/components/schemas/KillSwitchLayer" }
+    WorkflowRunResult:
+      type: object
+      description: Outcome of a dry-run (planned) or live run.
+      properties:
+        mode: { type: string, enum: [dry_run, live] }
+        matched: { type: boolean }
+        status: { type: string, enum: [planned, succeeded, partial, failed, skipped] }
+        subject: { $ref: "#/components/schemas/WorkflowSubject" }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/WorkflowStepOutcome" }
+        run_id: { type: string, format: uuid, nullable: true }
+    WorkflowRun:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        workflow_id: { type: string, format: uuid }
+        workflow_version: { type: integer }
+        trigger: { type: string }
+        subject_external_id: { type: string }
+        mode: { type: string, enum: [dry_run, live] }
+        status: { type: string, enum: [planned, succeeded, partial, failed, skipped] }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/WorkflowStepOutcome" }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
     ScanResult:
       type: object
       properties:

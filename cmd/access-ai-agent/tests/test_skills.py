@@ -39,6 +39,7 @@ def test_risk_privileged_role_is_high():
     out = access_risk_assessment.run({"role": "admin", "resource_external_id": "db-1"})
     assert out["risk_score"] == "high"
     assert any("privileged_role" in f for f in out["risk_factors"])
+    assert out["recommendation"] == "high_risk"
 
 
 def test_risk_readonly_baseline_low():
@@ -46,6 +47,27 @@ def test_risk_readonly_baseline_low():
         {"role": "viewer", "resource_external_id": "wiki", "justification": "on-call"}
     )
     assert out["risk_score"] == "low"
+    assert out["recommendation"] == "auto_approve_eligible"
+
+
+def test_risk_recommendation_follows_band():
+    # A write role with a justification scores medium → needs_review.
+    out = access_risk_assessment.run(
+        {"role": "editor", "resource_external_id": "svc", "justification": "x"}
+    )
+    assert out["risk_score"] == "medium"
+    assert out["recommendation"] == "needs_review"
+
+
+def test_risk_sensitive_tag_forces_high_recommendation():
+    # A "sensitive" tag emits the canonical sensitive_resource factor, which
+    # forces high_risk regardless of band — mirroring the Go router's
+    # sensitive_resource → security_review edge.
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "svc", "resource_tags": ["sensitive"], "justification": "x"}
+    )
+    assert "sensitive_resource" in out["risk_factors"]
+    assert out["recommendation"] == "high_risk"
 
 
 def test_risk_production_tag_bumps():
@@ -53,6 +75,20 @@ def test_risk_production_tag_bumps():
         {"role": "editor", "resource_external_id": "svc", "resource_tags": ["prod"], "justification": "x"}
     )
     assert out["risk_score"] in ("medium", "high")
+
+
+def test_risk_prod_readonly_recommendation_matches_go():
+    # A read-only role on a prod (elevated, not "sensitive") resource scores
+    # medium with an elevated_resource factor. Go routes this to needs_review
+    # (manager_approval), NOT high_risk — only sensitive_resource forces the
+    # security-review lane. The advisory recommendation must agree with Go.
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "svc", "resource_tags": ["prod"], "justification": "x"}
+    )
+    assert out["risk_score"] == "medium"
+    assert any(f.startswith("elevated_resource:") for f in out["risk_factors"])
+    assert "sensitive_resource" not in out["risk_factors"]
+    assert out["recommendation"] == "needs_review"
 
 
 def test_risk_llm_can_raise_not_lower(monkeypatch):
