@@ -19,13 +19,15 @@ import (
 )
 
 // standaloneAuditor appends one audit event in its own transaction. The Vault
-// uses it for standalone events (target create, secret reveal, token mint)
-// whose state change has already committed. In production this is the pgxpool
-// adapter's AuditAppender (database.PgxAuditRepo), wired via SetAuditor; when
-// nil the Vault falls back to the GORM lifecycle.AppendAudit path used by the
-// SQLite unit tests and degraded boots. Both backends append to the SAME
-// per-workspace hash chain through the shared auditchain primitives, so the
-// standalone event chains correctly regardless of which one is active.
+// uses it only for the secret-reveal event, whose state change (a read) has
+// nothing to commit alongside the audit row; every state-mutating event
+// (target create, secret rotate, connect-token mint, session open) instead uses
+// auditTx so the audit row commits atomically with that change. In production
+// this is the pgxpool adapter's AuditAppender (database.PgxAuditRepo), wired via
+// SetAuditor; when nil the Vault falls back to the GORM lifecycle.AppendAudit
+// path used by the SQLite unit tests and degraded boots. Both backends append
+// to the SAME per-workspace hash chain through the shared auditchain primitives,
+// so the standalone event chains correctly regardless of which one is active.
 type standaloneAuditor interface {
 	AppendAudit(ctx context.Context, now time.Time, in database.AuditInput) error
 }

@@ -138,8 +138,10 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	}
 
 	vault := pam.NewVault(gdb, enc, stepUp)
-	// Route standalone audit appends (target create, secret reveal, token mint)
-	// through the pgxpool adapter; in-transaction appends stay on GORM.
+	// Route the Vault's standalone audit append — today only the secret-reveal
+	// event — through the pgxpool adapter; state-mutating events (target create,
+	// secret rotate, connect-token mint, session open) use the in-transaction
+	// GORM path so the audit row commits atomically with the change.
 	vault.SetAuditor(auditor)
 	policy := pam.NewCommandPolicyEvaluator(gdb, 5*time.Second)
 	hub := gateway.NewSessionHub()
