@@ -328,3 +328,54 @@ def test_connector_unknown_provider_explains():
     out = connector_setup_assistant.run({"provider": "totally-unknown"})
     assert out["reason"] == "strategy=unknown"
     assert "no known iam-core strategy" in out["explanation"]
+
+
+def test_connector_returns_structured_plan():
+    out = connector_setup_assistant.run({"provider": "microsoft"})
+    assert out["strategy"] == "microsoft"
+    steps = out["steps"]
+    # Ordered, contiguous step numbers starting at 1.
+    assert [s["step"] for s in steps] == list(range(1, len(steps) + 1))
+    # Every step has the structured fields the Go decoder expects.
+    for s in steps:
+        assert s["title"]
+        assert s["description"]
+        assert isinstance(s["required_scopes"], list)
+        assert isinstance(s["field_mappings"], list)
+        assert isinstance(s["common_pitfalls"], list)
+        assert isinstance(s["estimated_minutes"], int)
+    # The scope-granting step carries the real Graph scopes; the mapping step
+    # carries the real Entra attribute mapping.
+    all_scopes = [sc for s in steps for sc in s["required_scopes"]]
+    assert "User.Read.All" in all_scopes
+    all_targets = [m["target"] for s in steps for m in s["field_mappings"]]
+    assert "email" in all_targets
+
+
+def test_connector_plan_for_unknown_provider_uses_generic_oidc():
+    out = connector_setup_assistant.run({"provider": "totally-unknown"})
+    assert out["strategy"] == "unknown"
+    # Even an unknown provider gets a usable generic-OIDC plan, not an empty one.
+    assert len(out["steps"]) >= 4
+    all_scopes = [sc for s in out["steps"] for sc in s["required_scopes"]]
+    assert "openid" in all_scopes
+
+
+def test_connector_model_used_flag_false_without_llm():
+    # With no LLM configured the explanation is deterministic and model_used is
+    # False, so the Go side can record that the plan was not model-enriched.
+    out = connector_setup_assistant.run({"provider": "okta"})
+    assert out["model_used"] is False
+
+
+def test_connector_model_used_flag_true_when_llm_enriches(monkeypatch):
+    monkeypatch.setattr(
+        connector_setup_assistant,
+        "call_llm",
+        lambda *a, **k: "Use the Okta admin console to create an OIDC web app and paste the issuer.",
+    )
+    out = connector_setup_assistant.run({"provider": "okta"})
+    assert out["model_used"] is True
+    assert "Okta admin console" in out["explanation"]
+    # The structured steps are still deterministic (LLM only enriches prose).
+    assert out["steps"][0]["step"] == 1

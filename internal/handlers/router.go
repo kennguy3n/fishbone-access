@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -41,6 +42,15 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// ConnectorEncryptor seals/opens connector secrets for the connector
+	// management surface. It is the access-stack encryptor (the same one the
+	// access-connector-worker uses) so a connector created via the API is
+	// syncable by the worker. nil falls back to the fail-closed encryptor.
+	ConnectorEncryptor access.CredentialEncryptor
+	// AI is the access-ai-agent client backing the connector setup wizard. It
+	// may be an unconfigured client (no agent URL): the wizard is fail-OPEN and
+	// returns a degraded manual plan in that case.
+	AI *aiclient.AIClient
 }
 
 // NewRouter builds the Gin engine.
@@ -76,6 +86,7 @@ func NewRouter(deps Deps) *gin.Engine {
 		scoped := api.Group("")
 		scoped.Use(middleware.RequireTenant(deps.DB))
 		newLifecycleHandlers(deps).register(scoped)
+		newConnectorHandlers(deps).register(scoped)
 	}
 
 	// Serve the embedded Access console (SPA) when the binary was built with

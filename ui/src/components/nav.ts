@@ -35,6 +35,7 @@ export const NAV: NavGroup[] = [
   {
     labelId: "nav.group.lifecycle",
     items: [
+      { labelId: "nav.connectors", to: "/connectors", icon: "integrations" },
       { labelId: "nav.requests", to: "/requests", icon: "rbac" },
       { labelId: "nav.directory", to: "/directory", icon: "scim" },
     ],

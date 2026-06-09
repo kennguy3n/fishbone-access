@@ -29,6 +29,7 @@ export type MessageKey =
   | "nav.dashboard"
   | "nav.policies"
   | "nav.packs"
+  | "nav.connectors"
   | "nav.requests"
   | "nav.grants"
   | "nav.reviews"
@@ -50,6 +51,7 @@ const en: Catalog = {
   "nav.dashboard": "Dashboard",
   "nav.policies": "Access policies",
   "nav.packs": "Policy packs",
+  "nav.connectors": "Connectors",
   "nav.requests": "Access requests",
   "nav.grants": "Grants",
   "nav.reviews": "Access reviews",
@@ -70,6 +72,7 @@ const zhHans: Partial<Catalog> = {
   "nav.dashboard": "概览",
   "nav.policies": "访问策略",
   "nav.packs": "策略包",
+  "nav.connectors": "连接器",
   "nav.requests": "访问请求",
   "nav.grants": "授权",
   "nav.reviews": "访问审查",
@@ -90,6 +93,7 @@ const zhHant: Partial<Catalog> = {
   "nav.dashboard": "概覽",
   "nav.policies": "存取原則",
   "nav.packs": "原則套件",
+  "nav.connectors": "連接器",
   "nav.requests": "存取請求",
   "nav.grants": "授權",
   "nav.reviews": "存取審查",
@@ -110,6 +114,7 @@ const ms: Partial<Catalog> = {
   "nav.dashboard": "Papan pemuka",
   "nav.policies": "Dasar akses",
   "nav.packs": "Pek dasar",
+  "nav.connectors": "Penyambung",
   "nav.requests": "Permintaan akses",
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Semakan akses",
@@ -130,6 +135,7 @@ const id: Partial<Catalog> = {
   "nav.dashboard": "Dasbor",
   "nav.policies": "Kebijakan akses",
   "nav.packs": "Paket kebijakan",
+  "nav.connectors": "Konektor",
   "nav.requests": "Permintaan akses",
   "nav.grants": "Pemberian akses",
   "nav.reviews": "Tinjauan akses",
@@ -150,6 +156,7 @@ const th: Partial<Catalog> = {
   "nav.dashboard": "แดชบอร์ด",
   "nav.policies": "นโยบายการเข้าถึง",
   "nav.packs": "ชุดนโยบาย",
+  "nav.connectors": "ตัวเชื่อมต่อ",
   "nav.requests": "คำขอการเข้าถึง",
   "nav.grants": "สิทธิ์ที่ได้รับ",
   "nav.reviews": "การตรวจสอบการเข้าถึง",
@@ -170,6 +177,7 @@ const vi: Partial<Catalog> = {
   "nav.dashboard": "Bảng điều khiển",
   "nav.policies": "Chính sách truy cập",
   "nav.packs": "Gói chính sách",
+  "nav.connectors": "Trình kết nối",
   "nav.requests": "Yêu cầu truy cập",
   "nav.grants": "Quyền được cấp",
   "nav.reviews": "Đánh giá truy cập",
@@ -190,6 +198,7 @@ const ja: Partial<Catalog> = {
   "nav.dashboard": "ダッシュボード",
   "nav.policies": "アクセスポリシー",
   "nav.packs": "ポリシーパック",
+  "nav.connectors": "コネクタ",
   "nav.requests": "アクセスリクエスト",
   "nav.grants": "付与",
   "nav.reviews": "アクセスレビュー",
@@ -210,6 +219,7 @@ const ko: Partial<Catalog> = {
   "nav.dashboard": "대시보드",
   "nav.policies": "액세스 정책",
   "nav.packs": "정책 팩",
+  "nav.connectors": "커넥터",
   "nav.requests": "액세스 요청",
   "nav.grants": "권한 부여",
   "nav.reviews": "액세스 검토",
@@ -230,6 +240,7 @@ const ar: Partial<Catalog> = {
   "nav.dashboard": "لوحة المعلومات",
   "nav.policies": "سياسات الوصول",
   "nav.packs": "حزم السياسات",
+  "nav.connectors": "الموصلات",
   "nav.requests": "طلبات الوصول",
   "nav.grants": "المنح",
   "nav.reviews": "مراجعات الوصول",
@@ -250,6 +261,7 @@ const de: Partial<Catalog> = {
   "nav.dashboard": "Dashboard",
   "nav.policies": "Zugriffsrichtlinien",
   "nav.packs": "Richtlinienpakete",
+  "nav.connectors": "Konnektoren",
   "nav.requests": "Zugriffsanfragen",
   "nav.grants": "Berechtigungen",
   "nav.reviews": "Zugriffsüberprüfungen",
@@ -270,6 +282,7 @@ const fr: Partial<Catalog> = {
   "nav.dashboard": "Tableau de bord",
   "nav.policies": "Politiques d'accès",
   "nav.packs": "Packs de règles",
+  "nav.connectors": "Connecteurs",
   "nav.requests": "Demandes d'accès",
   "nav.grants": "Attributions",
   "nav.reviews": "Revues d'accès",

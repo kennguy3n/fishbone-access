@@ -192,6 +192,10 @@ export const qk = {
   request: (id: string) => ["access-request", id] as const,
   requestHistory: (id: string) => ["access-request", id, "history"] as const,
   orphans: ["orphan-accounts"] as const,
+  connectors: (filter: ConnectorCatalogueFilter) =>
+    ["connectors", filter] as const,
+  connector: (provider: string) => ["connector", provider] as const,
+  connectorFacets: ["connector-facets"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -525,5 +529,198 @@ export function useOrphans() {
 export function useSetOrphanDisposition(id: string) {
   return useMutation<{ status: string }, ApiError, string>({
     mutationFn: (disposition) => setOrphanDisposition(id, disposition),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Connector fabric — capability matrix + AI-assisted setup wizard
+//
+// Types mirror internal/services/access (CapabilityDescriptor, catalogue
+// entry, facets), internal/pkg/aiclient (setup plan), and internal/models
+// (AccessConnector). The catalogue is the single source of truth for "which
+// connectors does this binary ship and what can each one do?" — enriched
+// per-workspace with whether the operator has already connected each provider.
+// ---------------------------------------------------------------------------
+
+/** The five user-facing capability flags surfaced in the matrix. */
+export interface UserFacingCapabilities {
+  sync_identity: boolean;
+  provision_access: boolean;
+  list_entitlements: boolean;
+  get_access_log: boolean;
+  sso_federation: boolean;
+}
+
+/**
+ * The seven operational capabilities, derived server-side by type-asserting
+ * the registered connector against the optional Go interfaces — so they can
+ * never drift from the shipped binary.
+ */
+export interface OperationalCapabilities {
+  group_sync: boolean;
+  identity_delta_sync: boolean;
+  access_audit_stream: boolean;
+  scim_provisioning: boolean;
+  session_revoke: boolean;
+  sso_enforcement_check: boolean;
+  credential_renewal: boolean;
+}
+
+/** One row of the capability matrix, with this workspace's connection state. */
+export interface ConnectorCatalogueEntry {
+  provider: string;
+  display_name: string;
+  tier: string;
+  category: string;
+  registered: boolean;
+  user_facing: UserFacingCapabilities;
+  operational: OperationalCapabilities;
+  connected: boolean;
+  connector_id?: string;
+  status?: string;
+}
+
+/** Distinct filter vocabularies present across the whole catalogue. */
+export interface CatalogueFacets {
+  tiers: string[];
+  categories: string[];
+  user_facing_capabilities: string[];
+  operational_capabilities: string[];
+}
+
+export interface ConnectorCatalogueFilter {
+  capability?: string;
+  tier?: string;
+  category?: string;
+  connected?: boolean;
+}
+
+export interface ConnectorSetupFieldMapping {
+  source: string;
+  target: string;
+}
+
+export interface ConnectorSetupStep {
+  step: number;
+  title: string;
+  description: string;
+  required_scopes?: string[];
+  field_mappings?: ConnectorSetupFieldMapping[];
+  common_pitfalls?: string[];
+  estimated_minutes?: number;
+}
+
+export interface ConnectorSetupPlan {
+  strategy: string;
+  explanation: string;
+  steps: ConnectorSetupStep[];
+  model_used: boolean;
+  /** True when the AI agent was unavailable and the plan is the deterministic
+   *  manual fallback — the wizard is fail-OPEN, so a model outage degrades to
+   *  a manual plan rather than blocking the operator. */
+  degraded: boolean;
+}
+
+export interface ConnectorSetupResult {
+  suggestion_id: string;
+  plan: ConnectorSetupPlan;
+}
+
+export interface AccessConnector {
+  id: string;
+  workspace_id: string;
+  provider: string;
+  display_name: string;
+  status: string;
+  config?: Record<string, unknown> | null;
+  last_synced_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const listConnectors = (filter: ConnectorCatalogueFilter = {}) => {
+  const params = new URLSearchParams();
+  if (filter.capability) params.set("capability", filter.capability);
+  if (filter.tier) params.set("tier", filter.tier);
+  if (filter.category) params.set("category", filter.category);
+  if (filter.connected !== undefined)
+    params.set("connected", String(filter.connected));
+  const qs = params.toString();
+  return call<{ connectors: ConnectorCatalogueEntry[] }>({
+    url: qs ? `/connectors?${qs}` : "/connectors",
+    method: "GET",
+  }).then((r) => r.connectors ?? []);
+};
+
+export const getConnectorCatalogueEntry = (provider: string) =>
+  call<ConnectorCatalogueEntry>({
+    url: `/connectors/catalogue/${encodeURIComponent(provider)}`,
+    method: "GET",
+  });
+
+export const getConnectorFacets = () =>
+  call<CatalogueFacets>({
+    url: "/connectors/catalogue/facets",
+    method: "GET",
+  });
+
+export interface SetupWizardInput {
+  admin_intent?: string;
+  connector_id?: string;
+}
+
+export const requestSetupPlan = (provider: string, body: SetupWizardInput) =>
+  call<ConnectorSetupResult>({
+    url: `/connectors/catalogue/${encodeURIComponent(provider)}/setup-wizard`,
+    method: "POST",
+    data: body,
+  });
+
+export interface CreateConnectorInput {
+  provider: string;
+  display_name?: string;
+  config?: Record<string, unknown>;
+  secrets?: Record<string, unknown>;
+}
+
+export const createConnector = (body: CreateConnectorInput) =>
+  call<AccessConnector>({
+    url: "/connectors",
+    method: "POST",
+    data: body,
+  });
+
+export function useConnectors(filter: ConnectorCatalogueFilter = {}) {
+  return useQuery<ConnectorCatalogueEntry[], ApiError>({
+    queryKey: qk.connectors(filter),
+    queryFn: () => listConnectors(filter),
+  });
+}
+
+export function useConnectorCatalogueEntry(provider: string | undefined) {
+  return useQuery<ConnectorCatalogueEntry, ApiError>({
+    queryKey: qk.connector(provider ?? ""),
+    queryFn: () => getConnectorCatalogueEntry(provider as string),
+    enabled: !!provider,
+  });
+}
+
+export function useConnectorFacets() {
+  return useQuery<CatalogueFacets, ApiError>({
+    queryKey: qk.connectorFacets,
+    queryFn: getConnectorFacets,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useRequestSetupPlan(provider: string) {
+  return useMutation<ConnectorSetupResult, ApiError, SetupWizardInput>({
+    mutationFn: (body) => requestSetupPlan(provider, body),
+  });
+}
+
+export function useCreateConnector() {
+  return useMutation<AccessConnector, ApiError, CreateConnectorInput>({
+    mutationFn: createConnector,
   });
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
@@ -101,6 +102,27 @@ func run() error {
 		return fmt.Errorf("credential encryptor init: %w", err)
 	}
 	deps.Encryptor = enc
+
+	// Access-stack credential encryptor for the connector-management surface.
+	// It is the same encryptor the access-connector-worker builds from the
+	// same DEK, so a connector created through the API seals its secrets in a
+	// form the worker can open when it runs the sync — without it the two
+	// stacks would diverge and a created connector could never be synced.
+	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	if err != nil {
+		return fmt.Errorf("connector credential encryptor init: %w", err)
+	}
+	deps.ConnectorEncryptor = connEnc
+
+	// access-ai-agent client for the connector setup wizard. Built from the
+	// A2A mTLS environment contract; an unconfigured client (no agent URL) is
+	// fine because the wizard is fail-OPEN (degraded manual plan). A partially
+	// configured mTLS setup fails the boot rather than silently degrading.
+	aiClient, err := aiclient.NewAIClientFromEnv()
+	if err != nil {
+		return fmt.Errorf("access-ai-agent client init: %w", err)
+	}
+	deps.AI = aiClient
 
 	// The iam-core management client disables (blocks) users for the leaver
 	// kill switch (layer 3). It is wired only when the management credentials
