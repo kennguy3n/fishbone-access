@@ -84,8 +84,13 @@ function CampaignBody({
   const [closing, setClosing] = useState(false);
 
   const running = report.state === "running";
+  // Progress tracks TERMINAL decisions only (certify/revoke). Escalation is a
+  // non-terminal intermediate state that still needs resolving, so it does not
+  // count toward completion — mirrors the server's all_decided derivation
+  // (escalated == open). An all-escalated campaign therefore reads 0%, not 100%.
+  const decidedTerminal = report.certified + report.revoked;
   const progress =
-    report.total === 0 ? 0 : Math.round(((report.total - report.pending) / report.total) * 100);
+    report.total === 0 ? 0 : Math.round((decidedTerminal / report.total) * 100);
 
   const decide = async (item: CampaignItemView, decision: DecisionInput["decision"]) => {
     setPendingItem(item.item_id);
@@ -133,7 +138,11 @@ function CampaignBody({
     {
       header: running ? "Action" : "Decided",
       cell: (it) =>
-        running && it.decision === "pending" ? (
+        // Escalated is non-terminal: the server allows resolving it to a
+        // terminal certify/revoke, so a running campaign must keep the action
+        // affordances for escalated items (not just pending ones) — otherwise
+        // an escalation can never be worked off.
+        running && (it.decision === "pending" || it.decision === "escalate") ? (
           <div className="field-row" style={{ gap: 6 }}>
             <button
               className="btn btn--sm"

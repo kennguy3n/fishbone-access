@@ -265,8 +265,23 @@ func (pw *PackWriter) streamCampaigns(ctx context.Context, zw *zip.Writer, opts 
 	return campInfo, itemInfo, nil
 }
 
-// streamPolicies writes policies created or updated during the period (includes
-// soft-deleted rows so an auditor can reconstruct the policy graph).
+// streamPolicies writes the policies that were in force at any point during the
+// period, so an auditor sees the full access-control landscape for the window
+// rather than only the policies that happened to change in it. Concretely, with
+// a [from, to) period the filter keeps a policy when it was created before `to`
+// AND (it is still live OR it was tombstoned within the period):
+//
+//   - created_at < to                 — existed by the end of the window
+//   - updated_at >= from               — soft-deleted/edited inside the window
+//     OR deleted_at IS NULL            — still live (kept regardless of when it
+//                                        last changed; a years-old unchanged
+//                                        live policy is still part of the
+//                                        landscape and is included)
+//
+// Soft-deleted rows are included (Unscoped) so a tombstoned-in-period policy is
+// not silently dropped from the evidence. The parentheses keep GORM's AND/OR
+// precedence correct so workspace scope never leaks (locked by
+// TestWritePackCrossTenantWithPeriodFilter).
 func (pw *PackWriter) streamPolicies(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, error) {
 	q := pw.db.WithContext(ctx).Unscoped().Model(&models.Policy{}).Where("workspace_id = ?", opts.WorkspaceID)
 	if opts.To != nil {
@@ -277,7 +292,7 @@ func (pw *PackWriter) streamPolicies(ctx context.Context, zw *zip.Writer, opts E
 	}
 	q = q.Order("created_at asc, id asc")
 	return pw.streamRows(zw, "policies.jsonl",
-		"Policies created, edited, promoted, or tombstoned during the period. Includes soft-deleted rows.",
+		"Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
 		q, func() any { return &models.Policy{} })
 }
 
