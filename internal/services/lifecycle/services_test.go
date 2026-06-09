@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
@@ -1701,5 +1702,49 @@ func TestSubmitDecisionMissingItemReturnsItemNotFound(t *testing.T) {
 	err = rev.SubmitDecision(ctx, ws, uuid.New(), uuid.New(), ReviewDecisionCertify, "auditor", "x")
 	if !errors.Is(err, ErrReviewNotFound) {
 		t.Fatalf("expected ErrReviewNotFound for a missing review, got %v", err)
+	}
+}
+
+// TestCreatePolicyTxAtomicRollback verifies the transactional primitive that
+// policy-pack Apply relies on: several CreatePolicyTx calls in one Transaction
+// are all-or-nothing. A valid draft followed by an invalid one must leave zero
+// persisted policies (and no orphaned audit rows), not a partial set.
+func TestCreatePolicyTxAtomicRollback(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-tx")
+	svc := NewPolicyService(db)
+	ctx := context.Background()
+
+	def := json.RawMessage(`{"action":"grant","subjects":["g:eng"],"resources":["sys:db"]}`)
+	err := svc.Transaction(ctx, func(tx *gorm.DB) error {
+		if _, err := svc.CreatePolicyTx(ctx, tx, CreatePolicyInput{
+			WorkspaceID: ws, Name: "first-ok", Definition: def, Actor: "admin",
+		}); err != nil {
+			return err
+		}
+		// Second insert fails validation (empty name) after the first succeeded.
+		_, err := svc.CreatePolicyTx(ctx, tx, CreatePolicyInput{
+			WorkspaceID: ws, Name: "", Definition: def, Actor: "admin",
+		})
+		return err
+	})
+	if !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected ErrValidation, got %v", err)
+	}
+
+	rows, err := svc.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("ListPolicies: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("expected rollback to leave 0 policies, got %d", len(rows))
+	}
+
+	var auditCount int64
+	if err := db.Model(&models.AuditEvent{}).Where("workspace_id = ?", ws).Count(&auditCount).Error; err != nil {
+		t.Fatalf("count audit: %v", err)
+	}
+	if auditCount != 0 {
+		t.Fatalf("expected rollback to leave 0 audit rows, got %d", auditCount)
 	}
 }

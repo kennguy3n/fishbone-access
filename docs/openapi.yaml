@@ -354,7 +354,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
 
   /packs/{id}:
-    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    parameters: [ { $ref: "#/components/parameters/PackIDPath" } ]
     get:
       tags: [packs]
       summary: Get a single pack by id
@@ -370,7 +370,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /packs/{id}/apply:
-    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    parameters: [ { $ref: "#/components/parameters/PackIDPath" } ]
     post:
       tags: [packs]
       summary: Apply a pack — materialize its templates as DRAFT policies
@@ -642,6 +642,12 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    PackIDPath:
+      name: id
+      in: path
+      required: true
+      description: Pack identifier. A human-readable catalog slug (e.g. "pci-dss-v4"), not a UUID.
+      schema: { type: string }
   requestBodies:
     Decision:
       required: false

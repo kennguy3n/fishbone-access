@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -193,22 +194,33 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 		}
 	}
 
+	// Materialize every selected template in a single transaction so applying a
+	// pack is all-or-nothing: a mid-loop failure rolls back the drafts already
+	// created instead of leaving orphaned ones the caller can't see (and would
+	// duplicate on retry).
 	out := make([]AppliedPolicy, 0, len(selected))
-	for _, t := range selected {
-		def, err := t.definition()
-		if err != nil {
-			return out, err
+	err := a.policies.Transaction(ctx, func(tx *gorm.DB) error {
+		out = out[:0]
+		for _, t := range selected {
+			def, err := t.definition()
+			if err != nil {
+				return err
+			}
+			pol, err := a.policies.CreatePolicyTx(ctx, tx, lifecycle.CreatePolicyInput{
+				WorkspaceID: workspaceID,
+				Name:        t.Name,
+				Definition:  def,
+				Actor:       actor,
+			})
+			if err != nil {
+				return err
+			}
+			out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
 		}
-		pol, err := a.policies.CreatePolicy(ctx, lifecycle.CreatePolicyInput{
-			WorkspaceID: workspaceID,
-			Name:        t.Name,
-			Definition:  def,
-			Actor:       actor,
-		})
-		if err != nil {
-			return out, err
-		}
-		out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return out, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/packs"
 )
 
@@ -82,10 +81,11 @@ func (h *lifecycleHandlers) failPack(c *gin.Context, err error) {
 	case errors.Is(err, packs.ErrNoTemplates), errors.Is(err, packs.ErrTemplateNotInPack):
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	default:
-		// Could be a lifecycle validation/transition error from CreatePolicy, or
-		// a genuine internal fault; reuse the shared mapper which logs + 500s
-		// anything unknown without leaking it.
-		logger.Errorf(c.Request.Context(), "packs: apply error: %v", err)
+		// Could be a lifecycle validation/transition error from CreatePolicy
+		// (e.g. ErrValidation -> 400) or a genuine internal fault. Defer to the
+		// shared mapper, which both maps the status and ERROR-logs only the
+		// unknown 500s — pre-logging here would double-log unknowns and wrongly
+		// log client errors at ERROR level.
 		h.fail(c, err)
 	}
 }

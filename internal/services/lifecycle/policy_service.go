@@ -60,10 +60,36 @@ type CreatePolicyInput struct {
 	Actor       string
 }
 
+// Transaction runs fn inside a database transaction bound to this service's
+// connection. It lets sibling services (e.g. policy packs) compose several
+// *Tx operations into a single atomic unit so a mid-batch failure rolls the
+// whole batch back.
+func (s *PolicyService) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	return s.db.WithContext(ctx).Transaction(fn)
+}
+
 // CreatePolicy validates the definition and persists a new draft policy
-// (version 1, StateDraft). The definition must parse so a malformed policy can
-// never enter the system.
+// (version 1, StateDraft) in its own transaction. The definition must parse so
+// a malformed policy can never enter the system. Use CreatePolicyTx to enroll
+// the insert in a caller-provided transaction.
 func (s *PolicyService) CreatePolicy(ctx context.Context, in CreatePolicyInput) (*models.Policy, error) {
+	var pol *models.Policy
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		pol, err = s.CreatePolicyTx(ctx, tx, in)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pol, nil
+}
+
+// CreatePolicyTx validates and inserts a draft policy (version 1, StateDraft)
+// within the provided transaction, appending the policy.created audit row to
+// the same tx. Callers that materialize several drafts at once (e.g. applying a
+// policy pack) run this inside one Transaction so the whole set is atomic.
+func (s *PolicyService) CreatePolicyTx(ctx context.Context, tx *gorm.DB, in CreatePolicyInput) (*models.Policy, error) {
 	if in.WorkspaceID == uuid.Nil {
 		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
 	}
@@ -85,18 +111,15 @@ func (s *PolicyService) CreatePolicy(ctx context.Context, in CreatePolicyInput) 
 	pol.CreatedAt = now
 	pol.UpdatedAt = now
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(pol).Error; err != nil {
-			return fmt.Errorf("lifecycle: insert policy: %w", err)
-		}
-		return appendAudit(ctx, tx, now, auditEntry{
-			WorkspaceID: in.WorkspaceID,
-			Actor:       in.Actor,
-			Action:      "policy.created",
-			TargetRef:   pol.ID.String(),
-		})
-	})
-	if err != nil {
+	if err := tx.Create(pol).Error; err != nil {
+		return nil, fmt.Errorf("lifecycle: insert policy: %w", err)
+	}
+	if err := appendAudit(ctx, tx, now, auditEntry{
+		WorkspaceID: in.WorkspaceID,
+		Actor:       in.Actor,
+		Action:      "policy.created",
+		TargetRef:   pol.ID.String(),
+	}); err != nil {
 		return nil, err
 	}
 	return pol, nil
