@@ -380,7 +380,17 @@ function AssignRoleModal({
 }) {
   const intl = useIntl();
   const [userId, setUserId] = useState(target?.user_id ?? "");
-  const [role, setRole] = useState(target?.role ?? roles[0]?.role ?? "");
+  // For a NEW member (no target) default to a low-privilege, commonly-assignable
+  // role rather than roles[0] — the catalogue lists "owner" first, so defaulting
+  // to it would (a) surprise the operator and (b) 403 for any non-owner actor
+  // (ErrOwnerEscalationForbidden). Prefer "operator", then any non-owner role,
+  // then fall back to the first role only if nothing else exists.
+  const defaultNewRole =
+    roles.find((r) => r.role === "operator")?.role ??
+    roles.find((r) => r.role !== "owner")?.role ??
+    roles[0]?.role ??
+    "";
+  const [role, setRole] = useState(target?.role ?? defaultNewRole);
 
   const currentRole = target?.role;
   const nextPerms = permsByRole.get(role) ?? new Set<string>();
