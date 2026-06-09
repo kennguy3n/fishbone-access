@@ -139,7 +139,10 @@ func (s *CertificationService) StartCampaign(ctx context.Context, workspaceID uu
 			return fmt.Errorf("compliance: insert campaign: %w", err)
 		}
 
-		q := tx.WithContext(ctx).
+		// Model() is explicit (rather than relying on Find(&grants) to infer the
+		// table) so the soft-delete scope and the table are obvious at the query
+		// head, matching the pack-writer convention.
+		q := tx.WithContext(ctx).Model(&models.AccessGrant{}).
 			Where("workspace_id = ? AND state = ? AND revoked_at IS NULL", workspaceID, lifecycle.GrantStateActive)
 		if in.ScopeResource != "" {
 			// Prefix match so a campaign can target a resource hierarchy
