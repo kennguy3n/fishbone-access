@@ -27,6 +27,22 @@ logger = logging.getLogger(__name__)
 # Connector / IdP type → iam-core Connection strategy slug (authoritative map
 # from the shared iam-core contract). Okta/Ping/OneLogin/JumpCloud/Auth0 use the
 # generic "oidc" strategy.
+#
+# This map is deliberately NOT a mirror of the Go connector catalogue
+# (internal/services/access/connector_catalog_data.go, ~160 providers). A
+# "strategy" is an identity-federation pattern (Microsoft Graph, Google OAuth2,
+# generic OIDC/SAML, GitHub, Zoho); only IdP/SSO-federation connectors map to
+# one. The bulk of the catalogue is SaaS apps integrated via their own API
+# tokens, which have no federation strategy and intentionally have no entry
+# here. Hand-maintaining a 160-row parallel map would be the very drift source
+# we want to avoid. A provider with no entry resolves to strategy None and the
+# wizard fails OPEN: run() returns strategy="unknown", the explanation states no
+# verified mapping exists (and lists the supported providers), and _plan_for
+# emits a generic-OIDC best-effort plan whose pitfall tells the operator to
+# confirm the provider speaks OIDC before proceeding. The Go caller treats the
+# whole plan as advisory, so an unmapped provider degrades gracefully rather
+# than blocking setup. Tests test_connector_unknown_provider_explains and
+# test_connector_plan_for_unknown_provider_uses_generic_oidc pin this contract.
 PROVIDER_STRATEGY = {
     "entra": "microsoft",
     "azure": "microsoft",
