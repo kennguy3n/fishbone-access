@@ -212,6 +212,9 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 		Metadata:    stored,
 		PrevHash:    prevHash,
 		ChainHash:   chainHash,
+		// Stamp the format the pre-image above used so the verifier never has to
+		// guess; every freshly appended row is canonical and fully recomputable.
+		ChainHashVersion: AuditHashVersion,
 	}
 	row.CreatedAt = now
 	row.UpdatedAt = now
@@ -220,6 +223,23 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	}
 	return nil
 }
+
+// AuditHashVersion is the pre-image format the current appender stamps on every
+// audit row it writes. It lets a read-only verifier select the rule that
+// recomputes a given row instead of assuming one global formula forever:
+//
+//	0 — legacy / pre-canonical: the pre-image folded the raw nanosecond wall
+//	    clock (now.UnixNano()) and the caller's raw metadata bytes. Neither is
+//	    recoverable from stored columns — Postgres timestamptz keeps only
+//	    microseconds and jsonb reorders metadata on read-back — so version-0 rows
+//	    are NOT recomputable and are validated by chain linkage only.
+//	1 — canonical: the pre-image truncates the timestamp to UTC microseconds (the
+//	    precision Postgres persists) and folds canonical-JSON metadata, so the row
+//	    recomputes byte-for-byte from its stored columns on every dialect.
+//
+// When this constant advances, ComputeChainHash and the compliance verifier must
+// branch per version so older canonical rows keep verifying under their own rule.
+const AuditHashVersion = 1
 
 // ComputeChainHash derives the SHA-256 chain hash for one audit event from its
 // linking pre-image:

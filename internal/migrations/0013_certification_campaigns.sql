@@ -69,3 +69,18 @@ CREATE INDEX IF NOT EXISTS idx_cert_items_grant ON certification_items(grant_id)
 -- A grant appears at most once per campaign (idempotent enumeration / re-runs).
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cert_items_campaign_grant
     ON certification_items(campaign_id, grant_id) WHERE deleted_at IS NULL;
+
+-- Hash-format marker on the shared audit chain so the compliance verifier can
+-- recompute each row under the rule that actually produced its chain_hash.
+-- The WS6 evidence verifier is the first reader to recompute the chain. Rows
+-- appended before this release used a pre-image that folded the raw nanosecond
+-- wall clock and non-canonical jsonb metadata — neither survives a round-trip
+-- through stored columns (timestamptz keeps only microseconds; jsonb reorders
+-- keys), so those rows are NOT recomputable and must be validated by linkage
+-- only. They keep version 0 via this DEFAULT; every row the current appender
+-- writes stamps version 1 and is fully recomputable. Adding a constant-default
+-- column is a metadata-only change on modern Postgres (no table rewrite), so it
+-- stays fast on the large, append-only audit_events table.
+-- See internal/services/lifecycle/audit.go (AuditHashVersion / ComputeChainHash).
+ALTER TABLE audit_events
+    ADD COLUMN IF NOT EXISTS chain_hash_version SMALLINT NOT NULL DEFAULT 0;

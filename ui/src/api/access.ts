@@ -582,6 +582,12 @@ export interface ChainVerification {
   status: string;
   broken_at_seq?: number;
   reason?: string;
+  /**
+   * Rows that predate the canonical (recomputable) hash format and are
+   * validated by chain linkage only. Non-zero is not a failure — it means the
+   * chain spans a pre-verification baseline; it is omitted when zero.
+   */
+  legacy_unverified?: number;
 }
 
 export interface ControlCoverage {

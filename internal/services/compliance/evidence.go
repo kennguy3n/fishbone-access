@@ -176,7 +176,21 @@ type ChainVerification struct {
 	BrokenAtSeq int64 `json:"broken_at_seq,omitempty"`
 	// Reason describes the first failure (empty when OK).
 	Reason string `json:"reason,omitempty"`
+	// LegacyUnverified counts rows that predate the canonical (recomputable)
+	// hash format (chain_hash_version 0). These are validated by chain linkage
+	// only — their content cannot be cryptographically recomputed because the
+	// pre-canonical pre-image folded a non-persisted nanosecond clock and raw
+	// (pre-jsonb) metadata. A non-zero value is NOT a failure: it means the
+	// chain spans a pre-verification baseline. Every row appended after the
+	// canonical format shipped is fully recomputed, so this only ever counts
+	// down as legacy rows age out.
+	LegacyUnverified int `json:"legacy_unverified,omitempty"`
 }
+
+// legacyHashVersion is the chain_hash_version carried by rows appended before
+// the canonical (recomputable) hash format shipped. Such rows are validated by
+// linkage only — see ChainVerification.LegacyUnverified and the verify loop.
+const legacyHashVersion = 0
 
 const (
 	chainStatusValid    = "valid"
@@ -200,6 +214,13 @@ const (
 // The recompute is dialect-stable because appendAudit truncates the timestamp
 // to microseconds before both hashing and storing (see lifecycle/audit.go), so
 // the verifier reproduces the same pre-image from the persisted created_at.
+//
+// Rows that predate the canonical hash format (chain_hash_version 0) are not
+// recomputable from stored columns, so they are validated by linkage only and
+// reported via LegacyUnverified rather than as false "tampered" verdicts — see
+// the recompute branch below. Linkage and chain_seq contiguity are still
+// enforced for those rows, so reordering/insertion/deletion is detected
+// regardless of format.
 func (s *EvidenceService) VerifyChain(ctx context.Context, workspaceID uuid.UUID) (ChainVerification, error) {
 	if workspaceID == uuid.Nil {
 		return ChainVerification{}, fmt.Errorf("%w: workspace_id is required", ErrValidation)
@@ -240,7 +261,22 @@ func (s *EvidenceService) VerifyChain(ctx context.Context, workspaceID uuid.UUID
 			out.Reason = "prev_hash does not match prior row's chain_hash (linkage broken)"
 			return out, nil
 		}
-		if want := recomputeChainHash(prevHash, &e); want != e.ChainHash {
+		// Linkage (chain_seq contiguity + prev_hash) is format-independent and was
+		// already enforced above for EVERY row, so an inserted, deleted, reordered
+		// or truncated row is always detected regardless of hash version.
+		// Cryptographic recompute, however, only applies to canonical rows: a
+		// version-0 (pre-canonical) row folded the raw nanosecond clock and raw
+		// metadata into its pre-image, neither of which survives in stored columns,
+		// so recomputing it would falsely report "tampered" on chains that merely
+		// predate the verifiable format. Such rows are accepted on linkage alone
+		// and counted as legacy. This never masks tampering of canonical rows (they
+		// are still fully recomputed) and never raises a false alarm on a legitimate
+		// pre-verification baseline. When AuditHashVersion advances, this branch
+		// must learn the per-version pre-image so older canonical rows keep
+		// verifying under their own rule.
+		if e.ChainHashVersion == legacyHashVersion {
+			out.LegacyUnverified++
+		} else if want := recomputeChainHash(prevHash, &e); want != e.ChainHash {
 			out.Length = n
 			out.Status = chainStatusTampered
 			out.BrokenAtSeq = e.ChainSeq
