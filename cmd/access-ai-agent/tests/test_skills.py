@@ -352,6 +352,21 @@ def test_connector_returns_structured_plan():
     assert "email" in all_targets
 
 
+def test_connector_google_suspended_mapping_is_inverted():
+    # Google Directory `suspended` has opposite polarity to the platform's
+    # `active`, so its mapping must carry invert=True; the other Google
+    # mappings (and Microsoft's polarity-correct accountEnabled) must not.
+    out = connector_setup_assistant.run({"provider": "google_workspace"})
+    mappings = [m for s in out["steps"] for m in s["field_mappings"]]
+    suspended = [m for m in mappings if m["source"] == "suspended"]
+    assert suspended, "google plan is missing the suspended→active mapping"
+    assert suspended[0]["target"] == "active"
+    assert suspended[0]["invert"] is True
+    for m in mappings:
+        if m["source"] != "suspended":
+            assert not m.get("invert"), f"{m['source']} should not be inverted"
+
+
 def test_connector_plan_for_unknown_provider_uses_generic_oidc():
     out = connector_setup_assistant.run({"provider": "totally-unknown"})
     assert out["strategy"] == "unknown"

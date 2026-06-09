@@ -639,7 +639,14 @@ paths:
         - { name: capability, in: query, required: false, schema: { type: string } }
         - { name: tier, in: query, required: false, schema: { type: string } }
         - { name: category, in: query, required: false, schema: { type: string } }
-        - { name: connected, in: query, required: false, schema: { type: boolean } }
+        - name: connected
+          in: query
+          required: false
+          description: >
+            Tri-state filter on per-workspace connection state. Omitted returns
+            all providers; true returns only providers the workspace has already
+            connected; false returns only those it has not.
+          schema: { type: boolean }
       responses:
         "200":
           description: OK
@@ -1196,6 +1203,12 @@ components:
       properties:
         source: { type: string }
         target: { type: string }
+        invert:
+          type: boolean
+          description: >
+            True when the source boolean has opposite polarity to the target
+            (e.g. Google `suspended` → platform `active`) and must be negated on
+            sync. Absent for the common non-inverted mapping.
     ConnectorSetupStep:
       type: object
       properties:

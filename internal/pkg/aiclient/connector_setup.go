@@ -23,6 +23,11 @@ type ConnectorSetupInput struct {
 type ConnectorSetupFieldMapping struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
+	// Invert flags a boolean mapping whose source polarity is opposite to the
+	// target's (e.g. Google Directory `suspended` → platform `active`), so the
+	// connector negates the value instead of copying it through. Omitted for
+	// the common non-inverted case.
+	Invert bool `json:"invert,omitempty"`
 }
 
 // ConnectorSetupStep is one ordered step in the guided setup plan.

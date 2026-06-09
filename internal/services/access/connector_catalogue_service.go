@@ -50,14 +50,18 @@ type ConnectorCatalogueEntry struct {
 //
 // The optional filters are ANDed together. Capability matches either a
 // user-facing or an operational capability key. Tier and Category match
-// case-insensitively. ConnectedOnly restricts the result to providers the
-// workspace has already connected.
+// case-insensitively. Connected is a tri-state filter on the per-workspace
+// connection state: nil means "don't filter" (return all providers), a pointer
+// to true restricts to providers the workspace has already connected, and a
+// pointer to false restricts to providers it has not — so connected=false is
+// distinguishable from an omitted filter (a plain bool's zero value could not
+// express that distinction).
 type ConnectorCatalogueQuery struct {
-	WorkspaceID   uuid.UUID
-	Capability    string
-	Tier          string
-	Category      string
-	ConnectedOnly bool
+	WorkspaceID uuid.UUID
+	Capability  string
+	Tier        string
+	Category    string
+	Connected   *bool
 }
 
 // AccessConnectorCatalogueService backs GET /api/v1/connectors. It enumerates
@@ -105,7 +109,7 @@ func (s *AccessConnectorCatalogueService) ListCatalogue(ctx context.Context, q C
 			entry.ConnectorID = row.ID.String()
 			entry.Status = row.Status
 		}
-		if q.ConnectedOnly && !entry.Connected {
+		if q.Connected != nil && *q.Connected != entry.Connected {
 			continue
 		}
 		out = append(out, entry)
@@ -168,7 +172,7 @@ func (s *AccessConnectorCatalogueService) CatalogueEntryFor(ctx context.Context,
 }
 
 // matchesCatalogueFilter reports whether a descriptor satisfies every non-empty
-// filter in q (the filters are ANDed). The Connected/ConnectedOnly dimension is
+// filter in q (the filters are ANDed). The Connected dimension is
 // applied by the caller after enrichment, so it is not handled here.
 func matchesCatalogueFilter(d CapabilityDescriptor, q ConnectorCatalogueQuery) bool {
 	if q.Capability != "" && !d.HasCapability(q.Capability) {

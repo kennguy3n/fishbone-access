@@ -92,7 +92,10 @@ func (h *connectorHandlers) listCatalogue(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid connected filter (want true/false)"})
 			return
 		}
-		q.ConnectedOnly = v
+		// Tri-state: connected=true → connected-only, connected=false →
+		// disconnected-only, omitted → all. A pointer is required so false is
+		// distinguishable from the omitted/zero-value case.
+		q.Connected = &v
 	}
 	entries, err := h.catalogue.ListCatalogue(c.Request.Context(), q)
 	if err != nil {

@@ -240,6 +240,14 @@ function SetupPlanView({ plan }: { plan: ConnectorSetupPlan }) {
                       </td>
                       <td>
                         <code>{m.target}</code>
+                        {m.invert && (
+                          <Badge tone="warn">
+                            {intl.formatMessage({
+                              id: "connectorSetup.plan.inverted",
+                              defaultMessage: "inverted",
+                            })}
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   ))}

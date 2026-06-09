@@ -598,6 +598,9 @@ export interface ConnectorCatalogueFilter {
 export interface ConnectorSetupFieldMapping {
   source: string;
   target: string;
+  /** True when the source boolean has opposite polarity to the target (e.g.
+   * Google `suspended` → platform `active`) and must be negated on sync. */
+  invert?: boolean;
 }
 
 export interface ConnectorSetupStep {

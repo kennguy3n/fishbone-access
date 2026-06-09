@@ -75,6 +75,42 @@ func TestConnectorCatalogueInvalidConnectedFilter(t *testing.T) {
 	}
 }
 
+// TestConnectorCatalogueConnectedFilterTriState asserts the connected= filter
+// is tri-state: omitted returns the full catalogue, connected=false returns
+// only disconnected providers, and connected=true returns only connected ones.
+// With no DB every provider is disconnected, so connected=false must return the
+// full catalogue (not a no-op) and connected=true must return nothing — this is
+// the regression guard for connected=false having been silently ignored.
+func TestConnectorCatalogueConnectedFilterTriState(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+	full := len(access.ListCapabilityDescriptors())
+
+	list := func(query string) []access.ConnectorCatalogueEntry {
+		t.Helper()
+		w := do(t, r, http.MethodGet, "/api/v1/connectors"+query, "tok-a", nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("list%s status = %d, body=%s", query, w.Code, w.Body.String())
+		}
+		var body struct {
+			Connectors []access.ConnectorCatalogueEntry `json:"connectors"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		return body.Connectors
+	}
+
+	if got := len(list("?connected=false")); got != full {
+		t.Fatalf("connected=false returned %d entries, want all %d (none are connected)", got, full)
+	}
+	if got := len(list("?connected=true")); got != 0 {
+		t.Fatalf("connected=true returned %d entries, want 0 (none are connected)", got)
+	}
+	if got := len(list("")); got != full {
+		t.Fatalf("omitted filter returned %d entries, want all %d", got, full)
+	}
+}
+
 // TestConnectorCatalogueDetail asserts the provider-keyed detail endpoint
 // returns the descriptor for a known provider and 404s an unknown one.
 func TestConnectorCatalogueDetail(t *testing.T) {

@@ -77,7 +77,11 @@ STRATEGY_PROFILE: dict[str, dict[str, Any]] = {
             {"source": "primaryEmail", "target": "email"},
             {"source": "id", "target": "external_id"},
             {"source": "name.fullName", "target": "display_name"},
-            {"source": "suspended", "target": "active"},
+            # Directory API `suspended` has inverted polarity vs the platform's
+            # `active` (suspended=true ⇒ active=false), so the mapping must be
+            # flagged invert so the connector negates it instead of copying it
+            # straight through.
+            {"source": "suspended", "target": "active", "invert": True},
         ],
         "pitfalls": [
             "Skipping domain-wide delegation authorization in the Admin console — the service account can authenticate but reads zero users.",
