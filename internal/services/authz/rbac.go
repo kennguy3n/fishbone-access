@@ -46,8 +46,10 @@ type WorkspaceRole string
 
 const (
 	// RoleOwner holds every Permission AND the owner-only actions
-	// (workspace lifecycle, ownership transfer). Exactly one owner per
-	// workspace, enforced at the service layer in RBACService.
+	// (workspace lifecycle, ownership transfer). A workspace may have more
+	// than one owner (co-owners); the service enforces that AT LEAST ONE
+	// owner always remains (the last-owner guard in RBACService) and that
+	// only an owner may promote to — or modify — an owner.
 	RoleOwner WorkspaceRole = "owner"
 
 	// RoleAdmin holds every Permission EXCEPT the owner-only set. Manages

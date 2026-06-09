@@ -662,12 +662,6 @@ export const assignRbacMember = (userId: string, role: string) =>
     data: { role },
   });
 
-export const removeRbacMember = (userId: string) =>
-  call<void>({
-    url: `/rbac/members/${encodeURIComponent(userId)}`,
-    method: "DELETE",
-  });
-
 export function useRbacRoles(
   options?: Partial<UseQueryOptions<RbacCatalog, ApiError>>,
 ) {
@@ -692,11 +686,5 @@ export function useRbacMembers(
 export function useAssignRbacMember() {
   return useMutation<RbacMember, ApiError, { userId: string; role: string }>({
     mutationFn: ({ userId, role }) => assignRbacMember(userId, role),
-  });
-}
-
-export function useRemoveRbacMember() {
-  return useMutation<void, ApiError, string>({
-    mutationFn: (userId) => removeRbacMember(userId),
   });
 }
