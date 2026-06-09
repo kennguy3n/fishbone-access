@@ -7,6 +7,12 @@
 // Register is a no-op, so a plain `go build` / `go test` needs no prebuilt UI.
 // Production images run `npm run build` (which emits to internal/webui/dist)
 // and then `go build -tags embed_ui ./cmd/ztna-api`.
+//
+// Runtime config: the SPA reads window.__SNG_CONFIG__ from /config.js, which is
+// embedded with safe same-origin defaults (apiBaseUrl "/api/v1", authMode
+// "jwt"). To enable OIDC (or point at a non-same-origin API) without rebuilding
+// the bundle, a deploy overwrites that single asset at start time — the same
+// pattern the static nginx image uses (ui/public/config.js is the template).
 package webui
 
 import (
@@ -30,6 +36,7 @@ func Enabled() bool { return Assets != nil }
 func reserved(p string) bool {
 	return p == "/health" ||
 		p == "/readyz" ||
+		p == "/api" ||
 		strings.HasPrefix(p, "/api/")
 }
 
@@ -64,6 +71,14 @@ func Register(r *gin.Engine) {
 				info, statErr := f.Stat()
 				_ = f.Close()
 				if statErr == nil && !info.IsDir() {
+					// index.html (even when requested directly) must go through
+					// serveIndex so it carries Cache-Control: no-cache; the
+					// file server would serve it cacheable (embed.FS has no
+					// modtime), risking a stale shell pointing at 404'd bundles.
+					if name == "index.html" {
+						serveIndex(c)
+						return
+					}
 					fileServer.ServeHTTP(c.Writer, req)
 					return
 				}
