@@ -27,6 +27,7 @@ type RequestState = string
 // plain TEXT default of "requested").
 const (
 	StateRequested       RequestState = "requested"
+	StateAIReviewed      RequestState = "ai_reviewed"
 	StateApproved        RequestState = "approved"
 	StateDenied          RequestState = "denied"
 	StateCancelled       RequestState = "cancelled"
@@ -46,17 +47,33 @@ var ErrInvalidStateTransition = errors.New("lifecycle: invalid request state tra
 // allowedTransitions is the single source of truth for the request lifecycle.
 // Keys are "from" states; values are the set of legal "to" states.
 //
-//	requested        → approved | denied | cancelled
+//	requested        → ai_reviewed | approved | denied | cancelled
+//	ai_reviewed      → approved | denied | cancelled
 //	approved         → provisioning | cancelled
 //	provisioning     → provisioned | provision_failed
 //	provision_failed → provisioning              (operator-initiated retry)
 //	provisioned      → active
 //	active           → revoked | expired
 //
+// ai_reviewed is the audited "AI risk review complete" state the
+// RiskReviewService moves a request into once a risk verdict is persisted; the
+// canonical elevation path is requested → ai_reviewed → approved/denied →
+// provisioning → provisioned → active → expired. The direct requested →
+// approved/denied/cancelled edges are retained so internal callers that do not
+// run the AI gate (the JML provisioning lane, the async workflow engine) and
+// pre-existing requests keep working unchanged; approve/deny are therefore
+// legal from both requested and ai_reviewed.
+//
 // Terminal states (denied, cancelled, revoked, expired) have no outgoing
 // edges and are reported by IsTerminalState via their absence here.
 var allowedTransitions = map[RequestState]map[RequestState]struct{}{
 	StateRequested: {
+		StateAIReviewed: {},
+		StateApproved:   {},
+		StateDenied:     {},
+		StateCancelled:  {},
+	},
+	StateAIReviewed: {
 		StateApproved:  {},
 		StateDenied:    {},
 		StateCancelled: {},

@@ -2601,3 +2601,37 @@ label.field > span {
   max-height: 220px;
   overflow-y: auto;
 }
+
+/* --- WS5: AI risk review surface --------------------------------------- */
+
+.risk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.risk-panel__degraded {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  color: var(--text);
+  font-size: 13px;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.anomaly-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anomaly-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}

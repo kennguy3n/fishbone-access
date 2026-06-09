@@ -333,6 +333,8 @@ func All() []any {
 		&AccessJob{},
 		&AccessRequest{},
 		&AccessRequestStateHistory{},
+		&AccessRiskVerdict{},
+		&AccessRequestAnomalyFlag{},
 		&AccessGrant{},
 		&AccessReview{},
 		&AccessReviewItem{},

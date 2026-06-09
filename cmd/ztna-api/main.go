@@ -35,6 +35,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
@@ -103,6 +104,19 @@ func run() error {
 		return fmt.Errorf("credential encryptor init: %w", err)
 	}
 	deps.Encryptor = enc
+
+	// AI client (mTLS A2A) for the lifecycle risk review baked into the
+	// elevation request flow. NewAIClientFromEnv returns an unconfigured client
+	// (→ fail-open deterministic "needs review" fallback) when no agent is set,
+	// and errors only on a half-configured mTLS setup (fatal misconfiguration).
+	ai, err := aiclient.NewAIClientFromEnv()
+	if err != nil {
+		return fmt.Errorf("ai client init: %w", err)
+	}
+	if !ai.Configured() {
+		logger.Warnf(ctx, "ztna-api: AI agent not configured; risk review uses fail-open deterministic fallback")
+	}
+	deps.AI = ai
 
 	// The iam-core management client disables (blocks) users for the leaver
 	// kill switch (layer 3). It is wired only when the management credentials

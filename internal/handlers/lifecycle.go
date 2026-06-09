@@ -6,11 +6,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -24,16 +27,17 @@ import (
 // actor from the validated token subject — never from client-supplied input —
 // so a caller cannot operate on another tenant's data or spoof an actor.
 type lifecycleHandlers struct {
-	requests *lifecycle.AccessRequestService
-	workflow *lifecycle.WorkflowService
-	policies *lifecycle.PolicyService
-	prov     *lifecycle.AccessProvisioningService
-	reviews  *lifecycle.ReviewService
-	jml      *lifecycle.JMLService
-	orphans  *lifecycle.OrphanReconciler
-	expiry   *lifecycle.ExpiryEnforcer
-	sso      *lifecycle.SSOEnforcementChecker
-	packs    *packs.ApplyService
+	requests   *lifecycle.AccessRequestService
+	workflow   *lifecycle.WorkflowService
+	riskReview *lifecycle.RiskReviewService
+	policies   *lifecycle.PolicyService
+	prov       *lifecycle.AccessProvisioningService
+	reviews    *lifecycle.ReviewService
+	jml        *lifecycle.JMLService
+	orphans    *lifecycle.OrphanReconciler
+	expiry     *lifecycle.ExpiryEnforcer
+	sso        *lifecycle.SSOEnforcementChecker
+	packs      *packs.ApplyService
 }
 
 // newLifecycleHandlers wires the lifecycle services off the shared DB pool, the
@@ -46,17 +50,26 @@ func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 	workflow := lifecycle.NewWorkflowService(requests)
 	prov := lifecycle.NewAccessProvisioningService(db, requests, resolver)
 	policies := lifecycle.NewPolicyService(db)
+	// The risk review needs a non-nil client; substitute an unconfigured one
+	// (→ ErrAIUnconfigured → fail-open deterministic fallback) when no agent is
+	// wired, so a degraded boot scores requests "needs human review" rather than
+	// panicking on a nil client.
+	ai := deps.AI
+	if ai == nil {
+		ai = aiclient.NewAIClient("", nil, "")
+	}
 	return &lifecycleHandlers{
-		requests: requests,
-		workflow: workflow,
-		policies: policies,
-		prov:     prov,
-		reviews:  lifecycle.NewReviewService(db, prov),
-		jml:      lifecycle.NewJMLService(db, requests, workflow, prov, resolver, deps.Disabler),
-		orphans:  lifecycle.NewOrphanReconciler(db, resolver),
-		expiry:   lifecycle.NewExpiryEnforcer(db, prov),
-		sso:      lifecycle.NewSSOEnforcementChecker(db, resolver),
-		packs:    packs.NewApplyService(policies),
+		requests:   requests,
+		workflow:   workflow,
+		riskReview: lifecycle.NewRiskReviewService(db, requests, ai),
+		policies:   policies,
+		prov:       prov,
+		reviews:    lifecycle.NewReviewService(db, prov),
+		jml:        lifecycle.NewJMLService(db, requests, workflow, prov, resolver, deps.Disabler),
+		orphans:    lifecycle.NewOrphanReconciler(db, resolver),
+		expiry:     lifecycle.NewExpiryEnforcer(db, prov),
+		sso:        lifecycle.NewSSOEnforcementChecker(db, resolver),
+		packs:      packs.NewApplyService(policies),
 	}
 }
 
@@ -134,14 +147,21 @@ func stepUpGate(verifier mfa.MFAVerifier, scope string) gin.HandlerFunc {
 
 // --- access requests ---
 
+// createRequestBody is the elevation-request submission. Risk is NEVER accepted
+// from the client: the server-side AI risk review derives the verdict. The
+// optional resource_tags / duration_hours are advisory model-input signals that
+// can only raise the assessed risk (a "sensitive" tag forces security review),
+// so they cannot be used to dodge review.
 type createRequestBody struct {
-	TargetUserID  string     `json:"target_user_id" binding:"required"`
+	// TargetUserID is optional: an omitted target means a self-service
+	// elevation and the service defaults it to the authenticated requester.
+	TargetUserID  string     `json:"target_user_id"`
 	ConnectorID   *uuid.UUID `json:"connector_id"`
 	ResourceRef   string     `json:"resource_ref" binding:"required"`
-	Role          string     `json:"role"`
+	Role          string     `json:"role" binding:"required"`
 	Justification string     `json:"justification"`
-	RiskLevel     string     `json:"risk_level"`
-	RiskFactors   []string   `json:"risk_factors"`
+	ResourceTags  []string   `json:"resource_tags"`
+	DurationHours int        `json:"duration_hours"`
 }
 
 func (h *lifecycleHandlers) createRequest(c *gin.Context) {
@@ -161,16 +181,40 @@ func (h *lifecycleHandlers) createRequest(c *gin.Context) {
 		ResourceRef:   body.ResourceRef,
 		Role:          body.Role,
 		Justification: body.Justification,
-		RiskLevel:     body.RiskLevel,
-		RiskFactors:   body.RiskFactors,
+		// RiskLevel/RiskFactors intentionally omitted: the AI review below is the
+		// sole source of the request's risk, so a client cannot self-assert a low
+		// score to fast-track a privileged grant.
 	})
 	if err != nil {
 		h.fail(c, err)
 		return
 	}
-	// Risk-based routing: low-risk auto-approves, otherwise the request is
-	// parked for the appropriate human gate. A workflow failure must not lose
-	// the already-created request, so surface the decision best-effort.
+
+	// First-class, audited AI risk gate: score the request server-side, persist
+	// the verdict (+ inputs + rationale) for audit, and move it
+	// requested → ai_reviewed. Fail-OPEN — an unreachable agent yields a
+	// medium/needs_review verdict rather than blocking — but a hard persistence
+	// failure must surface, so the request does not silently skip the gate.
+	review, rerr := h.riskReview.ReviewRequest(c.Request.Context(), lifecycle.RiskReviewInput{
+		WorkspaceID:   ws,
+		RequestID:     req.ID,
+		Actor:         actor(c),
+		Role:          body.Role,
+		ResourceRef:   body.ResourceRef,
+		Justification: body.Justification,
+		ResourceTags:  body.ResourceTags,
+		DurationHours: body.DurationHours,
+	})
+	if rerr != nil {
+		h.fail(c, rerr)
+		return
+	}
+	req = review.Request
+
+	// Risk-based routing on the AI-derived verdict: an auto_approve_eligible
+	// (low) request fast-tracks to approved; medium/high stay parked in
+	// ai_reviewed for the manager / security gate. A routing failure must not
+	// lose the reviewed request, so surface the decision best-effort.
 	decision, werr := h.workflow.ExecuteWorkflow(c.Request.Context(), ws, req, actor(c))
 	if werr != nil {
 		logger.Warnf(c.Request.Context(), "lifecycle: workflow routing for request %s: %v", req.ID, werr)
@@ -179,7 +223,35 @@ func (h *lifecycleHandlers) createRequest(c *gin.Context) {
 	if updated, gerr := h.requests.GetRequest(c.Request.Context(), ws, req.ID); gerr == nil {
 		req = updated
 	}
-	c.JSON(http.StatusCreated, gin.H{"request": req, "workflow": decision})
+	// A fast-tracked (auto-approved) elevation is fed to the anomaly skill so
+	// any flags surface on the request + in access reviews (advisory, fail-open).
+	if decision.Approved {
+		h.runAnomalyHook(c, ws, req)
+	}
+	c.JSON(http.StatusCreated, gin.H{"request": req, "risk": review.Verdict, "workflow": decision})
+}
+
+// anomalyHookTimeout bounds the out-of-band anomaly-detection round trip + flag
+// persistence so a slow or unreachable agent can never leak the detached
+// goroutine. It sits comfortably above the aiclient request timeout.
+const anomalyHookTimeout = 30 * time.Second
+
+// runAnomalyHook feeds a just-approved elevation to the anomaly-detection skill
+// and persists any flags. It is advisory and fail-open, so it must never add
+// latency to the approval response or block on the AI round trip: the work runs
+// in a detached goroutine on a context that survives the request
+// (context.WithoutCancel keeps request-scoped values but drops cancellation)
+// and is bounded by anomalyHookTimeout. Any failure is only logged; a flag
+// never changes the request's FSM state, so this can neither block nor reverse
+// the approval.
+func (h *lifecycleHandlers) runAnomalyHook(c *gin.Context, ws uuid.UUID, req *models.AccessRequest) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), anomalyHookTimeout)
+	go func() {
+		defer cancel()
+		if err := h.riskReview.RecordApprovalAnomalies(ctx, ws, req, nil); err != nil {
+			logger.Warnf(ctx, "lifecycle: anomaly hook for request %s: %v", req.ID, err)
+		}
+	}()
 }
 
 func (h *lifecycleHandlers) listRequests(c *gin.Context) {
@@ -209,7 +281,18 @@ func (h *lifecycleHandlers) getRequest(c *gin.Context) {
 		h.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"request": req})
+	// Surface the AI verdict + any anomaly flags so the approver view shows the
+	// rationale and risk factors alongside the request. Both are best-effort:
+	// a request created before WS5 has no verdict (omitted), and the flag list
+	// is simply empty when none were detected.
+	resp := gin.H{"request": req}
+	if verdict, verr := h.riskReview.LatestVerdict(c.Request.Context(), ws, id); verr == nil {
+		resp["risk"] = verdict
+	}
+	if flags, ferr := h.riskReview.ListAnomalyFlags(c.Request.Context(), ws, id); ferr == nil && len(flags) > 0 {
+		resp["anomalies"] = flags
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *lifecycleHandlers) requestHistory(c *gin.Context) {
@@ -236,8 +319,50 @@ type decisionBody struct {
 // transitionFn is the shared shape of Approve/Deny/CancelRequest.
 type transitionFn func(ctx context.Context, workspaceID, requestID uuid.UUID, actor, reason string) error
 
+// approveRequest approves an elevation. High-risk requests (AI verdict →
+// high_risk: a high score or a sensitive-resource factor) require step-up MFA:
+// the gate is fail-CLOSED, so an approver whose token does not carry a
+// satisfied MFA claim is rejected 403 and the request stays parked. The AI
+// recommendation never silently auto-approves a high-risk request here — a
+// human with elevated assurance must act. After a successful approval the
+// elevation is fed to the anomaly skill (advisory, fail-open).
 func (h *lifecycleHandlers) approveRequest(c *gin.Context) {
-	h.requestTransition(c, h.requests.ApproveRequest)
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var body decisionBody
+	if !bindOptional(c, &body) {
+		return
+	}
+	req, err := h.requests.GetRequest(c.Request.Context(), ws, id)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	if lifecycle.RequiresStepUp(req) && !mfaSatisfied(c) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"error":            "step-up MFA required to approve a high-risk request",
+			"step_up_required": true,
+			"recommendation":   lifecycle.RecommendationHighRisk,
+		})
+		return
+	}
+	if err := h.requests.ApproveRequest(c.Request.Context(), ws, id, actor(c), body.Reason); err != nil {
+		h.fail(c, err)
+		return
+	}
+	approved, err := h.requests.GetRequest(c.Request.Context(), ws, id)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	h.runAnomalyHook(c, ws, approved)
+	c.JSON(http.StatusOK, gin.H{"request": approved})
 }
 
 func (h *lifecycleHandlers) denyRequest(c *gin.Context) {
@@ -736,6 +861,16 @@ func actor(c *gin.Context) string {
 		return claims.Subject
 	}
 	return ""
+}
+
+// mfaSatisfied reports whether the validated token carries a satisfied step-up
+// MFA claim. It reads the verified claims (never client input), so the
+// high-risk approval gate cannot be spoofed from the request body.
+func mfaSatisfied(c *gin.Context) bool {
+	if claims := middleware.ClaimsFromContext(c); claims != nil {
+		return claims.MFASatisfied
+	}
+	return false
 }
 
 func pathUUID(c *gin.Context, name string) (uuid.UUID, bool) {
