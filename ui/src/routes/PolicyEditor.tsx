@@ -357,6 +357,14 @@ export function PolicyEditor() {
               : { impact: zeroImpact(), conflicts: err.conflicts! },
           );
         }
+        // A 409 can arrive on the retry *after* a successful step-up (a
+        // concurrent promotion introduced new conflicts), so the MFA modal may
+        // still be open. Close it before opening the override modal so the two
+        // never stack — the mirror of the step-up handler below, which closes
+        // the override modal before opening MFA.
+        setMfaOpen(false);
+        setMfaCode("");
+        setMfaError(null);
         setOverrideOpen(true);
         return;
       }
