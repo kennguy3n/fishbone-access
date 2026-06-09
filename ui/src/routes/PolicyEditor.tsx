@@ -15,10 +15,20 @@ import {
   type PolicyAction,
   type PolicyConflict,
   type PolicyDefinition,
+  type PromoteInput,
   type SimulationResult,
   ApiError,
 } from "@/api/access";
 import { formatDateTime } from "@/lib/format";
+
+// The promote route is gated by RequireStepUpMFA. A missing assertion comes
+// back as 400 ("step-up MFA assertion required"); a wrong/replayed code as 403
+// ("step-up MFA verification failed"). We branch on status + message so an
+// unrelated 400/403 (e.g. validation) still surfaces as a plain error.
+const isStepUpRequired = (err: ApiError) =>
+  err.status === 400 && /step-up mfa/i.test(err.message);
+const isStepUpFailed = (err: ApiError) =>
+  err.status === 403 && /step-up mfa/i.test(err.message);
 
 // Subject/resource entry prefixes the operator can pick from. The backend
 // treats these as opaque refs (cartesian product of subjects × resources); the
@@ -199,6 +209,17 @@ export function PolicyEditor() {
   const [sim, setSim] = useState<SimulationResult | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
+  // Step-up MFA prompt: the promote route is gated by RequireStepUpMFA, so a
+  // promotion with no fresh assertion returns 400 and we collect a TOTP code
+  // here. pendingPromote remembers the conflict-override context so the retry
+  // carries the same force/reason as the original attempt.
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [pendingPromote, setPendingPromote] = useState<{
+    force: boolean;
+    reason?: string;
+  }>({ force: false });
 
   // Hydrate the form from the loaded policy once (and whenever the server's
   // version changes, e.g. after a save), but only when the user hasn't got
@@ -287,11 +308,21 @@ export function PolicyEditor() {
     }
   };
 
-  const promote = async (force = false, reason?: string) => {
+  const promote = async (
+    force = false,
+    reason?: string,
+    mfaAssertion?: string,
+  ) => {
     if (!policyId) return;
     try {
+      const input: PromoteInput = {};
+      if (force) {
+        input.force = true;
+        input.reason = reason;
+      }
+      if (mfaAssertion) input.mfaAssertion = mfaAssertion;
       await promoteMut.mutateAsync(
-        force ? { force: true, reason } : undefined,
+        Object.keys(input).length > 0 ? input : undefined,
       );
       toast.success(
         "Policy promoted",
@@ -301,6 +332,9 @@ export function PolicyEditor() {
       );
       setOverrideOpen(false);
       setOverrideReason("");
+      setMfaOpen(false);
+      setMfaCode("");
+      setMfaError(null);
       navigate({ to: "/policies/$policyId", params: { policyId } });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -317,8 +351,33 @@ export function PolicyEditor() {
         setOverrideOpen(true);
         return;
       }
+      if (err instanceof ApiError && isStepUpRequired(err)) {
+        // The high-risk promote needs a fresh step-up assertion. Remember the
+        // (force, reason) context so the modal's retry matches this attempt,
+        // then prompt for the TOTP code.
+        setPendingPromote({ force, reason });
+        setMfaError(null);
+        setMfaCode("");
+        setMfaOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && isStepUpFailed(err)) {
+        // Wrong or replayed code: keep the prompt open for another attempt and
+        // surface why the last one was rejected.
+        setPendingPromote({ force, reason });
+        setMfaError(err.message);
+        setMfaCode("");
+        setMfaOpen(true);
+        return;
+      }
       toast.error("Could not promote", errMessage(err));
     }
+  };
+
+  const submitMfa = () => {
+    const code = mfaCode.trim();
+    if (!code) return;
+    void promote(pendingPromote.force, pendingPromote.reason, code);
   };
 
   const archive = async () => {
@@ -679,6 +738,60 @@ export function PolicyEditor() {
               onChange={(e) => setOverrideReason(e.target.value)}
             />
           </label>
+        </Modal>
+      )}
+
+      {mfaOpen && (
+        <Modal
+          title="Confirm with step-up MFA"
+          onClose={() => setMfaOpen(false)}
+          footer={
+            <>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setMfaOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn--primary"
+                disabled={mfaCode.trim().length < 6 || promoteMut.isPending}
+                onClick={submitMfa}
+              >
+                {promoteMut.isPending ? <Spinner /> : "Verify and promote"}
+              </button>
+            </>
+          }
+        >
+          <p>
+            Promoting a policy is a high-risk action and requires a fresh
+            multi-factor confirmation. Enter the current 6-digit code from your
+            authenticator app.
+          </p>
+          <label className="field">
+            <span>Authentication code</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={mfaCode}
+              placeholder="123456"
+              autoFocus
+              onChange={(e) =>
+                setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && mfaCode.trim().length >= 6) submitMfa();
+              }}
+            />
+          </label>
+          {mfaError && (
+            <p className="muted" style={{ marginTop: 8, color: "var(--danger)" }}>
+              {mfaError}
+            </p>
+          )}
         </Modal>
       )}
     </>
