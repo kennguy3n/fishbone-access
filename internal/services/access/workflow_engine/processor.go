@@ -11,6 +11,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 )
 
@@ -37,6 +38,19 @@ type grantLookup interface {
 	GetGrant(ctx context.Context, workspaceID, grantID uuid.UUID) (*models.AccessGrant, error)
 }
 
+// workflowExecutor runs a published JML workflow live for a single subject.
+// *workflow.Service satisfies it. The processor drives it for the asynchronous
+// JobTypeWorkflowRun path; the manual "run now" API calls the same method
+// synchronously.
+type workflowExecutor interface {
+	Run(ctx context.Context, workspaceID, id uuid.UUID, subject workflow.Subject, actor string, deps workflow.StepDeps) (*workflow.RunResult, error)
+}
+
+// stepDepsFactory builds the executor's step dependencies for one run, bound to
+// the run's workspace + actor. Injected so the processor needs no direct
+// knowledge of the concrete lifecycle services or the DB pool.
+type stepDepsFactory func(workspaceID uuid.UUID, actor string) workflow.StepDeps
+
 // ProcessorDeps wires the job processor to the lifecycle services, the grant
 // lookup, and the AI client. JML, Provisioner, and Reviews are required to
 // process their respective job types; Grants and AI back the review sweep (AI
@@ -48,6 +62,10 @@ type ProcessorDeps struct {
 	Reviews     reviewRunner
 	Grants      grantLookup
 	AI          *aiclient.AIClient
+	// Workflows + WorkflowDeps back JobTypeWorkflowRun (the no-code JML builder's
+	// asynchronous execution path). Both are required together.
+	Workflows    workflowExecutor
+	WorkflowDeps stepDepsFactory
 }
 
 // JobProcessor implements workers.Processor for the workflow job types. It is
@@ -55,11 +73,13 @@ type ProcessorDeps struct {
 // after a worker restart (or a retry after a transient failure) is safe to run
 // again.
 type JobProcessor struct {
-	jml         jmlRunner
-	provisioner provisionRunner
-	reviews     reviewRunner
-	grants      grantLookup
-	ai          *aiclient.AIClient
+	jml          jmlRunner
+	provisioner  provisionRunner
+	reviews      reviewRunner
+	grants       grantLookup
+	ai           *aiclient.AIClient
+	workflows    workflowExecutor
+	workflowDeps stepDepsFactory
 }
 
 // NewJobProcessor validates its dependencies and returns the processor.
@@ -76,12 +96,20 @@ func NewJobProcessor(d ProcessorDeps) (*JobProcessor, error) {
 	if d.Grants == nil {
 		return nil, fmt.Errorf("workflow_engine: Grants lookup is required")
 	}
+	if d.Workflows == nil {
+		return nil, fmt.Errorf("workflow_engine: Workflows executor is required")
+	}
+	if d.WorkflowDeps == nil {
+		return nil, fmt.Errorf("workflow_engine: WorkflowDeps factory is required")
+	}
 	return &JobProcessor{
-		jml:         d.JML,
-		provisioner: d.Provisioner,
-		reviews:     d.Reviews,
-		grants:      d.Grants,
-		ai:          d.AI,
+		jml:          d.JML,
+		provisioner:  d.Provisioner,
+		reviews:      d.Reviews,
+		grants:       d.Grants,
+		ai:           d.AI,
+		workflows:    d.Workflows,
+		workflowDeps: d.WorkflowDeps,
 	}, nil
 }
 
@@ -96,6 +124,8 @@ func (p *JobProcessor) Process(ctx context.Context, job workers.Job) error {
 		return p.handleProvision(ctx, job)
 	case JobTypeReviewSweep:
 		return p.handleReviewSweep(ctx, job)
+	case JobTypeWorkflowRun:
+		return p.handleWorkflowRun(ctx, job)
 	default:
 		return fmt.Errorf("workflow_engine: job %s: unknown job type %q", job.ID, job.Type)
 	}
@@ -206,6 +236,39 @@ func (p *JobProcessor) decideReviewItem(ctx context.Context, workspaceID, review
 	if err := p.reviews.SubmitDecision(ctx, workspaceID, reviewID, item.ID, decision, actor, reason); err != nil {
 		logger.Warnf(ctx, "workflow_engine: review item %s: submit %q failed, leaving pending: %v", item.ID, decision, err)
 	}
+}
+
+// handleWorkflowRun executes a published JML workflow live for the payload's
+// subject. It builds the step dependencies bound to the run's workspace + actor
+// and drives the same Service.Run the manual API uses. A run that completes but
+// has any step failure (StatusFailed when every step failed, StatusPartial when
+// only some did) returns an error so the job retries (every step is
+// idempotent); Service.Run also persists a workflow_runs row for the dashboard.
+// Retrying on StatusPartial is essential for a leaver: a kill switch whose
+// session-revoke succeeds but SCIM-deprovision fails must not be marked done,
+// which would leave the user partially offboarded.
+func (p *JobProcessor) handleWorkflowRun(ctx context.Context, job workers.Job) error {
+	var payload workflowRunPayload
+	if err := json.Unmarshal(job.Payload, &payload); err != nil {
+		return fmt.Errorf("workflow_engine: job %s: decode workflow-run payload: %w", job.ID, err)
+	}
+	workspaceID, err := uuid.Parse(payload.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("workflow_engine: job %s: invalid workspace_id: %w", job.ID, err)
+	}
+	workflowID, err := uuid.Parse(payload.WorkflowID)
+	if err != nil {
+		return fmt.Errorf("workflow_engine: job %s: invalid workflow_id: %w", job.ID, err)
+	}
+	deps := p.workflowDeps(workspaceID, payload.Actor)
+	result, err := p.workflows.Run(ctx, workspaceID, workflowID, payload.Subject, payload.Actor, deps)
+	if err != nil {
+		return fmt.Errorf("workflow_engine: job %s: run workflow %s: %w", job.ID, workflowID, err)
+	}
+	if result != nil && (result.Status == workflow.StatusFailed || result.Status == workflow.StatusPartial) {
+		return fmt.Errorf("workflow_engine: job %s: workflow %s run %s had step failures", job.ID, workflowID, result.RunID)
+	}
+	return nil
 }
 
 // Ensure JobProcessor satisfies the worker contract at compile time.

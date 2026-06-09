@@ -25,6 +25,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/google/uuid"
+
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
@@ -33,6 +35,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 
 	// Blank-import connectors so the provisioning + leaver paths can dispatch to
@@ -133,12 +136,21 @@ func run() error {
 		return err
 	}
 
+	// The no-code JML workflow builder's asynchronous execution path: the engine
+	// runs published workflows via the same Service.Run the manual API uses,
+	// building step dependencies bound to each run's workspace + actor.
+	wfSvc := workflow.NewService(gdb)
+	wfStepSvcs := workflow.StepServices{Requests: reqSvc, Prov: prov, Reviews: reviewSvc, JML: jmlSvc}
 	processor, err := workflow_engine.NewJobProcessor(workflow_engine.ProcessorDeps{
 		JML:         jmlSvc,
 		Provisioner: prov,
 		Reviews:     reviewSvc,
 		Grants:      workflow_engine.NewGormGrantLookup(gdb),
 		AI:          ai,
+		Workflows:   wfSvc,
+		WorkflowDeps: func(ws uuid.UUID, actor string) workflow.StepDeps {
+			return workflow.BuildStepDeps(gdb, wfStepSvcs, ws, actor)
+		},
 	})
 	if err != nil {
 		return err
