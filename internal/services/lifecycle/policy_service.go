@@ -224,6 +224,14 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 		// its nil clear with impact computed from the now-stale definition —
 		// falsely marking a since-edited draft as "simulated" and letting it
 		// pass Promote's simulate-before-rollout gate.
+		//
+		// Lock-ordering invariant: this transaction takes only the row lock and
+		// never the per-workspace advisory lock (it does not appendAudit), so it
+		// cannot form a cycle with Promote/Archive/UpdateDraft, which take the
+		// advisory lock before the row lock. If you ever add an appendAudit (or
+		// any other lockWorkspace caller) inside this transaction, you MUST take
+		// lockWorkspace at the top first — otherwise this becomes row→advisory
+		// while Promote is advisory→row, reintroducing the AB/BA deadlock.
 		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 			if err != nil {
