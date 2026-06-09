@@ -422,6 +422,15 @@ func (h *complianceHandlers) exportPack(c *gin.Context) {
 		return
 	}
 
+	// The pack is fully written to the temp file, so its exact size is known.
+	// Advertise it as Content-Length (instead of falling back to chunked
+	// transfer encoding) so clients can show download progress for large
+	// multi-year evidence packs.
+	info, err := tmp.Stat()
+	if err != nil {
+		failCompliance(c, err)
+		return
+	}
 	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
 		failCompliance(c, err)
 		return
@@ -431,6 +440,7 @@ func (h *complianceHandlers) exportPack(c *gin.Context) {
 	// text/plain. Set before WriteHeader so it is not sniffed from the payload.
 	c.Header("Content-Type", "application/zip")
 	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	c.Header("Content-Length", strconv.FormatInt(info.Size(), 10))
 	c.Header("X-Evidence-Pack-Digest", manifest.ContentSHA256)
 	c.Status(http.StatusOK)
 	if _, err := io.Copy(c.Writer, tmp); err != nil {

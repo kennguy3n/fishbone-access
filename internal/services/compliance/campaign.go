@@ -399,10 +399,12 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 }
 
 // EnforceOverdue stamps overdue_at on every running campaign that is past its
-// due date and still has pending items, appending a certification.campaign.overdue
-// evidence event exactly once per campaign. It is safe to call repeatedly (a
-// scheduled sweep): campaigns already stamped are skipped. Returns the number
-// newly marked overdue.
+// due date and still has OPEN items, appending a certification.campaign.overdue
+// evidence event exactly once per campaign. An item is open if it lacks a
+// terminal decision: both pending and escalated count, because escalation is an
+// intermediate state that still needs resolving to certify/revoke. It is safe to
+// call repeatedly (a scheduled sweep): campaigns already stamped are skipped.
+// Returns the number newly marked overdue.
 func (s *CertificationService) EnforceOverdue(ctx context.Context, workspaceID uuid.UUID) (int, error) {
 	now := s.now().UTC()
 	var campaigns []models.CertificationCampaign
@@ -416,14 +418,15 @@ func (s *CertificationService) EnforceOverdue(ctx context.Context, workspaceID u
 	marked := 0
 	for i := range campaigns {
 		c := campaigns[i]
-		var pending int64
+		var open int64
 		if err := s.db.WithContext(ctx).Model(&models.CertificationItem{}).
-			Where("workspace_id = ? AND campaign_id = ? AND decision = ?", workspaceID, c.ID, models.CertificationDecisionPending).
-			Count(&pending).Error; err != nil {
-			return marked, fmt.Errorf("compliance: count pending items: %w", err)
+			Where("workspace_id = ? AND campaign_id = ? AND decision IN ?", workspaceID, c.ID,
+				[]string{models.CertificationDecisionPending, models.CertificationDecisionEscalate}).
+			Count(&open).Error; err != nil {
+			return marked, fmt.Errorf("compliance: count open items: %w", err)
 		}
-		if pending == 0 {
-			continue // fully decided; not overdue even if past due
+		if open == 0 {
+			continue // every item carries a terminal decision; not overdue even if past due
 		}
 		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			// Re-check under the row lock so two sweeps don't both stamp + audit.
@@ -446,7 +449,7 @@ func (s *CertificationService) EnforceOverdue(ctx context.Context, workspaceID u
 				Actor:       "system",
 				Action:      "certification.campaign.overdue",
 				TargetRef:   c.ID.String(),
-				Metadata:    mustJSON(map[string]any{"due_at": c.DueAt, "pending": pending}),
+				Metadata:    mustJSON(map[string]any{"due_at": c.DueAt, "open_items": open}),
 			})
 		})
 		if err != nil {
@@ -513,11 +516,16 @@ func (s *CertificationService) Report(ctx context.Context, workspaceID, campaign
 			report.Pending++
 		}
 	}
-	report.AllDecided = report.Total > 0 && report.Pending == 0
-	// A campaign is overdue if it is still running, past its due date, and has
-	// undecided items — whether or not the periodic sweep has stamped it yet.
+	// "Decided" means a TERMINAL decision (certify/revoke). Escalated items are
+	// intermediate and still need resolving, so they do NOT count as decided —
+	// an all-escalated campaign is not complete.
+	report.AllDecided = report.Total > 0 && report.Pending == 0 && report.Escalated == 0
+	// A campaign is overdue if it is still running, past its due date, and still
+	// has OPEN items lacking a terminal decision (pending OR escalated) — whether
+	// or not the periodic sweep has stamped it yet.
 	report.Overdue = campaign.State == models.CertificationStateRunning &&
-		campaign.DueAt != nil && s.now().UTC().After(campaign.DueAt.UTC()) && report.Pending > 0
+		campaign.DueAt != nil && s.now().UTC().After(campaign.DueAt.UTC()) &&
+		(report.Pending+report.Escalated) > 0
 	return report, nil
 }
 

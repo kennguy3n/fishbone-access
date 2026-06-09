@@ -347,6 +347,62 @@ func TestEnforceOverdue(t *testing.T) {
 	}
 }
 
+// TestEscalatedItemsAreNotTerminallyDecided locks the rule that escalation is an
+// intermediate state, not a terminal decision: an all-escalated campaign must
+// NOT report all-decided, MUST still be overdue past its due date, and MUST be
+// stamped overdue by the sweep. Resolving the escalation to a terminal decision
+// then clears both.
+func TestEscalatedItemsAreNotTerminallyDecided(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	seedGrant(t, db, ws, conn, "u1", "r1", "reader")
+	ctx := context.Background()
+	svc := NewCertificationService(db, newFakeRevoker(db))
+
+	past := time.Now().Add(-time.Hour)
+	camp, _, err := svc.StartCampaign(ctx, ws, CampaignInput{Name: "c", DueAt: &past}, "auditor")
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	items, _ := svc.ListItems(ctx, ws, camp.ID, "")
+	if err := svc.SubmitDecision(ctx, ws, camp.ID, items[0].ItemID, models.CertificationDecisionEscalate, "a", "needs manager"); err != nil {
+		t.Fatalf("escalate: %v", err)
+	}
+
+	report, _ := svc.Report(ctx, ws, camp.ID)
+	if report.Escalated != 1 || report.Pending != 0 {
+		t.Fatalf("expected 1 escalated / 0 pending, got %+v", report)
+	}
+	if report.AllDecided {
+		t.Fatalf("all-escalated campaign must NOT be all-decided")
+	}
+	if !report.Overdue {
+		t.Fatalf("past-due campaign with an escalated (non-terminal) item must be overdue")
+	}
+
+	// The sweep must stamp it overdue too (escalated counts as open).
+	marked, err := svc.EnforceOverdue(ctx, ws)
+	if err != nil {
+		t.Fatalf("enforce: %v", err)
+	}
+	if marked != 1 {
+		t.Fatalf("expected sweep to mark 1 all-escalated campaign overdue, got %d", marked)
+	}
+
+	// Resolving the escalation to a terminal decision clears both signals.
+	if err := svc.SubmitDecision(ctx, ws, camp.ID, items[0].ItemID, models.CertificationDecisionCertify, "a", "approved"); err != nil {
+		t.Fatalf("certify after escalate: %v", err)
+	}
+	report2, _ := svc.Report(ctx, ws, camp.ID)
+	if !report2.AllDecided {
+		t.Fatalf("expected all-decided after terminal decision, got %+v", report2)
+	}
+	if report2.Overdue {
+		t.Fatalf("terminally-decided campaign must not be overdue")
+	}
+}
+
 func TestCampaignCrossTenantIsolation(t *testing.T) {
 	db := newTestDB(t)
 	wsA := seedWorkspace(t, db, "tenant-a")
