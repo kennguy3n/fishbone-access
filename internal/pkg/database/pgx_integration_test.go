@@ -135,13 +135,25 @@ func TestPgxWorkspaceConfigParity(t *testing.T) {
 		t.Fatalf("pgx Workspace field mapping wrong: %+v", pgxWS)
 	}
 
-	// Workspace: nullable columns NULL → empty string on both backends.
+	// Workspace(minimal): the two genuinely-nullable columns (data_residency,
+	// sso_connection_id) are NULL here and must map to "" on both backends; the
+	// NOT NULL default_locale carries its 'en' migration default. The pgx and
+	// GORM reads must agree on the whole row. (default_locale is NOT NULL in
+	// 0001_init.sql, so a NULL on it is unrepresentable — the DB rejects it —
+	// which is why it is not scanned through *string.)
 	pgxMin, err := pgxRepo.Workspace(ctx, minimal.ID)
 	if err != nil {
 		t.Fatalf("pgx Workspace(minimal): %v", err)
 	}
-	if pgxMin.DataResidency != "" || pgxMin.SSOConnectionID != "" {
-		t.Fatalf("nullable columns should map to empty string: %+v", pgxMin)
+	gormMin, err := gormRepo.Workspace(ctx, minimal.ID)
+	if err != nil {
+		t.Fatalf("gorm Workspace(minimal): %v", err)
+	}
+	if pgxMin != gormMin {
+		t.Fatalf("Workspace(minimal) mismatch:\n pgx=%+v\ngorm=%+v", pgxMin, gormMin)
+	}
+	if pgxMin.DataResidency != "" || pgxMin.SSOConnectionID != "" || pgxMin.DefaultLocale != "en" {
+		t.Fatalf("minimal workspace field mapping wrong: %+v", pgxMin)
 	}
 
 	// WorkspaceIDs: identical set, both ordered by id.

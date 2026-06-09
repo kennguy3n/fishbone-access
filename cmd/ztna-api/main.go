@@ -87,7 +87,10 @@ func run() error {
 		// queries through GORM; the two pools share the same Postgres and the
 		// adapter honours the identical contract (same query, same
 		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged.
-		pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBMaxOpenConns), cfg.DBConnMaxLifetime, 0)
+		// The pgx pool is sized by its own bound (DBPgxMaxConns), independent of
+		// the GORM pool, because the workspace-config read is light; this keeps
+		// the added per-process connection footprint small and explicit.
+		pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
 		if err != nil {
 			return fmt.Errorf("pgx pool setup: %w", err)
 		}

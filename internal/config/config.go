@@ -35,6 +35,15 @@ type Config struct {
 	// separate processes, so each sizes its own pool; keeping a bound avoids
 	// exhausting Postgres' max_connections under load.
 	DBMaxOpenConns int
+	// DBPgxMaxConns bounds the secondary pgxpool that the WS10 GORM→pgx
+	// migration opens alongside the GORM pool (workspace-config reads in
+	// ztna-api, standalone audit appends in pam-gateway). It is sized
+	// independently and small by default because those paths are light — a
+	// single indexed lookup or one append per event — so the pgx pool need not
+	// mirror the full GORM budget. The per-process connection footprint is
+	// therefore DBMaxOpenConns + DBPgxMaxConns; operators sizing Postgres'
+	// max_connections across replicas should account for both.
+	DBPgxMaxConns int
 	// DBMaxIdleConns bounds idle (kept-warm) connections in the pool.
 	DBMaxIdleConns int
 	// DBConnMaxLifetime caps how long a single connection is reused before
@@ -136,6 +145,7 @@ func Load() Config {
 		RedisURL:          os.Getenv("ACCESS_REDIS_URL"),
 		CredentialDEK:     os.Getenv("ACCESS_CREDENTIAL_DEK"),
 		DBMaxOpenConns:    getInt("ACCESS_DB_MAX_OPEN_CONNS", 25),
+		DBPgxMaxConns:     getInt("ACCESS_DB_PGX_MAX_CONNS", 8),
 		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime: getDuration("ACCESS_DB_CONN_MAX_LIFETIME", 30*time.Minute),
 		ShutdownTimeout:   getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),

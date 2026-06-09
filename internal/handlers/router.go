@@ -89,7 +89,13 @@ func NewRouter(deps Deps) *gin.Engine {
 	if resolver == nil && deps.DB != nil {
 		resolver = database.NewGormWorkspaceConfigRepo(deps.DB)
 	}
-	if deps.Validator != nil && resolver != nil {
+	// deps.DB is still required here even when a WorkspaceResolver is supplied:
+	// newLifecycleHandlers wires every lifecycle service off deps.DB, so mounting
+	// the group without it would hand those constructors a nil *gorm.DB and panic
+	// on the first request. RequireTenant runs on the resolver (pgx in
+	// production), but the handlers behind it remain GORM-backed until later WS10
+	// steps migrate them.
+	if deps.Validator != nil && resolver != nil && deps.DB != nil {
 		scoped := api.Group("")
 		scoped.Use(middleware.RequireTenant(resolver))
 		newLifecycleHandlers(deps).register(scoped)

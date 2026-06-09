@@ -305,8 +305,12 @@ func (v *Vault) open(ctx context.Context, target *models.PAMTarget) (Secret, err
 }
 
 // audit appends one PAM event to the workspace's 1C audit hash chain in its own
-// transaction. Use it for standalone events (target create, token mint) whose
-// state change has already been committed.
+// transaction. Use it for standalone events whose state change has already
+// committed on its own — today that is only the secret-reveal event (a read,
+// with no row to commit alongside). Events that mutate state (target create,
+// secret rotate, connect-token mint, session open) use auditTx so the audit row
+// commits atomically with that change. This standalone path is the one routed
+// through the pgx auditor when SetAuditor has wired one.
 func (v *Vault) audit(ctx context.Context, workspaceID uuid.UUID, actor, action, targetRef string, meta map[string]any) error {
 	md, err := marshalMeta(meta)
 	if err != nil {

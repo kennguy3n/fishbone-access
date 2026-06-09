@@ -162,6 +162,12 @@ func (r *PgxWorkspaceConfigRepo) WorkspaceIDByTenant(ctx context.Context, tenant
 // gorm.ErrRecordNotFound when no live row matches.
 func (r *PgxWorkspaceConfigRepo) Workspace(ctx context.Context, id uuid.UUID) (WorkspaceConfig, error) {
 	var ws WorkspaceConfig
+	// Only data_residency and sso_connection_id are nullable in the schema
+	// (0001_init.sql), so they are scanned through *string and a NULL maps to
+	// the zero value exactly as GORM does. name, plan and default_locale are
+	// NOT NULL in the migration — default_locale is `TEXT NOT NULL DEFAULT 'en'`
+	// — so they scan straight into string; the SQL migrations are authoritative
+	// here (no AutoMigrate in prod), not the GORM struct tags.
 	var dataResidency, ssoConnectionID *string
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, name, iam_core_tenant_id, plan, data_residency, default_locale, sso_connection_id, created_at, updated_at

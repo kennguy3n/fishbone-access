@@ -88,8 +88,10 @@ func run() error {
 	// bookkeeping is shared via the auditchain package, so a standalone event
 	// written on pgx links into the same per-workspace hash chain as the
 	// in-transaction (GORM) appends. The pool is closed after the supervisor
-	// returns, so no listener can race the close.
-	pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBMaxOpenConns), cfg.DBConnMaxLifetime, 0)
+	// returns, so no listener can race the close. It is sized by its own bound
+	// (DBPgxMaxConns), independent of the GORM pool, because standalone audit
+	// appends are low-volume; this keeps the added connection footprint small.
+	pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
 	if err != nil {
 		return fmt.Errorf("pgx pool setup: %w", err)
 	}
