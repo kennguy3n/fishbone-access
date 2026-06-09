@@ -11,6 +11,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 )
 
@@ -93,6 +94,17 @@ func (f *fakeGrants) GetGrant(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*mod
 	return f.grant, nil
 }
 
+type fakeWorkflows struct {
+	result *workflow.RunResult
+	err    error
+	calls  int
+}
+
+func (f *fakeWorkflows) Run(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ workflow.Subject, _ string, _ workflow.StepDeps) (*workflow.RunResult, error) {
+	f.calls++
+	return f.result, f.err
+}
+
 func newProcessor(t *testing.T, d ProcessorDeps) *JobProcessor {
 	t.Helper()
 	p, err := NewJobProcessor(d)
@@ -108,6 +120,10 @@ func baseDeps() ProcessorDeps {
 		Provisioner: &fakeProvisioner{},
 		Reviews:     &fakeReviews{},
 		Grants:      &fakeGrants{grant: &models.AccessGrant{}},
+		Workflows:   &fakeWorkflows{result: &workflow.RunResult{Status: workflow.StatusSucceeded}},
+		WorkflowDeps: func(uuid.UUID, string) workflow.StepDeps {
+			return workflow.StepDeps{}
+		},
 	}
 }
 
@@ -116,6 +132,50 @@ func TestProcess_UnknownTypeErrors(t *testing.T) {
 	err := p.Process(context.Background(), workers.Job{ID: "j1", Type: "connector.provision"})
 	if err == nil {
 		t.Fatalf("expected error for unknown job type")
+	}
+}
+
+func TestHandleWorkflowRun_Success(t *testing.T) {
+	wf := &fakeWorkflows{result: &workflow.RunResult{Status: workflow.StatusSucceeded}}
+	d := baseDeps()
+	d.Workflows = wf
+	var builtWS uuid.UUID
+	d.WorkflowDeps = func(ws uuid.UUID, _ string) workflow.StepDeps {
+		builtWS = ws
+		return workflow.StepDeps{}
+	}
+	p := newProcessor(t, d)
+
+	ws := uuid.New()
+	payload, _ := json.Marshal(workflowRunPayload{
+		WorkspaceID: ws.String(),
+		WorkflowID:  uuid.NewString(),
+		Subject:     workflow.Subject{ExternalID: "u1"},
+		Actor:       "engine",
+	})
+	if err := p.Process(context.Background(), workers.Job{ID: "j", Type: JobTypeWorkflowRun, Payload: payload}); err != nil {
+		t.Fatalf("Process workflow-run: %v", err)
+	}
+	if wf.calls != 1 {
+		t.Fatalf("Run calls = %d, want 1", wf.calls)
+	}
+	if builtWS != ws {
+		t.Fatalf("step deps built for %s, want %s", builtWS, ws)
+	}
+}
+
+func TestHandleWorkflowRun_StepFailuresRetries(t *testing.T) {
+	d := baseDeps()
+	d.Workflows = &fakeWorkflows{result: &workflow.RunResult{Status: workflow.StatusFailed}}
+	p := newProcessor(t, d)
+
+	payload, _ := json.Marshal(workflowRunPayload{
+		WorkspaceID: uuid.NewString(),
+		WorkflowID:  uuid.NewString(),
+		Subject:     workflow.Subject{ExternalID: "u1"},
+	})
+	if err := p.Process(context.Background(), workers.Job{ID: "j", Type: JobTypeWorkflowRun, Payload: payload}); err == nil {
+		t.Fatal("expected error so the job retries when a step failed")
 	}
 }
 

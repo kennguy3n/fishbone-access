@@ -304,7 +304,30 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 	if e.UserExternalID == "" {
 		return nil, fmt.Errorf("%w: leaver event needs a user id", ErrValidation)
 	}
-	user := e.UserExternalID
+	// The automatic SCIM-driven leaver lane runs the kill switch with the
+	// "scim" actor. The same cascade is reachable with a human actor via
+	// RunKillSwitch (a workflow run_kill_switch step or the standalone
+	// emergency-offboard action).
+	return s.RunKillSwitch(ctx, workspaceID, e.UserExternalID, "scim")
+}
+
+// RunKillSwitch executes the six-layer leaver kill switch for a user with an
+// explicit actor, and is the single shared implementation behind every
+// offboarding path: the automatic SCIM leaver lane (actor "scim"), a workflow
+// run_kill_switch step, and the standalone emergency-offboard action (actor =
+// the authenticated admin). The layers run in order; a failed layer is recorded
+// and the cascade CONTINUES (a failure never silently skips the remaining
+// layers). Each layer is idempotent, so the whole switch is safe to re-run. If
+// any layer failed the returned LeaverResult.Errored is true and RunKillSwitch
+// returns a non-nil error, but only after every layer has been attempted.
+func (s *JMLService) RunKillSwitch(ctx context.Context, workspaceID uuid.UUID, userExternalID, actor string) (*LeaverResult, error) {
+	if userExternalID == "" {
+		return nil, fmt.Errorf("%w: kill switch needs a user id", ErrValidation)
+	}
+	if actor == "" {
+		return nil, fmt.Errorf("%w: kill switch needs an actor", ErrValidation)
+	}
+	user := userExternalID
 	result := &LeaverResult{UserExternalID: user}
 
 	record := func(layer, status, detail string) {
@@ -316,7 +339,7 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 		if auditErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			return appendAudit(ctx, tx, now, auditEntry{
 				WorkspaceID: workspaceID,
-				Actor:       "scim",
+				Actor:       actor,
 				Action:      "jml.leaver." + layer + "." + status,
 				TargetRef:   user,
 			})
@@ -336,8 +359,10 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 		result.Layers = append(result.Layers, entry)
 	}
 
-	// Layer 1: revoke every ShieldNet-managed grant for the user.
-	s.layerGrantRevoke(ctx, workspaceID, user, record)
+	// Layer 1: revoke every ShieldNet-managed grant for the user, attributed to
+	// the kill switch's actor ("scim" for the automatic lane, the admin for an
+	// emergency offboard / workflow step).
+	s.layerGrantRevoke(ctx, workspaceID, user, actor, record)
 	// Layer 2: remove the user from all internal teams.
 	s.layerTeamRemove(ctx, workspaceID, user, record)
 	// Layer 3: disable the user in iam-core (the identity provider).
@@ -353,7 +378,7 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 	return result, nil
 }
 
-func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID, user string, record func(layer, status, detail string)) {
+func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID, user, actor string, record func(layer, status, detail string)) {
 	var grants []models.AccessGrant
 	if err := s.db.WithContext(ctx).
 		Where("workspace_id = ? AND iam_core_user_id = ? AND state = ? AND revoked_at IS NULL", workspaceID, user, GrantStateActive).
@@ -367,7 +392,7 @@ func (s *JMLService) layerGrantRevoke(ctx context.Context, workspaceID uuid.UUID
 	}
 	var failed int
 	for i := range grants {
-		if err := s.provisioner.RevokeGrant(ctx, workspaceID, grants[i].ID, "scim", "leaver kill switch"); err != nil {
+		if err := s.provisioner.RevokeGrant(ctx, workspaceID, grants[i].ID, actor, "leaver kill switch"); err != nil {
 			failed++
 		}
 	}
