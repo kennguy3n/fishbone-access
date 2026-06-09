@@ -20,22 +20,39 @@ import { titleCase } from "@/lib/format";
 // operator reasons about; operational capabilities are the seven optional Go
 // interfaces the connector implements (derived server-side, never drifting
 // from the binary).
-const USER_FACING: { key: keyof UserFacingCapabilities; label: string }[] = [
-  { key: "sync_identity", label: "Sync identities" },
-  { key: "provision_access", label: "Provision access" },
-  { key: "list_entitlements", label: "List entitlements" },
-  { key: "get_access_log", label: "Access logs" },
-  { key: "sso_federation", label: "SSO federation" },
+// Each column carries an explicit `dimension` discriminator so the matrix can
+// read the right capability bag (user_facing vs operational) by switching on it,
+// rather than probing which object a key happens to live in. This keeps the
+// lookup type-safe (no casts) and correct even if a key name were ever shared
+// across the two dimensions.
+type UserFacingColumn = {
+  dimension: "user_facing";
+  key: keyof UserFacingCapabilities;
+  label: string;
+};
+type OperationalColumn = {
+  dimension: "operational";
+  key: keyof OperationalCapabilities;
+  label: string;
+};
+type CapabilityColumn = UserFacingColumn | OperationalColumn;
+
+const USER_FACING: UserFacingColumn[] = [
+  { dimension: "user_facing", key: "sync_identity", label: "Sync identities" },
+  { dimension: "user_facing", key: "provision_access", label: "Provision access" },
+  { dimension: "user_facing", key: "list_entitlements", label: "List entitlements" },
+  { dimension: "user_facing", key: "get_access_log", label: "Access logs" },
+  { dimension: "user_facing", key: "sso_federation", label: "SSO federation" },
 ];
 
-const OPERATIONAL: { key: keyof OperationalCapabilities; label: string }[] = [
-  { key: "group_sync", label: "Group sync" },
-  { key: "identity_delta_sync", label: "Delta sync" },
-  { key: "access_audit_stream", label: "Audit stream" },
-  { key: "scim_provisioning", label: "SCIM" },
-  { key: "session_revoke", label: "Session revoke" },
-  { key: "sso_enforcement_check", label: "SSO enforcement" },
-  { key: "credential_renewal", label: "Credential renewal" },
+const OPERATIONAL: OperationalColumn[] = [
+  { dimension: "operational", key: "group_sync", label: "Group sync" },
+  { dimension: "operational", key: "identity_delta_sync", label: "Delta sync" },
+  { dimension: "operational", key: "access_audit_stream", label: "Audit stream" },
+  { dimension: "operational", key: "scim_provisioning", label: "SCIM" },
+  { dimension: "operational", key: "session_revoke", label: "Session revoke" },
+  { dimension: "operational", key: "sso_enforcement_check", label: "SSO enforcement" },
+  { dimension: "operational", key: "credential_renewal", label: "Credential renewal" },
 ];
 
 // Tier tone: T1 connectors are the most-adopted, fully-supported integrations
@@ -302,7 +319,7 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
 
 function CapabilityMatrix({ rows }: { rows: ConnectorCatalogueEntry[] }) {
   const navigate = useNavigate();
-  const columns = [...USER_FACING, ...OPERATIONAL];
+  const columns: CapabilityColumn[] = [...USER_FACING, ...OPERATIONAL];
   return (
     <div className="matrix-scroll">
       <table className="table matrix">
@@ -334,11 +351,9 @@ function CapabilityMatrix({ rows }: { rows: ConnectorCatalogueEntry[] }) {
               </th>
               {columns.map((c) => {
                 const supported =
-                  "key" in c && c.key in entry.user_facing
-                    ? entry.user_facing[c.key as keyof UserFacingCapabilities]
-                    : entry.operational[
-                        c.key as keyof OperationalCapabilities
-                      ];
+                  c.dimension === "user_facing"
+                    ? entry.user_facing[c.key]
+                    : entry.operational[c.key];
                 return (
                   <td key={c.label} className="matrix__cell">
                     {supported ? (

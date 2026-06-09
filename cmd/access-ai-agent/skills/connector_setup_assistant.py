@@ -221,7 +221,12 @@ def _plan_for(provider: str, strategy: str | None) -> list[dict[str, Any]]:
             "title": "Grant the read scopes the connector needs",
             "description": (
                 "Authorise the connector for the least-privilege scopes required to enumerate users"
-                + (" and groups" if scopes else "")
+                # Only claim "and groups" when a group-reading scope is actually
+                # granted. The generic/unknown-provider profile asks for
+                # openid/profile/email (no group scope), so the prose must match
+                # required_scopes — exactly the path where accurate guidance
+                # matters most, since the operator has no prior knowledge.
+                + (" and groups" if any("group" in s.lower() for s in scopes) else "")
                 + ". The connector never requests write scopes unless you enable provisioning."
             ),
             "required_scopes": scopes,

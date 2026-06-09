@@ -410,6 +410,25 @@ def test_connector_plan_for_unknown_provider_uses_generic_oidc():
     assert len(out["steps"]) >= 4
     all_scopes = [sc for s in out["steps"] for sc in s["required_scopes"]]
     assert "openid" in all_scopes
+    # The generic profile has no group-reading scope, so the scope-granting
+    # step's prose must NOT promise group enumeration — it would contradict the
+    # required_scopes the same step lists, and this is the path where accurate
+    # guidance matters most (the operator has no prior provider knowledge).
+    scope_step = next(s for s in out["steps"] if "openid" in s["required_scopes"])
+    assert not any("group" in sc.lower() for sc in scope_step["required_scopes"])
+    assert "and groups" not in scope_step["description"]
+
+
+def test_connector_group_scoped_provider_mentions_groups():
+    # A provider whose scope-granting step actually requests a group scope
+    # SHOULD say "and groups" — the prose tracks the granted scopes.
+    out = connector_setup_assistant.run({"provider": "microsoft"})
+    scope_step = next(
+        s
+        for s in out["steps"]
+        if any("group" in sc.lower() for sc in s["required_scopes"])
+    )
+    assert "and groups" in scope_step["description"]
 
 
 def test_connector_model_used_flag_false_without_llm():
