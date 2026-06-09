@@ -192,6 +192,8 @@ export const qk = {
   request: (id: string) => ["access-request", id] as const,
   requestHistory: (id: string) => ["access-request", id, "history"] as const,
   orphans: ["orphan-accounts"] as const,
+  rbacRoles: ["rbac", "roles"] as const,
+  rbacMembers: ["rbac", "members"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -525,5 +527,86 @@ export function useOrphans() {
 export function useSetOrphanDisposition(id: string) {
   return useMutation<{ status: string }, ApiError, string>({
     mutationFn: (disposition) => setOrphanDisposition(id, disposition),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// RBAC — workspace roles, the permission matrix, and membership administration
+// ---------------------------------------------------------------------------
+
+/** One workspace role and the flat permission set it grants. */
+export interface RbacRole {
+  role: string;
+  permissions: string[];
+}
+
+/** The role catalogue plus the flat list of every permission (matrix columns). */
+export interface RbacCatalog {
+  roles: RbacRole[];
+  permissions: string[];
+}
+
+/** A single membership in the caller's workspace. */
+export interface RbacMember {
+  user_id: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const listRbacRoles = () =>
+  call<RbacCatalog>({ url: "/rbac/roles", method: "GET" }).then((r) => ({
+    roles: r.roles ?? [],
+    permissions: r.permissions ?? [],
+  }));
+
+export const listRbacMembers = () =>
+  call<{ members: RbacMember[] }>({ url: "/rbac/members", method: "GET" }).then(
+    (r) => r.members ?? [],
+  );
+
+export const assignRbacMember = (userId: string, role: string) =>
+  call<RbacMember>({
+    url: `/rbac/members/${encodeURIComponent(userId)}`,
+    method: "PUT",
+    data: { role },
+  });
+
+export const removeRbacMember = (userId: string) =>
+  call<void>({
+    url: `/rbac/members/${encodeURIComponent(userId)}`,
+    method: "DELETE",
+  });
+
+export function useRbacRoles(
+  options?: Partial<UseQueryOptions<RbacCatalog, ApiError>>,
+) {
+  return useQuery<RbacCatalog, ApiError>({
+    queryKey: qk.rbacRoles,
+    queryFn: listRbacRoles,
+    staleTime: 5 * 60_000,
+    ...options,
+  });
+}
+
+export function useRbacMembers(
+  options?: Partial<UseQueryOptions<RbacMember[], ApiError>>,
+) {
+  return useQuery<RbacMember[], ApiError>({
+    queryKey: qk.rbacMembers,
+    queryFn: listRbacMembers,
+    ...options,
+  });
+}
+
+export function useAssignRbacMember() {
+  return useMutation<RbacMember, ApiError, { userId: string; role: string }>({
+    mutationFn: ({ userId, role }) => assignRbacMember(userId, role),
+  });
+}
+
+export function useRemoveRbacMember() {
+  return useMutation<void, ApiError, string>({
+    mutationFn: (userId) => removeRbacMember(userId),
   });
 }

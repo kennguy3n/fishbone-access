@@ -41,6 +41,13 @@ export const NAV: NavGroup[] = [
   },
   {
     labelId: "nav.group.preferences",
-    items: [{ labelId: "nav.settings", to: "/settings", icon: "settings" }],
+    items: [
+      {
+        labelId: "nav.rolesPermissions",
+        to: "/settings/roles",
+        icon: "rbac",
+      },
+      { labelId: "nav.settings", to: "/settings", icon: "settings" },
+    ],
   },
 ];

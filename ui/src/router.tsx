@@ -72,6 +72,11 @@ const Directory = lazyPage(() =>
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
+const RolesPermissions = lazyPage(() =>
+  import("@/routes/RolesPermissions").then((m) => ({
+    default: m.RolesPermissions,
+  })),
+);
 
 const rootRoute = createRootRoute({ component: Outlet });
 
@@ -109,6 +114,7 @@ const appRoutes = [
   page("/requests/$requestId", RequestDetail),
   page("/directory", Directory),
   page("/settings", Settings),
+  page("/settings/roles", RolesPermissions),
 ];
 
 const routeTree = rootRoute.addChildren([
