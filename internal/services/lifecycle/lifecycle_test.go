@@ -47,9 +47,13 @@ func seedConnector(t *testing.T, db *gorm.DB, workspaceID uuid.UUID, provider st
 
 func TestTransitionTable(t *testing.T) {
 	valid := []struct{ from, to RequestState }{
+		{StateRequested, StateAIReviewed},
 		{StateRequested, StateApproved},
 		{StateRequested, StateDenied},
 		{StateRequested, StateCancelled},
+		{StateAIReviewed, StateApproved},
+		{StateAIReviewed, StateDenied},
+		{StateAIReviewed, StateCancelled},
 		{StateApproved, StateProvisioning},
 		{StateApproved, StateCancelled},
 		{StateProvisioning, StateProvisioned},
@@ -66,12 +70,14 @@ func TestTransitionTable(t *testing.T) {
 	}
 
 	invalid := []struct{ from, to RequestState }{
-		{StateRequested, StateProvisioning}, // must be approved first
-		{StateApproved, StateActive},        // must provision first
-		{StateRevoked, StateActive},         // terminal
-		{StateDenied, StateApproved},        // terminal
-		{StateProvisioned, StateRevoked},    // must be active first
-		{StateActive, StateApproved},        // no going back
+		{StateAIReviewed, StateProvisioning}, // must be approved first
+		{StateAIReviewed, StateAIReviewed},   // no self-loop
+		{StateRequested, StateProvisioning},  // must be approved first
+		{StateApproved, StateActive},         // must provision first
+		{StateRevoked, StateActive},          // terminal
+		{StateDenied, StateApproved},         // terminal
+		{StateProvisioned, StateRevoked},     // must be active first
+		{StateActive, StateApproved},         // no going back
 	}
 	for _, tc := range invalid {
 		if err := Transition(tc.from, tc.to); err == nil {
@@ -86,7 +92,7 @@ func TestTerminalStates(t *testing.T) {
 			t.Errorf("expected %s terminal", s)
 		}
 	}
-	for _, s := range []RequestState{StateRequested, StateApproved, StateProvisioning, StateProvisioned, StateActive, StateProvisionFailed} {
+	for _, s := range []RequestState{StateRequested, StateAIReviewed, StateApproved, StateProvisioning, StateProvisioned, StateActive, StateProvisionFailed} {
 		if IsTerminalState(s) {
 			t.Errorf("expected %s non-terminal", s)
 		}

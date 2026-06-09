@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -41,6 +42,11 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// AI is the access-ai-agent client (mTLS A2A) used by the lifecycle risk
+	// review to score elevation requests server-side. When nil the lifecycle
+	// handlers substitute an unconfigured client, so risk review degrades to
+	// the fail-open deterministic fallback instead of panicking.
+	AI *aiclient.AIClient
 }
 
 // NewRouter builds the Gin engine.

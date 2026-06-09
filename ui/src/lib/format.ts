@@ -55,6 +55,26 @@ export function statusTone(status?: string | null): Tone {
   return "info";
 }
 
+/**
+ * Map a normalized risk band (low/medium/high/critical) to a badge tone:
+ * high/critical → danger, medium → warn, low → ok, anything else → neutral.
+ * Used by the access-request risk surface so a score reads colour-coded
+ * consistently across the list, detail and create flows.
+ */
+export function riskScoreTone(score?: string | null): Tone {
+  switch ((score ?? "").toLowerCase()) {
+    case "high":
+    case "critical":
+      return "danger";
+    case "medium":
+      return "warn";
+    case "low":
+      return "ok";
+    default:
+      return "neutral";
+  }
+}
+
 export function formatDateTime(value?: string | null): string {
   if (!value) return "—";
   const d = new Date(value);

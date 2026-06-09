@@ -28,9 +28,33 @@ ELEVATED_TAGS = {"prod", "production", "prd", "tier:1", "sensitive", "pii", "reg
 ALLOWED_SCORES = ("low", "medium", "high")
 _ORDER = {"low": 0, "medium": 1, "high": 2}
 
+# Routing-facing recommendation vocabulary, mirroring the Go
+# lifecycle.Recommendation* constants. The Go control plane re-derives the
+# authoritative recommendation from the normalized band (it never trusts this
+# field for an authorization decision); the agent emits it so the verdict is
+# self-describing and the contract is explicit.
+RECOMMENDATION_AUTO_APPROVE = "auto_approve_eligible"
+RECOMMENDATION_NEEDS_REVIEW = "needs_review"
+RECOMMENDATION_HIGH_RISK = "high_risk"
+
 
 def _max_score(a: str, b: str) -> str:
     return a if _ORDER[a] >= _ORDER[b] else b
+
+
+def _recommendation(score: str, factors: list[str]) -> str:
+    """Derive the routing recommendation from the final score + factors. A
+    sensitive / elevated-resource factor forces high_risk regardless of the
+    numeric band (it can only raise concern), mirroring the Go router's
+    sensitive_resource → security_review edge."""
+    for f in factors:
+        if f == "sensitive_resource" or f.startswith("elevated_resource:"):
+            return RECOMMENDATION_HIGH_RISK
+    if score == "high":
+        return RECOMMENDATION_HIGH_RISK
+    if score == "low":
+        return RECOMMENDATION_AUTO_APPROVE
+    return RECOMMENDATION_NEEDS_REVIEW
 
 
 def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
@@ -116,4 +140,10 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         reason = f"rule-based risk={score} from {len(factors)} factor(s)"
 
-    return {"risk_score": score, "risk_factors": factors, "reason": reason}
+    recommendation = _recommendation(score, factors)
+    return {
+        "risk_score": score,
+        "risk_factors": factors,
+        "reason": reason,
+        "recommendation": recommendation,
+    }
