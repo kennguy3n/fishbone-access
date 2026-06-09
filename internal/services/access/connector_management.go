@@ -83,7 +83,13 @@ func (s *ConnectorManagementService) Create(ctx context.Context, in CreateConnec
 		return nil, fmt.Errorf("access: Create: %w", err)
 	}
 	if err := connector.Validate(ctx, in.Config, in.Secrets); err != nil {
-		return nil, fmt.Errorf("access: Create: validate config: %w", err)
+		// Validate is contractually offline: a failure here is a bad
+		// client-supplied config/secret (missing client_id, malformed field),
+		// not an internal fault. Tag it with ErrValidation so the handler maps
+		// it to 400 with the actionable message, instead of the generic 500
+		// the default path returns. The cause stays in the chain, so
+		// errors.Is still matches both ErrValidation and the connector error.
+		return nil, fmt.Errorf("%w: validate config: %w", ErrValidation, err)
 	}
 
 	// Generate the row id up front so it can be bound as the AES-GCM AAD: the

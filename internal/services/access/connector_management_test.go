@@ -189,6 +189,38 @@ func TestConnectorManagementTestConnectivityInternalFaultNotTagged(t *testing.T)
 	}
 }
 
+// TestConnectorManagementCreateValidationTaggedErrValidation pins that a
+// connector Validate failure (a bad client-supplied config) is tagged
+// ErrValidation, so the handler maps it to 400 with the actionable message
+// rather than a generic 500. Validate is contractually offline, so a failure
+// is always a caller fault, never an internal one.
+func TestConnectorManagementCreateValidationTaggedErrValidation(t *testing.T) {
+	validationErr := errors.New("missing required field: client_id")
+	SwapConnector(t, "okta", &MockAccessConnector{
+		FuncValidate: func(context.Context, map[string]interface{}, map[string]interface{}) error {
+			return validationErr
+		},
+	})
+	db := newTestDB(t)
+	ctx := context.Background()
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db))
+
+	_, err := svc.Create(ctx, CreateConnectorInput{
+		WorkspaceID: uuid.New(),
+		Provider:    "okta",
+		Secrets:     map[string]interface{}{"k": "v"},
+	})
+	if err == nil {
+		t.Fatal("Create with invalid config: want error, got nil")
+	}
+	if !errors.Is(err, ErrValidation) {
+		t.Errorf("Create validate failure must be tagged ErrValidation (so the handler returns 400, not 500): %v", err)
+	}
+	if !errors.Is(err, validationErr) {
+		t.Errorf("Create error must still wrap the underlying validation cause: %v", err)
+	}
+}
+
 // TestCatalogueEntryForScopedConnectionEnrichment pins that the single-provider
 // detail path enriches connection state from a provider-scoped query: the
 // connected provider reports its row, an unconnected provider does not, and the
