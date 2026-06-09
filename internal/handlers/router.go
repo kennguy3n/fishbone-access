@@ -49,10 +49,16 @@ type Deps struct {
 	// falls back to the GORM-backed resolver so the SQLite test path and
 	// degraded boots keep working unchanged.
 	WorkspaceResolver middleware.WorkspaceResolver
-	// AI is the access-ai-agent client (mTLS A2A) used by the lifecycle risk
-	// review to score elevation requests server-side. When nil the lifecycle
-	// handlers substitute an unconfigured client, so risk review degrades to
-	// the fail-open deterministic fallback instead of panicking.
+	// ConnectorEncryptor seals/opens connector secrets for the connector
+	// management surface. It is the access-stack encryptor (the same one the
+	// access-connector-worker uses) so a connector created via the API is
+	// syncable by the worker. nil falls back to the fail-closed encryptor.
+	ConnectorEncryptor access.CredentialEncryptor
+	// AI is the access-ai-agent client (mTLS A2A) shared by the lifecycle risk
+	// review (scoring elevation requests server-side) and the connector setup
+	// wizard. It may be an unconfigured client (no agent URL): both consumers
+	// are fail-OPEN, so risk review degrades to the deterministic fallback and
+	// the wizard returns a degraded manual plan instead of panicking.
 	AI *aiclient.AIClient
 }
 
@@ -99,6 +105,8 @@ func NewRouter(deps Deps) *gin.Engine {
 		scoped := api.Group("")
 		scoped.Use(middleware.RequireTenant(resolver))
 		newLifecycleHandlers(deps).register(scoped)
+		newConnectorHandlers(deps).register(scoped)
+		newWorkflowHandlers(deps).register(scoped)
 	}
 
 	// Serve the embedded Access console (SPA) when the binary was built with

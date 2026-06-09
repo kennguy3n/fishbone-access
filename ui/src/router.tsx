@@ -57,6 +57,12 @@ const PolicyEditor = lazyPage(() =>
 const Packs = lazyPage(() =>
   import("@/routes/Packs").then((m) => ({ default: m.Packs })),
 );
+const Connectors = lazyPage(() =>
+  import("@/routes/Connectors").then((m) => ({ default: m.Connectors })),
+);
+const ConnectorSetup = lazyPage(() =>
+  import("@/routes/ConnectorSetup").then((m) => ({ default: m.ConnectorSetup })),
+);
 const PackDetail = lazyPage(() =>
   import("@/routes/PackDetail").then((m) => ({ default: m.PackDetail })),
 );
@@ -71,6 +77,17 @@ const Directory = lazyPage(() =>
 );
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
+);
+const Workflows = lazyPage(() =>
+  import("@/routes/Workflows").then((m) => ({ default: m.Workflows })),
+);
+const WorkflowBuilder = lazyPage(() =>
+  import("@/routes/WorkflowBuilder").then((m) => ({
+    default: m.WorkflowBuilder,
+  })),
+);
+const JmlRuns = lazyPage(() =>
+  import("@/routes/JmlRuns").then((m) => ({ default: m.JmlRuns })),
 );
 
 const rootRoute = createRootRoute({ component: Outlet });
@@ -105,8 +122,14 @@ const appRoutes = [
   page("/policies/$policyId", PolicyEditor),
   page("/packs", Packs),
   page("/packs/$packId", PackDetail),
+  page("/connectors", Connectors),
+  page("/connectors/$provider/setup", ConnectorSetup),
   page("/requests", Requests),
   page("/requests/$requestId", RequestDetail),
+  page("/workflows", Workflows),
+  page("/workflows/new", WorkflowBuilder),
+  page("/workflows/$workflowId", WorkflowBuilder),
+  page("/jml-runs", JmlRuns),
   page("/directory", Directory),
   page("/settings", Settings),
 ];
