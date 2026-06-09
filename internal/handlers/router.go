@@ -18,6 +18,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/webui"
 )
 
 // Deps are the runtime dependencies the router needs. Validator may be nil when
@@ -76,6 +77,10 @@ func NewRouter(deps Deps) *gin.Engine {
 		scoped.Use(middleware.RequireTenant(deps.DB))
 		newLifecycleHandlers(deps).register(scoped)
 	}
+
+	// Serve the embedded Access console (SPA) when the binary was built with
+	// the embed_ui tag. No-op otherwise, so the API runs standalone in dev/CI.
+	webui.Register(r)
 
 	return r
 }

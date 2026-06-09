@@ -13,3 +13,9 @@
 # Build artifacts
 /dist/
 coverage.txt
+
+# Frontend (ui/) build + deps
+/ui/node_modules/
+/ui/dist/
+# Embedded SPA build artifact (produced by `npm run build`, embedded under -tags embed_ui)
+/internal/webui/dist/
