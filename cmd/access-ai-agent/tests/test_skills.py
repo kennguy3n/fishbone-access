@@ -364,3 +364,125 @@ def test_connector_unknown_provider_explains():
     out = connector_setup_assistant.run({"provider": "totally-unknown"})
     assert out["reason"] == "strategy=unknown"
     assert "no known iam-core strategy" in out["explanation"]
+
+
+def test_connector_returns_structured_plan():
+    out = connector_setup_assistant.run({"provider": "microsoft"})
+    assert out["strategy"] == "microsoft"
+    steps = out["steps"]
+    # Ordered, contiguous step numbers starting at 1.
+    assert [s["step"] for s in steps] == list(range(1, len(steps) + 1))
+    # Every step has the structured fields the Go decoder expects.
+    for s in steps:
+        assert s["title"]
+        assert s["description"]
+        assert isinstance(s["required_scopes"], list)
+        assert isinstance(s["field_mappings"], list)
+        assert isinstance(s["common_pitfalls"], list)
+        assert isinstance(s["estimated_minutes"], int)
+    # The scope-granting step carries the real Graph scopes; the mapping step
+    # carries the real Entra attribute mapping.
+    all_scopes = [sc for s in steps for sc in s["required_scopes"]]
+    assert "User.Read.All" in all_scopes
+    all_targets = [m["target"] for s in steps for m in s["field_mappings"]]
+    assert "email" in all_targets
+
+
+def test_connector_google_suspended_mapping_is_inverted():
+    # Google Directory `suspended` has opposite polarity to the platform's
+    # `active`, so its mapping must carry invert=True; the other Google
+    # mappings (and Microsoft's polarity-correct accountEnabled) must not.
+    out = connector_setup_assistant.run({"provider": "google_workspace"})
+    mappings = [m for s in out["steps"] for m in s["field_mappings"]]
+    suspended = [m for m in mappings if m["source"] == "suspended"]
+    assert suspended, "google plan is missing the suspended→active mapping"
+    assert suspended[0]["target"] == "active"
+    assert suspended[0]["invert"] is True
+    for m in mappings:
+        if m["source"] != "suspended":
+            assert not m.get("invert"), f"{m['source']} should not be inverted"
+
+
+def test_connector_plan_for_unknown_provider_uses_generic_oidc():
+    out = connector_setup_assistant.run({"provider": "totally-unknown"})
+    assert out["strategy"] == "unknown"
+    # Even an unknown provider gets a usable generic-OIDC plan, not an empty one.
+    assert len(out["steps"]) >= 4
+    all_scopes = [sc for s in out["steps"] for sc in s["required_scopes"]]
+    assert "openid" in all_scopes
+    # The generic profile has no group-reading scope, so the scope-granting
+    # step's prose must NOT promise group enumeration — it would contradict the
+    # required_scopes the same step lists, and this is the path where accurate
+    # guidance matters most (the operator has no prior provider knowledge).
+    scope_step = next(s for s in out["steps"] if "openid" in s["required_scopes"])
+    assert not any("group" in sc.lower() for sc in scope_step["required_scopes"])
+    assert "and groups" not in scope_step["description"]
+
+
+def test_connector_group_scoped_provider_mentions_groups():
+    # A provider whose scope-granting step actually requests a group scope
+    # SHOULD say "and groups" — the prose tracks the granted scopes.
+    out = connector_setup_assistant.run({"provider": "microsoft"})
+    scope_step = next(
+        s
+        for s in out["steps"]
+        if any("group" in sc.lower() for sc in s["required_scopes"])
+    )
+    assert "and groups" in scope_step["description"]
+
+
+def test_connector_plan_surfaces_every_profile_pitfall():
+    # Every pitfall curated for a strategy profile must appear somewhere in the
+    # generated steps. The steps distribute pitfalls by position (step 1/2 take
+    # the first two, step 3 absorbs the rest), so a profile that grows a 4th
+    # pitfall must NOT silently drop it. Cover every strategy slug, including the
+    # ones with the most pitfalls, so this fails loudly if the distribution
+    # logic ever stops being exhaustive.
+    for provider in ("microsoft", "google", "okta", "github", "zoho", "totally-unknown"):
+        out = connector_setup_assistant.run({"provider": provider})
+        profile = connector_setup_assistant._profile_for(out["strategy"])
+        emitted = {p for s in out["steps"] for p in s["common_pitfalls"]}
+        assert set(profile["pitfalls"]) <= emitted, (
+            f"{provider}: pitfalls dropped from the plan: "
+            f"{set(profile['pitfalls']) - emitted}"
+        )
+
+
+def test_connector_profile_for_returns_isolated_copy():
+    # _profile_for must hand out an independent deep copy, never a reference into
+    # the module-level STRATEGY_PROFILE / _GENERIC_PROFILE globals: the agent is a
+    # long-lived process serving concurrent tenant requests, so a mutation of a
+    # returned profile must not leak into the shared state seen by later requests.
+    first = connector_setup_assistant._profile_for("microsoft")
+    first["scopes"].append("MUTATED")
+    first["field_mappings"][0]["target"] = "MUTATED"
+
+    second = connector_setup_assistant._profile_for("microsoft")
+    assert "MUTATED" not in second["scopes"]
+    assert second["field_mappings"][0]["target"] != "MUTATED"
+
+    # The generic fallback (strategy=None) must be isolated too.
+    g1 = connector_setup_assistant._profile_for(None)
+    g1["pitfalls"].append("MUTATED")
+    g2 = connector_setup_assistant._profile_for(None)
+    assert "MUTATED" not in g2["pitfalls"]
+
+
+def test_connector_model_used_flag_false_without_llm():
+    # With no LLM configured the explanation is deterministic and model_used is
+    # False, so the Go side can record that the plan was not model-enriched.
+    out = connector_setup_assistant.run({"provider": "okta"})
+    assert out["model_used"] is False
+
+
+def test_connector_model_used_flag_true_when_llm_enriches(monkeypatch):
+    monkeypatch.setattr(
+        connector_setup_assistant,
+        "call_llm",
+        lambda *a, **k: "Use the Okta admin console to create an OIDC web app and paste the issuer.",
+    )
+    out = connector_setup_assistant.run({"provider": "okta"})
+    assert out["model_used"] is True
+    assert "Okta admin console" in out["explanation"]
+    # The structured steps are still deterministic (LLM only enriches prose).
+    assert out["steps"][0]["step"] == 1

@@ -54,10 +54,16 @@ type Deps struct {
 	// for the highest-risk actions. When nil the RequireStepUpMFA gates are not
 	// mounted; production wires the composite verifier.
 	StepUpMFA mfa.MFAVerifier
-	// AI is the access-ai-agent client (mTLS A2A) used by the lifecycle risk
-	// review to score elevation requests server-side. When nil the lifecycle
-	// handlers substitute an unconfigured client, so risk review degrades to
-	// the fail-open deterministic fallback instead of panicking.
+	// ConnectorEncryptor seals/opens connector secrets for the connector
+	// management surface. It is the access-stack encryptor (the same one the
+	// access-connector-worker uses) so a connector created via the API is
+	// syncable by the worker. nil falls back to the fail-closed encryptor.
+	ConnectorEncryptor access.CredentialEncryptor
+	// AI is the access-ai-agent client (mTLS A2A) shared by the lifecycle risk
+	// review (scoring elevation requests server-side) and the connector setup
+	// wizard. It may be an unconfigured client (no agent URL): both consumers
+	// are fail-OPEN, so risk review degrades to the deterministic fallback and
+	// the wizard returns a degraded manual plan instead of panicking.
 	AI *aiclient.AIClient
 }
 
@@ -103,6 +109,7 @@ func NewRouter(deps Deps) *gin.Engine {
 			newRBACHandlers(deps.RBAC).register(scoped)
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
+		newConnectorHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 	}
 

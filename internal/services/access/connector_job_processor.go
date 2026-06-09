@@ -19,8 +19,9 @@ import (
 // the payload's workspace (tenant isolation), opens the sealed secrets just
 // before the provider call, and dispatches to the registered AccessConnector.
 type ConnectorJobProcessor struct {
-	svc       *ConnectorManagementService
-	syncState *SyncStateStore
+	svc          *ConnectorManagementService
+	syncState    *SyncStateStore
+	orchestrator *IdentityDeltaSyncOrchestrator
 }
 
 // NewConnectorJobProcessor builds a processor over the given DB and credential
@@ -28,9 +29,11 @@ type ConnectorJobProcessor struct {
 // processor consumes jobs, it does not enqueue them) to reuse the tenant-scoped
 // connector loader and secret-opening logic.
 func NewConnectorJobProcessor(db *gorm.DB, enc CredentialEncryptor) *ConnectorJobProcessor {
+	syncState := NewSyncStateStore(db)
 	return &ConnectorJobProcessor{
-		svc:       NewConnectorManagementService(db, enc, nil),
-		syncState: NewSyncStateStore(db),
+		svc:          NewConnectorManagementService(db, enc, nil),
+		syncState:    syncState,
+		orchestrator: NewIdentityDeltaSyncOrchestrator(syncState),
 	}
 }
 
@@ -83,36 +86,23 @@ func (p *ConnectorJobProcessor) Process(ctx context.Context, job workers.Job) er
 	}
 }
 
-// runSync drives a full identity sync, resuming from the persisted delta link
-// when the provider supports incremental sync. It captures the latest
-// next-checkpoint the connector emits and persists it so the next run is
-// incremental, then stamps the connector's last_synced_at.
+// runSync drives an identity sync through the delta-sync orchestrator, which
+// owns the delta-vs-full decision, the idempotent watermark-cursor advance, and
+// the 410-Gone → full-sync fallback. On success it stamps last_synced_at.
 func (p *ConnectorJobProcessor) runSync(ctx context.Context, connector AccessConnector, row *models.AccessConnector, payload jobPayload, cfg, secrets map[string]interface{}) error {
 	syncType := normalizeSyncType(payload.SyncType)
-	checkpoint, err := p.syncState.Load(ctx, row.WorkspaceID, row.ID, syncType)
-	if err != nil {
-		return err
-	}
 
-	// Track the most recent non-empty checkpoint the connector hands back. For
-	// delta-capable providers this is the opaque delta link to resume from next
-	// time; for cursor-paginated providers it is the final page cursor.
-	latestCheckpoint := checkpoint
-	handler := func(_ []*Identity, nextCheckpoint string) error {
-		if nextCheckpoint != "" {
-			latestCheckpoint = nextCheckpoint
-		}
-		return nil
-	}
-	if err := connector.SyncIdentities(ctx, cfg, secrets, checkpoint, handler); err != nil {
+	// The control plane tracks sync state (watermark cursor, last_synced_at) but
+	// does not itself persist the identity records; that is the orphan
+	// reconciler / provisioning path's responsibility. The handler is therefore
+	// a no-op sink whose only contract is to surface a downstream error so the
+	// orchestrator can leave the cursor intact for an idempotent retry.
+	handler := func(_ []*Identity, _ []string) error { return nil }
+
+	if _, err := p.orchestrator.Run(ctx, row.WorkspaceID, row.ID, syncType, connector, cfg, secrets, handler); err != nil {
 		return fmt.Errorf("access: sync identities (connector=%s provider=%s): %w", row.ID, row.Provider, err)
 	}
 
-	if latestCheckpoint != checkpoint {
-		if err := p.syncState.Save(ctx, row.WorkspaceID, row.ID, syncType, latestCheckpoint); err != nil {
-			return err
-		}
-	}
 	now := time.Now().UTC()
 	if err := p.svc.db.WithContext(ctx).
 		Model(&models.AccessConnector{}).
