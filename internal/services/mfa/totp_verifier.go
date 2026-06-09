@@ -177,14 +177,23 @@ func (v *TOTPMFAVerifier) CleanupExpiredUsedCodes(ctx context.Context, retention
 // DefaultCleanupInterval and retention to DefaultTOTPUsedCodeRetention when
 // non-positive. Per-sweep errors are logged but never stop the loop — a
 // transient DB issue must not silently kill replay protection's GC.
-func (v *TOTPMFAVerifier) StartUsedCodeCleanupLoop(ctx context.Context, interval, retention time.Duration) {
+//
+// It returns a join function that blocks until the background goroutine has
+// fully exited. Callers that own the lifecycle (cmd/ztna-api) cancel ctx and
+// then call join() on shutdown so the loop is guaranteed to have stopped before
+// the DB pool is closed — the same deterministic ordering the lifecycle
+// scheduler uses. The returned func is safe to call exactly once; tests that do
+// not care about shutdown ordering may ignore it.
+func (v *TOTPMFAVerifier) StartUsedCodeCleanupLoop(ctx context.Context, interval, retention time.Duration) (join func()) {
 	if interval <= 0 {
 		interval = DefaultCleanupInterval
 	}
 	if retention <= 0 {
 		retention = DefaultTOTPUsedCodeRetention
 	}
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -219,6 +228,7 @@ func (v *TOTPMFAVerifier) StartUsedCodeCleanupLoop(ctx context.Context, interval
 			}
 		}
 	}()
+	return func() { <-done }
 }
 
 var _ MFAVerifier = (*TOTPMFAVerifier)(nil)

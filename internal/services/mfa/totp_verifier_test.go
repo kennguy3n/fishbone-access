@@ -257,13 +257,26 @@ func TestCleanupExpiredUsedCodes(t *testing.T) {
 }
 
 // TestStartUsedCodeCleanupLoopStops proves the loop exits promptly on context
-// cancellation without logging spurious errors (no panic / goroutine leak).
+// cancellation without logging spurious errors (no panic / goroutine leak), and
+// that the returned join handle blocks until the goroutine has fully exited —
+// the property cmd/ztna-api relies on to order shutdown before the DB pool
+// closes.
 func TestStartUsedCodeCleanupLoopStops(t *testing.T) {
 	v, _ := newTOTPVerifier(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	v.StartUsedCodeCleanupLoop(ctx, 10*time.Millisecond, time.Second)
+	join := v.StartUsedCodeCleanupLoop(ctx, 10*time.Millisecond, time.Second)
 	cancel()
-	// Give the goroutine a moment to observe cancellation. There is no handle to
-	// join, but a leak would surface under -race / goroutine dumps.
-	time.Sleep(30 * time.Millisecond)
+	// join must return once the goroutine observes cancellation. Guard with a
+	// timeout so a regression (e.g. the loop ignoring ctx) fails deterministically
+	// instead of hanging the suite.
+	done := make(chan struct{})
+	go func() {
+		join()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("cleanup loop join did not return after context cancellation")
+	}
 }

@@ -132,7 +132,17 @@ func run() error {
 		if err != nil {
 			return fmt.Errorf("totp verifier init: %w", err)
 		}
-		totpVerifier.StartUsedCodeCleanupLoop(ctx, mfa.DefaultCleanupInterval, mfa.DefaultTOTPUsedCodeRetention)
+		// Give the cleanup loop its own cancellable context and join it on the
+		// way out, mirroring the scheduler below, so the goroutine is guaranteed
+		// to have stopped before the deferred DB-pool close runs (the pool's
+		// close defer was registered earlier, so this later-registered defer
+		// runs first under LIFO). This holds on every run() exit path.
+		cleanupCtx, cleanupCancel := context.WithCancel(ctx)
+		joinCleanup := totpVerifier.StartUsedCodeCleanupLoop(cleanupCtx, mfa.DefaultCleanupInterval, mfa.DefaultTOTPUsedCodeRetention)
+		defer func() {
+			cleanupCancel()
+			joinCleanup()
+		}()
 		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
 		logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
 	}
