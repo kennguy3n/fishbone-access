@@ -33,7 +33,7 @@ const (
 	CapabilitySCIMProvisioning      = "scim_provisioning"
 	CapabilitySessionRevoke         = "session_revoke"
 	CapabilitySSOEnforcementCheck   = "sso_enforcement_check"
-	CapabilityCredentialRenewal     = "credential_renewal"
+	CapabilityCredentialRenewal     = "credential_renewal" // #nosec G101 -- capability taxonomy key, not a credential
 	CapabilityAccessAuditOperations = "access_audit_stream"
 )
 
