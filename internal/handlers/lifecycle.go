@@ -390,6 +390,11 @@ func (h *lifecycleHandlers) simulatePolicy(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"simulation": sim})
 }
 
+type promoteBody struct {
+	Force  bool   `json:"force"`
+	Reason string `json:"reason"`
+}
+
 func (h *lifecycleHandlers) promotePolicy(c *gin.Context) {
 	ws, ok := workspace(c)
 	if !ok {
@@ -399,8 +404,25 @@ func (h *lifecycleHandlers) promotePolicy(c *gin.Context) {
 	if !ok {
 		return
 	}
-	pol, err := h.policies.Promote(c.Request.Context(), ws, id, actor(c))
+	var body promoteBody
+	if !bindOptional(c, &body) {
+		return
+	}
+	pol, err := h.policies.Promote(c.Request.Context(), ws, id, actor(c), lifecycle.PromoteOptions{
+		Force:  body.Force,
+		Reason: body.Reason,
+	})
 	if err != nil {
+		// A conflict block carries the offending conflicts so the operator can
+		// review them before overriding with {"force":true,"reason":"..."}.
+		var ce *lifecycle.PromoteConflictError
+		if errors.As(err, &ce) {
+			c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+				"error":     ce.Error(),
+				"conflicts": ce.Conflicts,
+			})
+			return
+		}
 		h.fail(c, err)
 		return
 	}
@@ -740,7 +762,9 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, lifecycle.ErrReviewClosed),
 		errors.Is(err, lifecycle.ErrReviewItemDecided),
 		errors.Is(err, lifecycle.ErrPolicyNotPromotable),
-		errors.Is(err, lifecycle.ErrPolicyNotEditable):
+		errors.Is(err, lifecycle.ErrPolicyNotEditable),
+		errors.Is(err, lifecycle.ErrPolicyNotSimulated),
+		errors.Is(err, lifecycle.ErrPolicyHasConflicts):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrConnectorNotConfigured):
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})

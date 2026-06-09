@@ -61,4 +61,15 @@ var (
 	// that is not a draft (an active or archived policy must be superseded by a
 	// new draft, not edited in place).
 	ErrPolicyNotEditable = errors.New("lifecycle: policy is not editable")
+
+	// ErrPolicyNotSimulated is returned when Promote is called on a draft that
+	// has not been simulated since its last edit. Access policies must be
+	// tested (simulated) and verified before they can be rolled out, so a draft
+	// with no cached impact report cannot be promoted.
+	ErrPolicyNotSimulated = errors.New("lifecycle: policy must be simulated before promotion")
+
+	// ErrPolicyHasConflicts is returned when Promote is called on a draft that
+	// still has unresolved grant-vs-deny conflicts with live policies. The
+	// caller can override with an audited reason once the conflict is reviewed.
+	ErrPolicyHasConflicts = errors.New("lifecycle: policy has unresolved conflicts")
 )

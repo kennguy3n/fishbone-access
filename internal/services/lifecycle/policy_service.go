@@ -214,14 +214,98 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 	return result, nil
 }
 
+// PromoteOptions carries optional promotion controls. Force overrides the
+// grant-vs-deny conflict block (the simulation requirement is never waivable);
+// Reason is the audited justification recorded on the override.
+type PromoteOptions struct {
+	Force  bool
+	Reason string
+}
+
+// PromoteConflictError is returned when promotion is blocked by unresolved
+// grant-vs-deny conflicts. It carries the offending conflicts so the caller can
+// surface them, and satisfies errors.Is(err, ErrPolicyHasConflicts).
+type PromoteConflictError struct {
+	Conflicts []PolicyConflict
+}
+
+func (e *PromoteConflictError) Error() string {
+	return fmt.Sprintf("%v: %d unresolved grant-vs-deny conflict(s) block promotion", ErrPolicyHasConflicts, len(e.Conflicts))
+}
+
+// Is lets callers match this typed error against the ErrPolicyHasConflicts
+// sentinel (e.g. the REST layer's status mapping).
+func (e *PromoteConflictError) Is(target error) bool {
+	return target == ErrPolicyHasConflicts
+}
+
+// Unwrap exposes the sentinel so errors.Is also works through wrapping.
+func (e *PromoteConflictError) Unwrap() error { return ErrPolicyHasConflicts }
+
+// hardConflicts filters a conflict set down to the security-relevant
+// grant-vs-deny disagreements (redundant overlaps are informational and never
+// block promotion).
+func hardConflicts(in []PolicyConflict) []PolicyConflict {
+	var out []PolicyConflict
+	for _, c := range in {
+		if c.Kind == ConflictGrantVsDeny {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // Promote flips a draft policy to active and stamps PromotedAt. It is
 // idempotent: promoting an already-active policy is a no-op that returns the
 // policy unchanged (so a retried promotion does not bump the version or restamp
 // the timestamp). An archived policy cannot be promoted.
-func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.UUID, actor string) (*models.Policy, error) {
+//
+// Promotion enforces test-before-rollout for drafts: the draft must have been
+// simulated since its last edit (a non-empty DraftImpact, which UpdateDraft
+// clears on every edit, proves this), and it must not have unresolved
+// grant-vs-deny conflicts with live policies. Conflicts are re-scanned at
+// promote time so a conflict introduced by another policy promoted after this
+// draft was simulated is still caught. A reviewed conflict can be overridden
+// with opts.Force, which records the reason in the audit chain.
+func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.UUID, actor string, opts PromoteOptions) (*models.Policy, error) {
+	// Pre-flight guard (read-only): enforce simulate-before-rollout for drafts
+	// before opening the write transaction. An active/archived policy skips
+	// this — Promote stays idempotent on an already-promoted policy.
+	pre, err := s.GetPolicy(ctx, workspaceID, policyID)
+	if err != nil {
+		return nil, err
+	}
+	overrideMeta := datatypes.JSON(nil)
+	if pre.State == PolicyStateDraft {
+		if len(pre.DraftImpact) == 0 {
+			return nil, fmt.Errorf("%w: draft %s", ErrPolicyNotSimulated, policyID)
+		}
+		def, err := ParsePolicyDefinition(pre.Definition)
+		if err != nil {
+			return nil, err
+		}
+		conflicts, err := s.conflict.DetectConflicts(ctx, workspaceID, policyID, def)
+		if err != nil {
+			return nil, err
+		}
+		if hard := hardConflicts(conflicts); len(hard) > 0 {
+			if !opts.Force {
+				return nil, &PromoteConflictError{Conflicts: hard}
+			}
+			meta := map[string]any{
+				"override":             true,
+				"reason":               opts.Reason,
+				"overridden_conflicts": len(hard),
+			}
+			if b, err := json.Marshal(meta); err == nil {
+				overrideMeta = datatypes.JSON(b)
+			}
+		}
+	}
+
 	now := s.now()
 	var pol *models.Policy
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loaded, err := loadPolicyTx(ctx, tx, workspaceID, policyID)
 		if err != nil {
 			return err
@@ -246,11 +330,16 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 		loaded.PromotedAt = &now
 		loaded.UpdatedAt = now
 		pol = loaded
+		action := "policy.promoted"
+		if overrideMeta != nil {
+			action = "policy.promoted_with_override"
+		}
 		return appendAudit(ctx, tx, now, auditEntry{
 			WorkspaceID: workspaceID,
 			Actor:       actor,
-			Action:      "policy.promoted",
+			Action:      action,
 			TargetRef:   policyID.String(),
+			Metadata:    overrideMeta,
 		})
 	})
 	if err != nil {
