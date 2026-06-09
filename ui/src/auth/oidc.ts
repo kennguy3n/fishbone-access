@@ -94,8 +94,10 @@ export async function completeOidcLogin(
   // them from storage before doing anything that can throw. This guarantees no
   // failure path — state mismatch, missing verifier, or a failed token
   // exchange — can leave stale PKCE material behind. A retry must restart the
-  // flow via beginOidcLogin(), which mints fresh material. (A plain `finally`
-  // wouldn't cover the validation throws below, since they run before it.)
+  // flow via beginOidcLogin(), which mints fresh material. Clearing eagerly
+  // here (rather than in a finally) keeps the removal adjacent to the read and
+  // unconditional, so the material is gone before any validation below runs
+  // even if that validation returns early or throws.
   const expectedState = sessionStorage.getItem(OIDC_STATE_KEY);
   const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
   sessionStorage.removeItem(OIDC_STATE_KEY);

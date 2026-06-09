@@ -7,6 +7,14 @@ import { DEFAULT_LOCALE, type Locale, matchLocale, resolveLocale } from "./local
 
 const STORAGE_KEY = "sng.locale";
 
+// In-memory source of truth for the request layer. It is the language the user
+// is actually seeing this session: seeded lazily from persistence/the browser
+// and updated synchronously by storeLocale on every change. Keeping it in
+// memory means the axios interceptor never reads localStorage per request, and
+// — crucially — it stays correct even when persistence fails (e.g. Safari
+// private mode quota), so the Accept-Language header can't drift from the UI.
+let activeLocale: Locale | null = null;
+
 export function getStoredLocale(): Locale | null {
   if (typeof localStorage === "undefined") return null;
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -19,6 +27,10 @@ export function getStoredLocale(): Locale | null {
 }
 
 export function storeLocale(locale: Locale): void {
+  // Update the in-memory active locale first, unconditionally: this is what the
+  // request layer reads, so it must reflect the user's choice even if the
+  // persistence below is unavailable or throws.
+  activeLocale = locale;
   if (typeof localStorage === "undefined") return;
   // Guard the write like setTheme does: a restricted or full localStorage
   // (e.g. Safari private mode quota) throws, and a failure to persist the
@@ -45,9 +57,14 @@ export function detectInitialLocale(): Locale {
 
 // getActiveLocale is the accessor the axios interceptor calls to stamp
 // Accept-Language on every API request, so the API negotiates the same
-// language the operator selected in the UI. detectInitialLocale already
-// prefers the stored choice, so this is just a stable, intent-revealing
-// alias for the request layer.
+// language the operator selected in the UI. It resolves once (from the stored
+// choice / browser, via detectInitialLocale) and then serves the in-memory
+// value, which storeLocale keeps in sync on every change — so it neither
+// re-reads localStorage per request nor disagrees with the in-session UI
+// locale when a persist fails.
 export function getActiveLocale(): Locale {
-  return detectInitialLocale();
+  if (activeLocale === null) {
+    activeLocale = detectInitialLocale();
+  }
+  return activeLocale;
 }
