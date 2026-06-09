@@ -250,7 +250,11 @@ func (h *connectorHandlers) testConnector(c *gin.Context) {
 		// maps it to the right status and returns a generic message for 500s so
 		// encryption-layer internals never leak to the client.
 		if errors.Is(err, access.ErrConnectorConnectivity) {
-			c.JSON(http.StatusBadGateway, gin.H{
+			// AbortWithStatusJSON (not plain JSON) so this path matches every
+			// other error path here and in the lifecycle handlers: it calls
+			// Abort(), so downstream middleware that branches on c.IsAborted()
+			// (response logging, metrics) treats the 502 like any other failure.
+			c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{
 				"ok":      false,
 				"error":   err.Error(),
 				"missing": missing,

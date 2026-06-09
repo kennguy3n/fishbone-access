@@ -194,9 +194,18 @@ func TestOrchestratorPartialFailureLeavesCursorIntact(t *testing.T) {
 		failDeltaOnPage: 1, // fail after the first page is handed off
 		finalDeltaLink:  "cursor-next",
 	}
-	_, err := o.Run(context.Background(), ws, conn, "", fc, nil, nil, func([]*Identity, []string) error { return nil })
+	res, err := o.Run(context.Background(), ws, conn, "", fc, nil, nil, func([]*Identity, []string) error { return nil })
 	if err == nil {
 		t.Fatal("expected error on mid-stream failure")
+	}
+	// The partial result must still describe which path was attempted, so a
+	// caller logging it alongside the error can tell a delta failure apart
+	// from a full-sync failure.
+	if res == nil {
+		t.Fatal("partial-failure run returned a nil result; want a delta-labelled result alongside the error")
+	}
+	if res.Mode != SyncModeDelta {
+		t.Errorf("partial-failure result mode = %q, want delta", res.Mode)
 	}
 	// Watermark unchanged — next run resumes from the same cursor.
 	if got, _ := store.Load(context.Background(), ws, conn, ""); got != "cursor-start" {

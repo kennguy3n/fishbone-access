@@ -121,15 +121,21 @@ func (o *IdentityDeltaSyncOrchestrator) Run(
 		}
 		if !errors.Is(derr, ErrDeltaTokenExpired) {
 			// Partial failure (handler error, transport error). Leave the cursor
-			// intact so the next run resumes delta from the same watermark.
+			// intact so the next run resumes delta from the same watermark. Label
+			// the partial result as a delta attempt so a caller logging the
+			// returned SyncResult alongside the error can see which path failed.
+			result.Mode = SyncModeDelta
 			return result, fmt.Errorf("access: orchestrator: delta sync: %w", derr)
 		}
-		// Cursor expired / 410 Gone: drop it and fall through to full sync.
+		// Cursor expired / 410 Gone: we've committed to dropping the cursor and
+		// falling back to a full enumeration, so stamp the mode before the Clear
+		// — a Clear failure then still returns a result that accurately reflects
+		// the attempted delta-then-fallback path.
+		result.Mode = SyncModeDeltaThenFullFallback
 		if err := o.cursors.Clear(ctx, workspaceID, connectorID, syncType); err != nil {
 			return result, fmt.Errorf("access: orchestrator: drop expired cursor: %w", err)
 		}
 		logger.Infof(ctx, "access: orchestrator: delta cursor expired for connector %s; falling back to full sync", connectorID)
-		result.Mode = SyncModeDeltaThenFullFallback
 	} else {
 		result.Mode = SyncModeFull
 	}
