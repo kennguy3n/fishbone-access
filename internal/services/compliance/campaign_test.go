@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
 func TestStartCampaignEnumeratesScopedGrants(t *testing.T) {
@@ -166,6 +167,65 @@ func TestCloseCampaignAppliesStagedRevokes(t *testing.T) {
 	}
 	if rev.callCount(g2) != 1 {
 		t.Fatalf("re-close must not re-revoke, got %d calls", rev.callCount(g2))
+	}
+}
+
+// TestCloseCampaignToleratesIndependentlyRevokedGrant proves the post-commit
+// apply loop converges when a staged-revoke grant was already revoked out-of-
+// band (e.g. via /grants/:id/revoke or a concurrent close) between the preview
+// snapshot and the apply. The idempotent revoker no-ops on the already-revoked
+// grant, the close still applies the OTHER staged revoke, returns a report, and
+// stamps revoked_at on both items — no error and no half-applied state.
+func TestCloseCampaignToleratesIndependentlyRevokedGrant(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	g1 := seedGrant(t, db, ws, conn, "u1", "r1", "reader")
+	g2 := seedGrant(t, db, ws, conn, "u2", "r2", "reader")
+	ctx := context.Background()
+	rev := newFakeRevoker(db)
+	svc := NewCertificationService(db, rev)
+
+	camp, _, _ := svc.StartCampaign(ctx, ws, CampaignInput{Name: "c"}, "auditor")
+	items, _ := svc.ListItems(ctx, ws, camp.ID, "")
+	for _, it := range items { // stage BOTH grants for revoke
+		if err := svc.SubmitDecision(ctx, ws, camp.ID, it.ItemID, models.CertificationDecisionRevoke, "auditor", ""); err != nil {
+			t.Fatalf("decision: %v", err)
+		}
+	}
+
+	// Independently revoke g1 out-of-band BEFORE close (simulates a direct
+	// /grants/:id/revoke or a concurrent campaign close landing first).
+	if err := db.WithContext(ctx).Model(&models.AccessGrant{}).
+		Where("workspace_id = ? AND id = ?", ws, g1).
+		Updates(map[string]any{"state": lifecycle.GrantStateRevoked, "revoked_at": time.Now().UTC()}).Error; err != nil {
+		t.Fatalf("independent revoke: %v", err)
+	}
+
+	report, err := svc.CloseCampaign(ctx, ws, camp.ID, "auditor")
+	if err != nil {
+		t.Fatalf("close must converge despite an independently-revoked grant, got: %v", err)
+	}
+	if report.State != models.CertificationStateClosed {
+		t.Fatalf("expected closed, got %s", report.State)
+	}
+	if report.Revoked != 2 {
+		t.Fatalf("both items decided revoke, got %+v", report)
+	}
+	// g1 was attempted once (idempotent no-op); g2 actually torn down once.
+	if rev.callCount(g1) != 1 || rev.callCount(g2) != 1 {
+		t.Fatalf("expected each grant attempted once, got g1=%d g2=%d", rev.callCount(g1), rev.callCount(g2))
+	}
+	// Both revoke items must be stamped revoked_at (loop did not abort on g1).
+	var unstamped int64
+	if err := db.WithContext(ctx).Model(&models.CertificationItem{}).
+		Where("workspace_id = ? AND campaign_id = ? AND decision = ? AND revoked_at IS NULL",
+			ws, camp.ID, models.CertificationDecisionRevoke).
+		Count(&unstamped).Error; err != nil {
+		t.Fatalf("count unstamped: %v", err)
+	}
+	if unstamped != 0 {
+		t.Fatalf("all revoke items must be stamped revoked_at after close, %d left unstamped", unstamped)
 	}
 }
 

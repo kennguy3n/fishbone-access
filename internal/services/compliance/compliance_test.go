@@ -136,6 +136,19 @@ func (f *fakeRevoker) RevokeGrant(ctx context.Context, workspaceID, grantID uuid
 	if f.failOn[grantID] {
 		return context.DeadlineExceeded // any non-nil error to exercise retry
 	}
+	// Honour the GrantRevoker idempotency contract: a grant that is no longer
+	// active (e.g. already revoked out-of-band) is a clean no-op returning nil,
+	// exactly as AccessProvisioningService.RevokeGrant does — no second state
+	// flip and no duplicate evidence event.
+	var g models.AccessGrant
+	if err := f.db.WithContext(ctx).
+		Where("workspace_id = ? AND id = ?", workspaceID, grantID).
+		Take(&g).Error; err != nil {
+		return err
+	}
+	if g.State != lifecycle.GrantStateActive {
+		return nil
+	}
 	now := time.Now().UTC()
 	if err := f.db.WithContext(ctx).Model(&models.AccessGrant{}).
 		Where("workspace_id = ? AND id = ?", workspaceID, grantID).

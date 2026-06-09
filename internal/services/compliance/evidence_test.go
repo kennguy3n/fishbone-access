@@ -139,6 +139,36 @@ func TestVerifyChainDetectsDeletedRow(t *testing.T) {
 	}
 }
 
+// TestVerifyChainDetectsSoftDeletedRow locks in the deliberate scope divergence
+// between the appender and the verifier. The appender reads the chain head with
+// Unscoped() so a soft-deleted row can never be silently skipped and forked off
+// (see lifecycle.appendAudit). The verifier intentionally does NOT use
+// Unscoped(): a soft-deleted audit row is an anomaly (audit events are immutable
+// and must never be deleted), and the SCOPED read surfaces the resulting
+// chain_seq gap as "tampered". Using Unscoped() in the verifier would instead
+// re-link over the soft-deleted row and report "valid", BLINDING the tamper
+// check to deletion — the weaker posture. This test guarantees the stronger one.
+func TestVerifyChainDetectsSoftDeletedRow(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	for i := 0; i < 4; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	// SOFT-delete the 2nd row (scoped Delete sets deleted_at; the row physically
+	// remains). The scoped verifier must still surface the chain_seq gap.
+	if err := db.Where("workspace_id = ? AND chain_seq = ?", ws, int64(2)).
+		Delete(&models.AuditEvent{}).Error; err != nil {
+		t.Fatalf("soft delete row: %v", err)
+	}
+	v, err := NewEvidenceService(db).VerifyChain(context.Background(), ws)
+	if err != nil {
+		t.Fatalf("VerifyChain: %v", err)
+	}
+	if v.OK || v.Status != chainStatusTampered {
+		t.Fatalf("expected tampered after soft-deletion, got %+v", v)
+	}
+}
+
 func TestCoverageByFramework(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")

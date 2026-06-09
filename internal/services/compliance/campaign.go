@@ -21,6 +21,17 @@ import (
 // campaign close. It is the same contract the 1C review service uses; reusing
 // it keeps a single revoke path (idempotent, connector-side teardown + grant
 // state flip + audit) rather than a parallel one.
+//
+// RevokeGrant MUST be idempotent: revoking a grant that is already revoked (or
+// otherwise no longer active) is a no-op that returns nil, NOT an error. The
+// real implementation (AccessProvisioningService.RevokeGrant) honours this by
+// short-circuiting on any non-active state. CloseCampaign's post-commit apply
+// loop relies on this: a grant independently revoked between the preview
+// snapshot and the apply (e.g. via /grants/:id/revoke or a concurrent close)
+// must not abort the loop and strand the remaining staged revokes — the desired
+// end state (grant revoked) is already satisfied, so the loop converges. Only a
+// genuine teardown failure (connector error, missing grant) returns a non-nil
+// error, which correctly aborts so a re-close can retry.
 type GrantRevoker interface {
 	RevokeGrant(ctx context.Context, workspaceID, grantID uuid.UUID, actor, reason string) error
 }
@@ -349,9 +360,12 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 		return CampaignReport{}, err
 	}
 
-	// Apply staged revokes post-commit. RevokeGrant is idempotent and appends
-	// its own access_grant.revoked evidence; we then stamp revoked_at so a
-	// re-close skips already-applied items.
+	// Apply staged revokes post-commit. RevokeGrant is idempotent (see the
+	// GrantRevoker contract): a grant already revoked out-of-band returns nil
+	// rather than erroring, so an independently-revoked grant does not strand
+	// the remaining staged revokes. It appends its own access_grant.revoked
+	// evidence; we then stamp revoked_at so a re-close skips already-applied
+	// items. A genuine teardown failure aborts so a re-close can retry.
 	for i := range pendingRevokes {
 		p := pendingRevokes[i]
 		if err := s.revoker.RevokeGrant(ctx, workspaceID, p.GrantID, actor, defaultReason(p.Reason, "revoked by certification campaign")); err != nil {

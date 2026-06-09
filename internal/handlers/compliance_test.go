@@ -80,6 +80,9 @@ func TestExportPackAuthzGate(t *testing.T) {
 	if ct := w.Header().Get("Content-Disposition"); ct == "" {
 		t.Fatalf("expected attachment disposition")
 	}
+	if ct := w.Header().Get("Content-Type"); ct != "application/zip" {
+		t.Fatalf("expected Content-Type application/zip, got %q", ct)
+	}
 }
 
 func TestCampaignCrossTenantIsolationHandler(t *testing.T) {

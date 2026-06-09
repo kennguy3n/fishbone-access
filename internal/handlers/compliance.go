@@ -427,6 +427,9 @@ func (h *complianceHandlers) exportPack(c *gin.Context) {
 		return
 	}
 	filename := "evidence-pack-" + strings.ReplaceAll(string(framework), " ", "_") + ".zip"
+	// Set Content-Type explicitly: the body is a ZIP, not the gin default of
+	// text/plain. Set before WriteHeader so it is not sniffed from the payload.
+	c.Header("Content-Type", "application/zip")
 	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
 	c.Header("X-Evidence-Pack-Digest", manifest.ContentSHA256)
 	c.Status(http.StatusOK)
