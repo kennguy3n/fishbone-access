@@ -61,6 +61,23 @@ function tierTone(tier: string): "info" | "neutral" {
   return tier === "T1" || tier === "T2" ? "info" : "neutral";
 }
 
+// Connection status tone, mirroring the backend access_connectors.status values
+// (internal/services/access/connector_management.go): "active" is healthy (ok),
+// "degraded" means connected but missing a requested scope (warn), "error" is a
+// failed connectivity test (danger). Anything else (e.g. "pending") is neutral.
+function statusTone(status: string | undefined): "ok" | "warn" | "danger" | "neutral" {
+  switch (status) {
+    case "active":
+      return "ok";
+    case "degraded":
+      return "warn";
+    case "error":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 type View = "gallery" | "matrix";
 
 export function Connectors() {
@@ -290,7 +307,7 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
             </div>
             <div className="connector-card__foot">
               {entry.connected ? (
-                <Badge tone="ok" dot>
+                <Badge tone={statusTone(entry.status)} dot>
                   {titleCase(entry.status) || "Connected"}
                 </Badge>
               ) : (

@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 )
 
 // Connector lifecycle status values persisted in access_connectors.status.
@@ -23,6 +24,13 @@ const (
 	ConnectorStatusActive = "active"
 	// ConnectorStatusError is a connector whose last connectivity test failed.
 	ConnectorStatusError = "error"
+	// ConnectorStatusDegraded is a connector whose credentials verified against
+	// the provider (Connect succeeded) but which is missing one or more of the
+	// requested capability scopes. The connection works; it just cannot perform
+	// every function yet. This is distinct from "error" (a real connectivity
+	// failure) so the catalogue/UI can show "connected, needs a scope" rather
+	// than a red failure for a connector that is actually reachable.
+	ConnectorStatusDegraded = "degraded"
 )
 
 // Job type values the worker dispatches on. They are the access_jobs.type
@@ -146,9 +154,13 @@ func (s *ConnectorManagementService) List(ctx context.Context, workspaceID uuid.
 }
 
 // TestConnectivity opens the stored secrets and runs the provider's Connect (and
-// VerifyPermissions when capabilities are supplied), updating the connector's
-// status to active on success or error on failure. The returned error is the
-// connectivity failure, if any; the status is persisted either way.
+// VerifyPermissions when capabilities are supplied), persisting the connector's
+// status: active when the connection works and all requested scopes are present,
+// degraded when it connects but some scopes are missing, error when the provider
+// rejects the connection. The returned error is non-nil ONLY for a genuine
+// connectivity failure (tagged ErrConnectorConnectivity); a connect-OK / missing-
+// scopes result returns the missing list with a nil error so the caller can
+// report it as a 200 success. The status is persisted regardless.
 func (s *ConnectorManagementService) TestConnectivity(ctx context.Context, workspaceID, connectorID uuid.UUID, capabilities []string) (missing []string, err error) {
 	row, err := s.loadConnector(ctx, s.db, workspaceID, connectorID)
 	if err != nil {
@@ -166,34 +178,48 @@ func (s *ConnectorManagementService) TestConnectivity(ctx context.Context, works
 	connectErr := connector.Connect(ctx, cfg, secrets)
 	if connectErr == nil && len(capabilities) > 0 {
 		missing, connectErr = connector.VerifyPermissions(ctx, cfg, secrets, capabilities)
-		if connectErr == nil && len(missing) > 0 {
-			connectErr = fmt.Errorf("access: missing capabilities: %v", missing)
-		}
 	}
 	// Everything above this point that errored (loadConnector, GetAccessConnector,
 	// openConnector) returned early as an internal/registry fault. connectErr is
-	// the only error that originates from the provider side, so tag it with
-	// ErrConnectorConnectivity: the handler surfaces that as a 502 with the raw
-	// diagnostic, while untagged faults fall through to a generic 500 and never
-	// leak the decrypt/config internals to the client.
+	// the only error that originates from the provider side, so tag a genuine
+	// provider failure with ErrConnectorConnectivity: the handler surfaces that
+	// as a 502 with the raw diagnostic, while untagged faults fall through to a
+	// generic 500 and never leak the decrypt/config internals to the client.
+	//
+	// A successful Connect whose VerifyPermissions reports unmet scopes is NOT a
+	// connectivity failure — the credentials work, the connector is merely
+	// missing a grant. That case carries a nil error and is reported to the
+	// operator via `missing`, so the handler returns 200 per the OpenAPI
+	// contract (docs/openapi.yaml: "Connection succeeded (missing lists any
+	// unmet capabilities)") and the row is marked degraded rather than error.
 	if connectErr != nil {
 		connectErr = fmt.Errorf("%w: %w", ErrConnectorConnectivity, connectErr)
 	}
 
 	status := ConnectorStatusActive
-	if connectErr != nil {
+	switch {
+	case connectErr != nil:
 		status = ConnectorStatusError
+	case len(missing) > 0:
+		status = ConnectorStatusDegraded
 	}
 	if uerr := s.db.WithContext(ctx).
 		Model(&models.AccessConnector{}).
 		Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
 		Update("status", status).Error; uerr != nil {
-		// Surface BOTH failures: when the provider test and the status
-		// persistence fail together, returning only the DB error would hide the
-		// connectivity diagnosis an operator needs. errors.Join drops a nil
-		// connectErr, so a pure DB failure still returns just the wrapped DB
-		// error (and errors.Is against either cause keeps working).
-		return missing, errors.Join(connectErr, fmt.Errorf("access: persist connectivity status: %w", uerr))
+		// The status write is a platform-internal operation; its failure must
+		// not be folded into the client-facing connectivity diagnostic, or a
+		// GORM/driver error (table/column names) would leak in the 502 body via
+		// the handler's err.Error(). Log it server-side for ops and return only
+		// the provider diagnostic (connectErr) to the caller. When connectErr is
+		// nil (a pure persistence failure), return the wrapped DB error UNtagged
+		// so the handler routes it through its generic-500 path, which logs the
+		// detail but returns an opaque "internal error" body.
+		logger.Errorf(ctx, "access: persist connectivity status for connector %s (workspace %s): %v", row.ID, workspaceID, uerr)
+		if connectErr != nil {
+			return missing, connectErr
+		}
+		return missing, fmt.Errorf("access: persist connectivity status: %w", uerr)
 	}
 	return missing, connectErr
 }
