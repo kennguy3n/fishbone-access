@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
@@ -245,8 +247,14 @@ func (h *workflowHandlers) run(c *gin.Context) {
 	// StatusFailed, or a mix = StatusPartial) is not an opaque 500: return the
 	// per-step breakdown so an operator can act on it. Both map to 500 to honor
 	// the OpenAPI contract that a completed-with-failures run is a server error.
+	// Carry an `error` summary alongside the structured `run` (mirroring the
+	// emergency-offboard handler) so a client whose error path only reads the
+	// `error` key still surfaces a meaningful message rather than a generic one.
 	if result != nil && (result.Status == workflow.StatusFailed || result.Status == workflow.StatusPartial) {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"run": result})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"run":   result,
+			"error": "workflow run completed with step failures",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"run": result})
@@ -311,7 +319,32 @@ func (h *workflowHandlers) emergencyOffboard(c *gin.Context) {
 	if !bind(c, &body) {
 		return
 	}
-	res, err := h.steps.JML.RunKillSwitch(c.Request.Context(), ws, body.UserExternalID, actor(c))
+	act := actor(c)
+	// Record the operator's break-glass justification as its own event in the
+	// per-workspace audit hash chain BEFORE the cascade runs. The reason is
+	// specific to this manual emergency-offboard action — the SCIM leaver lane
+	// and the workflow run_kill_switch step share RunKillSwitch but carry no
+	// human justification — so it is audited here rather than threaded through
+	// the shared kill-switch signature. Fail-closed: a break-glass action gated
+	// by step-up MFA must not proceed if its justification cannot be durably
+	// recorded (an operator can retry), mirroring the kill switch's own
+	// treatment of an unwritable layer-audit row as a compliance failure.
+	meta, err := json.Marshal(map[string]string{"reason": body.Reason})
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	if err := lifecycle.AppendAudit(c.Request.Context(), h.db, time.Now(), lifecycle.AuditInput{
+		WorkspaceID: ws,
+		Actor:       act,
+		Action:      "workflow.emergency_offboard.initiated",
+		TargetRef:   body.UserExternalID,
+		Metadata:    datatypes.JSON(meta),
+	}); err != nil {
+		h.fail(c, err)
+		return
+	}
+	res, err := h.steps.JML.RunKillSwitch(c.Request.Context(), ws, body.UserExternalID, act)
 	if err != nil {
 		if res != nil && res.Errored {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"leaver": res, "error": err.Error()})

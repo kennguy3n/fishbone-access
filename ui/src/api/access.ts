@@ -142,11 +142,22 @@ export interface Me {
 export class ApiError extends Error {
   readonly status: number;
   readonly conflicts?: PolicyConflict[];
-  constructor(status: number, message: string, conflicts?: PolicyConflict[]) {
+  // The full parsed response body. Some endpoints return a structured payload
+  // alongside a non-2xx status that callers need (e.g. the workflow /run 500
+  // carries the per-step failure breakdown under `run`); preserving the raw
+  // body here keeps it from being discarded by the generic error path.
+  readonly details?: unknown;
+  constructor(
+    status: number,
+    message: string,
+    conflicts?: PolicyConflict[],
+    details?: unknown,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.conflicts = conflicts;
+    this.details = details;
   }
 }
 
@@ -163,7 +174,7 @@ export function toApiError(err: unknown): ApiError {
     const body = ax.response?.data;
     const message =
       body?.error ?? ax.message ?? "Request failed. Please try again.";
-    return new ApiError(status, message, body?.conflicts);
+    return new ApiError(status, message, body?.conflicts, body);
   }
   if (err instanceof Error) return new ApiError(0, err.message);
   return new ApiError(0, "Unknown error");

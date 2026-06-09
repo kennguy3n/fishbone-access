@@ -239,12 +239,32 @@ export const archiveWorkflow = (id: string) =>
     method: "POST",
   }).then((r) => r.workflow);
 
+// runWorkflow resolves with the run breakdown on success. On a completed run
+// with step failures the server returns 500 carrying the SAME breakdown under
+// `run`, which `call` surfaces as an ApiError. The breakdown is preserved on
+// `ApiError.details` (it would otherwise be discarded by the generic error
+// path) — use `failedRunFromError` to recover it so a caller can render the
+// per-step failure detail the operator needs to act on.
 export const runWorkflow = (id: string, subject: WorkflowSubject) =>
   call<{ run: WorkflowRunResult }>({
     url: `/workflows/${id}/run`,
     method: "POST",
     data: subject,
   }).then((r) => normalizeResult(r.run));
+
+// failedRunFromError extracts the per-step run breakdown a failed runWorkflow
+// call carries on its ApiError (the 500 body's `run`), returning undefined when
+// the error is not a run failure (e.g. a 403 step-up-MFA or 404). This lets a
+// caller render the failed steps instead of only the generic error message.
+export function failedRunFromError(
+  err: unknown,
+): WorkflowRunResult | undefined {
+  if (!(err instanceof ApiError)) return undefined;
+  const details = err.details;
+  if (typeof details !== "object" || details === null) return undefined;
+  const run = (details as { run?: WorkflowRunResult }).run;
+  return run ? normalizeResult(run) : undefined;
+}
 
 export const listRuns = (limit?: number) =>
   call<{ runs: WorkflowRun[] }>({
