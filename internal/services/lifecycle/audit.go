@@ -133,6 +133,14 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 		return fmt.Errorf("%w: audit event requires an action", ErrValidation)
 	}
 
+	// Normalise the timestamp to UTC microseconds BEFORE it is folded into the
+	// hash AND stored, so the chain stays recomputable by a read-only verifier.
+	// Postgres timestamptz preserves only microseconds, so hashing the raw
+	// nanosecond clock while storing a truncated created_at would make every
+	// legitimately-stored row fail a recompute check. Truncating here keeps the
+	// hashed timestamp identical to the persisted one on every dialect.
+	now = now.UTC().Truncate(time.Microsecond)
+
 	// Serialize concurrent appends in this workspace so the read-head/insert
 	// pair below is atomic and the chain cannot fork (see lockWorkspace).
 	if err := lockWorkspace(ctx, tx, e.WorkspaceID); err != nil {

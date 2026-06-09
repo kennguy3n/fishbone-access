@@ -268,5 +268,7 @@ func All() []any {
 		&PAMConnectToken{},
 		&PAMSession{},
 		&PAMSessionCommand{},
+		&CertificationCampaign{},
+		&CertificationItem{},
 	}
 }
