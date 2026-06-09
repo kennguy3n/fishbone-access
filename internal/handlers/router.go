@@ -103,6 +103,7 @@ func NewRouter(deps Deps) *gin.Engine {
 			newRBACHandlers(deps.RBAC).register(scoped)
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
+		newWorkflowHandlers(deps).register(scoped)
 	}
 
 	// Serve the embedded Access console (SPA) when the binary was built with

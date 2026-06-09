@@ -2266,8 +2266,17 @@ label.field > span {
   border-color: var(--warn);
   background: var(--warn-soft);
 }
+.notice--danger {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
 .notice + .notice {
   margin-top: 10px;
+}
+
+/* Spacing utility for stacking cards within a builder column. */
+.mt-16 {
+  margin-top: 16px;
 }
 
 .segmented {
