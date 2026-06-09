@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -205,13 +206,27 @@ func (h *lifecycleHandlers) createRequest(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"request": req, "risk": review.Verdict, "workflow": decision})
 }
 
+// anomalyHookTimeout bounds the out-of-band anomaly-detection round trip + flag
+// persistence so a slow or unreachable agent can never leak the detached
+// goroutine. It sits comfortably above the aiclient request timeout.
+const anomalyHookTimeout = 30 * time.Second
+
 // runAnomalyHook feeds a just-approved elevation to the anomaly-detection skill
-// and persists any flags. It is advisory and fail-open: a failure is logged and
-// never affects the approval response.
+// and persists any flags. It is advisory and fail-open, so it must never add
+// latency to the approval response or block on the AI round trip: the work runs
+// in a detached goroutine on a context that survives the request
+// (context.WithoutCancel keeps request-scoped values but drops cancellation)
+// and is bounded by anomalyHookTimeout. Any failure is only logged; a flag
+// never changes the request's FSM state, so this can neither block nor reverse
+// the approval.
 func (h *lifecycleHandlers) runAnomalyHook(c *gin.Context, ws uuid.UUID, req *models.AccessRequest) {
-	if err := h.riskReview.RecordApprovalAnomalies(c.Request.Context(), ws, req, nil); err != nil {
-		logger.Warnf(c.Request.Context(), "lifecycle: anomaly hook for request %s: %v", req.ID, err)
-	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), anomalyHookTimeout)
+	go func() {
+		defer cancel()
+		if err := h.riskReview.RecordApprovalAnomalies(ctx, ws, req, nil); err != nil {
+			logger.Warnf(ctx, "lifecycle: anomaly hook for request %s: %v", req.ID, err)
+		}
+	}()
 }
 
 func (h *lifecycleHandlers) listRequests(c *gin.Context) {

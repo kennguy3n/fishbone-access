@@ -37,19 +37,29 @@ RECOMMENDATION_AUTO_APPROVE = "auto_approve_eligible"
 RECOMMENDATION_NEEDS_REVIEW = "needs_review"
 RECOMMENDATION_HIGH_RISK = "high_risk"
 
+# Canonical risk factor mirroring the Go lifecycle.SensitiveResourceRiskFactor
+# constant: the one factor that forces the security-review lane regardless of
+# the numeric band. Keeping the same vocabulary on both sides means the advisory
+# recommendation emitted here agrees with the authoritative Go routing.
+SENSITIVE_RESOURCE_FACTOR = "sensitive_resource"
+
 
 def _max_score(a: str, b: str) -> str:
     return a if _ORDER[a] >= _ORDER[b] else b
 
 
 def _recommendation(score: str, factors: list[str]) -> str:
-    """Derive the routing recommendation from the final score + factors. A
-    sensitive / elevated-resource factor forces high_risk regardless of the
-    numeric band (it can only raise concern), mirroring the Go router's
-    sensitive_resource → security_review edge."""
-    for f in factors:
-        if f == "sensitive_resource" or f.startswith("elevated_resource:"):
-            return RECOMMENDATION_HIGH_RISK
+    """Mirror the Go control plane's lifecycle.recommendationFor exactly: the
+    canonical ``sensitive_resource`` factor forces high_risk regardless of the
+    numeric band (the Go router's sensitive_resource → security_review edge),
+    otherwise the recommendation follows the score band. The Go side re-derives
+    the authoritative recommendation, so this advisory field never drives an
+    authorization decision — keeping it in lock-step only avoids confusing a
+    reader who compares the two. An ``elevated_resource:`` factor (prod, pii,
+    …) only bumps the *score* one band; it does not by itself force high_risk,
+    matching Go, which escalates on ``sensitive_resource`` alone."""
+    if SENSITIVE_RESOURCE_FACTOR in factors:
+        return RECOMMENDATION_HIGH_RISK
     if score == "high":
         return RECOMMENDATION_HIGH_RISK
     if score == "low":
@@ -78,6 +88,14 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
         # medium→high, high→high (already capped). The ternary picks the next
         # band's floor and _max_score keeps the higher of the two.
         score = _max_score(score, "high" if score != "low" else "medium")
+
+    # The "sensitive" tag specifically forces the security-review lane on the Go
+    # side (lifecycle.SensitiveResourceRiskFactor → security_review, also re-added
+    # by withSensitiveFactor). Emit the canonical factor so the verdict carries
+    # the exact signal the Go router escalates on and the advisory recommendation
+    # agrees with it. Go de-dupes if it appends the same factor.
+    if "sensitive" in tags:
+        factors.append(SENSITIVE_RESOURCE_FACTOR)
 
     duration = payload.get("duration_hours")
     if isinstance(duration, int) and duration > 168:  # standing access (> 1 week)

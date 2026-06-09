@@ -60,10 +60,13 @@ def test_risk_recommendation_follows_band():
 
 
 def test_risk_sensitive_tag_forces_high_recommendation():
-    # An elevated-resource factor forces high_risk regardless of band.
+    # A "sensitive" tag emits the canonical sensitive_resource factor, which
+    # forces high_risk regardless of band — mirroring the Go router's
+    # sensitive_resource → security_review edge.
     out = access_risk_assessment.run(
         {"role": "viewer", "resource_external_id": "svc", "resource_tags": ["sensitive"], "justification": "x"}
     )
+    assert "sensitive_resource" in out["risk_factors"]
     assert out["recommendation"] == "high_risk"
 
 
@@ -72,6 +75,20 @@ def test_risk_production_tag_bumps():
         {"role": "editor", "resource_external_id": "svc", "resource_tags": ["prod"], "justification": "x"}
     )
     assert out["risk_score"] in ("medium", "high")
+
+
+def test_risk_prod_readonly_recommendation_matches_go():
+    # A read-only role on a prod (elevated, not "sensitive") resource scores
+    # medium with an elevated_resource factor. Go routes this to needs_review
+    # (manager_approval), NOT high_risk — only sensitive_resource forces the
+    # security-review lane. The advisory recommendation must agree with Go.
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "svc", "resource_tags": ["prod"], "justification": "x"}
+    )
+    assert out["risk_score"] == "medium"
+    assert any(f.startswith("elevated_resource:") for f in out["risk_factors"])
+    assert "sensitive_resource" not in out["risk_factors"]
+    assert out["recommendation"] == "needs_review"
 
 
 def test_risk_llm_can_raise_not_lower(monkeypatch):
