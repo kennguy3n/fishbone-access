@@ -352,12 +352,17 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 				"state":       PolicyStateActive,
 				"promoted_at": now,
 				"updated_at":  now,
+				// Clear the draft-only simulation cache: it described the draft
+				// and is meaningless (and misleading in API responses) once the
+				// policy is active.
+				"draft_impact": gorm.Expr("NULL"),
 			}).Error; err != nil {
 			return fmt.Errorf("lifecycle: promote policy: %w", err)
 		}
 		loaded.State = PolicyStateActive
 		loaded.PromotedAt = &now
 		loaded.UpdatedAt = now
+		loaded.DraftImpact = nil
 		pol = loaded
 		action := "policy.promoted"
 		if overrideMeta != nil {

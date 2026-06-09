@@ -389,6 +389,16 @@ func TestPolicyDraftSimulatePromoteIdempotent(t *testing.T) {
 	if p2.State != PolicyStateActive || p2.PromotedAt == nil {
 		t.Fatalf("expected active+promoted, got %s %v", p2.State, p2.PromotedAt)
 	}
+	if len(p2.DraftImpact) != 0 {
+		t.Fatalf("expected DraftImpact cleared on promotion, got %s", p2.DraftImpact)
+	}
+	var afterPromote models.Policy
+	if err := db.Where("workspace_id = ? AND id = ?", ws, pol.ID).Take(&afterPromote).Error; err != nil {
+		t.Fatalf("reload promoted: %v", err)
+	}
+	if len(afterPromote.DraftImpact) != 0 {
+		t.Fatalf("expected persisted DraftImpact NULL after promotion, got %s", afterPromote.DraftImpact)
+	}
 	firstPromoted := *p2.PromotedAt
 
 	// Idempotent: promoting again returns unchanged (same PromotedAt).
