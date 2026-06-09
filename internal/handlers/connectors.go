@@ -241,6 +241,14 @@ func (h *connectorHandlers) testConnector(c *gin.Context) {
 		return
 	}
 	missing, err := h.mgmt.TestConnectivity(c.Request.Context(), ws, id, body.Capabilities)
+	// The OpenAPI schema types `missing` as a non-nullable array, but a Go nil
+	// slice (no capabilities probed, or Connect failed before VerifyPermissions)
+	// marshals to JSON null. Coalesce to an empty array so both the 200 and 502
+	// bodies always carry a valid [] and strict client-side schema validators
+	// don't reject the response.
+	if missing == nil {
+		missing = []string{}
+	}
 	if err != nil {
 		// Only a provider-side failure (tagged ErrConnectorConnectivity by
 		// TestConnectivity) is a 502: the raw diagnostic + missing capabilities

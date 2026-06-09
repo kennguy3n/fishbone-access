@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -212,6 +213,44 @@ func TestConnectorSetupWizardUnknownProvider(t *testing.T) {
 	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("unknown provider wizard status = %d, want 400; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestConnectorTestConnectivityMissingSerializesAsEmptyArray pins the OpenAPI
+// contract for the `missing` field: it is typed as a non-nullable array, so even
+// when no capabilities are probed (the service returns a nil Go slice) the JSON
+// body must carry "missing":[] rather than "missing":null, or strict client-side
+// schema validators would reject an otherwise-successful 200.
+func TestConnectorTestConnectivityMissingSerializesAsEmptyArray(t *testing.T) {
+	// A bare mock connects cleanly (default Connect/Validate return nil), so the
+	// test endpoint reaches the 200 path with no capabilities requested.
+	access.SwapConnector(t, "test-provider", &access.MockAccessConnector{})
+	r := NewRouter(lifecycleTestDeps(t))
+
+	wc := do(t, r, http.MethodPost, "/api/v1/connectors", "tok-a", map[string]any{
+		"provider": "test-provider",
+		"secrets":  map[string]any{"token": "s3cr3t"},
+	})
+	if wc.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body=%s", wc.Code, wc.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(wc.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+
+	wt := do(t, r, http.MethodPost, "/api/v1/connectors/"+created.ID+"/test", "tok-a", nil)
+	if wt.Code != http.StatusOK {
+		t.Fatalf("test status = %d, want 200; body=%s", wt.Code, wt.Body.String())
+	}
+	body := wt.Body.String()
+	if strings.Contains(body, `"missing":null`) {
+		t.Fatalf("missing serialized as JSON null, want []: %s", body)
+	}
+	if !strings.Contains(body, `"missing":[]`) {
+		t.Fatalf("expected \"missing\":[] in body, got: %s", body)
 	}
 }
 
