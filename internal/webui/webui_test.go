@@ -77,6 +77,25 @@ func TestServeRealAsset(t *testing.T) {
 	}
 }
 
+func TestServeConfigJSCarriesNoCache(t *testing.T) {
+	withAssets(t)
+	r := newEngine()
+
+	// config.js is the runtime-overridable config asset: it must be served with
+	// its real bytes (not the SPA shell) AND with Cache-Control: no-cache, so a
+	// deploy that rewrites it isn't shadowed by a stale browser-cached copy.
+	w := get(t, r, "/config.js")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	if w.Body.String() != "window.__SNG_CONFIG__={}" {
+		t.Errorf("body = %q, want the config.js contents", w.Body.String())
+	}
+	if cc := w.Header().Get("Cache-Control"); cc != "no-cache" {
+		t.Errorf("config.js Cache-Control = %q, want %q", cc, "no-cache")
+	}
+}
+
 func TestReservedPathsNotShadowed(t *testing.T) {
 	withAssets(t)
 	r := newEngine()

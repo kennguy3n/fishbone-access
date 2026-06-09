@@ -79,12 +79,21 @@ func Register(r *gin.Engine) {
 						serveIndex(c)
 						return
 					}
-					// Vite emits content-hashed filenames under /assets/ (e.g.
-					// index-BIXEH4__.js); the hash changes whenever the content
-					// does, so these are safe to cache forever. embed.FS sets no
-					// modtime, so the file server would otherwise send them with
-					// no Cache-Control and force a revalidation on every load.
-					if strings.HasPrefix(name, "assets/") {
+					// config.js is the runtime-overridable config entrypoint: a
+					// deploy may overwrite it at start time to switch authMode or
+					// apiBaseUrl without rebuilding the bundle (see package doc).
+					// Like index.html it must never be cached, or a browser could
+					// keep serving stale runtime config after a redeploy. embed.FS
+					// has no modtime, so the file server would otherwise leave it
+					// heuristically cacheable.
+					if name == "config.js" {
+						c.Header("Cache-Control", "no-cache")
+					} else if strings.HasPrefix(name, "assets/") {
+						// Vite emits content-hashed filenames under /assets/ (e.g.
+						// index-BIXEH4__.js); the hash changes whenever the content
+						// does, so these are safe to cache forever. embed.FS sets no
+						// modtime, so the file server would otherwise send them with
+						// no Cache-Control and force a revalidation on every load.
 						c.Header("Cache-Control", "public, max-age=31536000, immutable")
 					}
 					fileServer.ServeHTTP(c.Writer, req)
