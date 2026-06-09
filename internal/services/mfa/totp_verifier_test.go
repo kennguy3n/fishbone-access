@@ -12,12 +12,26 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 )
 
 // testSecret is a fixed base32 TOTP secret so generated codes are deterministic
 // across runs. It is a test fixture, not a credential.
 const testSecret = "JBSWY3DPEHPK3PXP"
+
+// testDEK is a fixed base64-encoded 32-byte key used to exercise the real
+// AES-GCM at-rest encryption path in tests (not a credential).
+const testDEK = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
+func newTestEncryptor(t *testing.T) crypto.Encryptor {
+	t.Helper()
+	enc, err := crypto.NewAESGCMEncryptor(testDEK)
+	if err != nil {
+		t.Fatalf("new test encryptor: %v", err)
+	}
+	return enc
+}
 
 func newTOTPVerifier(t *testing.T) (*TOTPMFAVerifier, *gorm.DB) {
 	t.Helper()
@@ -36,19 +50,26 @@ func newTOTPVerifier(t *testing.T) (*TOTPMFAVerifier, *gorm.DB) {
 	if err := database.AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	v, err := NewTOTPMFAVerifier(db)
+	v, err := NewTOTPMFAVerifier(db, newTestEncryptor(t))
 	if err != nil {
 		t.Fatalf("new verifier: %v", err)
 	}
 	return v, db
 }
 
-func seedSecret(t *testing.T, db *gorm.DB, ws uuid.UUID, userID, secret string, verified bool, disabledAt *time.Time) {
+// seedSecret stores a TOTP secret the way an enrollment writer would: sealed at
+// rest via the verifier's SealTOTPSecret, so the persisted column holds
+// ciphertext and the verifier's open-on-read path is exercised end to end.
+func seedSecret(t *testing.T, db *gorm.DB, v *TOTPMFAVerifier, ws uuid.UUID, userID, secret string, verified bool, disabledAt *time.Time) {
 	t.Helper()
+	sealed, err := v.SealTOTPSecret(ws, userID, secret)
+	if err != nil {
+		t.Fatalf("seal secret: %v", err)
+	}
 	row := models.UserTOTPSecret{
 		WorkspaceID: ws,
 		UserID:      userID,
-		Secret:      secret,
+		Secret:      sealed,
 		Verified:    verified,
 		DisabledAt:  disabledAt,
 	}
@@ -69,7 +90,7 @@ func codeAt(t *testing.T, secret string, at time.Time) string {
 func TestVerifyStepUpHappyPath(t *testing.T) {
 	v, db := newTOTPVerifier(t)
 	ws, user := uuid.New(), "user-1"
-	seedSecret(t, db, ws, user, testSecret, true, nil)
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
 
 	now := time.Unix(1_700_000_000, 0)
 	v.SetClock(func() time.Time { return now })
@@ -91,10 +112,55 @@ func TestVerifyStepUpHappyPath(t *testing.T) {
 	}
 }
 
+// TestSecretEncryptedAtRest proves the enrolled shared secret is never stored in
+// plaintext and that its ciphertext is bound to the (workspace, user) it was
+// sealed for: a row relocated to a different user fails to open, so a DB-level
+// attacker cannot lift one tenant's secret into another principal.
+func TestSecretEncryptedAtRest(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
+
+	var stored models.UserTOTPSecret
+	if err := db.Where("workspace_id = ? AND user_id = ?", ws, user).First(&stored).Error; err != nil {
+		t.Fatalf("load stored secret: %v", err)
+	}
+	if stored.Secret == testSecret {
+		t.Fatal("secret persisted in plaintext; want sealed ciphertext")
+	}
+	// The ciphertext must decrypt back to the plaintext under the matching AAD.
+	plain, err := v.enc.Open(stored.Secret, totpSecretAAD(ws, user))
+	if err != nil {
+		t.Fatalf("open with correct AAD: %v", err)
+	}
+	if string(plain) != testSecret {
+		t.Fatalf("decrypted = %q, want %q", plain, testSecret)
+	}
+	// Same ciphertext, different user (AAD) must fail authentication.
+	if _, err := v.enc.Open(stored.Secret, totpSecretAAD(ws, "user-2")); err == nil {
+		t.Fatal("ciphertext opened under a foreign user AAD; tenant binding broken")
+	}
+
+	// End to end: relocating the sealed row to another user makes step-up fail
+	// with a verifier (integrity) error, not a bad-code result.
+	if err := db.Model(&models.UserTOTPSecret{}).
+		Where("workspace_id = ? AND user_id = ?", ws, user).
+		Update("user_id", "user-2").Error; err != nil {
+		t.Fatalf("relocate row: %v", err)
+	}
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+	code := codeAt(t, testSecret, now)
+	err = v.VerifyStepUp(context.Background(), ws, "user-2", "promote", []byte(code))
+	if err == nil || errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("relocated-secret verify err = %v, want a non-ErrMFAFailed open error", err)
+	}
+}
+
 func TestVerifyStepUpReplayRejected(t *testing.T) {
 	v, db := newTOTPVerifier(t)
 	ws, user := uuid.New(), "user-1"
-	seedSecret(t, db, ws, user, testSecret, true, nil)
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
 	now := time.Unix(1_700_000_000, 0)
 	v.SetClock(func() time.Time { return now })
 	code := codeAt(t, testSecret, now)
@@ -114,7 +180,7 @@ func TestVerifyStepUpReplayRejected(t *testing.T) {
 func TestVerifyStepUpConcurrentReplay(t *testing.T) {
 	v, db := newTOTPVerifier(t)
 	ws, user := uuid.New(), "user-1"
-	seedSecret(t, db, ws, user, testSecret, true, nil)
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
 	now := time.Unix(1_700_000_000, 0)
 	v.SetClock(func() time.Time { return now })
 	code := codeAt(t, testSecret, now)
@@ -150,8 +216,8 @@ func TestVerifyStepUpConcurrentReplay(t *testing.T) {
 func TestVerifyStepUpReplayIsolatedAcrossWorkspaces(t *testing.T) {
 	v, db := newTOTPVerifier(t)
 	wsA, wsB, user := uuid.New(), uuid.New(), "user-1"
-	seedSecret(t, db, wsA, user, testSecret, true, nil)
-	seedSecret(t, db, wsB, user, testSecret, true, nil)
+	seedSecret(t, db, v, wsA, user, testSecret, true, nil)
+	seedSecret(t, db, v, wsB, user, testSecret, true, nil)
 	now := time.Unix(1_700_000_000, 0)
 	v.SetClock(func() time.Time { return now })
 	code := codeAt(t, testSecret, now)
@@ -167,7 +233,7 @@ func TestVerifyStepUpReplayIsolatedAcrossWorkspaces(t *testing.T) {
 func TestVerifyStepUpRejectsBadInput(t *testing.T) {
 	v, db := newTOTPVerifier(t)
 	ws, user := uuid.New(), "user-1"
-	seedSecret(t, db, ws, user, testSecret, true, nil)
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
 	now := time.Unix(1_700_000_000, 0)
 	v.SetClock(func() time.Time { return now })
 
@@ -207,7 +273,7 @@ func TestVerifyStepUpUnverifiedOrDisabledSecretRejected(t *testing.T) {
 	t.Run("unverified", func(t *testing.T) {
 		v, db := newTOTPVerifier(t)
 		ws, user := uuid.New(), "u"
-		seedSecret(t, db, ws, user, testSecret, false, nil) // not verified
+		seedSecret(t, db, v, ws, user, testSecret, false, nil) // not verified
 		v.SetClock(func() time.Time { return now })
 		if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(codeAt(t, testSecret, now))); !errors.Is(err, ErrMFAFailed) {
 			t.Fatalf("unverified secret err = %v, want ErrMFAFailed", err)
@@ -218,7 +284,7 @@ func TestVerifyStepUpUnverifiedOrDisabledSecretRejected(t *testing.T) {
 		v, db := newTOTPVerifier(t)
 		ws, user := uuid.New(), "u"
 		disabled := now.Add(-time.Hour)
-		seedSecret(t, db, ws, user, testSecret, true, &disabled)
+		seedSecret(t, db, v, ws, user, testSecret, true, &disabled)
 		v.SetClock(func() time.Time { return now })
 		if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(codeAt(t, testSecret, now))); !errors.Is(err, ErrMFAFailed) {
 			t.Fatalf("disabled secret err = %v, want ErrMFAFailed", err)

@@ -55,6 +55,10 @@ func doWithHeaders(t *testing.T, r http.Handler, method, path, token string, bod
 // these tests. Test fixture only — not a credential.
 const rbacStepUpSecret = "JBSWY3DPEHPK3PXP"
 
+// rbacStepUpDEK is a fixed base64-encoded 32-byte key backing the AES-GCM
+// encryptor that seals the enrolled step-up secret at rest. Test fixture only.
+const rbacStepUpDEK = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
 // rbacTestEnv wires a router with RBAC + step-up MFA fully installed, two
 // tenants, and a representative membership matrix, so the tests exercise the
 // real Auth → ResolveTenant → RequireTenant → AuthzMiddleware → RequirePermission
@@ -94,13 +98,22 @@ func newRBACTestEnv(t *testing.T) rbacTestEnv {
 	seedMember(t, rbac, wsB, "user-b-owner", authz.RoleOwner)
 	// user-stranger carries a valid tenant-a token but has NO membership row.
 
-	totpVerifier, err := mfa.NewTOTPMFAVerifier(db)
+	totpEnc, err := crypto.NewAESGCMEncryptor(rbacStepUpDEK)
+	if err != nil {
+		t.Fatalf("totp encryptor: %v", err)
+	}
+	totpVerifier, err := mfa.NewTOTPMFAVerifier(db, totpEnc)
 	if err != nil {
 		t.Fatalf("totp verifier: %v", err)
 	}
-	// Enrolled step-up secret for the tenant-a owner.
+	// Enrolled step-up secret for the tenant-a owner, sealed at rest exactly as
+	// an enrollment writer would via the verifier's SealTOTPSecret.
+	sealedSecret, err := totpVerifier.SealTOTPSecret(wsA, "user-owner", rbacStepUpSecret)
+	if err != nil {
+		t.Fatalf("seal totp secret: %v", err)
+	}
 	if err := db.Create(&models.UserTOTPSecret{
-		WorkspaceID: wsA, UserID: "user-owner", Secret: rbacStepUpSecret, Verified: true,
+		WorkspaceID: wsA, UserID: "user-owner", Secret: sealedSecret, Verified: true,
 	}).Error; err != nil {
 		t.Fatalf("seed totp secret: %v", err)
 	}

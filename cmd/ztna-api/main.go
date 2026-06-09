@@ -128,7 +128,7 @@ func run() error {
 	// router only when these deps are non-nil.
 	if deps.DB != nil {
 		deps.RBAC = authz.NewRBACService(deps.DB, authz.DefaultCacheTTL)
-		totpVerifier, err := mfa.NewTOTPMFAVerifier(deps.DB)
+		totpVerifier, err := mfa.NewTOTPMFAVerifier(deps.DB, deps.Encryptor)
 		if err != nil {
 			return fmt.Errorf("totp verifier init: %w", err)
 		}

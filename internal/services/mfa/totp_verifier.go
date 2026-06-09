@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 )
 
@@ -49,15 +50,45 @@ const DefaultCleanupInterval = 60 * time.Second
 // exactly one success.
 type TOTPMFAVerifier struct {
 	db  *gorm.DB
+	enc crypto.Encryptor
 	now func() time.Time // injectable for tests
 }
 
-// NewTOTPMFAVerifier constructs a verifier backed by db.
-func NewTOTPMFAVerifier(db *gorm.DB) (*TOTPMFAVerifier, error) {
+// NewTOTPMFAVerifier constructs a verifier backed by db, encrypting enrolled
+// TOTP shared secrets at rest with enc. enc is the same DEK-backed envelope
+// encryptor used for connector credentials; when no DEK is configured it is the
+// fail-closed PassthroughEncryptor, so step-up MFA refuses to operate on a
+// secret it cannot seal/open rather than silently falling back to plaintext —
+// matching how the connector secret path fails closed without a DEK.
+func NewTOTPMFAVerifier(db *gorm.DB, enc crypto.Encryptor) (*TOTPMFAVerifier, error) {
 	if db == nil {
 		return nil, errors.New("mfa: TOTPMFAVerifier: db is nil")
 	}
-	return &TOTPMFAVerifier{db: db, now: time.Now}, nil
+	if enc == nil {
+		return nil, errors.New("mfa: TOTPMFAVerifier: encryptor is nil")
+	}
+	return &TOTPMFAVerifier{db: db, enc: enc, now: time.Now}, nil
+}
+
+// totpSecretAAD binds an enrolled secret's ciphertext to the (workspace, user)
+// it belongs to. AES-GCM authenticates this AAD, so a secret row copied to
+// another tenant or user (e.g. via SQL injection or a restore) fails to open
+// rather than yielding a usable secret — a tenant-isolation guarantee on top of
+// confidentiality.
+func totpSecretAAD(workspaceID uuid.UUID, userID string) []byte {
+	return []byte("totp-secret:" + workspaceID.String() + ":" + userID)
+}
+
+// SealTOTPSecret encrypts a base32 TOTP shared secret for storage in
+// UserTOTPSecret.Secret, binding it to (workspace, user). Enrollment writers
+// (and tests) MUST route through this so the column never holds plaintext; the
+// verifier's read path opens it with the matching AAD.
+func (v *TOTPMFAVerifier) SealTOTPSecret(workspaceID uuid.UUID, userID, base32Secret string) (string, error) {
+	sealed, err := v.enc.Seal([]byte(base32Secret), totpSecretAAD(workspaceID, userID))
+	if err != nil {
+		return "", fmt.Errorf("mfa: TOTPMFAVerifier: seal secret: %w", err)
+	}
+	return sealed, nil
 }
 
 // SetClock overrides the time source. Test-only; a nil function restores
@@ -113,7 +144,16 @@ func (v *TOTPMFAVerifier) VerifyStepUp(ctx context.Context, workspaceID uuid.UUI
 		return fmt.Errorf("mfa: TOTPMFAVerifier: load secret: %w", err)
 	}
 
-	ok, vErr := totp.ValidateCustom(code, secret.Secret, v.now(), totp.ValidateOpts{
+	// The stored secret is sealed at rest; open it with the (workspace, user)
+	// AAD it was bound to. A decrypt failure is an integrity/availability fault
+	// (wrong DEK, tampered row, or no DEK configured), not a user-facing bad
+	// code, so it surfaces as a verifier error → 503 rather than ErrMFAFailed.
+	plainSecret, err := v.enc.Open(secret.Secret, totpSecretAAD(workspaceID, userID))
+	if err != nil {
+		return fmt.Errorf("mfa: TOTPMFAVerifier: open secret: %w", err)
+	}
+
+	ok, vErr := totp.ValidateCustom(code, string(plainSecret), v.now(), totp.ValidateOpts{
 		Period:    totpPeriodSeconds,
 		Skew:      totpSkewSteps,
 		Digits:    otp.DigitsSix,

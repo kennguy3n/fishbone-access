@@ -39,7 +39,10 @@ CREATE TABLE IF NOT EXISTS user_totp_secrets (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID        NOT NULL REFERENCES workspaces(id),
     user_id      VARCHAR(255) NOT NULL,
-    secret       VARCHAR(255) NOT NULL,
+    -- Base64 AES-256-GCM envelope (nonce||ciphertext||tag) of the base32 shared
+    -- secret, sealed with the DEK and AAD-bound to (workspace_id, user_id). TEXT
+    -- because the envelope is longer than the raw secret; never plaintext.
+    secret       TEXT        NOT NULL,
     verified     BOOLEAN     NOT NULL DEFAULT false,
     disabled_at  TIMESTAMPTZ,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),

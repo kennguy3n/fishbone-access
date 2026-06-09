@@ -96,11 +96,17 @@ func (WorkspaceMember) TableName() string { return "workspace_members" }
 // the step-up MFA verifier (see internal/services/mfa). Each user has at most
 // one active secret per workspace; re-enrollment replaces the row. The secret
 // is workspace-scoped for tenant isolation and never serialized to JSON.
+//
+// Secret is sealed at rest with the DEK-backed AES-256-GCM envelope encryptor
+// (the same one used for connector credentials), bound via AAD to the owning
+// (workspace, user). It is never persisted in plaintext; the verifier seals on
+// write (SealTOTPSecret) and opens on read. The column widens to text to hold
+// the base64 envelope rather than the raw 16–32 char base32 secret.
 type UserTOTPSecret struct {
 	Base
 	WorkspaceID uuid.UUID  `gorm:"type:uuid;not null;index:idx_totp_secrets_ws_user,priority:1" json:"workspace_id"`
 	UserID      string     `gorm:"type:varchar(255);not null;index:idx_totp_secrets_ws_user,priority:2" json:"user_id"`
-	Secret      string     `gorm:"type:varchar(255);not null" json:"-"`
+	Secret      string     `gorm:"type:text;not null" json:"-"`
 	Verified    bool       `gorm:"not null;default:false" json:"verified"`
 	DisabledAt  *time.Time `json:"disabled_at,omitempty"`
 }
