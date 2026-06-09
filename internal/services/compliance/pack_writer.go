@@ -92,7 +92,7 @@ func NewPackWriter(db *gorm.DB, evidence *EvidenceService) *PackWriter {
 //   - access-grants.jsonl             grants active at any point in the period
 //   - certification-campaigns.jsonl   campaigns overlapping the period
 //   - certification-items.jsonl       per-grant decisions for those campaigns
-//   - policies.jsonl                  policies touched in the period
+//   - policies.jsonl                  policies in force during the period
 //   - control-coverage.json           per-control evidence coverage
 //   - chain-verification.json         tamper-evidence verdict at export time
 //   - manifest.json                   machine-readable index (written last)
@@ -127,12 +127,11 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 
 	zw := zip.NewWriter(w)
 
-	// README first so a human unzipping sees it at the top.
-	readmeInfo, err := pw.writeBytes(zw, "README.md", "Auditor-facing guide to this evidence pack.", []byte(renderReadme(&manifest)))
-	if err != nil {
-		return PackManifest{}, err
-	}
-	manifest.Files = append(manifest.Files, readmeInfo)
+	// Data files first. Both the README's file inventory and the manifest's
+	// content digest need every data file's PackFileInfo, so the README and the
+	// manifest are assembled last — once the inventory below is complete. ZIP
+	// imposes no entry ordering, so this is purely an assembly-order detail and
+	// does not affect how an unzip tool presents the files.
 
 	// evidence.jsonl — the chain-derived evidence stream for the period.
 	evInfo, evCount, err := pw.streamEvidence(ctx, zw, opts)
@@ -173,8 +172,19 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 	}
 	manifest.Files = append(manifest.Files, verInfo)
 
+	// README is rendered now that the data-file inventory is populated, so its
+	// "## Files" section actually lists the data files (it described nothing
+	// when it was written before the inventory existed).
+	readmeInfo, err := pw.writeBytes(zw, "README.md", "Auditor-facing guide to this evidence pack.", []byte(renderReadme(&manifest)))
+	if err != nil {
+		return PackManifest{}, err
+	}
+	manifest.Files = append(manifest.Files, readmeInfo)
+
 	// ContentSHA256 over the sorted per-file digests makes the pack integrity-
 	// checkable as a whole and is the value anchored in the export audit event.
+	// manifest.json is excluded by design — it carries this very digest, so
+	// folding its own hash in would be circular.
 	manifest.ContentSHA256 = contentDigest(manifest.Files)
 
 	if _, err := pw.writeJSON(zw, "manifest.json", "Machine-readable index of this pack (written last).", &manifest); err != nil {
@@ -274,9 +284,9 @@ func (pw *PackWriter) streamCampaigns(ctx context.Context, zw *zip.Writer, opts 
 //   - created_at < to                 — existed by the end of the window
 //   - updated_at >= from               — soft-deleted/edited inside the window
 //     OR deleted_at IS NULL            — still live (kept regardless of when it
-//                                        last changed; a years-old unchanged
-//                                        live policy is still part of the
-//                                        landscape and is included)
+//     last changed; a years-old unchanged
+//     live policy is still part of the
+//     landscape and is included)
 //
 // Soft-deleted rows are included (Unscoped) so a tombstoned-in-period policy is
 // not silently dropped from the evidence. The parentheses keep GORM's AND/OR
@@ -368,7 +378,11 @@ func contentDigest(files []PackFileInfo) string {
 }
 
 // renderReadme produces the auditor-facing README describing every file and the
-// framework-control mapping. Kept in sync with the file set written above.
+// framework-control mapping. It must be called only after the data-file
+// inventory (m.Files) is populated, otherwise the "## Files" section is empty.
+// README.md and manifest.json are not in m.Files at call time (README is
+// appended right after; manifest is excluded from the digest by design), so
+// they are listed explicitly to keep the human inventory complete.
 func renderReadme(m *PackManifest) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Compliance evidence pack — %s\n\n", m.Framework)
@@ -396,6 +410,10 @@ func renderReadme(m *PackManifest) string {
 			fmt.Fprintf(&b, "- `%s` — %s\n", f.Name, f.Comment)
 		}
 	}
+	// README.md and manifest.json are not in m.Files when this renders, so list
+	// them explicitly to keep the human-facing inventory complete.
+	b.WriteString("- `README.md` — this guide.\n")
+	b.WriteString("- `manifest.json` — machine-readable index with per-file SHA-256 digests (written last).\n")
 	b.WriteString("\n## Framework control mapping\n\n")
 	fmt.Fprintf(&b, "Controls covered: %d of %d. Evidence records in period: %d.\n\n",
 		m.Coverage.ControlsCovered, m.Coverage.ControlsTotal, m.Coverage.EvidenceTotal)

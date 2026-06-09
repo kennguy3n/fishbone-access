@@ -108,6 +108,15 @@ func TestWritePackContentsAndMapping(t *testing.T) {
 		t.Fatalf("README missing framework/control mapping: %s", readme)
 	}
 
+	// README's "## Files" inventory must actually list the pack's files —
+	// regression guard for rendering the README before manifest.Files was
+	// populated (which left the section empty).
+	for _, want := range []string{"evidence.jsonl", "access-grants.jsonl", "certification-campaigns.jsonl", "certification-items.jsonl", "policies.jsonl", "control-coverage.json", "chain-verification.json", "manifest.json"} {
+		if !strings.Contains(readme, "`"+want+"`") {
+			t.Fatalf("README Files section does not list %s:\n%s", want, readme)
+		}
+	}
+
 	// Coverage in the pack credits CC6.1 (policy.promoted + access_grant.created).
 	var cov FrameworkCoverage
 	if err := json.Unmarshal(files["control-coverage.json"], &cov); err != nil {
