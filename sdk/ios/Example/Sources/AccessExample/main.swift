@@ -1,0 +1,72 @@
+//
+// main.swift — end-to-end usage of the ShieldNetAccess iOS SDK.
+//
+// A tiny command-line program (not an app target) kept as a compiled
+// executable target so `swift build` validates the example against the real
+// SDK API. In a SwiftUI app the same calls run from an `async` task / view
+// model; here we use the top-level `await` of an async `@main`-style entry.
+//
+// Run:
+//   ACCESS_BASE_URL=https://access.example.com ACCESS_TOKEN=<token> \
+//   swift run AccessExample
+//
+
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+import ShieldNetAccess
+
+func runExample() async {
+    let baseURLString = ProcessInfo.processInfo.environment["ACCESS_BASE_URL"] ?? "https://access.example.com"
+    guard let baseURL = URL(string: baseURLString) else {
+        print("invalid ACCESS_BASE_URL: \(baseURLString)")
+        return
+    }
+    guard let token = ProcessInfo.processInfo.environment["ACCESS_TOKEN"] else {
+        print("set ACCESS_TOKEN to an iam-core bearer token")
+        return
+    }
+
+    // The token provider is awaited before every call, so refreshing or
+    // supplying a stepped-up token stays the host app's concern.
+    let client = URLSessionAccessClient(baseURL: baseURL, authTokenProvider: { token })
+
+    do {
+        // 1. Who am I, and did this session already satisfy step-up MFA?
+        let me = try await client.me()
+        print("acting as \(me.userID) in tenant \(me.tenantID); mfaSatisfied=\(me.mfaSatisfied)")
+
+        // 2. Submit an elevation request; the server runs risk-based routing.
+        let submission = try await client.createRequest(
+            CreateAccessRequest(
+                targetUserID: me.userID,
+                resourceRef: "projects/payments-prod",
+                role: "deployer",
+                justification: "ship hotfix 1.2.3",
+                riskLevel: .high,
+                riskFactors: ["sensitive_resource"]
+            )
+        )
+        let request = submission.request
+        print("request \(request.id) → state=\(request.state.rawValue), lane=\(submission.workflow?.stepType.rawValue ?? "n/a")")
+
+        // 3. Approve as an approver (surfacing the server AI risk verdict).
+        if request.state == .requested {
+            let approved = try await client.approveRequest(id: request.id, reason: "reviewed, low blast radius")
+            print("approved → state=\(approved.state.rawValue), risk=\(approved.riskLevel?.rawValue ?? "n/a")")
+        }
+
+        // 4. Provision → JIT lease, and read its countdown.
+        let grant = try await client.provisionRequest(id: request.id)
+        print("lease \(grant.id) active=\(grant.isActive()) remaining=\(grant.remaining().map { "\(Int($0))s" } ?? "n/a")")
+    } catch let AccessSDKError.stepUpRequired(body) {
+        // High-risk gate: drive an iam-core step-up (WebAuthn) in the host,
+        // obtain a fresh token, then retry the gated call.
+        print("step-up MFA required: \(body ?? "")")
+    } catch {
+        print("access flow failed: \(error)")
+    }
+}
+
+await runExample()

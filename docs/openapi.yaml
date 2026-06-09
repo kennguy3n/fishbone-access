@@ -65,6 +65,7 @@ paths:
                 type: object
                 properties:
                   request: { $ref: "#/components/schemas/AccessRequest" }
+                  risk: { $ref: "#/components/schemas/AccessRiskVerdict" }
                   workflow: { $ref: "#/components/schemas/WorkflowDecision" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -101,6 +102,10 @@ paths:
                 type: object
                 properties:
                   request: { $ref: "#/components/schemas/AccessRequest" }
+                  risk: { $ref: "#/components/schemas/AccessRiskVerdict" }
+                  anomalies:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccessRequestAnomalyFlag" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /access-requests/{id}/history:
@@ -127,9 +132,14 @@ paths:
     post:
       tags: [access-requests]
       summary: Approve a request
+      description: |
+        Approves a request. A high-risk verdict gates approval behind step-up
+        MFA (fail-CLOSED): without a satisfied MFA claim on the token the call
+        is rejected with 403, regardless of request body.
       requestBody: { $ref: "#/components/requestBodies/Decision" }
       responses:
         "200": { $ref: "#/components/responses/RequestEnvelope" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
@@ -903,7 +913,7 @@ components:
         error: { type: string }
     CreateAccessRequest:
       type: object
-      required: [target_user_id, resource_ref]
+      required: [resource_ref, role]
       properties:
         target_user_id: { type: string }
         connector_id: { type: string, format: uuid, nullable: true }
@@ -914,6 +924,10 @@ components:
         risk_factors:
           type: array
           items: { type: string }
+        resource_tags:
+          type: array
+          items: { type: string }
+        duration_hours: { type: integer, minimum: 1 }
     AccessRequest:
       type: object
       properties:
@@ -928,7 +942,7 @@ components:
         risk_level: { type: string }
         state:
           type: string
-          enum: [requested, approved, denied, cancelled, provisioning, provisioned, active, provision_failed, revoked, expired]
+          enum: [requested, ai_reviewed, approved, denied, cancelled, provisioning, provisioned, active, provision_failed, revoked, expired]
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     StateHistoryEntry:
@@ -947,6 +961,41 @@ components:
         step_type: { type: string, enum: [auto_approve, manager_approval, security_review] }
         reason: { type: string }
         approved: { type: boolean }
+    AccessRiskVerdict:
+      type: object
+      description: |
+        Immutable, workspace-scoped AI risk assessment persisted against a
+        request for audit. `degraded` is true when the AI agent was unreachable
+        and the fail-open fallback supplied the verdict (never auto-approve).
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        score: { type: string, enum: [low, medium, high] }
+        recommendation: { type: string, enum: [auto_approve_eligible, needs_review, high_risk] }
+        factors:
+          type: array
+          items: { type: string }
+        rationale: { type: string }
+        inputs: { type: object, additionalProperties: true }
+        source: { type: string }
+        degraded: { type: boolean }
+        created_at: { type: string, format: date-time }
+    AccessRequestAnomalyFlag:
+      type: object
+      description: |
+        Advisory anomaly observation surfaced by the anomaly-detection skill on
+        an approved elevation. Never changes the FSM state.
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        request_id: { type: string, format: uuid }
+        grant_id: { type: string, format: uuid, nullable: true }
+        kind: { type: string }
+        severity: { type: string }
+        reason: { type: string }
+        confidence: { type: number }
+        created_at: { type: string, format: date-time }
     AccessGrant:
       type: object
       properties:

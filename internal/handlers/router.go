@@ -47,9 +47,11 @@ type Deps struct {
 	// access-connector-worker uses) so a connector created via the API is
 	// syncable by the worker. nil falls back to the fail-closed encryptor.
 	ConnectorEncryptor access.CredentialEncryptor
-	// AI is the access-ai-agent client backing the connector setup wizard. It
-	// may be an unconfigured client (no agent URL): the wizard is fail-OPEN and
-	// returns a degraded manual plan in that case.
+	// AI is the access-ai-agent client (mTLS A2A) shared by the lifecycle risk
+	// review (scoring elevation requests server-side) and the connector setup
+	// wizard. It may be an unconfigured client (no agent URL): both consumers
+	// are fail-OPEN, so risk review degrades to the deterministic fallback and
+	// the wizard returns a degraded manual plan instead of panicking.
 	AI *aiclient.AIClient
 }
 

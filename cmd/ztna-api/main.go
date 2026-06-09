@@ -114,15 +114,20 @@ func run() error {
 	}
 	deps.ConnectorEncryptor = connEnc
 
-	// access-ai-agent client for the connector setup wizard. Built from the
-	// A2A mTLS environment contract; an unconfigured client (no agent URL) is
-	// fine because the wizard is fail-OPEN (degraded manual plan). A partially
-	// configured mTLS setup fails the boot rather than silently degrading.
-	aiClient, err := aiclient.NewAIClientFromEnv()
+	// AI client (mTLS A2A) shared by the lifecycle risk review baked into the
+	// elevation request flow and the connector setup wizard. NewAIClientFromEnv
+	// returns an unconfigured client (→ fail-open deterministic fallback) when no
+	// agent is set, and errors only on a half-configured mTLS setup (fatal
+	// misconfiguration). Both consumers are fail-OPEN, so an unconfigured client
+	// degrades gracefully rather than blocking boot.
+	ai, err := aiclient.NewAIClientFromEnv()
 	if err != nil {
-		return fmt.Errorf("access-ai-agent client init: %w", err)
+		return fmt.Errorf("ai client init: %w", err)
 	}
-	deps.AI = aiClient
+	if !ai.Configured() {
+		logger.Warnf(ctx, "ztna-api: AI agent not configured; risk review uses fail-open deterministic fallback")
+	}
+	deps.AI = ai
 
 	// The iam-core management client disables (blocks) users for the leaver
 	// kill switch (layer 3). It is wired only when the management credentials
