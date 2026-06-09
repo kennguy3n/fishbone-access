@@ -387,6 +387,10 @@ func (s *RBACService) upsertMember(ctx context.Context, workspaceID uuid.UUID, u
 		err := withRowLock(tx).
 			Where("workspace_id = ? AND user_id = ?", workspaceID, userID).
 			First(&existing).Error
+		// A clean ErrRecordNotFound means "no row yet" -> insert; any other
+		// non-nil err is a real read failure. So isUpdate is true unless the row
+		// was absent, and we only surface err when it is NOT the not-found
+		// sentinel (a genuine update with a real error).
 		isUpdate := !errors.Is(err, gorm.ErrRecordNotFound)
 		if isUpdate && err != nil {
 			return fmt.Errorf("authz: read existing membership: %w", err)
