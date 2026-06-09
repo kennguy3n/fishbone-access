@@ -90,7 +90,7 @@ func TestMSSQLRelayUpstreamMessagesFramed(t *testing.T) {
 	}
 
 	w := &chunkRecordingWriter{}
-	rec := NewIORecorder("test-mssql-relay", 0)
+	rec := NewIORecorder(context.Background(), "test-mssql-relay", 0)
 	p := &MSSQLProxy{}
 	p.relayUpstreamMessages(w, bytes.NewReader(upstream.Bytes()), rec)
 

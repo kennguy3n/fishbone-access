@@ -393,5 +393,6 @@ func All() []any {
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},
+		&PAMLease{},
 	}
 }

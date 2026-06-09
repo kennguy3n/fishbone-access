@@ -127,8 +127,8 @@ func (p *SSHProxy) Handle(ctx context.Context, conn net.Conn) {
 	}
 	logger.Infof(ctx, "ssh-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		deregister := p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)
@@ -256,11 +256,17 @@ func (p *SSHProxy) proxySessionChannel(ctx context.Context, nc ssh.NewChannel, u
 	}()
 
 	// stdin: operator → upstream, recorded as input, scanned for shell commands.
+	// GateReader(opChan) applies the soft-pause gate at the operator source, so
+	// while an admin has paused the session no keystroke is pulled from the
+	// operator channel and nothing reaches the upstream shell; the scanner still
+	// records and command-gates each byte once flow resumes. (The scanner does
+	// the recording, so we gate-only rather than routing through the recording
+	// TeeReader to avoid double-recording stdin.)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		sc := &shellCommandScanner{proxy: p, ctx: ctx, session: session, rec: rec, cancel: cancel}
-		_, _ = io.Copy(upChan, io.TeeReader(opChan, sc))
+		_, _ = io.Copy(upChan, io.TeeReader(rec.GateReader(opChan), sc))
 		_ = upChan.CloseWrite()
 	}()
 

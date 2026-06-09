@@ -899,3 +899,312 @@ export function useCreateConnector() {
     mutationFn: createConnector,
   });
 }
+
+// ---------------------------------------------------------------------------
+// PAM — targets, JIT leases, sessions, live session control (WS4)
+//
+// Mirrors internal/models (PAMTarget, PAMLease, PAMSession) and the REST surface
+// in internal/handlers/pam.go. The lease state is the server-derived machine
+// state (requested → approved → active → expired/revoked); the broker turns an
+// approved lease active on first session open, so the UI renders state from the
+// server rather than re-deriving it from timestamps.
+// ---------------------------------------------------------------------------
+
+export type PamProtocol =
+  | "ssh"
+  | "postgres"
+  | "mysql"
+  | "mssql"
+  | "mongodb"
+  | "redis"
+  | "k8s-exec"
+  | "rdp"
+  | "vnc"
+  | "http";
+
+export type PamLeaseState =
+  | "requested"
+  | "approved"
+  | "active"
+  | "expired"
+  | "revoked";
+
+export interface PamTarget {
+  id: string;
+  workspace_id: string;
+  name: string;
+  protocol: string;
+  address: string;
+  username: string;
+  require_mfa: boolean;
+  lease_ttl_seconds: number;
+  secret_rotated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PamLease {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  subject: string;
+  requested_by: string;
+  reason?: string;
+  request_id?: string;
+  approved_by?: string;
+  requested_ttl_seconds: number;
+  risk_level?: string;
+  risk_reason?: string;
+  risk_degraded: boolean;
+  granted_at?: string | null;
+  activated_at?: string | null;
+  expires_at?: string | null;
+  expired_at?: string | null;
+  revoked_at?: string | null;
+  revoke_reason?: string;
+  state: PamLeaseState;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PamSession {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  subject: string;
+  protocol: string;
+  state: string;
+  client_addr?: string;
+  replay_key?: string;
+  started_at: string;
+  ended_at?: string | null;
+  terminated_by?: string;
+  lease_id?: string;
+  paused: boolean;
+  paused_by?: string;
+  paused_at?: string | null;
+}
+
+export interface ReplayFrame {
+  direction: string;
+  at: string;
+  payload: string; // base64
+}
+
+export interface ReplayResponse {
+  session_id: string;
+  frames: ReplayFrame[];
+  truncated: boolean;
+}
+
+export interface CreatePamTargetInput {
+  name: string;
+  protocol: string;
+  address: string;
+  username?: string;
+  require_mfa?: boolean;
+  lease_ttl_seconds?: number;
+  secret: {
+    username?: string;
+    password?: string;
+    private_key?: string;
+    token?: string;
+  };
+}
+
+export interface RequestPamLeaseInput {
+  target_id: string;
+  subject?: string;
+  ttl_seconds?: number;
+  reason?: string;
+  request_id?: string;
+}
+
+export interface PamSessionFilters {
+  target_id?: string;
+  subject?: string;
+  active_only?: boolean;
+}
+
+const pamSessionParams = (f: PamSessionFilters = {}) => ({
+  ...(f.target_id ? { target_id: f.target_id } : {}),
+  ...(f.subject ? { subject: f.subject } : {}),
+  ...(f.active_only ? { active_only: "true" } : {}),
+});
+
+export const listPamTargets = () =>
+  call<{ targets: PamTarget[] }>({ url: "/pam/targets", method: "GET" }).then(
+    (r) => r.targets ?? [],
+  );
+
+export const createPamTarget = (body: CreatePamTargetInput) =>
+  call<PamTarget>({ url: "/pam/targets", method: "POST", data: body });
+
+export const listPamLeases = (f: PamSessionFilters = {}) =>
+  call<{ leases: PamLease[] }>({
+    url: "/pam/leases",
+    method: "GET",
+    params: pamSessionParams(f),
+  }).then((r) => r.leases ?? []);
+
+export const getPamLease = (id: string) =>
+  call<PamLease>({ url: `/pam/leases/${id}`, method: "GET" });
+
+export const requestPamLease = (body: RequestPamLeaseInput) =>
+  call<PamLease>({ url: "/pam/leases", method: "POST", data: body });
+
+export const approvePamLease = (id: string, durationOverrideSeconds?: number) =>
+  call<PamLease>({
+    url: `/pam/leases/${id}/approve`,
+    method: "POST",
+    data: durationOverrideSeconds
+      ? { duration_override_seconds: durationOverrideSeconds }
+      : {},
+  });
+
+export const revokePamLease = (id: string, reason?: string) =>
+  call<PamLease>({
+    url: `/pam/leases/${id}/revoke`,
+    method: "POST",
+    data: { reason: reason ?? "" },
+  });
+
+export const listPamSessions = (f: PamSessionFilters = {}) =>
+  call<{ sessions: PamSession[] }>({
+    url: "/pam/sessions",
+    method: "GET",
+    params: pamSessionParams(f),
+  }).then((r) => r.sessions ?? []);
+
+export const getPamSession = (id: string) =>
+  call<PamSession>({ url: `/pam/sessions/${id}`, method: "GET" });
+
+export const getPamSessionReplay = (id: string) =>
+  call<ReplayResponse>({ url: `/pam/sessions/${id}/replay`, method: "GET" });
+
+export const pausePamSession = (id: string) =>
+  call<{ status: string }>({
+    url: `/pam/sessions/${id}/pause`,
+    method: "POST",
+  });
+
+export const resumePamSession = (id: string) =>
+  call<{ status: string }>({
+    url: `/pam/sessions/${id}/resume`,
+    method: "POST",
+  });
+
+export const terminatePamSession = (id: string) =>
+  call<{ status: string }>({
+    url: `/pam/sessions/${id}/terminate`,
+    method: "POST",
+  });
+
+export const pamQk = {
+  targets: ["pam-targets"] as const,
+  leases: (f: PamSessionFilters = {}) => ["pam-leases", f] as const,
+  lease: (id: string) => ["pam-lease", id] as const,
+  sessions: (f: PamSessionFilters = {}) => ["pam-sessions", f] as const,
+  session: (id: string) => ["pam-session", id] as const,
+  replay: (id: string) => ["pam-session", id, "replay"] as const,
+};
+
+export function usePamTargets() {
+  return useQuery<PamTarget[], ApiError>({
+    queryKey: pamQk.targets,
+    queryFn: listPamTargets,
+  });
+}
+
+export function useCreatePamTarget() {
+  return useMutation<PamTarget, ApiError, CreatePamTargetInput>({
+    mutationFn: createPamTarget,
+  });
+}
+
+export function usePamLeases(f: PamSessionFilters = {}) {
+  return useQuery<PamLease[], ApiError>({
+    queryKey: pamQk.leases(f),
+    queryFn: () => listPamLeases(f),
+  });
+}
+
+export function usePamLease(
+  id: string | undefined,
+  options?: Partial<UseQueryOptions<PamLease, ApiError>>,
+) {
+  return useQuery<PamLease, ApiError>({
+    queryKey: pamQk.lease(id ?? ""),
+    queryFn: () => getPamLease(id as string),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useRequestPamLease() {
+  return useMutation<PamLease, ApiError, RequestPamLeaseInput>({
+    mutationFn: requestPamLease,
+  });
+}
+
+export function useApprovePamLease(id: string) {
+  return useMutation<PamLease, ApiError, number | undefined>({
+    mutationFn: (durationOverrideSeconds) =>
+      approvePamLease(id, durationOverrideSeconds),
+  });
+}
+
+export function useRevokePamLease(id: string) {
+  return useMutation<PamLease, ApiError, string | undefined>({
+    mutationFn: (reason) => revokePamLease(id, reason),
+  });
+}
+
+export function usePamSessions(
+  f: PamSessionFilters = {},
+  options?: Partial<UseQueryOptions<PamSession[], ApiError>>,
+) {
+  return useQuery<PamSession[], ApiError>({
+    queryKey: pamQk.sessions(f),
+    queryFn: () => listPamSessions(f),
+    ...options,
+  });
+}
+
+export function usePamSession(id: string | undefined) {
+  return useQuery<PamSession, ApiError>({
+    queryKey: pamQk.session(id ?? ""),
+    queryFn: () => getPamSession(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useSessionReplay(
+  id: string | undefined,
+  options?: Partial<UseQueryOptions<ReplayResponse, ApiError>>,
+) {
+  return useQuery<ReplayResponse, ApiError>({
+    queryKey: pamQk.replay(id ?? ""),
+    queryFn: () => getPamSessionReplay(id as string),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function usePausePamSession(id: string) {
+  return useMutation<{ status: string }, ApiError, void>({
+    mutationFn: () => pausePamSession(id),
+  });
+}
+
+export function useResumePamSession(id: string) {
+  return useMutation<{ status: string }, ApiError, void>({
+    mutationFn: () => resumePamSession(id),
+  });
+}
+
+export function useTerminatePamSession(id: string) {
+  return useMutation<{ status: string }, ApiError, void>({
+    mutationFn: () => terminatePamSession(id),
+  });
+}

@@ -82,23 +82,153 @@ type IORecorder struct {
 	monitors  map[int]LiveMonitor
 	nextMonID int
 
+	// pauseCond gates the operator→target (DirInput) byte path for the live
+	// soft-pause control. While paused is true, the input path blocks in
+	// waitWhilePaused before delivering bytes upstream, so an operator's
+	// keystrokes/statements are held (back-pressured in the kernel socket
+	// buffer — buffered, not dropped) until an operator resumes or the session
+	// is torn down. aborted releases blocked waiters on terminate so a paused
+	// session can still be killed; closed releases them on normal flush; a
+	// cancelled session context (see watchContext) also releases them so a
+	// session that ends naturally (upstream hangs up) while paused cannot leak
+	// the parked input goroutine.
+	pauseCond *sync.Cond
+	paused    bool
+	aborted   bool
+
 	now func() time.Time
 }
 
-// NewIORecorder builds a recorder for sessionID. maxBytes caps the buffered
-// recording (<= 0 selects a 64 MiB default); the cap protects the gateway from
-// an unbounded session exhausting memory.
-func NewIORecorder(sessionID string, maxBytes int) *IORecorder {
+// NewIORecorder builds a recorder for sessionID, bound to the session's
+// context. maxBytes caps the buffered recording (<= 0 selects a 64 MiB
+// default); the cap protects the gateway from an unbounded session exhausting
+// memory.
+//
+// ctx is the session context: when it is cancelled (admin terminate, upstream
+// hang-up, or gateway shutdown) the recorder releases any input read parked on
+// the soft-pause gate, so a paused session that ends for any reason cannot
+// strand its input-copy goroutine. A nil or non-cancellable context (e.g.
+// context.Background() in unit tests) simply installs no watcher.
+func NewIORecorder(ctx context.Context, sessionID string, maxBytes int) *IORecorder {
 	if maxBytes <= 0 {
 		maxBytes = 64 << 20
 	}
-	return &IORecorder{
+	r := &IORecorder{
 		sessionID: sessionID,
 		maxBytes:  maxBytes,
 		monitors:  make(map[int]LiveMonitor),
 		now:       time.Now,
 	}
+	r.pauseCond = sync.NewCond(&r.mu)
+	r.watchContext(ctx)
+	return r
 }
+
+// watchContext releases the soft-pause gate when ctx is cancelled. The session
+// context is cancelled on every teardown path — admin terminate (hub cancel),
+// natural upstream close (the copy goroutine's deferred cancel), and gateway
+// shutdown (parent cancel) — so this is the single mechanism that guarantees a
+// paused session never strands its parked input goroutine, independent of which
+// path tore the session down. The watcher goroutine exits as soon as ctx is
+// done, so it cannot itself leak. A context with a nil Done channel (the
+// never-cancellable context.Background/TODO used by unit tests) installs no
+// watcher.
+func (r *IORecorder) watchContext(ctx context.Context) {
+	if ctx == nil || ctx.Done() == nil {
+		return
+	}
+	go func() {
+		<-ctx.Done()
+		r.mu.Lock()
+		r.aborted = true
+		r.pauseCond.Broadcast()
+		r.mu.Unlock()
+	}()
+}
+
+// Pause raises the soft-pause gate: the operator→target byte path blocks until
+// Resume, Interrupt, or Flush. It is idempotent and records a control frame so
+// the replay transcript shows exactly when the operator was frozen. Output
+// (target→operator) is intentionally NOT gated — a watching admin keeps seeing
+// the live screen — only operator input is withheld.
+func (r *IORecorder) Pause() {
+	note := []byte("[session paused by administrator]")
+	r.mu.Lock()
+	if r.paused {
+		r.mu.Unlock()
+		return
+	}
+	r.paused = true
+	// Append the annotation in the SAME critical section as the flag flip so the
+	// durable transcript order can never invert relative to a concurrent Resume:
+	// whichever of Pause/Resume wins the lock both flips the flag and writes its
+	// marker first. (Doing the Annotate after unlocking — as a separate Record —
+	// left a window where a racing Resume could record "[resumed]" before this
+	// "[paused]", misleading a forensic replay even though the gate state itself
+	// was correct.)
+	at, monitors := r.annotateLocked(note)
+	r.mu.Unlock()
+	fanOutControl(monitors, at, note)
+}
+
+// Resume lowers the soft-pause gate and wakes any blocked input read. It is
+// idempotent.
+func (r *IORecorder) Resume() {
+	note := []byte("[session resumed by administrator]")
+	r.mu.Lock()
+	if !r.paused {
+		r.mu.Unlock()
+		return
+	}
+	r.paused = false
+	r.pauseCond.Broadcast()
+	// Flip + annotate atomically — see Pause for why the marker is written under
+	// the same lock rather than via a post-unlock Record.
+	at, monitors := r.annotateLocked(note)
+	r.mu.Unlock()
+	fanOutControl(monitors, at, note)
+}
+
+// IsPaused reports whether the input gate is currently raised.
+func (r *IORecorder) IsPaused() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.paused
+}
+
+// Interrupt permanently releases the pause gate without resuming normal flow:
+// it wakes any blocked input read so a paused session can be torn down by a
+// terminate. After Interrupt the gate never blocks again (the session is going
+// away). Idempotent.
+func (r *IORecorder) Interrupt() {
+	r.mu.Lock()
+	r.aborted = true
+	r.pauseCond.Broadcast()
+	r.mu.Unlock()
+}
+
+// waitWhilePaused blocks the calling (input-copy) goroutine while the gate is
+// raised, returning once the session is resumed, interrupted, closed, or its
+// context is cancelled (watchContext sets aborted).
+func (r *IORecorder) waitWhilePaused() {
+	r.mu.Lock()
+	for r.paused && !r.aborted && !r.closed {
+		r.pauseCond.Wait()
+	}
+	r.mu.Unlock()
+}
+
+// WaitWhilePaused blocks the calling goroutine while the soft-pause gate is
+// raised. It is the explicit gate for the protocol-parsing handlers (Postgres,
+// MySQL, Redis, MongoDB, MSSQL, VNC, RDP, Web), which read structured operator
+// messages in their own loops rather than copying a raw byte stream: each calls
+// this at the top of its operator-read loop so that, while an administrator has
+// paused the session, the handler stops pulling the next operator
+// command/message and nothing further reaches the upstream target. It returns
+// immediately (does not block) once the session is resumed, terminated, or torn
+// down, so a paused session is never wedged. The raw byte-stream handlers (SSH,
+// k8s-exec) instead compose GateReader/TeeReader, which call this internally.
+func (r *IORecorder) WaitWhilePaused() { r.waitWhilePaused() }
 
 // Record appends one framed payload in the given direction. A zero-length
 // payload is ignored. It never returns an error: recording is best-effort
@@ -161,9 +291,34 @@ func (r *IORecorder) writeFrameLocked(dir Direction, at time.Time, payload []byt
 
 // TeeReader returns a reader that yields the same bytes as src while recording
 // everything read from it in direction dir. Use it to wrap the target→client
-// (output) and client→target (input) halves of a proxied stream.
+// (output) and client→target (input) halves of a proxied stream. A DirInput
+// tee also honours the soft-pause gate (it blocks before reading while paused).
 func (r *IORecorder) TeeReader(dir Direction, src io.Reader) io.Reader {
 	return &teeRecorder{rec: r, dir: dir, src: src}
+}
+
+// GateReader wraps src so each Read blocks while the session is soft-paused,
+// without itself recording. The SSH handler composes it around the operator
+// channel because that handler already records (and command-gates) operator
+// input via its shellCommandScanner — routing the bytes through TeeReader as
+// well would double-record them. The pause semantics are identical to the
+// DirInput TeeReader: while paused no operator bytes are pulled from src, so
+// nothing reaches the upstream target until an operator resumes or the session
+// is torn down.
+func (r *IORecorder) GateReader(src io.Reader) io.Reader {
+	return &pauseGateReader{rec: r, src: src}
+}
+
+// pauseGateReader blocks on the soft-pause gate before each read but records
+// nothing (the caller records). See GateReader.
+type pauseGateReader struct {
+	rec *IORecorder
+	src io.Reader
+}
+
+func (g *pauseGateReader) Read(p []byte) (int, error) {
+	g.rec.waitWhilePaused()
+	return g.src.Read(p)
 }
 
 // AddMonitor registers a live monitor and returns a function that removes it.
@@ -186,6 +341,33 @@ func (r *IORecorder) AddMonitor(m LiveMonitor) (remove func()) {
 // so the transcript explains itself.
 func (r *IORecorder) Annotate(note string) {
 	r.Record(DirControl, []byte(note))
+}
+
+// annotateLocked appends a control-direction annotation to the durable buffer
+// while the caller already holds r.mu, then snapshots the live monitors to fan
+// out to. The caller MUST release r.mu before invoking the returned monitors
+// (a monitor must never run under r.mu — see Record). Recording the frame under
+// the same lock as a state change keeps the two ordered atomically in the
+// transcript; the returned timestamp is the frame's capture instant so a
+// post-unlock fan-out carries the same time.
+func (r *IORecorder) annotateLocked(note []byte) (time.Time, []LiveMonitor) {
+	at := r.now()
+	if !r.closed {
+		r.appendLocked(DirControl, at, note)
+	}
+	monitors := make([]LiveMonitor, 0, len(r.monitors))
+	for _, m := range r.monitors {
+		monitors = append(monitors, m)
+	}
+	return at, monitors
+}
+
+// fanOutControl delivers a control frame to live monitors. It MUST be called
+// without holding r.mu so a slow takeover watcher cannot stall the proxied path.
+func fanOutControl(monitors []LiveMonitor, at time.Time, note []byte) {
+	for _, m := range monitors {
+		m.OnFrame(DirControl, at, note)
+	}
 }
 
 // Bytes returns a copy of the recording captured so far. Primarily for tests
@@ -216,6 +398,9 @@ func (r *IORecorder) Flush(ctx context.Context, store ReplayStore) error {
 		return nil
 	}
 	r.closed = true
+	// Release any input read still blocked on the pause gate so a paused
+	// session does not leak a goroutine when it is flushed/torn down.
+	r.pauseCond.Broadcast()
 	snapshot := make([]byte, r.buf.Len())
 	copy(snapshot, r.buf.Bytes())
 	r.mu.Unlock()
@@ -237,6 +422,13 @@ type teeRecorder struct {
 }
 
 func (t *teeRecorder) Read(p []byte) (int, error) {
+	// Gate only the operator→target (input) direction: while the session is
+	// paused this blocks before pulling the next operator bytes, so nothing the
+	// operator types reaches upstream until an operator resumes. Output frames
+	// keep flowing so a watching admin sees the live screen throughout.
+	if t.dir == DirInput {
+		t.rec.waitWhilePaused()
+	}
 	n, err := t.src.Read(p)
 	if n > 0 {
 		t.rec.Record(t.dir, p[:n])

@@ -59,7 +59,7 @@ func parseFrames(t *testing.T, b []byte) []frame {
 // --- recorder tests -------------------------------------------------------
 
 func TestRecorderFramesBothDirections(t *testing.T) {
-	rec := NewIORecorder("sess-1", 0)
+	rec := NewIORecorder(context.Background(), "sess-1", 0)
 	rec.Record(DirInput, []byte("whoami\n"))
 	rec.Record(DirOutput, []byte("root\n"))
 	rec.Annotate("policy: allow")
@@ -81,7 +81,7 @@ func TestRecorderFramesBothDirections(t *testing.T) {
 }
 
 func TestRecorderTeeReaderPassesThrough(t *testing.T) {
-	rec := NewIORecorder("sess-tee", 0)
+	rec := NewIORecorder(context.Background(), "sess-tee", 0)
 	src := bytes.NewReader([]byte("hello world"))
 	tee := rec.TeeReader(DirInput, src)
 	got := make([]byte, 11)
@@ -97,7 +97,7 @@ func TestRecorderTeeReaderPassesThrough(t *testing.T) {
 
 func TestRecorderTruncationCap(t *testing.T) {
 	// Cap small so the second write trips truncation.
-	rec := NewIORecorder("sess-trunc", frameHeaderLen+4)
+	rec := NewIORecorder(context.Background(), "sess-trunc", frameHeaderLen+4)
 	rec.Record(DirOutput, []byte("aaaa"))
 	rec.Record(DirOutput, []byte("bbbb")) // exceeds cap
 	if !rec.Truncated() {
@@ -111,7 +111,7 @@ func TestRecorderTruncationCap(t *testing.T) {
 }
 
 func TestRecorderLiveMonitorFanOut(t *testing.T) {
-	rec := NewIORecorder("sess-mon", 0)
+	rec := NewIORecorder(context.Background(), "sess-mon", 0)
 	mon := &captureMonitor{}
 	remove := rec.AddMonitor(mon)
 	rec.Record(DirOutput, []byte("first"))
@@ -126,7 +126,7 @@ func TestRecorderLiveMonitorFanOut(t *testing.T) {
 }
 
 func TestRecorderFlushToStore(t *testing.T) {
-	rec := NewIORecorder("sess-flush", 0)
+	rec := NewIORecorder(context.Background(), "sess-flush", 0)
 	rec.Record(DirInput, []byte("data"))
 	store := &memStore{put: map[string][]byte{}}
 	if err := rec.Flush(context.Background(), store); err != nil {
@@ -175,7 +175,7 @@ func TestSessionHubTerminateAndMonitor(t *testing.T) {
 	hub := NewSessionHub()
 	sessionID := uuid.New()
 	ws := uuid.New()
-	rec := NewIORecorder(sessionID.String(), 0)
+	rec := NewIORecorder(context.Background(), sessionID.String(), 0)
 
 	terminated := false
 	deregister := hub.Register(sessionID, ws, "alice", rec, func() { terminated = true })
