@@ -209,8 +209,17 @@ func (s *CertificationService) StartCampaign(ctx context.Context, workspaceID uu
 // revoke here is STAGED only: the grant is NOT torn down until the campaign is
 // closed, so the operator can preview the impact first (PreviewRevocations).
 // The item load, terminal-decision guard, and write run in one FOR UPDATE
-// transaction so concurrent decisions on the same item serialize. Re-submitting
-// the same decision is idempotent; flipping a terminal decision is rejected.
+// transaction so concurrent decisions on the same item serialize.
+//
+// Idempotency depends on whether the existing decision is TERMINAL:
+//   - certify / revoke are terminal. Re-submitting the same terminal decision is
+//     a no-op (recorded once); flipping to a different terminal decision is
+//     rejected with ErrItemDecided.
+//   - escalate is an intermediate state that may later be overridden to
+//     certify/revoke, so it is deliberately NOT terminal. Re-submitting escalate
+//     re-writes the item and appends a fresh certification.item.decision.escalate
+//     evidence event — each escalation is a distinct, audit-worthy act (e.g. a
+//     re-escalation with a new reason), not a no-op.
 func (s *CertificationService) SubmitDecision(ctx context.Context, workspaceID, campaignID, itemID uuid.UUID, decision, decidedBy, reason string) error {
 	switch decision {
 	case models.CertificationDecisionCertify, models.CertificationDecisionRevoke, models.CertificationDecisionEscalate:
