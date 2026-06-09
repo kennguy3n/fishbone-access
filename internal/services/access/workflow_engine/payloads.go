@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 )
 
 // Workflow job types drained by JobProcessor. They are deliberately disjoint
@@ -33,12 +34,28 @@ const (
 	JobTypeProvisionRequest = "workflow.provision_request"
 	// JobTypeReviewSweep runs one scheduled certification sweep for a workspace.
 	JobTypeReviewSweep = "workflow.review_sweep"
+	// JobTypeWorkflowRun executes a published JML workflow for a single subject
+	// (the asynchronous, redelivery-safe path for identity-event and scheduled
+	// triggers; the manual "run now" API runs the same Service.Run
+	// synchronously). The run persists a workflow_runs row, so a redelivered
+	// job re-runs idempotent steps and records a fresh run.
+	JobTypeWorkflowRun = "workflow.workflow_run"
 )
 
 // AllJobTypes is the set of workflow job types, for wiring a type-filtered
 // queue in the workflow-engine binary.
 func AllJobTypes() []string {
-	return []string{JobTypeJMLEvent, JobTypeProvisionRequest, JobTypeReviewSweep}
+	return []string{JobTypeJMLEvent, JobTypeProvisionRequest, JobTypeReviewSweep, JobTypeWorkflowRun}
+}
+
+// workflowRunPayload drives one live execution of a published workflow for a
+// subject. The subject is stored whole so the handler evaluates conditions and
+// runs steps exactly as the synchronous path would.
+type workflowRunPayload struct {
+	WorkspaceID string           `json:"workspace_id"`
+	WorkflowID  string           `json:"workflow_id"`
+	Subject     workflow.Subject `json:"subject"`
+	Actor       string           `json:"actor"`
 }
 
 // jmlEventPayload carries a normalized SCIM event to be (re)processed by the JML

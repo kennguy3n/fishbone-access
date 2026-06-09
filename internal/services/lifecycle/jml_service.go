@@ -304,7 +304,30 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 	if e.UserExternalID == "" {
 		return nil, fmt.Errorf("%w: leaver event needs a user id", ErrValidation)
 	}
-	user := e.UserExternalID
+	// The automatic SCIM-driven leaver lane runs the kill switch with the
+	// "scim" actor. The same cascade is reachable with a human actor via
+	// RunKillSwitch (a workflow run_kill_switch step or the standalone
+	// emergency-offboard action).
+	return s.RunKillSwitch(ctx, workspaceID, e.UserExternalID, "scim")
+}
+
+// RunKillSwitch executes the six-layer leaver kill switch for a user with an
+// explicit actor, and is the single shared implementation behind every
+// offboarding path: the automatic SCIM leaver lane (actor "scim"), a workflow
+// run_kill_switch step, and the standalone emergency-offboard action (actor =
+// the authenticated admin). The layers run in order; a failed layer is recorded
+// and the cascade CONTINUES (a failure never silently skips the remaining
+// layers). Each layer is idempotent, so the whole switch is safe to re-run. If
+// any layer failed the returned LeaverResult.Errored is true and RunKillSwitch
+// returns a non-nil error, but only after every layer has been attempted.
+func (s *JMLService) RunKillSwitch(ctx context.Context, workspaceID uuid.UUID, userExternalID, actor string) (*LeaverResult, error) {
+	if userExternalID == "" {
+		return nil, fmt.Errorf("%w: kill switch needs a user id", ErrValidation)
+	}
+	if actor == "" {
+		return nil, fmt.Errorf("%w: kill switch needs an actor", ErrValidation)
+	}
+	user := userExternalID
 	result := &LeaverResult{UserExternalID: user}
 
 	record := func(layer, status, detail string) {
@@ -316,7 +339,7 @@ func (s *JMLService) HandleLeaver(ctx context.Context, workspaceID uuid.UUID, e 
 		if auditErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			return appendAudit(ctx, tx, now, auditEntry{
 				WorkspaceID: workspaceID,
-				Actor:       "scim",
+				Actor:       actor,
 				Action:      "jml.leaver." + layer + "." + status,
 				TargetRef:   user,
 			})

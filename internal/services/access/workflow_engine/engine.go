@@ -14,6 +14,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 )
 
 // Enqueuer is the subset of the worker queue the engine needs to schedule
@@ -354,6 +355,33 @@ func (e *Engine) ScheduleReviewSweep(ctx context.Context, workspaceID uuid.UUID,
 		return "", err
 	}
 	return e.queue.Enqueue(ctx, workspaceID, uuid.Nil, JobTypeReviewSweep, payload)
+}
+
+// EnqueueWorkflowRun enqueues an asynchronous live execution of a published JML
+// workflow for a subject. Routing it through the queue makes the run resumable:
+// it survives a worker restart and retries with back-off (each step is
+// idempotent). The manual "run now" API path runs the same Service.Run
+// synchronously instead.
+func (e *Engine) EnqueueWorkflowRun(ctx context.Context, workspaceID, workflowID uuid.UUID, subject workflow.Subject, actor string) (string, error) {
+	if workspaceID == uuid.Nil {
+		return "", fmt.Errorf("%w: workspace_id is required", lifecycle.ErrValidation)
+	}
+	if workflowID == uuid.Nil {
+		return "", fmt.Errorf("%w: workflow_id is required", lifecycle.ErrValidation)
+	}
+	if subject.ExternalID == "" {
+		return "", fmt.Errorf("%w: subject external_id is required", lifecycle.ErrValidation)
+	}
+	payload, err := mustMarshal(workflowRunPayload{
+		WorkspaceID: workspaceID.String(),
+		WorkflowID:  workflowID.String(),
+		Subject:     subject,
+		Actor:       defaultReason(actor, "workflow-engine"),
+	})
+	if err != nil {
+		return "", err
+	}
+	return e.queue.Enqueue(ctx, workspaceID, uuid.Nil, JobTypeWorkflowRun, payload)
 }
 
 // EnqueueProvision enqueues a provisioning job for an already-approved request.
