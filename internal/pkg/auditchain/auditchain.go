@@ -84,12 +84,14 @@ func Hash(prevHash string, workspaceID uuid.UUID, action, targetRef string, meta
 //     also what is stored, so the pre-image is invariant under jsonb's key
 //     reordering and whitespace rewriting on read-back.
 //
-// Callers pass the canonical metadata and the un-truncated timestamp; the
-// truncation happens here so a caller cannot accidentally hash a finer instant
-// than it stores. This is the single source of truth for the version-1 pre-image
-// shared by the GORM appender (internal/services/lifecycle), the pgx appender
-// (internal/pkg/database), and the read-only compliance verifier, so the three
-// can never drift.
+// Callers pass the canonical metadata; the timestamp may be passed either raw
+// or already truncated. Appenders pre-truncate now to UTC microseconds because
+// they also store that value in created_at/updated_at, and this function
+// truncates again defensively (the operation is idempotent) so a caller that
+// forgets cannot hash a finer instant than it stores. This is the single source
+// of truth for the version-1 pre-image shared by the GORM appender
+// (internal/services/lifecycle), the pgx appender (internal/pkg/database), and
+// the read-only compliance verifier, so the three can never drift.
 func CanonicalHash(prevHash string, workspaceID uuid.UUID, action, targetRef string, canonicalMetadata []byte, ts time.Time) string {
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
