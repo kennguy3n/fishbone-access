@@ -38,7 +38,13 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 				http.Error(w, "members array required", http.StatusBadRequest)
 				return
 			}
-			member.Store(true)
+			// First add → 201. A repeat add for an existing member returns
+			// 409, the same way Zoom does, so the loop below also exercises
+			// ProvisionAccess's idempotent 409/"already exists" no-op path.
+			if member.Swap(true) {
+				http.Error(w, `{"code":409,"message":"Member already exists"}`, http.StatusConflict)
+				return
+			}
 			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/groups/g-1/members/u-1"):
 			member.Store(false)
