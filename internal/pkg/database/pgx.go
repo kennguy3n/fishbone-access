@@ -431,7 +431,7 @@ func (r *GormAuditRepo) AppendAudit(ctx context.Context, now time.Time, in Audit
 		// pair is atomic and the chain cannot fork. Postgres only; the SQLite
 		// test path serialises writers with a single global write lock.
 		if tx.Dialector != nil && tx.Name() == "postgres" {
-			if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", auditchain.LockKey(in.WorkspaceID)).Error; err != nil {
+			if err := tx.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(?)", auditchain.LockKey(in.WorkspaceID)).Error; err != nil {
 				return fmt.Errorf("database: lock workspace: %w", err)
 			}
 		}
@@ -439,7 +439,8 @@ func (r *GormAuditRepo) AppendAudit(ctx context.Context, now time.Time, in Audit
 		var prev models.AuditEvent
 		prevHash := ""
 		var prevSeq int64
-		err := tx.Unscoped().
+		err := tx.WithContext(ctx).
+			Unscoped().
 			Where("workspace_id = ?", in.WorkspaceID).
 			Order("chain_seq desc").
 			Limit(1).
@@ -475,7 +476,7 @@ func (r *GormAuditRepo) AppendAudit(ctx context.Context, now time.Time, in Audit
 		}
 		row.CreatedAt = now
 		row.UpdatedAt = now
-		if err := tx.Create(row).Error; err != nil {
+		if err := tx.WithContext(ctx).Create(row).Error; err != nil {
 			return fmt.Errorf("database: insert audit event: %w", err)
 		}
 		return nil

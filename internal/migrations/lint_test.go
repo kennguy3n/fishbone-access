@@ -136,6 +136,42 @@ func TestLockSafety(t *testing.T) {
 			sql:       "CREATE FUNCTION f() RETURNS void AS $$ SELECT 1; $$ LANGUAGE sql;\nALTER TABLE t DROP COLUMN c;",
 			wantRules: []string{RuleDropColumn},
 		},
+		{
+			name: "migrate-lint:allow waives the named rule",
+			sql:  "-- migrate-lint:allow drop-column (col unused since 0014, TICKET-123)\nALTER TABLE t DROP COLUMN c;",
+		},
+		{
+			name: "migrate-lint:allow with comma list waives multiple rules",
+			sql:  "-- migrate-lint:allow lock-table, alter-column-type\nLOCK TABLE t IN ACCESS EXCLUSIVE MODE;\nALTER TABLE t ALTER COLUMN c TYPE BIGINT;",
+		},
+		{
+			name:      "suppression waives only the named rule, others still flagged",
+			sql:       "-- migrate-lint:allow drop-column\nLOCK TABLE t IN ACCESS EXCLUSIVE MODE;",
+			wantRules: []string{RuleLockTable},
+		},
+		{
+			name:      "typo'd suppression is reported and the real violation still fires",
+			sql:       "-- migrate-lint:allow drop-colum\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleUnknownSuppression, RuleDropColumn},
+		},
+		{
+			name:      "version-integrity rules cannot be suppressed",
+			sql:       "-- migrate-lint:allow version-gap\nCREATE INDEX idx ON t (a);",
+			wantRules: []string{RuleUnknownSuppression},
+		},
+		{
+			name: "keyword inside nested block comment is ignored",
+			sql:  "/* outer /* DROP COLUMN x */ still LOCK TABLE t */\nCREATE INDEX idx ON t (a);",
+		},
+		{
+			name: "keyword inside escape string is ignored",
+			sql:  `INSERT INTO notes (body) VALUES (E'we\'ll DROP COLUMN later');`,
+		},
+		{
+			name:      "real violation after an escape string is still flagged",
+			sql:       "INSERT INTO notes (body) VALUES (E'a\\'b');\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -186,6 +222,31 @@ func TestMaskSQLPreservesLength(t *testing.T) {
 	// splitting does not treat them as boundaries.
 	if strings.Count(masked, ";") != 1 {
 		t.Errorf("masked SQL should retain only the real statement terminator, got %q", masked)
+	}
+}
+
+func TestMaskSQLNestedCommentsAndEscapeStrings(t *testing.T) {
+	// Nested block comments (PostgreSQL allows nesting) must mask to the matching
+	// outer */, and an E'…' body where \' is an escape must mask whole. Length is
+	// preserved so statement offsets stay aligned.
+	cases := []string{
+		"/* a /* b */ c */ SELECT 1;",
+		`SELECT E'x\'y';`,
+	}
+	for _, in := range cases {
+		masked := maskSQL(in)
+		if len(masked) != len(in) {
+			t.Fatalf("mask changed length for %q: got %d want %d", in, len(masked), len(in))
+		}
+	}
+	// The keyword buried in a nested comment must not survive masking.
+	if got := maskSQL("/* /* DROP COLUMN x */ */ SELECT 1;"); strings.Contains(got, "DROP COLUMN") {
+		t.Errorf("nested block comment not fully masked: %q", got)
+	}
+	// A backslash-escaped quote inside an E-string must not terminate it early,
+	// so a keyword after the escape stays masked.
+	if got := maskSQL(`SELECT E'a\'DROP COLUMN';`); strings.Contains(got, "DROP COLUMN") {
+		t.Errorf("escape-string body not fully masked: %q", got)
 	}
 }
 

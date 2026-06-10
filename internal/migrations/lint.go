@@ -32,6 +32,13 @@ import (
 //     DEFAULT, ALTER COLUMN ... TYPE), an explicit LOCK TABLE, or a destructive
 //     DROP COLUMN.
 //
+// A lock-safety rule is a judgment call, not an absolute: the destructive or
+// heavy operation it flags is occasionally the correct thing to do in a
+// dedicated, reviewed migration. Such a migration opts out with an explicit
+// `-- migrate-lint:allow <rule>` directive (see reSuppress), which keeps the
+// waiver visible in the diff and grep-able by rule name. Version-integrity
+// rules cannot be suppressed — a duplicate or undeclared gap is always a defect.
+//
 // The linter reads the same embedded files the runner applies, so it lints
 // exactly what ships.
 
@@ -59,8 +66,8 @@ var (
 	reDefault        = regexp.MustCompile(`(?i)\bDEFAULT\b`)
 )
 
-// Rule names are stable identifiers so a violation can be grepped/suppressed by
-// a precise key rather than prose.
+// Rule names are stable identifiers so a violation can be grepped or suppressed
+// by a precise key rather than prose (see the migrate-lint:allow directive).
 const (
 	RuleFilename         = "filename-format"
 	RuleDuplicateVersion = "duplicate-version"
@@ -70,7 +77,37 @@ const (
 	RuleAlterColumnType  = "alter-column-type"
 	RuleDropColumn       = "drop-column"
 	RuleLockTable        = "lock-table"
+
+	// RuleUnknownSuppression flags a migrate-lint:allow directive that names a
+	// rule which is not a suppressible lock-safety rule (a typo, or an attempt to
+	// silence a version-integrity rule). The directive is then a no-op, so we
+	// surface it rather than let the author believe a check was waived.
+	RuleUnknownSuppression = "unknown-suppression"
 )
+
+// suppressibleRules are the lock-safety rules a migration may explicitly opt out
+// of with a `-- migrate-lint:allow <rule>` directive. These are judgment calls:
+// a heavy lock or a destructive change is usually wrong, but is legitimate in a
+// dedicated, reviewed migration (e.g. dropping a column that is already unused).
+// Version-integrity rules are intentionally absent — a duplicate version or an
+// undeclared gap is a structural defect, never a reviewed exception.
+var suppressibleRules = map[string]bool{
+	RuleConcurrently:     true,
+	RuleAddColumnNotNull: true,
+	RuleAlterColumnType:  true,
+	RuleDropColumn:       true,
+	RuleLockTable:        true,
+}
+
+// reSuppress matches a suppression directive and captures its comma-separated
+// rule list. The directive lives in a SQL comment, e.g.
+//
+//	-- migrate-lint:allow drop-column   (column X unused since 0014, see TICKET-123)
+//	-- migrate-lint:allow lock-table,alter-column-type
+//
+// Anything after the rule list (a free-text reason, which reviewers should
+// include) is ignored by the parser.
+var reSuppress = regexp.MustCompile(`(?i)\bmigrate-lint:allow\s+([a-z0-9\-]+(?:\s*,\s*[a-z0-9\-]+)*)`)
 
 // Violation is one rule failure, naming the file, the rule, and a human detail.
 type Violation struct {
@@ -201,40 +238,34 @@ func checkVersions(filenames []string) []Violation {
 }
 
 // lockSafety runs the per-statement lock-safety rules over one migration file.
+// A `-- migrate-lint:allow <rule>` directive anywhere in the file waives that
+// (suppressible) rule for the whole file; a directive naming an unknown or
+// non-suppressible rule is itself reported.
 func lockSafety(name, sql string) []Violation {
-	var violations []Violation
+	allowed, violations := parseSuppressions(name, sql)
+	// add records a violation unless the file has opted out of that rule.
+	add := func(rule, detail string) {
+		if allowed[rule] {
+			return
+		}
+		violations = append(violations, Violation{File: name, Rule: rule, Detail: detail})
+	}
 	for _, stmt := range splitStatements(maskSQL(sql)) {
 		s := collapseWS(stmt)
 		if s == "" {
 			continue
 		}
 		if reConcurrently.MatchString(s) {
-			violations = append(violations, Violation{
-				File:   name,
-				Rule:   RuleConcurrently,
-				Detail: "CONCURRENTLY is illegal inside the per-migration transaction this runner uses; use a plain (transactional) index build",
-			})
+			add(RuleConcurrently, "CONCURRENTLY is illegal inside the per-migration transaction this runner uses; use a plain (transactional) index build")
 		}
 		if reAlterColumnTyp.MatchString(s) {
-			violations = append(violations, Violation{
-				File:   name,
-				Rule:   RuleAlterColumnType,
-				Detail: "ALTER COLUMN ... TYPE rewrites the table under ACCESS EXCLUSIVE; migrate via a new column + backfill instead",
-			})
+			add(RuleAlterColumnType, "ALTER COLUMN ... TYPE rewrites the table under ACCESS EXCLUSIVE; migrate via a new column + backfill instead")
 		}
 		if reDropColumn.MatchString(s) {
-			violations = append(violations, Violation{
-				File:   name,
-				Rule:   RuleDropColumn,
-				Detail: "DROP COLUMN is destructive and rewrites the table; drop in a dedicated, reviewed migration after the column is unused",
-			})
+			add(RuleDropColumn, "DROP COLUMN is destructive and rewrites the table; drop in a dedicated, reviewed migration after the column is unused, then add `-- migrate-lint:allow drop-column <reason>`")
 		}
 		if reLockTable.MatchString(s) {
-			violations = append(violations, Violation{
-				File:   name,
-				Rule:   RuleLockTable,
-				Detail: "explicit LOCK TABLE blocks all access for the migration's duration",
-			})
+			add(RuleLockTable, "explicit LOCK TABLE blocks all access for the migration's duration")
 		}
 		// ADD COLUMN ... NOT NULL without DEFAULT: evaluate each top-level clause
 		// (commas at paren-depth 0 separate ALTER TABLE actions) so a type like
@@ -242,22 +273,52 @@ func lockSafety(name, sql string) []Violation {
 		// statement are each judged on their own.
 		for _, clause := range splitTopLevelCommas(s) {
 			if reAddColumn.MatchString(clause) && reNotNull.MatchString(clause) && !reDefault.MatchString(clause) {
-				violations = append(violations, Violation{
-					File:   name,
-					Rule:   RuleAddColumnNotNull,
-					Detail: "ADD COLUMN ... NOT NULL without DEFAULT fails on a populated table; add a DEFAULT (or backfill then SET NOT NULL)",
-				})
+				add(RuleAddColumnNotNull, "ADD COLUMN ... NOT NULL without DEFAULT fails on a populated table; add a DEFAULT (or backfill then SET NOT NULL)")
 			}
 		}
 	}
 	return violations
 }
 
+// parseSuppressions reads every `-- migrate-lint:allow <rule>[,<rule>…]`
+// directive in the raw (unmasked) file and returns the set of lock-safety rules
+// the file waives. A directive that names a rule which is not in
+// suppressibleRules is returned as a RuleUnknownSuppression violation so a typo
+// or a misguided attempt to silence a structural check is loud, not silent.
+//
+// Directives are read from the raw SQL because maskSQL blanks comments; reading
+// raw text is safe since the directive's own keywords (e.g. "drop-column") live
+// in a comment and are never scanned as DDL.
+func parseSuppressions(name, sql string) (map[string]bool, []Violation) {
+	allowed := map[string]bool{}
+	var violations []Violation
+	for _, m := range reSuppress.FindAllStringSubmatch(sql, -1) {
+		for _, tok := range strings.Split(m[1], ",") {
+			rule := strings.ToLower(strings.TrimSpace(tok))
+			if rule == "" {
+				continue
+			}
+			if !suppressibleRules[rule] {
+				violations = append(violations, Violation{
+					File:   name,
+					Rule:   RuleUnknownSuppression,
+					Detail: fmt.Sprintf("migrate-lint:allow names %q, which is not a suppressible lock-safety rule", rule),
+				})
+				continue
+			}
+			allowed[rule] = true
+		}
+	}
+	return allowed, violations
+}
+
 // maskSQL blanks out content the lock-safety scanner must not match inside:
-// line comments (-- … EOL), block comments (/* … */), single-quoted string
-// literals (including ” escapes), and dollar-quoted strings ($$…$$ or
-// $tag$…$tag$, e.g. PL/pgSQL bodies). Masked spans are replaced with spaces so
-// byte offsets and statement boundaries are preserved.
+// line comments (-- … EOL), block comments (/* … */, which PostgreSQL allows to
+// nest), single-quoted string literals (with ” escapes), escape strings
+// (E'…', where a backslash escapes the next byte so \' does not close), and
+// dollar-quoted strings ($$…$$ or $tag$…$tag$, e.g. PL/pgSQL bodies). Masked
+// spans are replaced with spaces so byte offsets and statement boundaries are
+// preserved.
 func maskSQL(sql string) string {
 	out := []byte(sql)
 	n := len(out)
@@ -269,15 +330,65 @@ func maskSQL(sql string) string {
 				i++
 			}
 		case out[i] == '/' && i+1 < n && out[i+1] == '*':
-			for i < n && !(out[i] == '*' && i+1 < n && out[i+1] == '/') {
+			// PostgreSQL block comments nest, so track depth rather than stopping at
+			// the first */ (which would leave the tail of an outer comment exposed to
+			// the scanner).
+			depth := 0
+			for i < n {
+				if out[i] == '/' && i+1 < n && out[i+1] == '*' {
+					out[i], out[i+1] = ' ', ' '
+					i += 2
+					depth++
+					continue
+				}
+				if out[i] == '*' && i+1 < n && out[i+1] == '/' {
+					out[i], out[i+1] = ' ', ' '
+					i += 2
+					depth--
+					if depth == 0 {
+						break
+					}
+					continue
+				}
 				if out[i] != '\n' {
 					out[i] = ' '
 				}
 				i++
 			}
-			// Blank the closing */ too.
-			for j := 0; j < 2 && i < n; j++ {
-				out[i] = ' '
+		case (out[i] == 'E' || out[i] == 'e') && i+1 < n && out[i+1] == '\'' &&
+			(i == 0 || !isWordChar(out[i-1])):
+			// PostgreSQL escape string E'…': unlike a standard literal, a backslash
+			// escapes the next byte, so \' and \\ do NOT end the string. Mask the E
+			// prefix, the quotes, and the body. The leading-word guard keeps the tail
+			// of an identifier (e.g. a column named foo_e) from being read as a prefix.
+			out[i] = ' ' // E/e prefix
+			i++
+			out[i] = ' ' // opening quote
+			i++
+			for i < n {
+				if out[i] == '\\' && i+1 < n {
+					out[i] = ' '
+					i++
+					if out[i] != '\n' {
+						out[i] = ' '
+					}
+					i++
+					continue
+				}
+				if out[i] == '\'' {
+					// A doubled '' is an escaped quote in an E-string too.
+					if i+1 < n && out[i+1] == '\'' {
+						out[i], out[i+1] = ' ', ' '
+						i += 2
+						continue
+					}
+					out[i] = ' '
+					i++
+					break
+				}
+				if out[i] != '\n' {
+					out[i] = ' '
+				}
 				i++
 			}
 		case out[i] == '\'':
@@ -360,8 +471,9 @@ func hasDelimAt(b []byte, i int, delim string) bool {
 	return i+len(delim) <= len(b) && string(b[i:i+len(delim)]) == delim
 }
 
-func isLetter(c byte) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
-func isDigit(c byte) bool  { return c >= '0' && c <= '9' }
+func isLetter(c byte) bool   { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+func isDigit(c byte) bool    { return c >= '0' && c <= '9' }
+func isWordChar(c byte) bool { return isLetter(c) || isDigit(c) || c == '_' }
 
 // splitStatements splits masked SQL into statements on semicolons. The masker
 // has already blanked semicolons inside comments, string literals, and
