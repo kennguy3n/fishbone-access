@@ -1408,6 +1408,7 @@ function evidenceParams(filter: EvidenceFilter): Record<string, string> {
     params.kinds = filter.kinds.join(",");
   if (filter.controlled_only) params.controlled_only = "true";
   if (filter.limit != null) params.limit = String(filter.limit);
+  if (filter.order) params.order = filter.order;
   return params;
 }
 
