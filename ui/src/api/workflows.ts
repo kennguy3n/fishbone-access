@@ -285,12 +285,22 @@ export const getRun = (id: string) =>
 // surfaces as an ApiError. The breakdown is preserved on `ApiError.details` —
 // use `failedOffboardFromError` to recover it so the caller can render which
 // layers failed instead of an opaque error, mirroring the Android/iOS SDKs.
-export const emergencyOffboard = (userExternalID: string, reason?: string) =>
-  call<{ leaver: LeaverResult }>({
+//
+// Identity is trimmed and required up-front, matching the Android/iOS SDK
+// contract (both trim and throw InvalidInput on a blank id) so a direct caller
+// can't send an empty user_external_id and we skip a guaranteed-400 round-trip.
+// Reason is trimmed and omitted when blank, also mirroring the SDKs.
+export const emergencyOffboard = (userExternalID: string, reason?: string) => {
+  const externalID = userExternalID.trim();
+  if (!externalID) {
+    return Promise.reject(new ApiError(0, "user_external_id is required"));
+  }
+  return call<{ leaver: LeaverResult }>({
     url: "/emergency-offboard",
     method: "POST",
-    data: { user_external_id: userExternalID, reason },
+    data: { user_external_id: externalID, reason: reason?.trim() || undefined },
   }).then((r) => normalizeLeaver(r.leaver));
+};
 
 // failedOffboardFromError extracts the per-layer leaver breakdown a failed
 // emergencyOffboard call carries on its ApiError (the 500 body's `leaver`),
