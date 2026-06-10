@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/auditchain"
 )
 
 // forUpdate returns tx with a row-level write lock (SELECT ... FOR UPDATE) on
@@ -31,15 +31,6 @@ func forUpdate(tx *gorm.DB) *gorm.DB {
 	}
 	return tx
 }
-
-// workspaceLockNamespace salts the per-workspace advisory-lock key so it can
-// never collide with the migration runner's advisory lock (which uses a
-// different fixed key). The lock now serializes all per-workspace policy
-// mutations (promotion + audit-chain appends), not just audit appends; the
-// literal value must never change, or it would stop serializing against any
-// in-flight transaction still holding the old key. The "AUDITCHA" bytes are
-// just the mnemonic origin of the constant, not a limit on its scope.
-const workspaceLockNamespace uint64 = 0x4155_4449_5443_4841 // bytes "AUDITCHA"
 
 // lockWorkspace takes a transaction-scoped Postgres advisory lock keyed on the
 // workspace id, serializing the holders of this single per-workspace key. It
@@ -63,7 +54,7 @@ func lockWorkspace(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID) erro
 	if tx.Dialector == nil || tx.Name() != "postgres" {
 		return nil
 	}
-	key := int64(binary.BigEndian.Uint64(workspaceID[:8]) ^ workspaceLockNamespace)
+	key := auditchain.LockKey(workspaceID)
 	if err := tx.WithContext(ctx).Exec("SELECT pg_advisory_xact_lock(?)", key).Error; err != nil {
 		return fmt.Errorf("lifecycle: lock workspace: %w", err)
 	}
@@ -196,6 +187,13 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	// would re-serialize a differently-ordered object). Folding the canonical
 	// form into both the hash AND the stored row makes the pre-image identical at
 	// append and verify time, independent of jsonb's internal normalization.
+	//
+	// This GORM path stamps ChainHashVersion = AuditHashVersion (canonical,
+	// microsecond-truncated, fully recomputable). The pgx audit backend
+	// (internal/pkg/database) links into the SAME per-workspace chain via the
+	// shared auditchain.LockKey + prev_hash, but writes version-0 rows with
+	// auditchain.Hash; the verifier accepts those on linkage alone, so the two
+	// backends coexist on one chain without false tamper reports.
 	canonMeta := canonicalJSON(e.Metadata)
 	chainHash := ComputeChainHash(prevHash, e.WorkspaceID, e.Action, e.TargetRef, canonMeta, now)
 

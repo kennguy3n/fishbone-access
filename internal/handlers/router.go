@@ -17,6 +17,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -44,6 +45,12 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// WorkspaceResolver is the tenant→workspace lookup RequireTenant runs on
+	// every authenticated request. When set (production wires the pgxpool
+	// adapter here) it takes precedence; when nil and DB is present, NewRouter
+	// falls back to the GORM-backed resolver so the SQLite test path and
+	// degraded boots keep working unchanged.
+	WorkspaceResolver middleware.WorkspaceResolver
 	// RBAC resolves and mutates workspace memberships for the authorization
 	// tier. When nil (degraded boot, or a legacy router construction without an
 	// RBAC store) AuthzMiddleware is NOT installed and the per-route
@@ -96,9 +103,19 @@ func NewRouter(deps Deps) *gin.Engine {
 	// It is only mounted when both a validator and a DB are present; without a
 	// DB the routes are absent (the /api/v1 group already 503s in degraded
 	// mode).
-	if deps.Validator != nil && deps.DB != nil {
+	resolver := deps.WorkspaceResolver
+	if resolver == nil && deps.DB != nil {
+		resolver = database.NewGormWorkspaceConfigRepo(deps.DB)
+	}
+	// deps.DB is still required here even when a WorkspaceResolver is supplied:
+	// newLifecycleHandlers wires every lifecycle service off deps.DB, so mounting
+	// the group without it would hand those constructors a nil *gorm.DB and panic
+	// on the first request. RequireTenant runs on the resolver (pgx in
+	// production), but the handlers behind it remain GORM-backed until later WS10
+	// steps migrate them.
+	if deps.Validator != nil && resolver != nil && deps.DB != nil {
 		scoped := api.Group("")
-		scoped.Use(middleware.RequireTenant(deps.DB))
+		scoped.Use(middleware.RequireTenant(resolver))
 		// Install the RBAC tier when an RBAC store is wired. It runs after
 		// RequireTenant (it needs the resolved workspace + verified subject) and
 		// resolves the caller's role into a permission set for the per-route
