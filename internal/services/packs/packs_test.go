@@ -230,6 +230,76 @@ func TestApplyIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestApplyDedupsIdenticalSharedTemplate proves the idempotency key is (name,
+// definition), not name alone: two different jurisdiction packs that legitimately
+// share a byte-identical template (e.g. th-pdpa and my-pdpa both ship
+// "Default-deny personal data" / "Authorised staff → personal data") must
+// materialise that shared policy exactly once when both packs are applied to one
+// workspace — never erroring, never duplicating.
+func TestApplyDedupsIdenticalSharedTemplate(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+	packA, _ := FindPack("th-pdpa")
+	packB, _ := FindPack("my-pdpa")
+
+	if _, err := svc.Apply(ctx, ws, "th-pdpa", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply th-pdpa: %v", err)
+	}
+	if _, err := svc.Apply(ctx, ws, "my-pdpa", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply my-pdpa (shares identical templates, must not conflict): %v", err)
+	}
+
+	// Union of distinct template names across both packs — shared identical
+	// templates collapse to one persisted policy.
+	names := map[string]bool{}
+	for _, tm := range packA.Templates {
+		names[tm.Name] = true
+	}
+	for _, tm := range packB.Templates {
+		names[tm.Name] = true
+	}
+	rows, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("ListPolicies: %v", err)
+	}
+	if len(rows) != len(names) {
+		t.Fatalf("expected %d deduped policies (union of names), got %d", len(names), len(rows))
+	}
+}
+
+// TestApplyConflictingDefinitionSurfaces proves a same-name/different-definition
+// clash is reported, not silently dropped. sg-pdpa-mas-trm and ae-pdpl-desc both
+// define "Privileged access — admins only" with DIFFERENT rules; applying the
+// second to a workspace that already has the first must fail with
+// ErrPolicyConflict and must not mutate the first pack's materialised policies.
+func TestApplyConflictingDefinitionSurfaces(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+
+	if _, err := svc.Apply(ctx, ws, "sg-pdpa-mas-trm", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply sg-pdpa-mas-trm: %v", err)
+	}
+	before, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("list before: %v", err)
+	}
+
+	_, err = svc.Apply(ctx, ws, "ae-pdpl-desc", nil, "admin@corp")
+	if !errors.Is(err, ErrPolicyConflict) {
+		t.Fatalf("expected ErrPolicyConflict applying a pack with a same-name/different-definition template, got %v", err)
+	}
+
+	// All-or-nothing: the failed apply rolled back, so the workspace still holds
+	// exactly the first pack's policies — no partial materialisation of ae-pdpl.
+	after, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("list after: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("conflicting apply was not atomic: policy count changed %d -> %d", len(before), len(after))
+	}
+}
+
 func TestApplySelectedTemplatesOnly(t *testing.T) {
 	svc, _, _, ws := newApplyService(t)
 	ctx := context.Background()

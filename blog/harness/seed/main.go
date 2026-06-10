@@ -96,7 +96,7 @@ func main() {
 		summary.Workspaces = append(summary.Workspaces, wsSum)
 	}
 
-	if err := os.MkdirAll(*outDir, 0o755); err != nil {
+	if err := os.MkdirAll(*outDir, 0o750); err != nil {
 		harnesskit.Fatalf("mkdir %s: %v", *outDir, err)
 	}
 	path := filepath.Join(*outDir, "seed-summary.json")
@@ -529,5 +529,5 @@ func writeJSON(path string, v any) error {
 		return err
 	}
 	b = append(b, '\n')
-	return os.WriteFile(path, b, 0o644)
+	return os.WriteFile(path, b, 0o600)
 }

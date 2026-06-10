@@ -275,19 +275,31 @@ func extractZipEntry(zipBytes []byte, name string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
-		return io.ReadAll(rc)
+		// Read and close in the loop body (no deferred close accumulating across
+		// iterations); we return immediately, so the entry is closed before the
+		// function exits regardless of the read outcome.
+		data, readErr := io.ReadAll(rc)
+		if cerr := rc.Close(); cerr != nil && readErr == nil {
+			readErr = cerr
+		}
+		return data, readErr
 	}
 	return nil, os.ErrNotExist
 }
 
 func loadSummary(path string) (harnesskit.Summary, error) {
 	var s harnesskit.Summary
-	b, err := os.ReadFile(path)
+	// path is an operator-supplied CLI flag pointing at the seed harness's own
+	// output (seed-summary.json); this is a local dev/evidence tool, not a
+	// network service, so reading the given path is the intended behaviour.
+	b, err := os.ReadFile(path) //nolint:gosec // operator-supplied path to seed-summary.json in a dev harness; not a network-reachable input
 	if err != nil {
 		return s, err
 	}
-	return s, json.Unmarshal(b, &s)
+	if err := json.Unmarshal(b, &s); err != nil {
+		return s, err
+	}
+	return s, nil
 }
 
 func findWorkspace(s harnesskit.Summary, slug string) (harnesskit.WorkspaceSummary, bool) {

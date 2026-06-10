@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -31,6 +32,13 @@ var (
 	ErrPackNotFound      = errors.New("packs: pack not found")
 	ErrNoTemplates       = errors.New("packs: pack has no templates to apply")
 	ErrTemplateNotInPack = errors.New("packs: requested template is not part of this pack")
+	// ErrPolicyConflict reports that a template would materialise a policy whose
+	// name already belongs to a live policy in the workspace but whose definition
+	// differs — a genuine clash (two packs, or a hand-authored policy, claiming
+	// the same policy identity with different rules). Surfacing it (→409) is the
+	// honest alternative to silently dropping a compliance control or creating a
+	// second, ambiguous policy under the same name.
+	ErrPolicyConflict = errors.New("packs: a policy with this name already exists in the workspace with a different definition")
 )
 
 // Template is a smart-default access rule a pack can materialize as a DRAFT
@@ -199,14 +207,30 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 	// created instead of leaving orphaned ones the caller can't see (and would
 	// duplicate on retry).
 	//
-	// Apply is idempotent: a template whose policy already exists in the
-	// workspace (matched by name, ignoring archived/superseded rows) is NOT
-	// materialised again — the existing policy is returned instead. Without this
-	// guard, re-applying a pack (a routine operation: re-running a seed, an
-	// operator clicking "Apply" twice, a pack refreshed upstream) would create a
-	// duplicate draft per template every time, silently multiplying a tenant's
-	// policy set. The lookup is workspace-scoped, so cross-tenant isolation is
-	// preserved.
+	// Apply is idempotent on the SAME policy: a template whose policy already
+	// exists in the workspace with an identical definition (matched by name,
+	// ignoring archived/superseded rows) is NOT materialised again — the existing
+	// policy is returned instead. Without this guard, re-applying a pack (a
+	// routine operation: re-running a seed, an operator clicking "Apply" twice, a
+	// pack refreshed upstream) would create a duplicate draft per template every
+	// time, silently multiplying a tenant's policy set. The lookup is
+	// workspace-scoped, so cross-tenant isolation is preserved.
+	//
+	// Dedup key — name AND definition, not name alone: a materialised policy
+	// persists no pack/template origin (models.Policy has no
+	// source_pack_id/template_key column), so name is the natural workspace-level
+	// identity the app addresses a policy by. But several catalogue packs share a
+	// template name (e.g. "Default-deny personal data" appears in ~10 jurisdiction
+	// packs) — most with byte-identical definitions, a few (e.g. "Privileged
+	// access — admins only") with DIFFERENT rules per pack. Keying on name alone
+	// conflates these: re-applying an identical shared template must dedup, but a
+	// same-name/different-definition template from another pack must NOT be
+	// silently swallowed — doing so would drop a compliance control the operator
+	// asked for. So: identical definition → skip (idempotent); differing
+	// definition under the same name → ErrPolicyConflict (→409), surfacing the
+	// clash for the operator to resolve (rename/archive) rather than guessing.
+	// Definitions are compared semantically (parsed, not byte-wise) so a JSONB
+	// round-trip that reorders keys does not read as a false conflict.
 	out := make([]AppliedPolicy, 0, len(selected))
 	err := a.policies.Transaction(ctx, func(tx *gorm.DB) error {
 		out = out[:0]
@@ -221,20 +245,30 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 		for _, r := range rows {
 			// First occurrence wins; a workspace should not hold two live
 			// policies with one name, but if it somehow does we keep the
-			// earliest so the skip decision is deterministic.
+			// earliest so the skip/conflict decision is deterministic.
 			if _, seen := existing[r.Name]; !seen {
 				existing[r.Name] = r
 			}
 		}
 
 		for _, t := range selected {
-			if pol, ok := existing[t.Name]; ok {
-				out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
-				continue
-			}
 			def, err := t.definition()
 			if err != nil {
 				return err
+			}
+			if pol, ok := existing[t.Name]; ok {
+				same, err := sameDefinition(pol.Definition, def)
+				if err != nil {
+					return fmt.Errorf("packs: compare existing policy %q: %w", t.Name, err)
+				}
+				if same {
+					// Identical policy already present (re-apply, or another pack
+					// contributing the same template) — idempotent skip.
+					out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
+					continue
+				}
+				// Same name, different rules: a real conflict, not a duplicate.
+				return fmt.Errorf("%w: %q (resolve by renaming or archiving the existing policy before applying this pack)", ErrPolicyConflict, t.Name)
 			}
 			pol, err := a.policies.CreatePolicyTx(ctx, tx, lifecycle.CreatePolicyInput{
 				WorkspaceID: workspaceID,
@@ -257,4 +291,23 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 		return nil, err
 	}
 	return out, nil
+}
+
+// sameDefinition reports whether an already-persisted policy definition and a
+// freshly-rendered template definition describe the same rule. It compares the
+// PARSED definitions (not the raw bytes) so an equivalent policy that has made a
+// JSONB round-trip — which may reorder object keys or restyle whitespace — is
+// not misread as a conflict. A parse failure on the stored side is surfaced
+// rather than swallowed: a workspace should never hold an unparseable policy,
+// and treating it as "different" would mask the corruption behind a 409.
+func sameDefinition(stored, candidate []byte) (bool, error) {
+	a, err := lifecycle.ParsePolicyDefinition(stored)
+	if err != nil {
+		return false, fmt.Errorf("stored definition is invalid: %w", err)
+	}
+	b, err := lifecycle.ParsePolicyDefinition(candidate)
+	if err != nil {
+		return false, fmt.Errorf("candidate definition is invalid: %w", err)
+	}
+	return reflect.DeepEqual(a, b), nil
 }

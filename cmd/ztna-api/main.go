@@ -118,6 +118,17 @@ func run() error {
 		}
 		deps.Validator = v
 		logger.Infof(ctx, "ztna-api: iam-core token validation enabled (issuer=%s)", cfg.IAMCore.Issuer)
+		// iam-core takes precedence, so a co-configured AUTH_JWT_SECRET is inert
+		// — but silently ignoring it hides a misconfiguration. Surface it, and
+		// shout in a production environment where a lingering dev secret is a
+		// real posture smell (the case below never fires once iam-core wins).
+		if cfg.DevAuth.Configured() {
+			if cfg.IsProductionEnv() {
+				logger.Warnf(ctx, "ztna-api: AUTH_JWT_SECRET is set but IGNORED — iam-core validation is configured and takes precedence (ACCESS_ENV=%q). Unset AUTH_JWT_SECRET in production so no inert dev-auth credential lingers in the environment.", cfg.Env)
+			} else {
+				logger.Warnf(ctx, "ztna-api: AUTH_JWT_SECRET is set but ignored; iam-core validation takes precedence over dev HMAC auth.")
+			}
+		}
 	case cfg.DevAuthAllowed():
 		// Non-production shared-secret path: lets the blog harnesses (and local
 		// development) drive the authenticated API without an iam-core instance.
