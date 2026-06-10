@@ -89,6 +89,7 @@ func NewPackWriter(db *gorm.DB, evidence *EvidenceService) *PackWriter {
 //
 //   - README.md                       auditor-facing description + control map
 //   - evidence.jsonl                  the audit-chain evidence stream (period)
+//   - pam-recordings.jsonl            privileged-session recording references + hashes
 //   - access-grants.jsonl             grants active at any point in the period
 //   - certification-campaigns.jsonl   campaigns overlapping the period
 //   - certification-items.jsonl       per-grant decisions for those campaigns
@@ -140,6 +141,15 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 	}
 	manifest.EvidenceTotal = evCount
 	manifest.Files = append(manifest.Files, evInfo)
+
+	// pam-recordings.jsonl — the privileged-session recording references (replay
+	// key + integrity hash) for the period, so an auditor can tie CC6.7/A.8.2
+	// evidence to tamper-evident recordings without parsing evidence.jsonl.
+	recInfo, err := pw.streamRecordings(ctx, zw, opts)
+	if err != nil {
+		return PackManifest{}, err
+	}
+	manifest.Files = append(manifest.Files, recInfo)
 
 	// Supporting entity snapshots.
 	grantInfo, err := pw.streamGrants(ctx, zw, opts)
@@ -219,6 +229,85 @@ func (pw *PackWriter) streamEvidence(ctx context.Context, zw *zip.Writer, opts E
 		Rows:    count,
 		SHA256:  hex.EncodeToString(h.Sum(nil)),
 	}, count, nil
+}
+
+// recordingIndexRow is one line of pam-recordings.jsonl: a flattened, auditor-
+// friendly view of a privileged-session recording reference lifted out of the
+// chain. It pairs the replayable artifact (ReplayKey) with its integrity hash
+// (SHA256) and the exact chain position (ChainSeq / ChainHash) that anchors it,
+// so an auditor can (1) fetch replay.bin, (2) re-hash it and compare to SHA256,
+// and (3) confirm that hash is itself pinned in the tamper-evident chain — the
+// full CC6.7 / A.8.2 "recording is monitored and unaltered" argument in one row.
+type recordingIndexRow struct {
+	ChainSeq   int64     `json:"chain_seq"`
+	OccurredAt time.Time `json:"occurred_at"`
+	SessionID  string    `json:"session_id"`
+	TargetRef  string    `json:"target_ref,omitempty"`
+	Actor      string    `json:"actor"`
+	ReplayKey  string    `json:"replay_key"`
+	SHA256     string    `json:"sha256"`
+	Bytes      int64     `json:"bytes"`
+	Truncated  bool      `json:"truncated"`
+	ChainHash  string    `json:"chain_hash"`
+}
+
+// recordingMeta is the shape of a pam.session.recording event's metadata as
+// written by pam.SessionManager.RecordRecording.
+type recordingMeta struct {
+	SessionID string `json:"session_id"`
+	ReplayKey string `json:"replay_key"`
+	SHA256    string `json:"sha256"`
+	Bytes     int64  `json:"bytes"`
+	Truncated bool   `json:"truncated"`
+}
+
+// streamRecordings writes pam-recordings.jsonl: the privileged-session
+// recording references for the period, projected from the KindPrivilegedRecording
+// rows already present in the evidence stream. It is a derived index, not a new
+// source of truth — every row is reconstructed from a chain event, so it carries
+// no integrity weight the chain does not already guarantee, but it spares an
+// auditor from filtering evidence.jsonl by hand to tie CC6.7/A.8.2 records to
+// replayable recordings.
+func (pw *PackWriter) streamRecordings(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, error) {
+	fw, err := zw.Create("pam-recordings.jsonl")
+	if err != nil {
+		return PackFileInfo{}, fmt.Errorf("compliance: create pam-recordings.jsonl: %w", err)
+	}
+	h := sha256.New()
+	enc := json.NewEncoder(io.MultiWriter(fw, h))
+	count := 0
+	if err := pw.evidence.streamPeriod(ctx, opts.WorkspaceID, opts.From, opts.To, func(rec EvidenceRecord) error {
+		if rec.Kind != KindPrivilegedRecording {
+			return nil
+		}
+		var md recordingMeta
+		if len(rec.Metadata) > 0 {
+			// A malformed metadata blob must not abort the whole export; emit
+			// the row with whatever decoded so the recording is still indexed.
+			_ = json.Unmarshal(rec.Metadata, &md)
+		}
+		count++
+		return enc.Encode(recordingIndexRow{
+			ChainSeq:   rec.ChainSeq,
+			OccurredAt: rec.OccurredAt,
+			SessionID:  md.SessionID,
+			TargetRef:  rec.TargetRef,
+			Actor:      rec.Actor,
+			ReplayKey:  md.ReplayKey,
+			SHA256:     md.SHA256,
+			Bytes:      md.Bytes,
+			Truncated:  md.Truncated,
+			ChainHash:  rec.ChainHash,
+		})
+	}); err != nil {
+		return PackFileInfo{}, err
+	}
+	return PackFileInfo{
+		Name:    "pam-recordings.jsonl",
+		Comment: "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
+		Rows:    count,
+		SHA256:  hex.EncodeToString(h.Sum(nil)),
+	}, nil
 }
 
 // streamGrants writes grants that were active at any point during the period.

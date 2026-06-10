@@ -27,7 +27,20 @@ const (
 	KindOrphanDetected       EvidenceKind = "orphan_detected"
 	KindOrphanDisposition    EvidenceKind = "orphan_disposition"
 	KindPrivilegedCommand    EvidenceKind = "privileged_command"
-	KindEvidenceExported     EvidenceKind = "evidence_exported"
+	// KindPrivilegedSession marks the lifecycle of a proxied privileged session
+	// (opened / closed / admin-terminated). A monitored privileged session is
+	// itself the primary evidence that privileged access is supervised, so the
+	// session-level events count toward CC6.7 / A.8.2 alongside the per-command
+	// rows — a session that ran but logged no command still demonstrates the
+	// monitoring control fired.
+	KindPrivilegedSession EvidenceKind = "privileged_session"
+	// KindPrivilegedRecording marks the tamper-evident reference to a session's
+	// recording (replay key + SHA-256), anchored in the chain at teardown. It is
+	// the evidence that ties a monitored session to a replayable, integrity-
+	// verifiable artifact, which is what an auditor needs to substantiate CC6.7 /
+	// A.8.2 beyond a bare "a session happened" log line.
+	KindPrivilegedRecording EvidenceKind = "privileged_recording"
+	KindEvidenceExported    EvidenceKind = "evidence_exported"
 	// KindOther is the catch-all for audit actions that are recorded for
 	// integrity but carry no direct control mapping. They still appear in the
 	// raw stream so the chain stays complete and verifiable.
@@ -78,7 +91,7 @@ var controlsByFramework = map[Framework][]Control{
 		{ID: "CC6.1", Title: "Logical access security — least-privilege policy enforced", Kinds: []EvidenceKind{KindPolicyPromoted, KindPolicyCreated, KindAccessGranted}},
 		{ID: "CC6.2", Title: "Access provisioned on authorization", Kinds: []EvidenceKind{KindAccessRequested, KindAccessGranted, KindJoinerProvisioned}},
 		{ID: "CC6.3", Title: "Access modified/removed when no longer required", Kinds: []EvidenceKind{KindAccessRevoked, KindAccessExpired, KindKillSwitchFired, KindMoverRecorded}},
-		{ID: "CC6.7", Title: "Privileged access monitored", Kinds: []EvidenceKind{KindPrivilegedCommand}},
+		{ID: "CC6.7", Title: "Privileged access monitored", Kinds: []EvidenceKind{KindPrivilegedSession, KindPrivilegedCommand, KindPrivilegedRecording}},
 		{ID: "CC7.2", Title: "Access reviewed/certified periodically", Kinds: []EvidenceKind{KindReviewStarted, KindReviewDecision, KindReviewCompleted, KindCertificationStarted, KindCertificationDecided, KindCertificationClosed}},
 		{ID: "CC7.3", Title: "Orphan / anomalous access detected and dispositioned", Kinds: []EvidenceKind{KindOrphanDetected, KindOrphanDisposition}},
 	},
@@ -86,7 +99,7 @@ var controlsByFramework = map[Framework][]Control{
 		{ID: "A.5.15", Title: "Access control policy", Kinds: []EvidenceKind{KindPolicyPromoted, KindPolicyCreated, KindPolicyArchived}},
 		{ID: "A.5.16", Title: "Identity lifecycle management", Kinds: []EvidenceKind{KindJoinerProvisioned, KindMoverRecorded, KindKillSwitchFired}},
 		{ID: "A.5.18", Title: "Access rights provisioned, reviewed and removed", Kinds: []EvidenceKind{KindAccessRequested, KindAccessGranted, KindAccessRevoked, KindAccessExpired, KindReviewDecision, KindReviewCompleted, KindCertificationDecided, KindCertificationClosed}},
-		{ID: "A.8.2", Title: "Privileged access rights monitored", Kinds: []EvidenceKind{KindPrivilegedCommand}},
+		{ID: "A.8.2", Title: "Privileged access rights monitored", Kinds: []EvidenceKind{KindPrivilegedSession, KindPrivilegedCommand, KindPrivilegedRecording}},
 		{ID: "A.8.15", Title: "Tamper-evident logging", Kinds: []EvidenceKind{KindEvidenceExported}},
 	},
 	FrameworkPCIDSS: {
@@ -94,7 +107,7 @@ var controlsByFramework = map[Framework][]Control{
 		{ID: "7.2.4", Title: "Access reviewed at least every 6 months", Kinds: []EvidenceKind{KindReviewStarted, KindReviewCompleted, KindCertificationStarted, KindCertificationDecided, KindCertificationClosed}},
 		{ID: "8.1.3", Title: "Access for terminated users revoked promptly", Kinds: []EvidenceKind{KindAccessRevoked, KindAccessExpired, KindKillSwitchFired}},
 		{ID: "8.2", Title: "Access provisioned on authorization", Kinds: []EvidenceKind{KindAccessRequested, KindAccessGranted, KindJoinerProvisioned}},
-		{ID: "10.2", Title: "Audit trail of access to system components", Kinds: []EvidenceKind{KindPrivilegedCommand, KindEvidenceExported}},
+		{ID: "10.2", Title: "Audit trail of access to system components", Kinds: []EvidenceKind{KindPrivilegedSession, KindPrivilegedCommand, KindPrivilegedRecording, KindEvidenceExported}},
 	},
 }
 
@@ -153,6 +166,10 @@ func classify(action string) EvidenceKind {
 		return KindOrphanDisposition
 	case action == "pam.command":
 		return KindPrivilegedCommand
+	case action == "pam.session.opened" || action == "pam.session.closed" || action == "pam.session.terminated":
+		return KindPrivilegedSession
+	case action == "pam.session.recording":
+		return KindPrivilegedRecording
 	case action == "compliance.export":
 		return KindEvidenceExported
 	default:
