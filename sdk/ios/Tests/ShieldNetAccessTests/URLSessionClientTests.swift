@@ -156,6 +156,105 @@ final class URLSessionClientTests: XCTestCase {
         XCTAssertEqual(URLProtocolStub.captured.first?.url?.path, "/api/v1/grants/g1/revoke")
     }
 
+    func testGetRequestDetailUnwrapsRiskAndAnomalies() async throws {
+        respond(200, #"""
+        {"request":{"id":"r1","workspace_id":"ws1","requester_id":"u1","resource_ref":"projects/foo",
+        "state":"active","risk_level":"high","created_at":"2025-01-01T00:00:00Z"},
+        "risk":{"id":"rv1","request_id":"r1","score":"high","recommendation":"high_risk",
+        "factors":["sensitive_resource","off_hours"],"rationale":"sensitive prod access",
+        "source":"ai_agent","degraded":false,"created_at":"2025-01-01T00:00:00Z"},
+        "anomalies":[{"id":"af1","request_id":"r1","grant_id":"g1","kind":"impossible_travel",
+        "severity":"high","reason":"two geos in 5m","confidence":0.92,"created_at":"2025-01-01T00:05:00Z"}]}
+        """#)
+        let detail = try await client.getRequestDetail(id: "r1")
+        XCTAssertEqual(URLProtocolStub.captured.first?.url?.path, "/api/v1/access-requests/r1")
+        XCTAssertEqual(detail.request.state, .active)
+        XCTAssertEqual(detail.risk?.score, .high)
+        XCTAssertEqual(detail.risk?.recommendation, .highRisk)
+        XCTAssertEqual(detail.risk?.factors, ["sensitive_resource", "off_hours"])
+        XCTAssertEqual(detail.anomalies.count, 1)
+        XCTAssertEqual(detail.anomalies.first?.kind, "impossible_travel")
+        XCTAssertEqual(detail.anomalies.first?.confidence, 0.92)
+        XCTAssertTrue(detail.anomalies.first?.isElevated ?? false)
+
+        // The classifier flags this as high-risk and gates the revoke.
+        let plan = Revocation.plan(detail)
+        XCTAssertTrue(plan.requiresStepUp)
+    }
+
+    func testGetRequestDetailToleratesNoRiskOrAnomalies() async throws {
+        respond(200, #"{"request":{"id":"r1","workspace_id":"ws1","requester_id":"u1","resource_ref":"a","state":"requested","created_at":"2025-01-01T00:00:00Z"}}"#)
+        let detail = try await client.getRequestDetail(id: "r1")
+        XCTAssertEqual(detail.request.state, .requested)
+        XCTAssertNil(detail.risk)
+        XCTAssertTrue(detail.anomalies.isEmpty)
+    }
+
+    func testEmergencyOffboardPostsIdentityAndParsesBreakdown() async throws {
+        respond(200, #"""
+        {"leaver":{"user_external_id":"ext-1","errored":false,"layers":[
+        {"layer":"grant_revoke","status":"done"},
+        {"layer":"team_remove","status":"done"},
+        {"layer":"iam_core_disable","status":"done"},
+        {"layer":"session_revoke","status":"done"},
+        {"layer":"scim_deprovision","status":"skipped","detail":"no scim connector"},
+        {"layer":"identity_disable","status":"done"}]}}
+        """#)
+        let result = try await client.emergencyOffboard(userExternalID: "ext-1", reason: "left the company")
+        let req = URLProtocolStub.captured.first
+        XCTAssertEqual(req?.url?.path, "/api/v1/emergency-offboard")
+        XCTAssertEqual(req?.httpMethod, "POST")
+        XCTAssertEqual(result.userExternalID, "ext-1")
+        XCTAssertFalse(result.errored)
+        XCTAssertEqual(result.layers.count, 6)
+        XCTAssertEqual(result.layers[4].status, .skipped)
+        XCTAssertTrue(result.failedLayers.isEmpty)
+    }
+
+    func testEmergencyOffboardRecoversBreakdownFrom500() async throws {
+        respond(500, #"""
+        {"error":"one or more layers failed","leaver":{"user_external_id":"ext-1","errored":true,"layers":[
+        {"layer":"grant_revoke","status":"done"},
+        {"layer":"iam_core_disable","status":"failed","detail":"idp timeout"}]}}
+        """#)
+        let result = try await client.emergencyOffboard(userExternalID: "ext-1")
+        XCTAssertTrue(result.errored)
+        XCTAssertEqual(result.failedLayers.count, 1)
+        XCTAssertEqual(result.failedLayers.first?.layer, .iamCoreDisable)
+        XCTAssertEqual(result.failedLayers.first?.detail, "idp timeout")
+    }
+
+    func testEmergencyOffboardSurfacesStepUpGate() async {
+        respond(403, #"{"error":"step-up MFA required"}"#)
+        do {
+            _ = try await client.emergencyOffboard(userExternalID: "ext-1")
+            XCTFail("expected stepUpRequired")
+        } catch let AccessSDKError.stepUpRequired(body) {
+            XCTAssertTrue(body?.contains("step-up MFA required") ?? false)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testEmergencyOffboardRejectsBlankIdentityWithoutNetwork() async {
+        await assertThrows(.invalidInput("user_external_id is required")) {
+            _ = try await self.client.emergencyOffboard(userExternalID: "  ")
+        }
+        XCTAssertTrue(URLProtocolStub.captured.isEmpty)
+    }
+
+    func testEmergencyOffboardWithoutBreakdownRethrowsHttp() async {
+        respond(500, #"{"error":"upstream unavailable"}"#)
+        do {
+            _ = try await client.emergencyOffboard(userExternalID: "ext-1")
+            XCTFail("expected http error")
+        } catch let AccessSDKError.http(status, _) {
+            XCTAssertEqual(status, 500)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     func testUnauthorizedMapsToUnauthenticated() async {
         respond(401, #"{"error":"invalid token"}"#)
         await assertThrows(.unauthenticated) { _ = try await self.client.me() }

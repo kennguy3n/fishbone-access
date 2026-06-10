@@ -12,12 +12,14 @@
  *   createRequest    → POST   /api/v1/access-requests
  *   listRequests     → GET    /api/v1/access-requests
  *   getRequest       → GET    /api/v1/access-requests/:id
+ *   getRequestDetail → GET    /api/v1/access-requests/:id  (+ risk, anomalies)
  *   requestHistory   → GET    /api/v1/access-requests/:id/history
  *   approveRequest   → POST   /api/v1/access-requests/:id/approve
  *   denyRequest      → POST   /api/v1/access-requests/:id/deny
  *   cancelRequest    → POST   /api/v1/access-requests/:id/cancel
  *   provisionRequest → POST   /api/v1/access-requests/:id/provision
  *   revokeGrant      → POST   /api/v1/grants/:id/revoke
+ *   emergencyOffboard→ POST   /api/v1/emergency-offboard
  *
  * Authentication is a bearer access token issued by iam-core (OAuth2/OIDC).
  * The SDK never performs MFA itself: step-up MFA / WebAuthn happens at
@@ -115,6 +117,18 @@ interface AccessClient {
     suspend fun getRequest(id: String): AccessRequest
 
     /**
+     * Fetch a request together with its risky-access signals: the latest AI
+     * [RiskVerdict] and any advisory [AnomalyFlag]s. This is the same endpoint
+     * as [getRequest] but reads the `risk` / `anomalies` envelope keys the
+     * server already returns, so a host can surface high-risk / anomalous
+     * active access and offer a one-tap revoke. Feed the result to
+     * [RiskAssessment.evaluate] for a ready-to-render [RiskAdvisory].
+     *
+     * `GET /api/v1/access-requests/:id`.
+     */
+    suspend fun getRequestDetail(id: String): AccessRequestDetail
+
+    /**
      * Fetch the immutable state-transition history of a request.
      *
      * `GET /api/v1/access-requests/:id/history`.
@@ -157,6 +171,23 @@ interface AccessClient {
      * Revoke a grant (end the JIT lease early). Idempotent server-side.
      *
      * `POST /api/v1/grants/:id/revoke` — optional `{ reason }`.
+     *
+     * Permission-gated only; not step-up-gated server-side. For a high-risk
+     * revoke, gate the call behind step-up MFA on the client first — see
+     * [Revocation.plan].
      */
     suspend fun revokeGrant(id: String, reason: String? = null)
+
+    /**
+     * Run the six-layer leaver kill switch for one identity as an emergency
+     * offboard — the "revoke everything for this user" path. Step-up-MFA-gated
+     * server-side: a token without a satisfied MFA claim is rejected and
+     * surfaces as [AccessSDKException.StepUpRequired], so the host can drive an
+     * iam-core step-up and retry. Returns the per-layer [LeaverResult]; a
+     * partial failure ([LeaverResult.errored]) still returns the full
+     * breakdown rather than throwing.
+     *
+     * `POST /api/v1/emergency-offboard` — `{ user_external_id, reason? }`.
+     */
+    suspend fun emergencyOffboard(userExternalId: String, reason: String? = null): LeaverResult
 }

@@ -16,13 +16,21 @@ import {
   useAccessRequest,
   useRequestHistory,
   useRequestAction,
+  useRevokeGrant,
   useMe,
   type AccessRequest,
   type RiskVerdict,
   type AccessRequestHistoryEntry,
   ApiError,
 } from "@/api/access";
+import { evaluateRisk, revocationRequiresStepUp } from "@/lib/risk-advisory";
 import { formatDateTime, titleCase, riskScoreTone } from "@/lib/format";
+
+// A request holds a live, revocable grant only while it is provisioned/active;
+// terminal states (expired/revoked/denied/cancelled) have nothing to revoke.
+function hasLiveGrant(state: string): boolean {
+  return state === "provisioned" || state === "active";
+}
 
 type RequestAction = "approve" | "deny" | "cancel" | "provision";
 
@@ -60,11 +68,23 @@ export function RequestDetail() {
   const reqQuery = useAccessRequest(requestId);
   const historyQuery = useRequestHistory(requestId);
   const actionMut = useRequestAction(requestId ?? "");
+  const revokeMut = useRevokeGrant();
   const me = useMe();
 
   // Deny/cancel collect an optional reason via a small modal.
   const [reasonFor, setReasonFor] = useState<RequestAction | null>(null);
   const [reason, setReason] = useState("");
+
+  // One-tap revoke (WS5). The control plane never returns a grant id on the
+  // request-detail read, so we learn it two ways: an in-session provision
+  // response carries the fresh grant, and an advisory anomaly flag carries the
+  // grant_id of the active grant it was raised against. Either lets the
+  // operator revoke the live access in one tap from here.
+  const [provisionedGrantId, setProvisionedGrantId] = useState<string | null>(
+    null,
+  );
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
 
   const actionLabel = (a: RequestAction): string => {
     switch (a) {
@@ -94,6 +114,7 @@ export function RequestDetail() {
       setReasonFor(null);
       setReason("");
       if (action === "provision" && result.grant) {
+        setProvisionedGrantId(result.grant.id);
         toast.info(
           intl.formatMessage({ id: "requests.grantProvisioned", defaultMessage: "Grant provisioned" }),
           `Grant ${result.grant.id.slice(0, 8)}… is now ${result.grant.state}.`,
@@ -118,6 +139,32 @@ export function RequestDetail() {
     }
   };
 
+  const revoke = async (grantId: string, withReason?: string) => {
+    try {
+      await revokeMut.mutateAsync({ id: grantId, reason: withReason });
+      toast.success(
+        intl.formatMessage({
+          id: "requests.revoke.done",
+          defaultMessage: "Access revoked",
+        }),
+        intl.formatMessage({
+          id: "requests.revoke.doneDetail",
+          defaultMessage: "The grant was revoked and the session ended.",
+        }),
+      );
+      setRevokeTarget(null);
+      setRevokeReason("");
+    } catch (err) {
+      toast.error(
+        intl.formatMessage({
+          id: "requests.revoke.failed",
+          defaultMessage: "Could not revoke access",
+        }),
+        err instanceof ApiError ? err.message : undefined,
+      );
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -138,12 +185,32 @@ export function RequestDetail() {
         {(detail) => {
           const req = detail.request;
           const verdict = detail.risk;
+          const anomalies = detail.anomalies ?? [];
           const actions = actionsFor(req.state);
           // Block approve behind step-up MFA for a high-risk verdict when the
           // session's token does not carry a satisfied MFA claim. The backend
           // enforces this fail-CLOSED regardless; this only improves the UX.
           const stepUpNeeded =
             requiresStepUp(verdict) && !(me.data?.mfa_satisfied ?? false);
+
+          // Risky-access awareness (WS5): the same cross-platform classifier the
+          // mobile SDKs use, so web/Android/iOS agree on what is risky.
+          const advisory = evaluateRisk(req, verdict, anomalies);
+          const liveGrant = hasLiveGrant(req.state);
+          // The grant id to one-tap revoke: the one just provisioned this
+          // session, else the active grant an anomaly flag was raised against.
+          const revocableGrantId =
+            provisionedGrantId ??
+            anomalies.find((a) => a.grant_id)?.grant_id ??
+            null;
+          // For a high-risk revoke we surface the step-up requirement to mirror
+          // the mobile UX, but never block it: revoking access is a safety
+          // action and the grant-revoke endpoint is permission-gated, not
+          // step-up-gated, so an operator must always be able to kill risky
+          // access immediately.
+          const revokeStepUpAdvised =
+            revocationRequiresStepUp(advisory) &&
+            !(me.data?.mfa_satisfied ?? false);
           return (
             <div className="grid grid--2">
               <Card
@@ -205,6 +272,90 @@ export function RequestDetail() {
                   </p>
                 )}
               </Card>
+
+              {liveGrant && (
+                <Card
+                  title={intl.formatMessage({
+                    id: "requests.active.title",
+                    defaultMessage: "Active access",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "requests.active.subtitle",
+                    defaultMessage:
+                      "This elevation is live. Revoke it in one tap to end the session immediately.",
+                  })}
+                  actions={
+                    advisory.isHighRisk ? (
+                      <Badge tone="danger">
+                        {intl.formatMessage({
+                          id: "requests.active.highRisk",
+                          defaultMessage: "High risk",
+                        })}
+                      </Badge>
+                    ) : advisory.isElevated ? (
+                      <Badge tone="warn">
+                        {intl.formatMessage({
+                          id: "requests.active.elevated",
+                          defaultMessage: "Elevated",
+                        })}
+                      </Badge>
+                    ) : undefined
+                  }
+                >
+                  {advisory.isElevated && (
+                    <div
+                      className="risk-panel__degraded"
+                      role="status"
+                      style={{ marginBottom: 12 }}
+                    >
+                      {intl.formatMessage(
+                        {
+                          id: "requests.active.riskyBanner",
+                          defaultMessage:
+                            "Risky active access — {reasons}.",
+                        },
+                        { reasons: advisory.reasons.join("; ") },
+                      )}
+                    </div>
+                  )}
+                  {revokeStepUpAdvised && (
+                    <p
+                      className="muted"
+                      style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}
+                    >
+                      {intl.formatMessage({
+                        id: "requests.revoke.stepupAdvised",
+                        defaultMessage:
+                          "High-risk revoke — re-authenticate with step-up MFA for the strongest audit trail before revoking.",
+                      })}
+                    </p>
+                  )}
+                  {revocableGrantId ? (
+                    <button
+                      className="btn btn--danger btn--sm"
+                      disabled={revokeMut.isPending}
+                      onClick={() => setRevokeTarget(revocableGrantId)}
+                    >
+                      {revokeMut.isPending ? (
+                        <Spinner />
+                      ) : (
+                        intl.formatMessage({
+                          id: "requests.revoke.action",
+                          defaultMessage: "Revoke access",
+                        })
+                      )}
+                    </button>
+                  ) : (
+                    <p className="muted" style={{ fontSize: 12 }}>
+                      {intl.formatMessage({
+                        id: "requests.revoke.noGrantRef",
+                        defaultMessage:
+                          "No grant reference is available to revoke directly here. Use Emergency offboard on the JML runs page to revoke all access for this identity, or the lease will expire automatically.",
+                      })}
+                    </p>
+                  )}
+                </Card>
+              )}
 
               <Card
                 title={intl.formatMessage({ id: "requests.risk.title", defaultMessage: "AI risk review" })}
@@ -297,6 +448,70 @@ export function RequestDetail() {
               placeholder={intl.formatMessage({
                 id: "requests.decision.reasonPlaceholder",
                 defaultMessage: "Add context for this decision…",
+              })}
+            />
+          </label>
+        </Modal>
+      )}
+
+      {revokeTarget && (
+        <Modal
+          title={intl.formatMessage({
+            id: "requests.revoke.action",
+            defaultMessage: "Revoke access",
+          })}
+          onClose={() => setRevokeTarget(null)}
+          footer={
+            <>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setRevokeTarget(null)}
+              >
+                {intl.formatMessage({
+                  id: "common.cancel",
+                  defaultMessage: "Cancel",
+                })}
+              </button>
+              <button
+                className="btn btn--danger"
+                disabled={revokeMut.isPending}
+                onClick={() =>
+                  revoke(revokeTarget, revokeReason.trim() || undefined)
+                }
+              >
+                {revokeMut.isPending ? (
+                  <Spinner />
+                ) : (
+                  intl.formatMessage({
+                    id: "requests.revoke.action",
+                    defaultMessage: "Revoke access",
+                  })
+                )}
+              </button>
+            </>
+          }
+        >
+          <div className="notice notice--danger" style={{ marginBottom: 12 }}>
+            {intl.formatMessage({
+              id: "requests.revoke.confirm",
+              defaultMessage:
+                "Ends this active grant immediately. The user loses the elevated access; the revoke is recorded in history with your reason.",
+            })}
+          </div>
+          <label className="field">
+            <span>
+              {intl.formatMessage({
+                id: "requests.decision.reason",
+                defaultMessage: "Reason (optional, recorded in history)",
+              })}
+            </span>
+            <textarea
+              rows={3}
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              placeholder={intl.formatMessage({
+                id: "requests.revoke.reasonPlaceholder",
+                defaultMessage: "Why this access is being revoked…",
               })}
             />
           </label>

@@ -41,6 +41,21 @@ private class FakeAccessClient : AccessClient {
 
     override suspend fun getRequest(id: String): AccessRequest = sampleRequest(AccessRequestState.ACTIVE).copy(id = id)
 
+    override suspend fun getRequestDetail(id: String): AccessRequestDetail = AccessRequestDetail(
+        request = sampleRequest(AccessRequestState.ACTIVE).copy(id = id, riskLevel = RiskLevel.HIGH),
+        risk = RiskVerdict(
+            id = "rv_1",
+            requestId = id,
+            score = RiskLevel.HIGH,
+            recommendation = RiskRecommendation.HIGH_RISK,
+            factors = listOf("sensitive_resource"),
+            degraded = false,
+        ),
+        anomalies = listOf(
+            AnomalyFlag(id = "af_1", requestId = id, kind = "impossible_travel", severity = "high"),
+        ),
+    )
+
     override suspend fun requestHistory(id: String): List<StateHistoryEntry> = listOf(
         StateHistoryEntry("h1", id, "requested", "approved", actor = "user_2", reason = "ok", createdAt = Instant.EPOCH),
     )
@@ -68,6 +83,14 @@ private class FakeAccessClient : AccessClient {
     )
 
     override suspend fun revokeGrant(id: String, reason: String?) = Unit
+
+    override suspend fun emergencyOffboard(userExternalId: String, reason: String?): LeaverResult = LeaverResult(
+        userExternalId = userExternalId,
+        errored = false,
+        layers = KillSwitchLayer.entries.map {
+            KillSwitchLayerResult(layer = it, status = KillSwitchLayerStatus.DONE)
+        },
+    )
 
     private fun sampleRequest(state: AccessRequestState) = AccessRequest(
         id = "req_1",
@@ -118,6 +141,15 @@ class ContractTest {
         assertTrue(grant.isActive(Instant.EPOCH))
 
         client.revokeGrant(grant.id, "done")
+
+        val detail = client.getRequestDetail("req_1")
+        assertEquals(RiskRecommendation.HIGH_RISK, detail.risk?.recommendation)
+        assertEquals(1, detail.anomalies.size)
+
+        val leaver = client.emergencyOffboard("user_1", "left the company")
+        assertEquals("user_1", leaver.userExternalId)
+        assertTrue(!leaver.errored)
+        assertEquals(KillSwitchLayer.entries.size, leaver.layers.size)
     }
 
     @Test
@@ -140,8 +172,15 @@ class ContractTest {
         assertEquals(WorkflowStep.SECURITY_REVIEW, WorkflowStep.fromWire("security_review"))
         assertEquals(GrantState.REVOKED, GrantState.fromWire("revoked"))
 
+        assertEquals(RiskRecommendation.HIGH_RISK, RiskRecommendation.fromWire("high_risk"))
+        assertEquals("auto_approve_eligible", RiskRecommendation.AUTO_APPROVE_ELIGIBLE.wireValue)
+        assertEquals(KillSwitchLayer.SCIM_DEPROVISION, KillSwitchLayer.fromWire("scim_deprovision"))
+        assertEquals(KillSwitchLayerStatus.FAILED, KillSwitchLayerStatus.fromWire("failed"))
+
         assertFailsWith<AccessSDKException.Decoding> { AccessRequestState.fromWire("nope") }
         assertFailsWith<AccessSDKException.Decoding> { GrantState.fromWire("pending") }
+        assertFailsWith<AccessSDKException.Decoding> { RiskRecommendation.fromWire("maybe") }
+        assertFailsWith<AccessSDKException.Decoding> { KillSwitchLayer.fromWire("nuke") }
     }
 
     @Test

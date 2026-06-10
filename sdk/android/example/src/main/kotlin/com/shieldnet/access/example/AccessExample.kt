@@ -15,7 +15,9 @@ import com.shieldnet.access.AccessRequestState
 import com.shieldnet.access.AccessSDKException
 import com.shieldnet.access.CreateAccessRequest
 import com.shieldnet.access.OkHttpAccessClient
+import com.shieldnet.access.RiskAssessment
 import com.shieldnet.access.RiskLevel
+import com.shieldnet.access.Revocation
 import kotlinx.coroutines.runBlocking
 
 fun main() = runBlocking {
@@ -63,10 +65,35 @@ fun main() = runBlocking {
     try {
         val grant = client.provisionRequest(req.id)
         println("lease ${grant.id} active=${grant.isActive()} remaining=${grant.remaining()}")
+
+        // 6. Risky-access awareness (WS5): read the AI risk verdict + anomaly
+        //    signals and classify them with the cross-platform pure helper.
+        val detail = client.getRequestDetail(req.id)
+        val advisory = RiskAssessment.evaluate(detail)
+        if (advisory.isElevated) {
+            println("⚠️ elevated access ${detail.request.id}: ${advisory.reasons.joinToString("; ")}")
+        }
+
+        // 7. One-tap revoke (WS5). For a high-risk revoke the SDK tells the host
+        //    to gate behind step-up MFA first — the same decision on every
+        //    platform. The grant-revoke endpoint itself is permission-gated.
+        val plan = Revocation.plan(advisory)
+        if (plan.requiresStepUp && !me.mfaSatisfied) {
+            println("revoke of ${grant.id} needs step-up MFA — driving WebAuthn before revoke")
+        } else {
+            client.revokeGrant(grant.id, reason = "risk review: ending lease early")
+            println("revoked lease ${grant.id}")
+        }
+
+        // 8. Emergency offboard (WS5): the "revoke everything for this user"
+        //    kill switch. Step-up-gated server-side; a partial failure still
+        //    returns the per-layer breakdown so the operator can retry.
+        val leaver = client.emergencyOffboard(me.userId, reason = "offboarding")
+        println("offboard ${leaver.userExternalId}: errored=${leaver.errored}, failed=${leaver.failedLayers.map { it.layer }}")
     } catch (e: AccessSDKException.StepUpRequired) {
         // High-risk gate: drive an iam-core step-up (WebAuthn) in the host,
         // obtain a fresh token, then retry. The provider above would return
         // the stepped-up token on the next attempt.
-        println("step-up MFA required before provisioning: ${e.body}")
+        println("step-up MFA required: ${e.body}")
     }
 }

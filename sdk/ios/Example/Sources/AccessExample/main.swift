@@ -60,6 +60,31 @@ func runExample() async {
         // 4. Provision → JIT lease, and read its countdown.
         let grant = try await client.provisionRequest(id: request.id)
         print("lease \(grant.id) active=\(grant.isActive()) remaining=\(grant.remaining().map { "\(Int($0))s" } ?? "n/a")")
+
+        // 5. Risky-access awareness (WS5): read the AI risk verdict + anomaly
+        //    signals and classify them with the cross-platform pure helper.
+        let detail = try await client.getRequestDetail(id: request.id)
+        let advisory = RiskAssessment.evaluate(detail)
+        if advisory.isElevated {
+            print("⚠️ elevated access \(detail.request.id): \(advisory.reasons.joined(separator: "; "))")
+        }
+
+        // 6. One-tap revoke (WS5). For a high-risk revoke the SDK tells the host
+        //    to gate behind step-up MFA first — the same decision on every
+        //    platform. The grant-revoke endpoint itself is permission-gated.
+        let plan = Revocation.plan(advisory)
+        if plan.requiresStepUp && !me.mfaSatisfied {
+            print("revoke of \(grant.id) needs step-up MFA — driving WebAuthn before revoke")
+        } else {
+            try await client.revokeGrant(id: grant.id, reason: "risk review: ending lease early")
+            print("revoked lease \(grant.id)")
+        }
+
+        // 7. Emergency offboard (WS5): the "revoke everything for this user"
+        //    kill switch. Step-up-gated server-side; a partial failure still
+        //    returns the per-layer breakdown so the operator can retry.
+        let leaver = try await client.emergencyOffboard(userExternalID: me.userID, reason: "offboarding")
+        print("offboard \(leaver.userExternalID): errored=\(leaver.errored), failed layers=\(leaver.failedLayers.map { $0.layer.rawValue })")
     } catch let AccessSDKError.stepUpRequired(body) {
         // High-risk gate: drive an iam-core step-up (WebAuthn) in the host,
         // obtain a fresh token, then retry the gated call.
