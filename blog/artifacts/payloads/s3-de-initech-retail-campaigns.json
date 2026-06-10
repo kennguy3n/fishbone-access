@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-10T16:30:02.064547Z",
-      "created_at": "2026-06-10T16:30:02.054246Z",
+      "closed_at": "2026-06-10T21:29:01.717944Z",
+      "created_at": "2026-06-10T21:29:01.700299Z",
       "deleted_at": null,
       "framework": "ISO 27001",
-      "id": "e56063ae-7b87-48ba-9bd6-f9b4345a1006",
+      "id": "7d86ae49-f3b3-43d4-ad12-12a41546ad40",
       "name": "Q2 2026 BSI C5 logical-access certification",
-      "scope_connector_id": "9b5eb88c-a370-456c-a395-0d57f86c1486",
-      "started_at": "2026-06-10T16:30:02.054246Z",
+      "scope_connector_id": "e6aefa0c-bd0f-4b10-a2f9-d7885a347cf1",
+      "started_at": "2026-06-10T21:29:01.700299Z",
       "state": "closed",
-      "updated_at": "2026-06-10T16:30:02.064547Z",
-      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+      "updated_at": "2026-06-10T21:29:01.717944Z",
+      "workspace_id": "e0d7328d-2763-49de-b0a6-173d985bb14f"
     }
   ]
 }

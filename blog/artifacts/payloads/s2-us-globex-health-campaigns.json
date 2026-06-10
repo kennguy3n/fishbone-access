@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-10T16:27:31.175912Z",
-      "created_at": "2026-06-10T16:27:31.166894Z",
+      "closed_at": "2026-06-10T21:26:31.587154Z",
+      "created_at": "2026-06-10T21:26:31.574326Z",
       "deleted_at": null,
       "framework": "SOC 2",
-      "id": "4cb6a976-3c76-406a-b884-52489c96a706",
+      "id": "6a000ee8-da51-4fdb-9edc-24ce5f7c7def",
       "name": "Q2 2026 HIPAA Security Rule certification",
-      "scope_connector_id": "174edfd8-c049-4d4a-bd61-826687c162a2",
-      "started_at": "2026-06-10T16:27:31.166894Z",
+      "scope_connector_id": "199dcaa6-7c6d-485c-806b-6c7c93d84b63",
+      "started_at": "2026-06-10T21:26:31.574326Z",
       "state": "closed",
-      "updated_at": "2026-06-10T16:27:31.175912Z",
-      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+      "updated_at": "2026-06-10T21:26:31.587154Z",
+      "workspace_id": "119c995a-ae26-4d3d-82a6-1a600e24d372"
     }
   ]
 }

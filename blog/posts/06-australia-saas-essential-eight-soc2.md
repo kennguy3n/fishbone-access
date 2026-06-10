@@ -1,0 +1,161 @@
+# Post 6 — Australian SaaS: a SOC 2 evidence pack an auditor can re-verify offline
+
+> Workspace: **Contoso SaaS** (`au`, saas) · Personas: **Marcus** (CISO),
+> **Aisha** (external auditor). Payloads verbatim from
+> [`../artifacts/payloads/`](../artifacts/payloads/). This is the finale and the
+> full competitive scorecard.
+
+## The business problem
+
+Contoso is an Australian SaaS vendor. To sell upmarket it must pass a **SOC 2
+Type II** audit, and to satisfy local expectations it maps to the ACSC
+**Essential Eight** — specifically *restrict administrative privileges*. The
+whole sale hinges on one moment: an auditor (Aisha) asks for evidence, and
+Contoso must hand her something she can **verify herself**, offline, without
+trusting Contoso's dashboard.
+
+That artifact — a re-verifiable evidence pack — is what this post is about, and
+it's the capability that most cleanly separates fishbone-access from a pile of
+screenshots in a shared drive.
+
+## The setup
+
+Contoso applies `au-privacy-e8` and `soc2-logical-access`, yielding **6 active
+policies** over **GitHub** (product eng), **GCP** (production), **Slack**
+(engineering), and a **manual billing-console** target. The policy names tell the
+Essential-Eight story directly — *Restrict administrative privileges*,
+*Privileged prod access — admins only*, *Deny-all to production by default*.
+
+![Contoso SaaS dashboard — 6 SaaS policies, Essential Eight admin-restriction theme](../artifacts/screenshots/s6-au-dashboard.png)
+
+Contoso then runs the lifecycle: RevOps and time-boxed deploy grants, a SOC 2
+evidence-sampling auditor request, a SOC 2 Type II recertification review, and a
+**closed SOC 2 certification campaign**.
+
+## The export — the moment that matters
+
+On the **Compliance evidence** page, Contoso clicks **Export SOC 2 pack**. Two
+things happen that you can see in the live console:
+
+1. A ZIP downloads (here, `evidence-pack-SOC_2.zip`).
+2. A toast confirms **"Evidence pack exported — Digest `5ee4269f6ab7…` recorded
+   on the audit chain"**, and the export *itself* appears as a new
+   `compliance.export` event on the timeline.
+
+![Contoso exporting the SOC 2 evidence pack — digest recorded on the chain, 63 records verified, chain intact](../artifacts/screenshots/s6-au-compliance-export.png)
+
+The export is **step-up-MFA-gated** — it consumes a fresh TOTP code, the same
+strongest-gate treatment as policy promotion — and it is *self-recording*:
+exporting evidence is itself an evidence event. The page header confirms the
+chain is **intact** and every record's SHA-256 link was recomputed and matched.
+
+## What's in the pack — and why Aisha trusts it
+
+The committed manifest is the contract
+([`s6-au-contoso-saas-evidence-pack-manifest.json`](../artifacts/payloads/s6-au-contoso-saas-evidence-pack-manifest.json)):
+
+```json
+{
+  "framework": "SOC 2",
+  "schema_version": "1.0",
+  "generated_by": "au-contoso-saas-owner",
+  "content_sha256": "edcf915f7cd3b4bf55a234ca2329694f489d3de8ced522233cdef8e9a851771b",
+  "chain_verification": { "length": 61, "ok": true, "status": "valid" },
+  "coverage": { "framework": "SOC 2", "controls_covered": 4, "controls_total": 6, "evidence_total": 35 },
+  "files": [
+    { "name": "evidence.jsonl",              "rows": 61 },
+    { "name": "access-grants.jsonl",          "rows": 3 },
+    { "name": "certification-campaigns.jsonl","rows": 1 },
+    { "name": "certification-items.jsonl",    "rows": 1 },
+    { "name": "policies.jsonl",               "rows": 6 },
+    { "name": "control-coverage.json",        "rows": 0 },
+    { "name": "chain-verification.json",      "rows": 0 },
+    { "name": "README.md",                    "rows": 0 }
+  ]
+}
+```
+
+Each file in the manifest also carries its own SHA-256. So Aisha's verification
+is mechanical and needs **zero trust in Contoso**:
+
+1. Re-hash each file → compare to the per-file `sha256` in the manifest.
+2. Re-hash the whole pack → compare to `content_sha256`.
+3. Replay `evidence.jsonl`'s hash chain → confirm it matches
+   `chain-verification.json` (`length: 61, status: valid`).
+
+If a single byte of any evidence record was altered after the fact, a link
+breaks and the chain fails. That's the difference between "here are some
+screenshots" and "here is a tamper-evident record you can independently verify."
+
+> Note on the numbers: the committed manifest shows `length: 61` (captured at
+> seed time); the live screenshot shows **63** because exporting the pack twice
+> during capture appended two `compliance.export` events. Both are honest — the
+> chain simply grew by the two exports, and each new export re-verifies the whole
+> chain.
+
+## Where we fall short — the same two gaps, named one last time
+
+Contoso's SOC 2 coverage is **4 / 6**, and the two uncovered controls are the
+recurring honest limits of the entire product:
+
+- **`CC6.7` "Privileged access monitored" — 0 records.** No PAM session proxy, no
+  keystroke recording. (Post 5 is the full version of this gap.)
+- **`CC7.3` "Orphan / anomalous access detected and dispositioned" — 0 records.**
+  We *detect* orphans (the scan ran and found 0), but we don't run behavioural
+  anomaly analytics, so there's no dispositioned-anomaly event to evidence the
+  control.
+
+A SOC 2 auditor will note both. fishbone-access gives Contoso a defensible 4/6
+with a re-verifiable pack and a clear, honest list of what it does **not** cover
+— which is far stronger than a tool that claims 6/6 by mapping controls
+loosely.
+
+## The full competitive scorecard
+
+Across the whole series, here is the honest positioning:
+
+| Capability | fishbone&#8209;access | Okta IGA | SailPoint | Saviynt | CyberArk | Teleport | StrongDM |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Jurisdiction/framework packs out of the box | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
+| One chain → many framework maps | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
+| Tamper-evident, **re-verifiable** evidence export | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Step-up MFA on promote **and** export | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
+| Access certifications / campaigns | ✅ | ✅ | ✅✅ | ✅✅ | ⚠️ | ❌ | ❌ |
+| Separation-of-duties (SoD) analytics | ❌ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
+| Orphan/anomaly **analytics** | ❌ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
+| Privileged credential vaulting | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ⚠️ | ⚠️ |
+| Live privileged **session recording** | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅ | ✅ |
+| Infra (DB/SSH/k8s) access brokering | ❌ | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅✅ |
+| Multi-locale incl. RTL | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ |
+| SME fit (one console, days→weeks) | ✅ | ⚠️ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+✅✅ = category leader · ✅ = strong · ⚠️ = partial / add-on / build-it-yourself · ❌ = not the tool's job
+
+### How to read it
+
+- **If your risk is privileged *sessions*** (admin inside core-banking, prod DB,
+  Kubernetes): **CyberArk** (vault + session), or **Teleport / StrongDM** for
+  modern infra access. fishbone-access governs the *grant*, not the *session* —
+  pair us with one of these.
+- **If your risk is *toxic combinations* across thousands of entitlements:**
+  **SailPoint** or **Saviynt**. Their SoD and analytics are the `CC7.3` gap we
+  openly don't fill.
+- **If your risk is *proving framework compliance fast, as an SME*, across
+  jurisdictions, with evidence an auditor can re-verify:** that's our lane —
+  PDPA/HIPAA/BDSG/PDPD/PDPL/Essential-Eight packs, one-chain-many-maps, a
+  step-up-gated re-verifiable export, in 12 locales including RTL, in one console.
+
+**The honest conclusion:** fishbone-access is not trying to out-PAM CyberArk or
+out-analyse SailPoint, and this series has shown — with real 0-record coverage
+cells — exactly where those tools win. Its bet is that most SMEs don't fail
+audits for lack of a session vault; they fail because they **can't prove the
+controls ran**. The whole product is built to make that proof verifiable,
+multi-framework, multilingual, and cheap enough for a 40-person company to stand
+up this quarter. Where it falls short, the coverage map says so on screen — which
+is, in the end, the most honest competitive claim of all.
+
+---
+
+*Reproduce everything in this series with `make blog-seed`, `make blog-capture`,
+and `make blog-test` — see [`README.md`](README.md). Every screenshot above is a
+real seeded page; every payload is a verbatim capture.*

@@ -1,7 +1,7 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-10T16:30:04.486303Z",
+      "created_at": "2026-06-10T21:29:03.873799Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -12,16 +12,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "27d4d5f1-1870-4d39-a8d1-798970b0d3d1",
+      "id": "7ff1a481-9271-4a47-8eb0-aa36b86d22c8",
       "name": "Default-deny information systems",
-      "promoted_at": "2026-06-10T16:30:04.505873Z",
+      "promoted_at": "2026-06-10T21:29:03.904493Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:30:04.505873Z",
+      "updated_at": "2026-06-10T21:29:03.904493Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     },
     {
-      "created_at": "2026-06-10T16:30:04.485655Z",
+      "created_at": "2026-06-10T21:29:03.872155Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -33,16 +33,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "6a9ed100-32e3-471d-8bc7-869f529a9b34",
+      "id": "d47e58dd-b004-4166-9b39-3053fc37a1c5",
       "name": "Restrict privileged utility access",
-      "promoted_at": "2026-06-10T16:30:04.509355Z",
+      "promoted_at": "2026-06-10T21:29:03.91135Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:30:04.509355Z",
+      "updated_at": "2026-06-10T21:29:03.91135Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     },
     {
-      "created_at": "2026-06-10T16:30:04.484828Z",
+      "created_at": "2026-06-10T21:29:03.870462Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -54,16 +54,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "6f142869-5b03-44c4-b1f0-940a46232219",
+      "id": "0f832ff5-95f9-49b5-99a8-85e90fbe5b5f",
       "name": "Business need-to-know access",
-      "promoted_at": "2026-06-10T16:30:04.513614Z",
+      "promoted_at": "2026-06-10T21:29:03.917952Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:30:04.513614Z",
+      "updated_at": "2026-06-10T21:29:03.917952Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     },
     {
-      "created_at": "2026-06-10T16:30:04.482217Z",
+      "created_at": "2026-06-10T21:29:03.866125Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -74,16 +74,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "e0bbf18e-cf2c-4821-a993-52e7ea3ee30b",
+      "id": "72c8d848-ed5f-4ac7-bc90-8f25423bd9b7",
       "name": "Default-deny personal data",
-      "promoted_at": "2026-06-10T16:30:31.618421Z",
+      "promoted_at": "2026-06-10T21:29:32.025999Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:30:31.618421Z",
+      "updated_at": "2026-06-10T21:29:32.025999Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     },
     {
-      "created_at": "2026-06-10T16:30:04.481359Z",
+      "created_at": "2026-06-10T21:29:03.864338Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -95,16 +95,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "392bb593-6613-4cd5-a0f7-4043564654ba",
+      "id": "2ff61a52-e5ef-4647-a1fc-0f9cfc8599b9",
       "name": "Privileged access — admins only",
-      "promoted_at": "2026-06-10T16:31:01.62488Z",
+      "promoted_at": "2026-06-10T21:30:01.135055Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:31:01.62488Z",
+      "updated_at": "2026-06-10T21:30:01.135055Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     },
     {
-      "created_at": "2026-06-10T16:30:04.480528Z",
+      "created_at": "2026-06-10T21:29:03.862457Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -116,13 +116,13 @@
         ]
       },
       "deleted_at": null,
-      "id": "9e081021-304a-44ab-b574-a09f942f08da",
+      "id": "8f6d882e-be31-4d8d-a4c0-86120c59dae2",
       "name": "Authorised staff → personal data",
-      "promoted_at": "2026-06-10T16:31:31.637842Z",
+      "promoted_at": "2026-06-10T21:30:31.144927Z",
       "state": "active",
-      "updated_at": "2026-06-10T16:31:31.637842Z",
+      "updated_at": "2026-06-10T21:30:31.144927Z",
       "version": 1,
-      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+      "workspace_id": "e667f0cd-0841-4f59-af47-a3cebbb99063"
     }
   ]
 }
