@@ -34,7 +34,10 @@ export function ComplianceEvidence() {
   const [framework, setFramework] = useState<Framework>("SOC 2");
 
   const coverageQ = useCoverage(framework);
-  const evidenceQ = useEvidence({ limit: 50 });
+  // order: "desc" so the bounded read returns the most-recent events (matching
+  // the "Most recent" timeline label); without it the chain scans oldest-first
+  // and a workspace with >50 events would permanently show its oldest 50.
+  const evidenceQ = useEvidence({ limit: 50, order: "desc" });
 
   return (
     <>

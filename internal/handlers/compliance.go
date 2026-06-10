@@ -63,7 +63,25 @@ func newComplianceHandlers(deps Deps) *complianceHandlers {
 }
 
 // register mounts the compliance routes on the tenant-scoped group. The group
-// must already carry Auth + ResolveTenant + RequireTenant.
+// must already carry Auth + ResolveTenant + RequireTenant, and (in production)
+// AuthzMiddleware so the RequirePermission gates below enforce; when RBAC is
+// not wired RequirePermission no-ops, preserving pre-RBAC behavior.
+//
+// Every route is permission-gated (fail-closed) under the compliance permission
+// family, consistent with the integrated cross-WS RBAC model:
+//
+//   - The read surface (raw evidence stream, control coverage, chain
+//     verification, and campaign listing/reports/items) requires
+//     PermComplianceRead — held by owner/admin/security_admin/auditor, NEVER by
+//     RoleOperator, so a plain member cannot read the tamper-evident chain,
+//     coverage, or campaign state of a workspace.
+//   - The campaign write surface (start/decide/close/overdue-enforce) requires
+//     PermComplianceManage — held by the governance roles
+//     (owner/admin/security_admin) but NOT the read-only auditor, so an auditor
+//     can observe and export evidence without being able to drive or close a
+//     certification campaign.
+//
+// Export stays the most-privileged path: PermComplianceExport AND step-up MFA.
 func (h *complianceHandlers) register(g *gin.RouterGroup) {
 	// Every compliance surface is RBAC-gated and fails closed, matching the
 	// lifecycle/connectors/PAM handlers: the read surface requires
@@ -92,8 +110,9 @@ func (h *complianceHandlers) register(g *gin.RouterGroup) {
 	g.POST("/compliance/campaigns/:id/close", manage, h.closeCampaign)
 	g.POST("/compliance/campaigns/overdue-enforce", manage, h.enforceOverdue)
 
-	// Evidence-pack export: gated by an explicit permission scope AND step-up
-	// MFA, and itself audited. Both gates fail closed.
+	// Evidence-pack export: gated by the authz.PermComplianceExport
+	// ("compliance.export") RBAC permission AND step-up MFA, and itself
+	// audited. Both gates fail closed.
 	g.POST("/compliance/export",
 		middleware.RequirePermission(authz.PermComplianceExport),
 		middleware.RequireMFA(),
@@ -108,6 +127,18 @@ func (h *complianceHandlers) listEvidence(c *gin.Context) {
 		return
 	}
 	filter := compliance.EvidenceFilter{ControlledOnly: c.Query("controlled_only") == "true"}
+	// order=desc returns the most-recent events first (the dashboard timeline);
+	// the default ascending order walks the chain from its start. Any other
+	// value is rejected rather than silently ignored so the contract is explicit.
+	switch order := c.Query("order"); order {
+	case "", "asc":
+		filter.Newest = false
+	case "desc":
+		filter.Newest = true
+	default:
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid order (want asc or desc)"})
+		return
+	}
 	if t, ok := parseTimeQuery(c, "from"); ok {
 		filter.From = t
 	} else if c.Query("from") != "" {

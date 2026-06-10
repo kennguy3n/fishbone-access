@@ -52,13 +52,17 @@ func recordFrom(e *models.AuditEvent) EvidenceRecord {
 // EvidenceFilter narrows the evidence stream. From/To bound the period
 // (half-open [From, To)); Kinds restricts to specific control kinds;
 // ControlledOnly drops the integrity-only KindOther rows; Limit caps the result
-// for the dashboard timeline (0 = no cap).
+// for the dashboard timeline (0 = no cap). Newest flips the scan to descending
+// chain order so a bounded read returns the most-recent N events (the dashboard
+// timeline) rather than the oldest N; the default (false) preserves ascending
+// chain order for callers that want the start of the chain.
 type EvidenceFilter struct {
 	From           *time.Time
 	To             *time.Time
 	Kinds          []EvidenceKind
 	ControlledOnly bool
 	Limit          int
+	Newest         bool
 }
 
 // EvidenceService is the read surface over a workspace's evidence stream. It
@@ -73,11 +77,15 @@ func NewEvidenceService(db *gorm.DB) *EvidenceService {
 	return &EvidenceService{db: db}
 }
 
-// Stream returns the workspace's evidence in chain order (oldest first), with
-// the filter applied. Kind filtering is done in Go because Kind is derived from
-// the Action string (a one-to-many prefix mapping) rather than stored, so it
-// cannot be a SQL predicate without leaking the classification into the schema.
-// The time/limit predicates ARE pushed to SQL so the row scan stays bounded.
+// Stream returns the workspace's evidence in chain order, with the filter
+// applied. By default the scan is ascending (oldest first); set f.Newest to
+// scan descending so a bounded read (f.Limit) returns the most-recent N events
+// — what the dashboard timeline wants — instead of the oldest N. Kind filtering
+// is done in Go because Kind is derived from the Action string (a one-to-many
+// prefix mapping) rather than stored, so it cannot be a SQL predicate without
+// leaking the classification into the schema; the limit is therefore applied
+// after the Go-side Kind filter so it caps matching records, not scanned rows.
+// The time/order predicates ARE pushed to SQL so the row scan stays bounded.
 func (s *EvidenceService) Stream(ctx context.Context, workspaceID uuid.UUID, f EvidenceFilter) ([]EvidenceRecord, error) {
 	if workspaceID == uuid.Nil {
 		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
@@ -93,7 +101,11 @@ func (s *EvidenceService) Stream(ctx context.Context, workspaceID uuid.UUID, f E
 	if f.To != nil {
 		q = q.Where("created_at < ?", f.To.UTC())
 	}
-	q = q.Order("chain_seq asc")
+	if f.Newest {
+		q = q.Order("chain_seq desc")
+	} else {
+		q = q.Order("chain_seq asc")
+	}
 
 	out := make([]EvidenceRecord, 0, 64)
 	// Cursor through rows so a wide period never materialises the whole chain in

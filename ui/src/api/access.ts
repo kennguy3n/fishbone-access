@@ -1284,6 +1284,11 @@ export interface EvidenceFilter {
   kinds?: EvidenceKind[];
   controlled_only?: boolean;
   limit?: number;
+  /**
+   * Chain scan direction. "desc" returns the most-recent events first (the
+   * dashboard timeline); the default "asc" walks the chain from its start.
+   */
+  order?: "asc" | "desc";
 }
 
 /** Result of recomputing the audit hash chain (compliance.ChainVerification). */
@@ -1403,6 +1408,7 @@ function evidenceParams(filter: EvidenceFilter): Record<string, string> {
     params.kinds = filter.kinds.join(",");
   if (filter.controlled_only) params.controlled_only = "true";
   if (filter.limit != null) params.limit = String(filter.limit);
+  if (filter.order) params.order = filter.order;
   return params;
 }
 

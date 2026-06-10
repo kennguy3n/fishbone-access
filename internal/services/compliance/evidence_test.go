@@ -63,6 +63,26 @@ func TestStreamClassifiesAndFilters(t *testing.T) {
 	if len(limited) != 2 {
 		t.Fatalf("expected 2 limited records, got %d", len(limited))
 	}
+	// Ascending limit returns the OLDEST N (the start of the chain).
+	if limited[0].Action != "access_grant.created" {
+		t.Fatalf("ascending limit should start at oldest, got %s", limited[0].Action)
+	}
+
+	// Newest=true flips to descending chain order so a bounded read returns the
+	// most-recent N events (the dashboard timeline contract), newest first.
+	newest, err := svc.Stream(ctx, ws, EvidenceFilter{Limit: 2, Newest: true})
+	if err != nil {
+		t.Fatalf("Stream newest: %v", err)
+	}
+	if len(newest) != 2 {
+		t.Fatalf("expected 2 newest records, got %d", len(newest))
+	}
+	if newest[0].Action != "access_grant.revoked" || newest[1].Action != "weird.unmapped.action" {
+		t.Fatalf("newest-first limit should return the latest events, got %s,%s", newest[0].Action, newest[1].Action)
+	}
+	if newest[0].ChainSeq <= newest[1].ChainSeq {
+		t.Fatalf("newest order must be descending by chain_seq, got %d then %d", newest[0].ChainSeq, newest[1].ChainSeq)
+	}
 }
 
 func TestVerifyChainValidThenTamperDetected(t *testing.T) {
