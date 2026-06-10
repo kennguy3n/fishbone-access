@@ -394,6 +394,14 @@ func (r *GormWorkspaceConfigRepo) WorkspaceIDs(ctx context.Context) ([]uuid.UUID
 // logic is reimplemented on *gorm.DB rather than delegating to the lifecycle
 // service to keep this package free of an import cycle (lifecycle's in-package
 // tests import this package), the same pattern GormWorkspaceConfigRepo follows.
+//
+// Unlike GormWorkspaceConfigRepo — which defines a local row struct and relies
+// on a drift test to stay aligned with internal/models — this repo deliberately
+// binds to the canonical models.AuditEvent. The audit row is a security-critical
+// tamper-evident record (chain_seq, prev_hash, chain_hash, chain_hash_version)
+// that must agree exactly with the lifecycle appender, so coupling to the single
+// source of truth removes the drift surface entirely (the import is acyclic:
+// internal/models does not import this package).
 type GormAuditRepo struct {
 	db *gorm.DB
 }
