@@ -62,6 +62,9 @@ func run() error {
 	defer stop()
 
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	logger.Infof(ctx, "pam-gateway: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {
@@ -84,21 +87,39 @@ func run() error {
 		}
 	}()
 
-	// Open a pgxpool alongside GORM and route the Vault's standalone audit
-	// appends through the pgxpool adapter (WS10 GORM→pgx migration). The chain
-	// bookkeeping is shared via the auditchain package, so a standalone event
-	// written on pgx links into the same per-workspace hash chain as the
-	// in-transaction (GORM) appends. The pool is closed after the supervisor
-	// returns, so no listener can race the close. It is sized by its own bound
-	// (DBPgxMaxConns), independent of the GORM pool, because standalone audit
-	// appends are low-volume; this keeps the added connection footprint small.
-	pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
-	if err != nil {
-		return fmt.Errorf("pgx pool setup: %w", err)
+	// Route the Vault's standalone audit appends through the backend selected by
+	// ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration). The chain bookkeeping is
+	// shared via the auditchain package — same advisory lock, same version-1
+	// canonical hash — so a standalone event links into the same per-workspace
+	// hash chain as the in-transaction (GORM) appends regardless of which backend
+	// writes it, and the two coexist on one chain during the migration.
+	var auditor database.AuditAppender
+	switch cfg.DatabaseDriver {
+	case config.DriverPgx:
+		// Open a pgxpool alongside GORM, closed after the supervisor returns so no
+		// listener can race the close. It is sized by its own bound
+		// (DBPgxMaxConns), independent of the GORM pool, because standalone audit
+		// appends are low-volume; this keeps the added connection footprint small.
+		// Opened only on the pgx path so a gorm-driver boot pays no second pool.
+		pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
+		if err != nil {
+			return fmt.Errorf("pgx pool setup: %w", err)
+		}
+		defer pool.Close()
+		auditor = database.NewPgxAuditRepo(pool)
+		logger.Infof(ctx, "pam-gateway: pgxpool adapter enabled for standalone audit appends")
+	case config.DriverGorm:
+		// Reuse the GORM pool already opened above; no second pool.
+		auditor = database.NewGormAuditRepo(gdb)
+		logger.Infof(ctx, "pam-gateway: GORM backend enabled for standalone audit appends")
+	default:
+		// Unreachable today: cfg.Validate() rejects any other value at boot. The
+		// branch is here so that adding a driver to DatabaseDriver.Valid() without
+		// wiring it here fails fast instead of leaving auditor nil and panicking.
+		return fmt.Errorf("pam-gateway: unsupported ACCESS_DATABASE_DRIVER %q", cfg.DatabaseDriver)
 	}
-	defer pool.Close()
 
-	listeners, err := buildListeners(ctx, cfg, gdb, database.NewPgxAuditRepo(pool))
+	listeners, err := buildListeners(ctx, cfg, gdb, auditor)
 	if err != nil {
 		return fmt.Errorf("build listeners: %w", err)
 	}

@@ -56,6 +56,9 @@ func run() error {
 	defer stop()
 
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	logger.Infof(ctx, "access-workflow-engine: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {

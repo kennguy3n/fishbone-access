@@ -1,0 +1,313 @@
+package migrations
+
+import (
+	"strings"
+	"testing"
+)
+
+// TestLintEmbeddedMigrationsPass is the gate that backs `make migrate-check`:
+// the migrations that actually ship must pass every rule. If a future migration
+// introduces a duplicate version, an undeclared gap, or a lock-unsafe statement,
+// this test (and the CLI) fail.
+func TestLintEmbeddedMigrationsPass(t *testing.T) {
+	result, err := Lint()
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	if !result.OK() {
+		t.Fatalf("embedded migrations have lint violations:\n%v", result.Err())
+	}
+}
+
+func TestCheckVersions(t *testing.T) {
+	tests := []struct {
+		name      string
+		filenames []string
+		wantRules []string // rules expected at least once; empty means "no violations"
+	}{
+		{
+			name:      "clean contiguous",
+			filenames: []string{"0001_init.sql", "0002_next.sql", "0003_more.sql"},
+		},
+		{
+			name:      "reserved gap is allowed",
+			filenames: []string{"0005_pam_gateway.sql", "0010_workflow_approvals.sql"},
+		},
+		{
+			name:      "undeclared gap flagged",
+			filenames: []string{"0001_init.sql", "0003_skip.sql"},
+			wantRules: []string{RuleVersionGap},
+		},
+		{
+			name:      "duplicate version flagged",
+			filenames: []string{"0001_init.sql", "0001_dup.sql"},
+			wantRules: []string{RuleDuplicateVersion},
+		},
+		{
+			name:      "bad filename flagged",
+			filenames: []string{"1_init.sql", "0002_Bad_Name.sql", "0002_trailing_.sql"},
+			wantRules: []string{RuleFilename},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkVersions(tc.filenames)
+			assertRules(t, got, tc.wantRules)
+		})
+	}
+}
+
+func TestLockSafety(t *testing.T) {
+	tests := []struct {
+		name      string
+		sql       string
+		wantRules []string
+	}{
+		{
+			name: "plain create index is allowed (transactional runner)",
+			sql:  `CREATE INDEX idx_audit_ws ON audit_events (workspace_id);`,
+		},
+		{
+			name: "add column not null with default is allowed",
+			sql:  `ALTER TABLE t ADD COLUMN IF NOT EXISTS c INT NOT NULL DEFAULT 0;`,
+		},
+		{
+			name: "numeric type comma does not split clause",
+			sql:  `ALTER TABLE t ADD COLUMN price NUMERIC(10,2) NOT NULL DEFAULT 0;`,
+		},
+		{
+			name:      "create index concurrently flagged",
+			sql:       `CREATE INDEX CONCURRENTLY idx ON t (a);`,
+			wantRules: []string{RuleConcurrently},
+		},
+		{
+			name:      "add column not null without default flagged",
+			sql:       `ALTER TABLE t ADD COLUMN c TEXT NOT NULL;`,
+			wantRules: []string{RuleAddColumnNotNull},
+		},
+		{
+			name:      "second clause not null without default flagged",
+			sql:       `ALTER TABLE t ADD COLUMN a INT NOT NULL DEFAULT 1, ADD COLUMN b TEXT NOT NULL;`,
+			wantRules: []string{RuleAddColumnNotNull},
+		},
+		{
+			name:      "alter column type flagged",
+			sql:       `ALTER TABLE t ALTER COLUMN c TYPE BIGINT;`,
+			wantRules: []string{RuleAlterColumnType},
+		},
+		{
+			name:      "alter column set data type flagged",
+			sql:       `ALTER TABLE t ALTER COLUMN c SET DATA TYPE BIGINT;`,
+			wantRules: []string{RuleAlterColumnType},
+		},
+		{
+			name:      "drop column flagged",
+			sql:       `ALTER TABLE t DROP COLUMN c;`,
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name:      "lock table flagged",
+			sql:       `LOCK TABLE t IN ACCESS EXCLUSIVE MODE;`,
+			wantRules: []string{RuleLockTable},
+		},
+		{
+			name: "keyword inside comment is ignored",
+			sql:  "-- this migration avoids CONCURRENTLY on purpose\nCREATE INDEX idx ON t (a);",
+		},
+		{
+			name: "keyword inside string literal is ignored",
+			sql:  `INSERT INTO notes (body) VALUES ('we must DROP COLUMN later');`,
+		},
+		{
+			name: "set not null alone is allowed (no type rewrite, no add)",
+			sql:  `ALTER TABLE t ALTER COLUMN c SET NOT NULL;`,
+		},
+		{
+			name: "keyword inside dollar-quoted body is ignored",
+			sql: "CREATE FUNCTION f() RETURNS void AS $$\n" +
+				"BEGIN\n  LOCK TABLE t; -- DROP COLUMN x;\nEND;\n$$ LANGUAGE plpgsql;",
+		},
+		{
+			name: "keyword inside tagged dollar-quoted body is ignored",
+			sql:  "CREATE FUNCTION f() RETURNS void AS $body$ ALTER TABLE t DROP COLUMN c; $body$ LANGUAGE plpgsql;",
+		},
+		{
+			name:      "real violation outside dollar-quoted body is still flagged",
+			sql:       "CREATE FUNCTION f() RETURNS void AS $$ SELECT 1; $$ LANGUAGE sql;\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name: "migrate-lint:allow waives the named rule",
+			sql:  "-- migrate-lint:allow drop-column (col unused since 0014, TICKET-123)\nALTER TABLE t DROP COLUMN c;",
+		},
+		{
+			name: "migrate-lint:allow with comma list waives multiple rules",
+			sql:  "-- migrate-lint:allow lock-table, alter-column-type\nLOCK TABLE t IN ACCESS EXCLUSIVE MODE;\nALTER TABLE t ALTER COLUMN c TYPE BIGINT;",
+		},
+		{
+			name:      "suppression waives only the named rule, others still flagged",
+			sql:       "-- migrate-lint:allow drop-column\nLOCK TABLE t IN ACCESS EXCLUSIVE MODE;",
+			wantRules: []string{RuleLockTable},
+		},
+		{
+			name:      "typo'd suppression is reported and the real violation still fires",
+			sql:       "-- migrate-lint:allow drop-colum\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleUnknownSuppression, RuleDropColumn},
+		},
+		{
+			name:      "version-integrity rules cannot be suppressed",
+			sql:       "-- migrate-lint:allow version-gap\nCREATE INDEX idx ON t (a);",
+			wantRules: []string{RuleUnknownSuppression},
+		},
+		{
+			name: "keyword inside nested block comment is ignored",
+			sql:  "/* outer /* DROP COLUMN x */ still LOCK TABLE t */\nCREATE INDEX idx ON t (a);",
+		},
+		{
+			name: "keyword inside escape string is ignored",
+			sql:  `INSERT INTO notes (body) VALUES (E'we\'ll DROP COLUMN later');`,
+		},
+		{
+			name:      "real violation after an escape string is still flagged",
+			sql:       "INSERT INTO notes (body) VALUES (E'a\\'b');\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name:      "suppression inside a string literal does NOT waive a real violation",
+			sql:       "INSERT INTO t (body) VALUES ('-- migrate-lint:allow drop-column');\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name:      "suppression inside a dollar-quoted body does NOT waive a real violation",
+			sql:       "INSERT INTO t (body) VALUES ($$-- migrate-lint:allow drop-column$$);\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name: "suppression in a real comment after a string mentioning it still waives",
+			sql:  "INSERT INTO t (body) VALUES ('not a directive');\n-- migrate-lint:allow drop-column\nALTER TABLE t DROP COLUMN c;",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := lockSafety("test.sql", tc.sql)
+			assertRules(t, got, tc.wantRules)
+		})
+	}
+}
+
+func TestSplitTopLevelCommas(t *testing.T) {
+	parts := splitTopLevelCommas("ADD COLUMN a NUMERIC(10,2), ADD COLUMN b INT")
+	if len(parts) != 2 {
+		t.Fatalf("got %d parts, want 2: %q", len(parts), parts)
+	}
+	if !strings.Contains(parts[0], "NUMERIC(10,2)") {
+		t.Errorf("first clause lost its parenthesised type: %q", parts[0])
+	}
+}
+
+func TestMaskSQLDollarQuoting(t *testing.T) {
+	// A dollar-quoted body is fully blanked (so its keywords/semicolons never
+	// reach the scanner) while a positional parameter like $1 is left intact.
+	in := "DO $$ DROP COLUMN x; $$; SELECT $1;"
+	masked := maskSQL(in)
+	if len(masked) != len(in) {
+		t.Fatalf("mask changed length: got %d want %d", len(masked), len(in))
+	}
+	if strings.Contains(masked, "DROP COLUMN") {
+		t.Errorf("dollar-quoted body not masked: %q", masked)
+	}
+	if !strings.Contains(masked, "$1") {
+		t.Errorf("positional parameter $1 should be left intact: %q", masked)
+	}
+	// Two semicolons survive: the one ending the DO statement and the trailing
+	// SELECT terminator; the one inside the body is masked.
+	if strings.Count(masked, ";") != 2 {
+		t.Errorf("expected 2 surviving semicolons, got %q", masked)
+	}
+}
+
+func TestMaskSQLPreservesLength(t *testing.T) {
+	in := "SELECT 'a;b' /* c;d */ -- e;f\nFROM t;"
+	masked := maskSQL(in)
+	if len(masked) != len(in) {
+		t.Fatalf("mask changed length: got %d want %d", len(masked), len(in))
+	}
+	// The semicolons inside the literal and comments must be masked so statement
+	// splitting does not treat them as boundaries.
+	if strings.Count(masked, ";") != 1 {
+		t.Errorf("masked SQL should retain only the real statement terminator, got %q", masked)
+	}
+}
+
+func TestMaskSQLNestedCommentsAndEscapeStrings(t *testing.T) {
+	// Nested block comments (PostgreSQL allows nesting) must mask to the matching
+	// outer */, and an E'…' body where \' is an escape must mask whole. Length is
+	// preserved so statement offsets stay aligned.
+	cases := []string{
+		"/* a /* b */ c */ SELECT 1;",
+		`SELECT E'x\'y';`,
+	}
+	for _, in := range cases {
+		masked := maskSQL(in)
+		if len(masked) != len(in) {
+			t.Fatalf("mask changed length for %q: got %d want %d", in, len(masked), len(in))
+		}
+	}
+	// The keyword buried in a nested comment must not survive masking.
+	if got := maskSQL("/* /* DROP COLUMN x */ */ SELECT 1;"); strings.Contains(got, "DROP COLUMN") {
+		t.Errorf("nested block comment not fully masked: %q", got)
+	}
+	// A backslash-escaped quote inside an E-string must not terminate it early,
+	// so a keyword after the escape stays masked.
+	if got := maskSQL(`SELECT E'a\'DROP COLUMN';`); strings.Contains(got, "DROP COLUMN") {
+		t.Errorf("escape-string body not fully masked: %q", got)
+	}
+}
+
+func TestCommentText(t *testing.T) {
+	// Only comment bodies survive; code, string literals, E-strings, and
+	// dollar-quoted bodies are blanked, and length is preserved.
+	in := "SELECT 'x' -- keep me\n/* and me */ FROM t;"
+	got := commentText(in)
+	if len(got) != len(in) {
+		t.Fatalf("commentText changed length: got %d want %d", len(got), len(in))
+	}
+	if !strings.Contains(got, "keep me") || !strings.Contains(got, "and me") {
+		t.Errorf("real comments not preserved: %q", got)
+	}
+	if strings.Contains(got, "SELECT") || strings.Contains(got, "FROM") {
+		t.Errorf("code leaked into comment text: %q", got)
+	}
+	// A directive token sitting in a string literal or dollar body must NOT be
+	// surfaced as comment text (otherwise it could waive a real violation).
+	for _, src := range []string{
+		"VALUES ('-- migrate-lint:allow drop-column');",
+		"VALUES ($$-- migrate-lint:allow drop-column$$);",
+		`VALUES (E'-- migrate-lint:allow drop-column');`,
+	} {
+		if strings.Contains(commentText(src), "migrate-lint") {
+			t.Errorf("directive in data leaked into comment text: %q", commentText(src))
+		}
+	}
+}
+
+// assertRules checks that got contains exactly the set of rules in want (by
+// presence). An empty want asserts no violations.
+func assertRules(t *testing.T, got []Violation, want []string) {
+	t.Helper()
+	if len(want) == 0 {
+		if len(got) != 0 {
+			t.Fatalf("expected no violations, got: %v", got)
+		}
+		return
+	}
+	seen := map[string]bool{}
+	for _, v := range got {
+		seen[v.Rule] = true
+	}
+	for _, r := range want {
+		if !seen[r] {
+			t.Errorf("expected violation rule %q, got: %v", r, got)
+		}
+	}
+}

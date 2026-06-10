@@ -11,11 +11,48 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// TestAppendAuditWhitespaceOnlyMetadataStoresNull pins the degenerate case the
+// lifecycle appender used to mishandle: whitespace-only metadata canonicalizes
+// to nil, so the row must persist SQL NULL (not the raw whitespace) to stay
+// byte-identical with the pgx/GORM appenders and to remain recomputable.
+func TestAppendAuditWhitespaceOnlyMetadataStoresNull(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+
+	in := AuditInput{
+		WorkspaceID: ws,
+		Actor:       "auditor",
+		Action:      "test.whitespace",
+		TargetRef:   "ref-1",
+		Metadata:    datatypes.JSON([]byte("   ")),
+	}
+	if err := AppendAudit(ctx, db, time.Now(), in); err != nil {
+		t.Fatalf("append: %v", err)
+	}
+
+	var row models.AuditEvent
+	if err := db.WithContext(ctx).
+		Where("workspace_id = ? AND action = ?", ws, "test.whitespace").
+		Take(&row).Error; err != nil {
+		t.Fatalf("load row: %v", err)
+	}
+	if len(row.Metadata) != 0 {
+		t.Fatalf("whitespace-only metadata must store NULL, got %q", string(row.Metadata))
+	}
+	// The stored row must recompute over the canonical (nil) metadata.
+	want := ComputeChainHash(row.PrevHash, ws, row.Action, row.TargetRef, nil, row.CreatedAt)
+	if row.ChainHash != want {
+		t.Fatalf("row does not recompute: got %q want %q", row.ChainHash, want)
+	}
+}
 
 // approveAndConnector creates a request with a connector and approves it,
 // returning the request id ready to provision.
