@@ -196,7 +196,12 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	canonMeta := canonicalJSON(e.Metadata)
 	chainHash := ComputeChainHash(prevHash, e.WorkspaceID, e.Action, e.TargetRef, canonMeta, now)
 
-	stored := e.Metadata
+	// Persist exactly the canonical bytes that were hashed (NULL when empty), so
+	// the stored row always recomputes. Starting from the caller's raw bytes
+	// would, for the degenerate whitespace-only input that canonicalJSON folds to
+	// nil, store the whitespace while the hash used nil — a row that no longer
+	// recomputes and that diverges from the pgx/GORM appenders (which store NULL).
+	var stored datatypes.JSON
 	if len(canonMeta) > 0 {
 		stored = datatypes.JSON(canonMeta)
 	}

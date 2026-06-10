@@ -172,6 +172,20 @@ func TestLockSafety(t *testing.T) {
 			sql:       "INSERT INTO notes (body) VALUES (E'a\\'b');\nALTER TABLE t DROP COLUMN c;",
 			wantRules: []string{RuleDropColumn},
 		},
+		{
+			name:      "suppression inside a string literal does NOT waive a real violation",
+			sql:       "INSERT INTO t (body) VALUES ('-- migrate-lint:allow drop-column');\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name:      "suppression inside a dollar-quoted body does NOT waive a real violation",
+			sql:       "INSERT INTO t (body) VALUES ($$-- migrate-lint:allow drop-column$$);\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
+		{
+			name: "suppression in a real comment after a string mentioning it still waives",
+			sql:  "INSERT INTO t (body) VALUES ('not a directive');\n-- migrate-lint:allow drop-column\nALTER TABLE t DROP COLUMN c;",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -247,6 +261,33 @@ func TestMaskSQLNestedCommentsAndEscapeStrings(t *testing.T) {
 	// so a keyword after the escape stays masked.
 	if got := maskSQL(`SELECT E'a\'DROP COLUMN';`); strings.Contains(got, "DROP COLUMN") {
 		t.Errorf("escape-string body not fully masked: %q", got)
+	}
+}
+
+func TestCommentText(t *testing.T) {
+	// Only comment bodies survive; code, string literals, E-strings, and
+	// dollar-quoted bodies are blanked, and length is preserved.
+	in := "SELECT 'x' -- keep me\n/* and me */ FROM t;"
+	got := commentText(in)
+	if len(got) != len(in) {
+		t.Fatalf("commentText changed length: got %d want %d", len(got), len(in))
+	}
+	if !strings.Contains(got, "keep me") || !strings.Contains(got, "and me") {
+		t.Errorf("real comments not preserved: %q", got)
+	}
+	if strings.Contains(got, "SELECT") || strings.Contains(got, "FROM") {
+		t.Errorf("code leaked into comment text: %q", got)
+	}
+	// A directive token sitting in a string literal or dollar body must NOT be
+	// surfaced as comment text (otherwise it could waive a real violation).
+	for _, src := range []string{
+		"VALUES ('-- migrate-lint:allow drop-column');",
+		"VALUES ($$-- migrate-lint:allow drop-column$$);",
+		`VALUES (E'-- migrate-lint:allow drop-column');`,
+	} {
+		if strings.Contains(commentText(src), "migrate-lint") {
+			t.Errorf("directive in data leaked into comment text: %q", commentText(src))
+		}
 	}
 }
 

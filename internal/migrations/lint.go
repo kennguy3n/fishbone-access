@@ -281,18 +281,19 @@ func lockSafety(name, sql string) []Violation {
 }
 
 // parseSuppressions reads every `-- migrate-lint:allow <rule>[,<rule>…]`
-// directive in the raw (unmasked) file and returns the set of lock-safety rules
-// the file waives. A directive that names a rule which is not in
-// suppressibleRules is returned as a RuleUnknownSuppression violation so a typo
-// or a misguided attempt to silence a structural check is loud, not silent.
+// directive in the file's comments and returns the set of lock-safety rules the
+// file waives. A directive that names a rule which is not in suppressibleRules
+// is returned as a RuleUnknownSuppression violation so a typo or a misguided
+// attempt to silence a structural check is loud, not silent.
 //
-// Directives are read from the raw SQL because maskSQL blanks comments; reading
-// raw text is safe since the directive's own keywords (e.g. "drop-column") live
-// in a comment and are never scanned as DDL.
+// Directives are matched against commentText(sql), not the raw bytes, so a
+// directive is honoured only when it genuinely lives in a SQL comment. A string
+// such as INSERT INTO t VALUES ('-- migrate-lint:allow drop-column') can no
+// longer smuggle a suppression past a real violation through data.
 func parseSuppressions(name, sql string) (map[string]bool, []Violation) {
 	allowed := map[string]bool{}
 	var violations []Violation
-	for _, m := range reSuppress.FindAllStringSubmatch(sql, -1) {
+	for _, m := range reSuppress.FindAllStringSubmatch(commentText(sql), -1) {
 		for _, tok := range strings.Split(m[1], ",") {
 			rule := strings.ToLower(strings.TrimSpace(tok))
 			if rule == "" {
@@ -433,6 +434,103 @@ func maskSQL(sql string) string {
 					}
 					if out[i] != '\n' {
 						out[i] = ' '
+					}
+					i++
+				}
+			} else {
+				i++
+			}
+		default:
+			i++
+		}
+	}
+	return string(out)
+}
+
+// commentText is the inverse of maskSQL: it returns sql with everything EXCEPT
+// line- and block-comment bodies blanked to spaces (length and newlines
+// preserved). It shares maskSQL's lexical rules — string literals, E'…' escape
+// strings, and dollar-quoted bodies are skipped wholesale so a -- or /* that
+// appears inside one is never mistaken for the start of a comment. This is what
+// lets parseSuppressions trust that a matched directive really sits in a
+// comment rather than in data.
+func commentText(sql string) string {
+	src := []byte(sql)
+	n := len(src)
+	out := make([]byte, n)
+	for i := range out {
+		if src[i] == '\n' {
+			out[i] = '\n'
+		} else {
+			out[i] = ' '
+		}
+	}
+	for i := 0; i < n; {
+		switch {
+		case src[i] == '-' && i+1 < n && src[i+1] == '-':
+			for i < n && src[i] != '\n' {
+				out[i] = src[i]
+				i++
+			}
+		case src[i] == '/' && i+1 < n && src[i+1] == '*':
+			depth := 0
+			for i < n {
+				if src[i] == '/' && i+1 < n && src[i+1] == '*' {
+					out[i], out[i+1] = src[i], src[i+1]
+					i += 2
+					depth++
+					continue
+				}
+				if src[i] == '*' && i+1 < n && src[i+1] == '/' {
+					out[i], out[i+1] = src[i], src[i+1]
+					i += 2
+					depth--
+					if depth == 0 {
+						break
+					}
+					continue
+				}
+				out[i] = src[i]
+				i++
+			}
+		case (src[i] == 'E' || src[i] == 'e') && i+1 < n && src[i+1] == '\'' &&
+			(i == 0 || !isWordChar(src[i-1])):
+			i += 2
+			for i < n {
+				if src[i] == '\\' && i+1 < n {
+					i += 2
+					continue
+				}
+				if src[i] == '\'' {
+					if i+1 < n && src[i+1] == '\'' {
+						i += 2
+						continue
+					}
+					i++
+					break
+				}
+				i++
+			}
+		case src[i] == '\'':
+			i++
+			for i < n {
+				if src[i] == '\'' {
+					if i+1 < n && src[i+1] == '\'' {
+						i += 2
+						continue
+					}
+					i++
+					break
+				}
+				i++
+			}
+		case src[i] == '$':
+			if delim := dollarTag(src, i); delim != "" {
+				i += len(delim)
+				for i < n {
+					if hasDelimAt(src, i, delim) {
+						i += len(delim)
+						break
 					}
 					i++
 				}
