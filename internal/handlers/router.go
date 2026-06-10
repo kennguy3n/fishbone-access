@@ -37,9 +37,11 @@ type Deps struct {
 	// pool, which is owned and closed by the ztna-api main (so it is not a
 	// leaked, never-closed pool).
 	DB *gorm.DB
-	// Encryptor opens connector secret envelopes for the provisioning /
-	// JML / reconciliation services. When nil the DBConnectorResolver still
-	// resolves connectors that have no sealed secrets.
+	// Encryptor seals/opens the per-user TOTP secrets behind step-up MFA
+	// (wired into mfa.NewTOTPMFAVerifier). Connector secret envelopes are NOT
+	// handled here — those go through ConnectorEncryptor below. When this is a
+	// passthrough/disabled encryptor, stored TOTP secrets are unprotected, so
+	// the ztna-api boot warns rather than silently weakening MFA.
 	Encryptor crypto.Encryptor
 	// Disabler disables (blocks) a user in iam-core for the leaver kill
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded

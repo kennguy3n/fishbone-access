@@ -13,6 +13,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
 // pamTestDeps builds a router-ready Deps with two tenants and a token matrix
@@ -47,9 +48,10 @@ func pamTestDeps(t *testing.T) Deps {
 			"tok-a-perm-mfa": {Subject: "user-a", TenantID: "tenant-a", Scopes: []string{"pam.takeover"}, MFASatisfied: true},
 			"tok-b-perm-mfa": {Subject: "user-b", TenantID: "tenant-b", Scopes: []string{"pam.takeover"}, MFASatisfied: true},
 		}},
-		DB:        db,
-		Encryptor: crypto.PassthroughEncryptor{},
-		Ready:     ready,
+		DB:                 db,
+		Encryptor:          crypto.PassthroughEncryptor{},
+		ConnectorEncryptor: access.PassthroughEncryptor{},
+		Ready:              ready,
 	}
 }
 

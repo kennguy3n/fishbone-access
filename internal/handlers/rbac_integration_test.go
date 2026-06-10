@@ -21,6 +21,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 )
@@ -131,10 +132,11 @@ func newRBACTestEnv(t *testing.T) rbacTestEnv {
 			"tok-stranger": {Subject: "user-stranger", TenantID: "tenant-a"},
 			"tok-b-owner":  {Subject: "user-b-owner", TenantID: "tenant-b"},
 		}},
-		DB:        db,
-		Encryptor: crypto.PassthroughEncryptor{},
-		Ready:     ready,
-		RBAC:      rbac,
+		DB:                 db,
+		Encryptor:          crypto.PassthroughEncryptor{},
+		ConnectorEncryptor: access.PassthroughEncryptor{},
+		Ready:              ready,
+		RBAC:               rbac,
 		// Composite verifier with only the TOTP leg wired; a 6-digit code routes
 		// to it. Exercises the production step-up path.
 		StepUpMFA: mfa.NewCompositeMFAVerifier(nil, totpVerifier),

@@ -300,6 +300,43 @@ func TestApplyConflictingDefinitionSurfaces(t *testing.T) {
 	}
 }
 
+// TestSameDefinitionIsKeyOrderAndWhitespaceStable locks the contract the
+// conflict check relies on: two byte-different encodings of the SAME policy
+// (reordered JSON keys, extra whitespace) must compare equal, so a JSONB
+// round-trip never reads as a false conflict (spurious 409). It also pins the
+// reflect.DeepEqual nil-vs-empty concern: ParsePolicyDefinition routes every
+// definition through normalizeSet (which always returns a non-nil slice) and
+// rejects empty subject/resource sets, so an "absent field" can never reach the
+// comparison as nil on one side and []string{} on the other.
+func TestSameDefinitionIsKeyOrderAndWhitespaceStable(t *testing.T) {
+	// Same policy, different byte encodings: key order flipped + whitespace.
+	a := []byte(`{"action":"grant","subjects":["role:admin","role:sec"],"resources":["sys:db"]}`)
+	b := []byte("{\n  \"resources\": [\"sys:db\"],\n  \"subjects\": [\"role:sec\", \"role:admin\"],\n  \"action\": \"grant\"\n}")
+	same, err := sameDefinition(a, b)
+	if err != nil {
+		t.Fatalf("sameDefinition: %v", err)
+	}
+	if !same {
+		t.Fatal("expected key-reordered/whitespace-different encodings of the same policy to compare equal")
+	}
+
+	// A genuinely different definition (different action) must read as different.
+	c := []byte(`{"action":"deny","subjects":["role:admin","role:sec"],"resources":["sys:db"]}`)
+	diff, err := sameDefinition(a, c)
+	if err != nil {
+		t.Fatalf("sameDefinition: %v", err)
+	}
+	if diff {
+		t.Fatal("expected differing actions to compare unequal")
+	}
+
+	// An unparseable stored definition is surfaced as an error, not silently
+	// treated as "different" (which would mask corruption behind a 409).
+	if _, err := sameDefinition([]byte(`{"action":"grant"}`), a); err == nil {
+		t.Fatal("expected an error when the stored definition is invalid")
+	}
+}
+
 func TestApplySelectedTemplatesOnly(t *testing.T) {
 	svc, _, _, ws := newApplyService(t)
 	ctx := context.Background()
