@@ -17,6 +17,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
 
@@ -141,8 +142,8 @@ func (h *pamHandlers) register(g *gin.RouterGroup) {
 	pamG.GET("/sessions/:id", h.getSession)
 	pamG.GET("/sessions/:id/replay", h.getReplay)
 
-	// Live session control: RequirePermission("pam.takeover") + step-up MFA.
-	ctrl := pamG.Group("/sessions/:id", middleware.RequirePermission("pam.takeover"), middleware.RequireMFA())
+	// Live session control: RequirePermission(pam.takeover) + step-up MFA.
+	ctrl := pamG.Group("/sessions/:id", middleware.RequirePermission(authz.PermPAMTakeover), middleware.RequireMFA())
 	ctrl.POST("/pause", h.pauseSession)
 	ctrl.POST("/resume", h.resumeSession)
 	ctrl.POST("/terminate", h.terminateSession)

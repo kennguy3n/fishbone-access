@@ -40,6 +40,7 @@ export type MessageKey =
   | "nav.pam.targets"
   | "nav.pam.leases"
   | "nav.pam.sessions"
+  | "nav.rolesPermissions"
   | "nav.settings"
   // WS5 — access-request AI risk review surface.
   | "requests.risk.title"
@@ -85,6 +86,7 @@ const en: Catalog = {
   "nav.pam.targets": "PAM targets",
   "nav.pam.leases": "JIT leases",
   "nav.pam.sessions": "Live sessions",
+  "nav.rolesPermissions": "Roles & permissions",
   "nav.settings": "Settings",
   "requests.risk.title": "AI risk review",
   "requests.risk.score": "Risk score",
@@ -128,6 +130,7 @@ const zhHans: Partial<Catalog> = {
   "nav.pam.targets": "PAM 目标",
   "nav.pam.leases": "即时租约",
   "nav.pam.sessions": "实时会话",
+  "nav.rolesPermissions": "角色与权限",
   "nav.settings": "设置",
   "requests.risk.title": "AI 风险评审",
   "requests.risk.score": "风险评分",
@@ -171,6 +174,7 @@ const zhHant: Partial<Catalog> = {
   "nav.pam.targets": "PAM 目標",
   "nav.pam.leases": "即時租約",
   "nav.pam.sessions": "即時工作階段",
+  "nav.rolesPermissions": "角色與權限",
   "nav.settings": "設定",
   "requests.risk.title": "AI 風險審查",
   "requests.risk.score": "風險評分",
@@ -214,6 +218,7 @@ const ms: Partial<Catalog> = {
   "nav.pam.targets": "Sasaran PAM",
   "nav.pam.leases": "Pajakan JIT",
   "nav.pam.sessions": "Sesi langsung",
+  "nav.rolesPermissions": "Peranan & kebenaran",
   "nav.settings": "Tetapan",
   "requests.risk.title": "Semakan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -257,6 +262,7 @@ const id: Partial<Catalog> = {
   "nav.pam.targets": "Target PAM",
   "nav.pam.leases": "Sewa JIT",
   "nav.pam.sessions": "Sesi langsung",
+  "nav.rolesPermissions": "Peran & izin",
   "nav.settings": "Pengaturan",
   "requests.risk.title": "Tinjauan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -300,6 +306,7 @@ const th: Partial<Catalog> = {
   "nav.pam.targets": "เป้าหมาย PAM",
   "nav.pam.leases": "สัญญาเช่า JIT",
   "nav.pam.sessions": "เซสชันสด",
+  "nav.rolesPermissions": "บทบาทและสิทธิ์",
   "nav.settings": "การตั้งค่า",
   "requests.risk.title": "การตรวจสอบความเสี่ยงด้วย AI",
   "requests.risk.score": "คะแนนความเสี่ยง",
@@ -343,6 +350,7 @@ const vi: Partial<Catalog> = {
   "nav.pam.targets": "Mục tiêu PAM",
   "nav.pam.leases": "Hợp đồng JIT",
   "nav.pam.sessions": "Phiên trực tiếp",
+  "nav.rolesPermissions": "Vai trò & quyền",
   "nav.settings": "Cài đặt",
   "requests.risk.title": "Đánh giá rủi ro bằng AI",
   "requests.risk.score": "Điểm rủi ro",
@@ -386,6 +394,7 @@ const ja: Partial<Catalog> = {
   "nav.pam.targets": "PAM ターゲット",
   "nav.pam.leases": "JIT リース",
   "nav.pam.sessions": "ライブセッション",
+  "nav.rolesPermissions": "ロールと権限",
   "nav.settings": "設定",
   "requests.risk.title": "AI リスクレビュー",
   "requests.risk.score": "リスクスコア",
@@ -429,6 +438,7 @@ const ko: Partial<Catalog> = {
   "nav.pam.targets": "PAM 대상",
   "nav.pam.leases": "JIT 리스",
   "nav.pam.sessions": "실시간 세션",
+  "nav.rolesPermissions": "역할 및 권한",
   "nav.settings": "설정",
   "requests.risk.title": "AI 위험 검토",
   "requests.risk.score": "위험 점수",
@@ -472,6 +482,7 @@ const ar: Partial<Catalog> = {
   "nav.pam.targets": "أهداف PAM",
   "nav.pam.leases": "عقود JIT",
   "nav.pam.sessions": "الجلسات الحية",
+  "nav.rolesPermissions": "الأدوار والأذونات",
   "nav.settings": "الإعدادات",
   "requests.risk.title": "مراجعة المخاطر بالذكاء الاصطناعي",
   "requests.risk.score": "درجة المخاطر",
@@ -515,6 +526,7 @@ const de: Partial<Catalog> = {
   "nav.pam.targets": "PAM-Ziele",
   "nav.pam.leases": "JIT-Leases",
   "nav.pam.sessions": "Live-Sitzungen",
+  "nav.rolesPermissions": "Rollen & Berechtigungen",
   "nav.settings": "Einstellungen",
   "requests.risk.title": "KI-Risikoprüfung",
   "requests.risk.score": "Risikobewertung",
@@ -558,6 +570,7 @@ const fr: Partial<Catalog> = {
   "nav.pam.targets": "Cibles PAM",
   "nav.pam.leases": "Baux JIT",
   "nav.pam.sessions": "Sessions en direct",
+  "nav.rolesPermissions": "Rôles et autorisations",
   "nav.settings": "Paramètres",
   "requests.risk.title": "Évaluation des risques par l'IA",
   "requests.risk.score": "Score de risque",

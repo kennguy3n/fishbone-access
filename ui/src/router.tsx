@@ -87,6 +87,11 @@ const PamSessions = lazyPage(() =>
 const Settings = lazyPage(() =>
   import("@/routes/Settings").then((m) => ({ default: m.Settings })),
 );
+const RolesPermissions = lazyPage(() =>
+  import("@/routes/RolesPermissions").then((m) => ({
+    default: m.RolesPermissions,
+  })),
+);
 const Workflows = lazyPage(() =>
   import("@/routes/Workflows").then((m) => ({ default: m.Workflows })),
 );
@@ -144,6 +149,7 @@ const appRoutes = [
   page("/pam/leases", PamLeases),
   page("/pam/sessions", PamSessions),
   page("/settings", Settings),
+  page("/settings/roles", RolesPermissions),
 ];
 
 const routeTree = rootRoute.addChildren([
