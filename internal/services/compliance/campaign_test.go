@@ -290,6 +290,80 @@ func TestCloseCampaignCompletesTeardownAfterRequestCancel(t *testing.T) {
 	}
 }
 
+// hangingRevoker blocks on the context until it is cancelled (or its deadline
+// fires), then returns the context error — standing in for a connector that
+// stops responding mid-teardown.
+type hangingRevoker struct{ calls int }
+
+func (h *hangingRevoker) RevokeGrant(ctx context.Context, _, _ uuid.UUID, _, _ string) error {
+	h.calls++
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// TestCloseCampaignBoundsHungRevoke proves the post-commit teardown is bounded:
+// because the loop runs request-detached (no ambient deadline), a connector that
+// never returns must not hang the goroutine forever. With a per-revocation
+// timeout the close aborts deterministically, leaving the item un-stamped so a
+// convergent re-close (with a healthy revoker) finishes the teardown. Without
+// the bound this test would block until the test binary's own timeout.
+func TestCloseCampaignBoundsHungRevoke(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	g1 := seedGrant(t, db, ws, conn, "u1", "r1", "reader")
+	ctx := context.Background()
+
+	hung := &hangingRevoker{}
+	svc := NewCertificationService(db, hung)
+	svc.revokeTimeout = 50 * time.Millisecond // shrink so the test is fast
+
+	camp, _, _ := svc.StartCampaign(ctx, ws, CampaignInput{Name: "c"}, "auditor")
+	items, _ := svc.ListItems(ctx, ws, camp.ID, "")
+	if err := svc.SubmitDecision(ctx, ws, camp.ID, items[0].ItemID, models.CertificationDecisionRevoke, "auditor", ""); err != nil {
+		t.Fatalf("decision: %v", err)
+	}
+
+	_, err := svc.CloseCampaign(ctx, ws, camp.ID, "auditor")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("close with hung revoker must abort with a deadline, got %v", err)
+	}
+	if hung.calls != 1 {
+		t.Fatalf("expected the hung revoke to be attempted once, got %d", hung.calls)
+	}
+
+	// The campaign committed closed, but the hung revoke aborted before the
+	// revoked_at stamp, so the item is still pending teardown.
+	var unstamped int64
+	if err := db.WithContext(ctx).Model(&models.CertificationItem{}).
+		Where("workspace_id = ? AND campaign_id = ? AND decision = ? AND revoked_at IS NULL",
+			ws, camp.ID, models.CertificationDecisionRevoke).
+		Count(&unstamped).Error; err != nil {
+		t.Fatalf("count unstamped: %v", err)
+	}
+	if unstamped != 1 {
+		t.Fatalf("hung revoke must leave the item un-stamped for re-close, got %d unstamped", unstamped)
+	}
+
+	// A convergent re-close with a healthy revoker finishes the teardown.
+	healthy := newFakeRevoker(db)
+	if _, err := NewCertificationService(db, healthy).CloseCampaign(ctx, ws, camp.ID, "auditor"); err != nil {
+		t.Fatalf("re-close must converge, got %v", err)
+	}
+	if healthy.callCount(g1) != 1 {
+		t.Fatalf("re-close must apply the outstanding revoke once, got %d", healthy.callCount(g1))
+	}
+	if err := db.WithContext(ctx).Model(&models.CertificationItem{}).
+		Where("workspace_id = ? AND campaign_id = ? AND decision = ? AND revoked_at IS NULL",
+			ws, camp.ID, models.CertificationDecisionRevoke).
+		Count(&unstamped).Error; err != nil {
+		t.Fatalf("re-count unstamped: %v", err)
+	}
+	if unstamped != 0 {
+		t.Fatalf("re-close must stamp the revoked item, %d left unstamped", unstamped)
+	}
+}
+
 func TestCloseWithoutRevokerFailsClosed(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")

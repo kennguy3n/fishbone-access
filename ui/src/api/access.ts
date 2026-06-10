@@ -825,10 +825,14 @@ export const verifyChain = () =>
     method: "GET",
   });
 
-export function useEvidence(filter: EvidenceFilter = {}) {
+export function useEvidence(
+  filter: EvidenceFilter = {},
+  options?: Partial<UseQueryOptions<EvidenceRecord[], ApiError>>,
+) {
   return useQuery<EvidenceRecord[], ApiError>({
     queryKey: qk.evidence(filter),
     queryFn: () => listEvidence(filter),
+    ...options,
   });
 }
 

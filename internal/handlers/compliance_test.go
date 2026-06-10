@@ -46,9 +46,13 @@ func complianceTestDeps(t *testing.T) Deps {
 			t.Fatalf("seed member %s/%s: %v", tenant, user, err)
 		}
 	}
-	// user-a: operator (NO compliance.export); user-aud: auditor (HAS it).
+	// user-a: operator (PermReviewRead+Respond, but NO compliance.read /
+	// compliance.export / review.start); user-aud: auditor (compliance.read +
+	// compliance.export, review.read, but NO review.start); user-adm: admin
+	// (holds the campaign-management review.start/complete/admin perms).
 	seedMember("tenant-a", "user-a", authz.RoleOperator)
 	seedMember("tenant-a", "user-aud", authz.RoleAuditor)
+	seedMember("tenant-a", "user-adm", authz.RoleAdmin)
 	seedMember("tenant-b", "user-b", authz.RoleOperator)
 
 	ready := &atomic.Bool{}
@@ -64,6 +68,8 @@ func complianceTestDeps(t *testing.T) Deps {
 			"tok-perm": {Subject: "user-aud", TenantID: "tenant-a"},
 			// auditor WITH MFA -> both gates satisfied.
 			"tok-export": {Subject: "user-aud", TenantID: "tenant-a", MFASatisfied: true},
+			// admin -> holds review.start/complete/admin for campaign management.
+			"tok-adm": {Subject: "user-adm", TenantID: "tenant-a"},
 		}},
 		DB:        db,
 		Encryptor: crypto.PassthroughEncryptor{},
@@ -146,8 +152,8 @@ func TestRbacMeReflectsRole(t *testing.T) {
 func TestCampaignCrossTenantIsolationHandler(t *testing.T) {
 	r := NewRouter(complianceTestDeps(t))
 
-	// tenant-a starts a campaign.
-	w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-a", map[string]any{"name": "Q1"})
+	// tenant-a starts a campaign (admin holds review.start).
+	w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-adm", map[string]any{"name": "Q1"})
 	if w.Code != http.StatusCreated && w.Code != http.StatusOK {
 		t.Fatalf("start campaign: got %d body=%s", w.Code, w.Body.String())
 	}
@@ -171,5 +177,50 @@ func TestCampaignCrossTenantIsolationHandler(t *testing.T) {
 	// tenant-b must NOT be able to read tenant-a's campaign -> 404.
 	if w := do(t, r, http.MethodGet, "/api/v1/compliance/campaigns/"+id, "tok-b", nil); w.Code != http.StatusNotFound {
 		t.Fatalf("cross-tenant read: got %d, want 404", w.Code)
+	}
+}
+
+// TestComplianceReadAuthzGate locks in the read-side permission model:
+//
+//   - The evidence-dashboard surface (evidence stream, coverage, chain verify)
+//     requires compliance.read, which the auditor holds but the operator does
+//     NOT — so an operator is 403'd off the tamper-evident chain while an
+//     auditor reads it (200).
+//   - Certification-campaign reads mirror the /access-reviews gating
+//     (PermReviewRead), which the operator DOES hold, so a campaign reviewer
+//     who is an operator can still reach their worklist (the campaign list is
+//     readable; 200).
+//
+// This is the fail-closed gate that distinguishes the compliance/auditor view
+// from the reviewer worklist; a regression that drops either gate would expose
+// the chain to plain members or lock reviewers out of their queue.
+func TestComplianceReadAuthzGate(t *testing.T) {
+	r := NewRouter(complianceTestDeps(t))
+
+	// Evidence dashboard reads require compliance.read. (coverage needs a
+	// framework query; the others take none.)
+	for _, path := range []string{
+		"/api/v1/compliance/evidence",
+		"/api/v1/compliance/coverage?framework=SOC%202",
+		"/api/v1/compliance/chain/verify",
+	} {
+		// operator lacks compliance.read -> 403.
+		if w := do(t, r, http.MethodGet, path, "tok-a", nil); w.Code != http.StatusForbidden {
+			t.Fatalf("operator %s: got %d body=%s, want 403", path, w.Code, w.Body.String())
+		}
+		// auditor holds compliance.read -> 200.
+		if w := do(t, r, http.MethodGet, path, "tok-export", nil); w.Code != http.StatusOK {
+			t.Fatalf("auditor %s: got %d body=%s, want 200", path, w.Code, w.Body.String())
+		}
+	}
+
+	// Campaign list mirrors review.read, which the operator holds -> 200
+	// (a reviewer who is an operator must reach their worklist).
+	if w := do(t, r, http.MethodGet, "/api/v1/compliance/campaigns", "tok-a", nil); w.Code != http.StatusOK {
+		t.Fatalf("operator campaign list: got %d body=%s, want 200", w.Code, w.Body.String())
+	}
+	// Starting a campaign requires review.start, which the operator lacks -> 403.
+	if w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-a", map[string]any{"name": "X"}); w.Code != http.StatusForbidden {
+		t.Fatalf("operator campaign start: got %d body=%s, want 403", w.Code, w.Body.String())
 	}
 }

@@ -63,23 +63,43 @@ func newComplianceHandlers(deps Deps) *complianceHandlers {
 }
 
 // register mounts the compliance routes on the tenant-scoped group. The group
-// must already carry Auth + ResolveTenant + RequireTenant.
+// must already carry Auth + ResolveTenant + RequireTenant, and (in production)
+// AuthzMiddleware so the RequirePermission gates below enforce; when RBAC is
+// not wired RequirePermission no-ops, preserving pre-RBAC behavior.
+//
+// Every route is permission-gated (fail-closed). Two permission families apply:
+//
+//   - The evidence-dashboard read surface (raw evidence stream, control
+//     coverage, chain verification) is the compliance/auditor view, so it
+//     requires PermComplianceRead — deliberately NOT held by RoleOperator, so a
+//     plain member cannot read the tamper-evident chain or coverage of a
+//     workspace.
+//   - Certification campaigns are the compliance-domain expansion of access
+//     reviews, built on the same review-service primitives, so they mirror the
+//     existing /access-reviews gating exactly (PermReviewRead/Start/Respond/
+//     Complete/Admin). This keeps the reviewer worklist reachable by an
+//     operator who is assigned as a campaign reviewer (RoleOperator holds
+//     PermReviewRead+PermReviewRespond) — gating campaign reads on
+//     PermComplianceRead instead would lock those reviewers out of their own
+//     queue.
+//
+// Export stays the most-privileged path: PermComplianceExport AND step-up MFA.
 func (h *complianceHandlers) register(g *gin.RouterGroup) {
-	// Compliance evidence dashboard read surface.
-	g.GET("/compliance/evidence", h.listEvidence)
-	g.GET("/compliance/coverage", h.coverage)
-	g.GET("/compliance/chain/verify", h.verifyChain)
+	// Compliance evidence dashboard read surface (auditor/compliance view).
+	g.GET("/compliance/evidence", middleware.RequirePermission(authz.PermComplianceRead), h.listEvidence)
+	g.GET("/compliance/coverage", middleware.RequirePermission(authz.PermComplianceRead), h.coverage)
+	g.GET("/compliance/chain/verify", middleware.RequirePermission(authz.PermComplianceRead), h.verifyChain)
 
-	// Certification campaigns.
-	g.POST("/compliance/campaigns", h.startCampaign)
-	g.GET("/compliance/campaigns", h.listCampaigns)
-	g.GET("/compliance/campaigns/:id", h.campaignReport)
-	g.GET("/compliance/campaigns/:id/items", h.campaignItems)
-	g.POST("/compliance/campaigns/:id/items/:itemID/decision", h.campaignDecision)
+	// Certification campaigns — mirror the /access-reviews permission family.
+	g.POST("/compliance/campaigns", middleware.RequirePermission(authz.PermReviewStart), h.startCampaign)
+	g.GET("/compliance/campaigns", middleware.RequirePermission(authz.PermReviewRead), h.listCampaigns)
+	g.GET("/compliance/campaigns/:id", middleware.RequirePermission(authz.PermReviewRead), h.campaignReport)
+	g.GET("/compliance/campaigns/:id/items", middleware.RequirePermission(authz.PermReviewRead), h.campaignItems)
+	g.POST("/compliance/campaigns/:id/items/:itemID/decision", middleware.RequirePermission(authz.PermReviewRespond), h.campaignDecision)
 	// Dry-run preview of the destructive close (test-before-effect guardrail).
-	g.GET("/compliance/campaigns/:id/revocation-preview", h.previewRevocations)
-	g.POST("/compliance/campaigns/:id/close", h.closeCampaign)
-	g.POST("/compliance/campaigns/overdue-enforce", h.enforceOverdue)
+	g.GET("/compliance/campaigns/:id/revocation-preview", middleware.RequirePermission(authz.PermReviewRead), h.previewRevocations)
+	g.POST("/compliance/campaigns/:id/close", middleware.RequirePermission(authz.PermReviewComplete), h.closeCampaign)
+	g.POST("/compliance/campaigns/overdue-enforce", middleware.RequirePermission(authz.PermReviewAdmin), h.enforceOverdue)
 
 	// Evidence-pack export: gated by the authz.PermComplianceExport
 	// ("compliance.export") RBAC permission AND step-up MFA, and itself

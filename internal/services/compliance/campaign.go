@@ -22,6 +22,18 @@ import (
 // keeping the round-trip count low for large campaigns.
 const campaignItemInsertBatch = 500
 
+// campaignRevokeTimeout bounds a SINGLE staged-revoke teardown at campaign
+// close (one RevokeGrant connector round trip + the revoked_at stamp). The
+// post-commit teardown loop runs on a request-detached context (so a client
+// disconnect can't abandon the decided end state), which means it has no
+// ambient deadline of its own — without a per-step bound a hung connector
+// would block the goroutine indefinitely. The budget is applied PER revocation
+// rather than across the whole loop so a large campaign isn't starved by a
+// single shared deadline, and a timeout aborts that close so a convergent
+// re-close retries exactly the un-torn-down items. 15s matches the codebase's
+// other request-detached teardowns (gateway session flush, iamcore token mint).
+const campaignRevokeTimeout = 15 * time.Second
+
 // GrantRevoker is the subset of the provisioning service the certification
 // service needs to tear a grant down when a revoke decision is APPLIED at
 // campaign close. It is the same contract the 1C review service uses; reusing
@@ -54,13 +66,17 @@ type CertificationService struct {
 	db      *gorm.DB
 	revoker GrantRevoker
 	now     func() time.Time
+	// revokeTimeout bounds a single post-commit staged-revoke teardown; it
+	// defaults to campaignRevokeTimeout and is overridable in tests to exercise
+	// the hung-connector path without a real wall-clock wait.
+	revokeTimeout time.Duration
 }
 
 // NewCertificationService wires the service. revoker may be nil in read-only
 // contexts; a close that must apply staged revokes then fails closed with
 // ErrNoRevoker rather than marking grants revoked it cannot tear down.
 func NewCertificationService(db *gorm.DB, revoker GrantRevoker) *CertificationService {
-	return &CertificationService{db: db, revoker: revoker, now: time.Now}
+	return &CertificationService{db: db, revoker: revoker, now: time.Now, revokeTimeout: campaignRevokeTimeout}
 }
 
 // SetClock overrides the time source (tests).
@@ -414,17 +430,36 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 	// on the request staying connected.
 	applyCtx := context.WithoutCancel(ctx)
 	for i := range pendingRevokes {
-		p := pendingRevokes[i]
-		if err := s.revoker.RevokeGrant(applyCtx, workspaceID, p.GrantID, actor, defaultReason(p.Reason, "revoked by certification campaign")); err != nil {
-			return CampaignReport{}, fmt.Errorf("compliance: apply revocation for grant %s: %w", p.GrantID, err)
-		}
-		if err := s.db.WithContext(applyCtx).Model(&models.CertificationItem{}).
-			Where("workspace_id = ? AND id = ? AND revoked_at IS NULL", workspaceID, p.ItemID).
-			Update("revoked_at", s.now().UTC()).Error; err != nil {
-			return CampaignReport{}, fmt.Errorf("compliance: stamp revoked item %s: %w", p.ItemID, err)
+		if err := s.applyStagedRevoke(applyCtx, workspaceID, actor, pendingRevokes[i]); err != nil {
+			return CampaignReport{}, err
 		}
 	}
-	return s.Report(applyCtx, workspaceID, campaignID)
+
+	reportCtx, cancel := context.WithTimeout(applyCtx, s.revokeTimeout)
+	defer cancel()
+	return s.Report(reportCtx, workspaceID, campaignID)
+}
+
+// applyStagedRevoke tears one staged revoke down and stamps the item as
+// revoked, under a per-revocation timeout derived from the request-detached
+// close context (see campaignRevokeTimeout). Bounding each revoke individually
+// keeps one hung connector from blocking the whole teardown goroutine forever
+// while still giving every item its own full budget; an error (including a
+// deadline) aborts the close so a convergent re-close resumes exactly the
+// un-stamped items. RevokeGrant is idempotent per the GrantRevoker contract, so
+// a grant already revoked out-of-band returns nil and does not strand the rest.
+func (s *CertificationService) applyStagedRevoke(ctx context.Context, workspaceID uuid.UUID, actor string, p RevocationPreview) error {
+	ctx, cancel := context.WithTimeout(ctx, s.revokeTimeout)
+	defer cancel()
+	if err := s.revoker.RevokeGrant(ctx, workspaceID, p.GrantID, actor, defaultReason(p.Reason, "revoked by certification campaign")); err != nil {
+		return fmt.Errorf("compliance: apply revocation for grant %s: %w", p.GrantID, err)
+	}
+	if err := s.db.WithContext(ctx).Model(&models.CertificationItem{}).
+		Where("workspace_id = ? AND id = ? AND revoked_at IS NULL", workspaceID, p.ItemID).
+		Update("revoked_at", s.now().UTC()).Error; err != nil {
+		return fmt.Errorf("compliance: stamp revoked item %s: %w", p.ItemID, err)
+	}
+	return nil
 }
 
 // EnforceOverdue stamps overdue_at on every running campaign that is past its

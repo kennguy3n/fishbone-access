@@ -24,6 +24,7 @@ import {
 } from "@/api/access";
 
 const EXPORT_PERMISSION = "compliance.export";
+const READ_PERMISSION = "compliance.read";
 
 // Compliance evidence dashboard: control coverage by framework (computed from
 // the audit hash chain), a tamper-evidence check on that chain, an evidence
@@ -32,11 +33,36 @@ const EXPORT_PERMISSION = "compliance.export";
 // mirrors that gate so the affordance reads honestly.
 export function ComplianceEvidence() {
   const [framework, setFramework] = useState<Framework>("SOC 2");
+  const { data: access } = useMyAccess();
+  // compliance.read gates this dashboard server-side (the auditor/compliance
+  // surface; deliberately NOT held by plain operators). Mirror that here so a
+  // member without it sees an honest empty state rather than a wall of 403s.
+  // The server gate is authoritative; this only governs the affordance, and we
+  // wait for /rbac/me to resolve before deciding so we don't flash the denial.
+  const accessLoaded = access !== undefined;
+  const canRead = access?.permissions.includes(READ_PERMISSION) ?? false;
 
-  const coverageQ = useCoverage(framework);
+  const coverageQ = useCoverage(framework, undefined, undefined, {
+    enabled: canRead,
+  });
   // Newest-first so the bounded read returns the most-recent events the card
   // advertises (the server caps the limit; order=desc takes the latest N).
-  const evidenceQ = useEvidence({ limit: 50, order: "desc" });
+  const evidenceQ = useEvidence({ limit: 50, order: "desc" }, { enabled: canRead });
+
+  if (accessLoaded && !canRead) {
+    return (
+      <>
+        <PageHeader
+          title="Compliance evidence"
+          subtitle="Control coverage and tamper-evident evidence assembled as a side effect of normal access operations."
+        />
+        <EmptyState
+          title="Compliance evidence is restricted"
+          description="Viewing the evidence dashboard requires the compliance.read permission. Ask a workspace owner or admin for the auditor role."
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -46,7 +72,7 @@ export function ComplianceEvidence() {
         actions={<ExportButton framework={framework} />}
       />
 
-      <ChainStatus />
+      <ChainStatus enabled={canRead} />
 
       <div className="pill-tabs" role="tablist" aria-label="Framework">
         {FRAMEWORKS.map((f) => (
@@ -63,7 +89,7 @@ export function ComplianceEvidence() {
       </div>
 
       <AsyncBoundary
-        isLoading={coverageQ.isLoading}
+        isLoading={!accessLoaded || coverageQ.isLoading}
         error={coverageQ.error}
         data={coverageQ.data}
         onRetry={coverageQ.refetch}
@@ -99,7 +125,7 @@ export function ComplianceEvidence() {
         subtitle="Most recent control-relevant events on the audit chain."
       >
         <AsyncBoundary
-          isLoading={evidenceQ.isLoading}
+          isLoading={!accessLoaded || evidenceQ.isLoading}
           error={evidenceQ.error}
           data={evidenceQ.data}
           onRetry={evidenceQ.refetch}
@@ -118,8 +144,8 @@ export function ComplianceEvidence() {
   );
 }
 
-function ChainStatus() {
-  const chainQ = useChainVerification();
+function ChainStatus({ enabled }: { enabled: boolean }) {
+  const chainQ = useChainVerification({ enabled });
   if (chainQ.isLoading || !chainQ.data) return null;
   const v = chainQ.data;
   return (
