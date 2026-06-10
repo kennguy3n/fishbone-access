@@ -110,6 +110,7 @@ func NewRouter(deps Deps) *gin.Engine {
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
+		newPAMHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
 	}

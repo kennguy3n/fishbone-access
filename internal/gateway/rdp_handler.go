@@ -170,8 +170,8 @@ func (p *RDPProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "rdp-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
@@ -468,6 +468,10 @@ type rdpRelayState struct {
 // into the Client Info PDU and dropping gated virtual-channel PDUs.
 func (p *RDPProxy) forwardOperator(ctx context.Context, operator, upstream net.Conn, session *models.PAMSession, rec *IORecorder, st *rdpRelayState) {
 	for {
+		// Honour the live soft-pause gate before reading the next operator
+		// PDU: while an admin has frozen the session no further input PDU is
+		// pulled or forwarded to the upstream RDP server.
+		rec.WaitWhilePaused()
 		pdu, err := readTPKT(operator)
 		if err != nil {
 			return

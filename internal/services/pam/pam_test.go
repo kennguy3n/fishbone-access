@@ -538,6 +538,44 @@ func TestSessionManagerTerminateInvokesController(t *testing.T) {
 	}
 }
 
+// Pausing a session that is no longer active is a state-machine conflict, not a
+// malformed request: setPause must return ErrSessionNotActive (which the HTTP
+// edge maps to 409 Conflict), not the generic ErrValidation (400).
+func TestSessionManagerPauseNonActiveIsConflict(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	broker := NewBroker(db, v, nil)
+	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
+		WorkspaceID: ws, Name: "box", Protocol: models.PAMProtocolSSH,
+		Address: "host:22", Secret: Secret{Password: "pw"}, Actor: "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+	raw, _, err := broker.MintConnectToken(context.Background(), MintInput{WorkspaceID: ws, TargetID: target.ID, Subject: "alice", Actor: "admin"})
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	leased, err := broker.RedeemConnectToken(context.Background(), raw, "x")
+	if err != nil {
+		t.Fatalf("redeem: %v", err)
+	}
+
+	mgr := NewSessionManager(db, nil, nil)
+	if err := mgr.TerminateSession(context.Background(), ws, leased.Session.ID, "admin-bob"); err != nil {
+		t.Fatalf("TerminateSession: %v", err)
+	}
+
+	err = mgr.PauseSession(context.Background(), ws, leased.Session.ID, "admin-bob")
+	if !errors.Is(err, ErrSessionNotActive) {
+		t.Fatalf("pause terminated session: want ErrSessionNotActive, got %v", err)
+	}
+	if errors.Is(err, ErrValidation) {
+		t.Fatal("pause of non-active session must not be ErrValidation (would map to 400, not 409)")
+	}
+}
+
 func TestSessionManagerCloseIsIdempotentAuditOnce(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -651,9 +689,14 @@ func TestLogCommandContinuesSeqAfterPriorRow(t *testing.T) {
 	}
 }
 
-type fakeController struct{ terminated bool }
+type fakeController struct {
+	terminated bool
+	paused     bool
+}
 
 func (f *fakeController) Terminate(uuid.UUID) bool { f.terminated = true; return true }
+func (f *fakeController) Pause(uuid.UUID) bool     { f.paused = true; return true }
+func (f *fakeController) Resume(uuid.UUID) bool    { f.paused = false; return true }
 
 // --- step-up gate tests ---------------------------------------------------
 

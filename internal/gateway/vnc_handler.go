@@ -145,8 +145,8 @@ func (p *VNCProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "vnc-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
@@ -410,6 +410,11 @@ func (p *VNCProxy) splice(ctx context.Context, operator, upstream net.Conn, sess
 // stream.
 func (p *VNCProxy) forwardOperatorMessages(ctx context.Context, operator, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
+		// Honour the live soft-pause gate before reading the next operator
+		// message: while an admin has frozen the session no further RFB
+		// client message (pointer/key/cut-text) is pulled or forwarded to the
+		// upstream server.
+		rec.WaitWhilePaused()
 		msg, msgType, err := readRFBClientMessage(operator)
 		if err != nil {
 			return

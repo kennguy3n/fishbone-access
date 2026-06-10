@@ -400,6 +400,7 @@ func All() []any {
 		&PAMSessionCommand{},
 		&CertificationCampaign{},
 		&CertificationItem{},
+		&PAMLease{},
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},

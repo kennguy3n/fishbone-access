@@ -86,7 +86,7 @@ func TestReadRFBClientMessageExtensionFraming(t *testing.T) {
 	qaud := []byte{rfbCMsgQEMU, qemuSubAudio, 0x00, 0x02, 0, 2, 0, 0, 0x3E, 0x80}
 	// Extended clipboard: type + 3 pad + length(int32 negative) + body.
 	extClip := []byte{rfbCMsgClientCutText, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFA} // -6
-	extClip = append(extClip, []byte{0, 0, 0, 1, 0xDE, 0xAD}...)              // 4 flags + 2 payload = 6
+	extClip = append(extClip, []byte{0, 0, 0, 1, 0xDE, 0xAD}...)             // 4 flags + 2 payload = 6
 	// A trailing KeyEvent proves the previous frame ended exactly on boundary.
 	key := []byte{rfbCMsgKeyEvent, 0x01, 0, 0, 0, 0, 0, 0x42}
 

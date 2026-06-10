@@ -33,6 +33,7 @@ tags:
   - name: jml
   - name: orphans
   - name: sso
+  - name: pam
   - name: connectors
 paths:
   /me:
@@ -854,6 +855,264 @@ paths:
                   sso: { $ref: "#/components/schemas/SSOStatus" }
         "422": { $ref: "#/components/responses/Unprocessable" }
 
+  /pam/targets:
+    get:
+      tags: [pam]
+      summary: List PAM targets in the caller's workspace
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  targets:
+                    type: array
+                    items: { $ref: "#/components/schemas/PAMTarget" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [pam]
+      summary: Register a PAM target
+      description: |
+        Registers a privileged system the gateway proxies. The supplied secret
+        is sealed (AES-256-GCM) at rest and only ever decrypted into a live,
+        lease-authorized session — it is never returned by the API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePAMTarget" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMTarget" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /pam/leases:
+    get:
+      tags: [pam]
+      summary: List JIT leases in the caller's workspace
+      parameters:
+        - { name: target_id, in: query, schema: { type: string, format: uuid } }
+        - { name: subject, in: query, schema: { type: string } }
+        - { name: active_only, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leases:
+                    type: array
+                    items: { $ref: "#/components/schemas/PAMLease" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [pam]
+      summary: Request a JIT lease
+      description: |
+        Opens a lease in `requested` state. An AI risk assessment is computed at
+        request time (advisory, fail-open) and persisted for audit. The lease
+        must be approved before the credential broker will mint a connect token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestPAMLease" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMLease" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /pam/leases/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [pam]
+      summary: Get a JIT lease
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMLease" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /pam/leases/{id}/approve:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [pam]
+      summary: Approve a JIT lease
+      description: |
+        Grants the requested (or overridden) TTL window. The transition is
+        appended to the workspace audit hash chain. Only a `requested` lease can
+        be approved. Requires step-up MFA (a token without satisfied MFA is
+        rejected with 403).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration_override_seconds: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMLease" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /pam/leases/{id}/revoke:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [pam]
+      summary: Revoke a JIT lease
+      description: |
+        Kills a lease early (terminal). Any session still running on the lease
+        is torn down and the credential can no longer be brokered. Requires
+        step-up MFA (a token without satisfied MFA is rejected with 403).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMLease" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /pam/leases/expire:
+    post:
+      tags: [pam]
+      summary: Sweep and expire leases past their TTL
+      description: |
+        Idempotently claims and audits every live lease whose TTL has elapsed,
+        tearing down any sessions still bound to them. Safe to call repeatedly.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expired: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /pam/sessions:
+    get:
+      tags: [pam]
+      summary: List privileged sessions in the caller's workspace
+      parameters:
+        - { name: target_id, in: query, schema: { type: string, format: uuid } }
+        - { name: subject, in: query, schema: { type: string } }
+        - { name: active_only, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: "#/components/schemas/PAMSession" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /pam/sessions/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [pam]
+      summary: Get a privileged session
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PAMSession" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /pam/sessions/{id}/replay:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    get:
+      tags: [pam]
+      summary: Retrieve a session's recorded replay
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReplayResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /pam/sessions/{id}/pause:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [pam]
+      summary: Pause a live privileged session
+      description: |
+        Soft-pauses the operator→target byte flow (reversible). Requires the
+        `pam.takeover` permission and step-up MFA (fail-closed).
+      responses:
+        "200": { description: Paused }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /pam/sessions/{id}/resume:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [pam]
+      summary: Resume a paused privileged session
+      description: |
+        Releases a soft-pause. Requires the `pam.takeover` permission and
+        step-up MFA (fail-closed).
+      responses:
+        "200": { description: Resumed }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /pam/sessions/{id}/terminate:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    post:
+      tags: [pam]
+      summary: Terminate a live privileged session
+      description: |
+        Force-closes the session and tears down the proxy. Requires the
+        `pam.takeover` permission and step-up MFA (fail-closed); the action is
+        audited with the operator identity.
+      responses:
+        "200": { description: Terminated }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /connectors:
     get:
       tags: [connectors]
@@ -1545,6 +1804,113 @@ components:
         supported: { type: boolean }
         enforced: { type: boolean }
         details: { type: string }
+    PAMTarget:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name: { type: string }
+        protocol:
+          type: string
+          enum: [ssh, postgres, mysql, mssql, mongodb, redis, k8s-exec, rdp, vnc, http]
+        address: { type: string }
+        username: { type: string }
+        require_mfa: { type: boolean }
+        lease_ttl_seconds: { type: integer }
+        secret_rotated_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreatePAMTarget:
+      type: object
+      required: [name, protocol, address]
+      properties:
+        name: { type: string }
+        protocol:
+          type: string
+          enum: [ssh, postgres, mysql, mssql, mongodb, redis, k8s-exec, rdp, vnc, http]
+        address: { type: string }
+        username: { type: string }
+        require_mfa: { type: boolean }
+        lease_ttl_seconds: { type: integer }
+        secret:
+          type: object
+          description: One of password, private_key, or token must be supplied. Never returned by the API.
+          properties:
+            username: { type: string }
+            password: { type: string }
+            private_key: { type: string }
+            token: { type: string }
+    PAMLease:
+      type: object
+      description: |
+        A just-in-time grant of privileged access. The `state` field is the
+        server-derived machine state; it is never stored, only computed from the
+        (granted_at, activated_at, expires_at, revoked_at) tuple.
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        target_id: { type: string, format: uuid }
+        subject: { type: string }
+        requested_by: { type: string }
+        reason: { type: string }
+        request_id: { type: string, format: uuid, nullable: true }
+        approved_by: { type: string }
+        requested_ttl_seconds: { type: integer }
+        risk_level: { type: string }
+        risk_reason: { type: string }
+        risk_degraded: { type: boolean }
+        granted_at: { type: string, format: date-time, nullable: true }
+        activated_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        expired_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        revoke_reason: { type: string }
+        state:
+          type: string
+          enum: [requested, approved, active, expired, revoked]
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RequestPAMLease:
+      type: object
+      required: [target_id]
+      properties:
+        target_id: { type: string, format: uuid }
+        subject: { type: string, description: Defaults to the calling subject when omitted. }
+        ttl_seconds: { type: integer }
+        reason: { type: string }
+        request_id: { type: string, format: uuid }
+    PAMSession:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        target_id: { type: string, format: uuid }
+        subject: { type: string }
+        protocol: { type: string }
+        state: { type: string, enum: [active, ended, terminated] }
+        client_addr: { type: string }
+        replay_key: { type: string }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, nullable: true }
+        terminated_by: { type: string }
+        lease_id: { type: string, format: uuid, nullable: true }
+        paused: { type: boolean }
+        paused_by: { type: string }
+        paused_at: { type: string, format: date-time, nullable: true }
+    ReplayFrame:
+      type: object
+      properties:
+        direction: { type: string, enum: [input, output, control] }
+        at: { type: string, format: date-time }
+        payload: { type: string, format: byte, description: Base64-encoded frame bytes. }
+    ReplayResponse:
+      type: object
+      properties:
+        session_id: { type: string, format: uuid }
+        truncated: { type: boolean, description: True when the recording hit its size cap. }
+        frames:
+          type: array
+          items: { $ref: "#/components/schemas/ReplayFrame" }
     AccessConnector:
       type: object
       description: A workspace's connector instance. Secrets are never serialized.

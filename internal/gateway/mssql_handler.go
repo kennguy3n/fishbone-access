@@ -140,8 +140,8 @@ func (p *MSSQLProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "mssql-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
@@ -462,6 +462,10 @@ func (p *MSSQLProxy) relayUpstreamMessages(operator io.Writer, upstream io.Reade
 // desynchronised protocol state (mirrors the MySQL proxy).
 func (p *MSSQLProxy) forwardOperatorMessages(ctx context.Context, operatorRead io.Reader, operatorOut io.Writer, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
+		// Honour the live soft-pause gate before reading the next operator
+		// message: while an admin has frozen the session no further TDS
+		// message is pulled or forwarded to the upstream server.
+		rec.WaitWhilePaused()
 		msgType, payload, err := readTDSMessage(operatorRead)
 		if err != nil {
 			return
