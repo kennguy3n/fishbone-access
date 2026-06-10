@@ -108,6 +108,41 @@ func TestExportPackAuthzGate(t *testing.T) {
 	}
 }
 
+// TestRbacMeReflectsRole asserts the self-scoped /rbac/me endpoint the UI
+// mirrors returns the caller's resolved role + permission set: an auditor holds
+// compliance.export, an operator does not. This is the source the evidence-pack
+// export button reads to decide whether to enable itself, so a regression here
+// would silently mis-gate the affordance.
+func TestRbacMeReflectsRole(t *testing.T) {
+	r := NewRouter(complianceTestDeps(t))
+
+	read := func(token string) (string, map[string]bool) {
+		w := do(t, r, http.MethodGet, "/api/v1/rbac/me", token, nil)
+		if w.Code != http.StatusOK {
+			t.Fatalf("rbac/me %s: got %d body=%s, want 200", token, w.Code, w.Body.String())
+		}
+		var out struct {
+			Role        string   `json:"role"`
+			Permissions []string `json:"permissions"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+			t.Fatalf("unmarshal rbac/me: %v", err)
+		}
+		set := map[string]bool{}
+		for _, p := range out.Permissions {
+			set[p] = true
+		}
+		return out.Role, set
+	}
+
+	if role, perms := read("tok-export"); role != "auditor" || !perms["compliance.export"] {
+		t.Fatalf("auditor: role=%q hasExport=%v, want auditor/true", role, perms["compliance.export"])
+	}
+	if role, perms := read("tok-a"); role != "operator" || perms["compliance.export"] {
+		t.Fatalf("operator: role=%q hasExport=%v, want operator/false", role, perms["compliance.export"])
+	}
+}
+
 func TestCampaignCrossTenantIsolationHandler(t *testing.T) {
 	r := NewRouter(complianceTestDeps(t))
 

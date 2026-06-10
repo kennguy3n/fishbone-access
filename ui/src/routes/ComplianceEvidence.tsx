@@ -12,6 +12,7 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import { formatDateTime, titleCase } from "@/lib/format";
 import {
   useMe,
+  useMyAccess,
   useCoverage,
   useChainVerification,
   useEvidence,
@@ -206,12 +207,18 @@ function EvidenceTimeline({ records }: { records: EvidenceRecord[] }) {
 function ExportButton({ framework }: { framework: Framework }) {
   const toast = useToast();
   const { data: me } = useMe();
+  // The export permission is an RBAC permission resolved from the caller's
+  // workspace role (server: RequirePermission(compliance.export)), NOT an IAM
+  // token scope — so it is read from /rbac/me, not me.scopes. MFA, by contrast,
+  // is a token-claim property, so it still comes from /me. Both gates are
+  // independently enforced server-side; this only governs the affordance.
+  const { data: access } = useMyAccess();
   const exportMut = useExportEvidencePack();
 
-  const hasScope = me ? hasPermission(me.scopes, EXPORT_PERMISSION) : false;
+  const hasPerm = access?.permissions.includes(EXPORT_PERMISSION) ?? false;
   const mfaOk = me?.mfa_satisfied ?? false;
-  const blocked = !hasScope || !mfaOk;
-  const reason = !hasScope
+  const blocked = !hasPerm || !mfaOk;
+  const reason = !hasPerm
     ? "Requires the compliance.export permission."
     : !mfaOk
       ? "Requires step-up MFA — re-authenticate to export."
@@ -248,24 +255,6 @@ function ExportButton({ framework }: { framework: Framework }) {
       </button>
     </span>
   );
-}
-
-// hasPermission mirrors the server-side middleware (RequirePermission): an
-// exact scope, a prefix wildcard ("compliance.*"), or the global "*" grants it.
-function hasPermission(scopes: string[] | undefined, permission: string): boolean {
-  if (!scopes) return false;
-  for (const scope of scopes) {
-    if (scope === "*" || scope === permission) return true;
-    if (scope.endsWith(".*")) {
-      const prefix = scope.slice(0, -1); // keep the trailing dot
-      // Mirror the server's strict-length guard (permission.go): a prefix
-      // wildcard like "compliance.*" must match something AFTER the dot, so a
-      // bare "compliance." never satisfies it. Keeps this client check a
-      // faithful, non-divergent mirror of the authoritative server rule.
-      if (permission.length > prefix.length && permission.startsWith(prefix)) return true;
-    }
-  }
-  return false;
 }
 
 function triggerDownload(blob: Blob, filename: string) {

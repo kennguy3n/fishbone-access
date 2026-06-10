@@ -264,6 +264,7 @@ export const qk = {
     ["certification-campaign", id, "revocation-preview"] as const,
   rbacRoles: ["rbac", "roles"] as const,
   rbacMembers: ["rbac", "members"] as const,
+  rbacMe: ["rbac", "me"] as const,
   connectors: (filter: ConnectorCatalogueFilter) =>
     ["connectors", filter] as const,
   connector: (provider: string) => ["connector", provider] as const,
@@ -1075,6 +1076,36 @@ export interface RbacMember {
   role: string;
   created_at: string;
   updated_at: string;
+}
+
+/** The caller's own resolved workspace role and the flat permission set it
+ * grants. Mirrors the server's RBAC enforcement so the UI can render
+ * permission-gated affordances honestly; the server remains the enforcement
+ * point. Readable by any workspace member (unlike the rbac.read-gated
+ * catalogue endpoints). */
+export interface RbacAccess {
+  role: string;
+  permissions: string[];
+}
+
+export const getMyAccess = () =>
+  call<RbacAccess>({ url: "/rbac/me", method: "GET" }).then((r) => ({
+    role: r.role ?? "",
+    permissions: r.permissions ?? [],
+  }));
+
+/** Reads the caller's own RBAC role + permissions. Used to gate UI affordances
+ * for the current user; a 403/404 (RBAC not wired) leaves permissions empty,
+ * so gated actions fail closed. */
+export function useMyAccess(
+  options?: Partial<UseQueryOptions<RbacAccess, ApiError>>,
+) {
+  return useQuery<RbacAccess, ApiError>({
+    queryKey: qk.rbacMe,
+    queryFn: getMyAccess,
+    staleTime: 5 * 60_000,
+    ...options,
+  });
 }
 
 export const listRbacRoles = () =>
