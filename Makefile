@@ -9,7 +9,7 @@ TEST_TIMEOUT  ?= 180s
 .DEFAULT_GOAL := help
 
 .PHONY: build vet test test-short test-integration tidy-check lint-go lint ci \
-        docker-up docker-down docker-logs help
+        audit audit-report docker-up docker-down docker-logs help
 
 build: ## go build ./...
 	$(GO) build $(PKG)
@@ -36,6 +36,12 @@ lint-go: ## golangci-lint over the full tree
 lint: vet lint-go ## run all lint gates
 
 ci: vet test lint-go ## full CI gate locally
+
+audit: ## dependency vuln scan (go+npm+pip+cargo) + single CycloneDX SBOM
+	./scripts/security-audit.sh
+
+audit-report: ## like 'audit' but never fails the build (report-only)
+	SECURITY_AUDIT_REPORT_ONLY=1 ./scripts/security-audit.sh
 
 docker-up: ## docker compose up --build --wait
 	docker compose up --build --wait
