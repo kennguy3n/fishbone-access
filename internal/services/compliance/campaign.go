@@ -506,11 +506,22 @@ func (s *CertificationService) Report(ctx context.Context, workspaceID, campaign
 		return CampaignReport{}, fmt.Errorf("compliance: load campaign for report: %w", err)
 	}
 
-	var items []models.CertificationItem
+	// Tally with a single GROUP BY decision aggregate rather than loading every
+	// item into memory: a campaign can scope thousands of grants, so the report
+	// must stay O(distinct decisions) in both rows transferred and allocations,
+	// not O(items). Mirrors EnforceOverdue's COUNT(*) approach.
+	type decisionTally struct {
+		Decision string
+		N        int
+	}
+	var tallies []decisionTally
 	if err := s.db.WithContext(ctx).
+		Model(&models.CertificationItem{}).
+		Select("decision, COUNT(*) AS n").
 		Where("workspace_id = ? AND campaign_id = ?", workspaceID, campaignID).
-		Find(&items).Error; err != nil {
-		return CampaignReport{}, fmt.Errorf("compliance: load items for report: %w", err)
+		Group("decision").
+		Scan(&tallies).Error; err != nil {
+		return CampaignReport{}, fmt.Errorf("compliance: tally items for report: %w", err)
 	}
 
 	report := CampaignReport{
@@ -518,21 +529,21 @@ func (s *CertificationService) Report(ctx context.Context, workspaceID, campaign
 		Name:       campaign.Name,
 		State:      campaign.State,
 		Framework:  campaign.Framework,
-		Total:      len(items),
 		DueAt:      campaign.DueAt,
 	}
-	for i := range items {
-		switch items[i].Decision {
+	for _, t := range tallies {
+		switch t.Decision {
 		case models.CertificationDecisionCertify:
-			report.Certified++
+			report.Certified += t.N
 		case models.CertificationDecisionRevoke:
-			report.Revoked++
+			report.Revoked += t.N
 		case models.CertificationDecisionEscalate:
-			report.Escalated++
+			report.Escalated += t.N
 		default:
-			report.Pending++
+			report.Pending += t.N
 		}
 	}
+	report.Total = report.Pending + report.Certified + report.Revoked + report.Escalated
 	// "Decided" means a TERMINAL decision (certify/revoke). Escalated items are
 	// intermediate and still need resolving, so they do NOT count as decided —
 	// an all-escalated campaign is not complete.
