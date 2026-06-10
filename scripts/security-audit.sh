@@ -52,6 +52,22 @@ fail=0
 section() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 note() { printf '   %s\n' "$1"; }
 
+# sha256_of prints the lowercase hex sha256 of a file using whichever tool is
+# present: sha256sum (Linux/coreutils) or `shasum -a 256` (macOS/BSD). It prints
+# nothing and returns non-zero when neither exists, so the caller can tell a
+# missing-tool condition apart from a genuine checksum mismatch instead of
+# emitting a misleading "mismatch" (empty vs expected) on a host without
+# sha256sum.
+sha256_of() {
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum "$1" | awk '{print $1}'
+	elif command -v shasum >/dev/null 2>&1; then
+		shasum -a 256 "$1" | awk '{print $1}'
+	else
+		return 1
+	fi
+}
+
 # ---- Go: govulncheck --------------------------------------------------------
 section "govulncheck (Go modules)"
 if command -v govulncheck >/dev/null 2>&1; then
@@ -122,8 +138,10 @@ if ! command -v syft >/dev/null 2>&1; then
 	# Fetch from the pinned commit, verify the bytes, THEN run — never pipe an
 	# unverified remote script into a shell.
 	if curl -sSfL "https://raw.githubusercontent.com/anchore/syft/${SYFT_INSTALLER_REF}/install.sh" -o "$installer"; then
-		got="$(sha256sum "$installer" | awk '{print $1}')"
-		if [ "$got" = "$SYFT_INSTALLER_SHA256" ]; then
+		if ! got="$(sha256_of "$installer")"; then
+			note "no sha256 tool (sha256sum or shasum) on PATH; cannot verify syft installer integrity, refusing to execute"
+			fail=1
+		elif [ "$got" = "$SYFT_INSTALLER_SHA256" ]; then
 			sh "$installer" -b "$TOOLBIN" "$SYFT_VERSION" >/dev/null 2>&1 ||
 				{ note "syft install failed"; fail=1; }
 		else
