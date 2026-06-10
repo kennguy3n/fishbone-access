@@ -17,14 +17,10 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/compliance"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
-
-// compliancePermissionExport is the scope an evidence-pack export requires. It
-// is checked by the RequirePermission middleware (fail-closed) and the export
-// is additionally gated by step-up MFA.
-const compliancePermissionExport = "compliance.export"
 
 // Evidence-timeline read bounds. The dashboard timeline is always capped so a
 // single request can never materialise a whole workspace's audit chain: an
@@ -85,10 +81,11 @@ func (h *complianceHandlers) register(g *gin.RouterGroup) {
 	g.POST("/compliance/campaigns/:id/close", h.closeCampaign)
 	g.POST("/compliance/campaigns/overdue-enforce", h.enforceOverdue)
 
-	// Evidence-pack export: gated by an explicit permission scope AND step-up
-	// MFA, and itself audited. Both gates fail closed.
+	// Evidence-pack export: gated by the authz.PermComplianceExport
+	// ("compliance.export") RBAC permission AND step-up MFA, and itself
+	// audited. Both gates fail closed.
 	g.POST("/compliance/export",
-		middleware.RequirePermission(compliancePermissionExport),
+		middleware.RequirePermission(authz.PermComplianceExport),
 		middleware.RequireMFA(),
 		h.exportPack)
 }

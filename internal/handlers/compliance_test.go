@@ -6,15 +6,22 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 )
 
-// complianceTestDeps builds a router with tokens that exercise the export
-// gate's two independent fail-closed checks (permission scope + step-up MFA)
-// plus a plain read token and a second tenant for isolation.
+// complianceTestDeps builds a router with the RBAC tier wired and tokens that
+// exercise the export gate's two independent fail-closed checks (the
+// compliance.export permission, resolved from workspace role membership, and
+// step-up MFA). Because AuthzMiddleware is fail-closed, every caller must be a
+// seeded workspace member; the member's role decides whether it holds
+// compliance.export (auditor does, operator does not), while MFA is carried on
+// the token. A second tenant is seeded for the isolation test.
 func complianceTestDeps(t *testing.T) Deps {
 	t.Helper()
 	db, err := database.OpenSQLite(":memory:")
@@ -24,28 +31,44 @@ func complianceTestDeps(t *testing.T) Deps {
 	if err := database.AutoMigrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	wsByTenant := map[string]uuid.UUID{}
 	for _, ten := range []string{"tenant-a", "tenant-b"} {
-		if err := db.Create(&models.Workspace{Name: ten, IAMCoreTenantID: ten}).Error; err != nil {
+		ws := models.Workspace{Name: ten, IAMCoreTenantID: ten}
+		if err := db.Create(&ws).Error; err != nil {
 			t.Fatalf("seed workspace %s: %v", ten, err)
 		}
+		wsByTenant[ten] = ws.ID
 	}
+	seedMember := func(tenant, user string, role authz.WorkspaceRole) {
+		if err := db.Create(&models.WorkspaceMember{
+			WorkspaceID: wsByTenant[tenant], UserID: user, Role: string(role),
+		}).Error; err != nil {
+			t.Fatalf("seed member %s/%s: %v", tenant, user, err)
+		}
+	}
+	// user-a: operator (NO compliance.export); user-aud: auditor (HAS it).
+	seedMember("tenant-a", "user-a", authz.RoleOperator)
+	seedMember("tenant-a", "user-aud", authz.RoleAuditor)
+	seedMember("tenant-b", "user-b", authz.RoleOperator)
+
 	ready := &atomic.Bool{}
 	ready.Store(true)
 	return Deps{
 		Validator: mapValidator{byToken: map[string]*iamcore.Claims{
-			// read-only token: no export scope, no MFA.
+			// operator, no MFA — lacks compliance.export.
 			"tok-a": {Subject: "user-a", TenantID: "tenant-a"},
 			"tok-b": {Subject: "user-b", TenantID: "tenant-b"},
-			// export scope but NO MFA -> must be blocked by RequireMFA.
-			"tok-a-scope": {Subject: "user-a", TenantID: "tenant-a", Scopes: []string{"compliance.export"}},
-			// MFA but NO export scope -> must be blocked by RequirePermission.
+			// operator WITH MFA -> still blocked by RequirePermission (no perm).
 			"tok-a-mfa": {Subject: "user-a", TenantID: "tenant-a", MFASatisfied: true},
-			// both -> allowed.
-			"tok-a-export": {Subject: "user-a", TenantID: "tenant-a", Scopes: []string{"compliance.export"}, MFASatisfied: true},
+			// auditor (has compliance.export) but NO MFA -> blocked by RequireMFA.
+			"tok-perm": {Subject: "user-aud", TenantID: "tenant-a"},
+			// auditor WITH MFA -> both gates satisfied.
+			"tok-export": {Subject: "user-aud", TenantID: "tenant-a", MFASatisfied: true},
 		}},
 		DB:        db,
 		Encryptor: crypto.PassthroughEncryptor{},
 		Ready:     ready,
+		RBAC:      authz.NewRBACService(db, 0),
 	}
 }
 
@@ -57,20 +80,20 @@ func TestExportPackAuthzGate(t *testing.T) {
 	if w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "", body); w.Code != http.StatusUnauthorized {
 		t.Fatalf("no token: got %d, want 401", w.Code)
 	}
-	// Authenticated, no scope, no MFA -> 403 (permission checked first).
+	// Authenticated, no permission, no MFA -> 403 (permission checked first).
 	if w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-a", body); w.Code != http.StatusForbidden {
-		t.Fatalf("no scope: got %d body=%s, want 403", w.Code, w.Body.String())
+		t.Fatalf("no perm: got %d body=%s, want 403", w.Code, w.Body.String())
 	}
-	// Scope but no MFA -> 403 from RequireMFA.
-	if w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-a-scope", body); w.Code != http.StatusForbidden {
-		t.Fatalf("scope no mfa: got %d, want 403", w.Code)
+	// Permission but no MFA -> 403 from RequireMFA.
+	if w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-perm", body); w.Code != http.StatusForbidden {
+		t.Fatalf("perm no mfa: got %d, want 403", w.Code)
 	}
-	// MFA but no scope -> 403 from RequirePermission.
+	// MFA but no permission -> 403 from RequirePermission.
 	if w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-a-mfa", body); w.Code != http.StatusForbidden {
-		t.Fatalf("mfa no scope: got %d, want 403", w.Code)
+		t.Fatalf("mfa no perm: got %d, want 403", w.Code)
 	}
 	// Both gates satisfied -> 200 and a zip with the content digest header.
-	w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-a-export", body)
+	w := do(t, r, http.MethodPost, "/api/v1/compliance/export", "tok-export", body)
 	if w.Code != http.StatusOK {
 		t.Fatalf("export: got %d body=%s, want 200", w.Code, w.Body.String())
 	}

@@ -15,10 +15,29 @@ import {
   type PolicyAction,
   type PolicyConflict,
   type PolicyDefinition,
+  type PromoteInput,
   type SimulationResult,
   ApiError,
 } from "@/api/access";
 import { formatDateTime } from "@/lib/format";
+
+// The promote route's middleware chain is RequirePermission -> RequireMFA ->
+// RequireStepUpMFA -> handler, so THREE distinct auth failures can come back and
+// must be told apart by their exact server messages, not a loose /step-up mfa/
+// match (which collides across all three and caused an infinite TOTP prompt):
+//   - RequireStepUpMFA, missing header  -> 400 "step-up MFA assertion required"
+//   - RequireStepUpMFA, wrong/replayed  -> 403 "step-up MFA verification failed"
+//   - RequireMFA, JWT lacks the claim   -> 403 "step-up MFA required"
+// Only the first two are answered with the TOTP modal; the third means the
+// session itself needs MFA re-authentication, so prompting for a code would loop
+// forever (the header never satisfies the JWT-claim gate). Anchored phrases keep
+// each predicate disjoint.
+const isStepUpRequired = (err: ApiError) =>
+  err.status === 400 && /step-up mfa assertion required/i.test(err.message);
+const isStepUpFailed = (err: ApiError) =>
+  err.status === 403 && /step-up mfa verification failed/i.test(err.message);
+const isSessionMfaRequired = (err: ApiError) =>
+  err.status === 403 && /^step-up mfa required$/i.test(err.message.trim());
 
 // Subject/resource entry prefixes the operator can pick from. The backend
 // treats these as opaque refs (cartesian product of subjects × resources); the
@@ -199,6 +218,17 @@ export function PolicyEditor() {
   const [sim, setSim] = useState<SimulationResult | null>(null);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
+  // Step-up MFA prompt: the promote route is gated by RequireStepUpMFA, so a
+  // promotion with no fresh assertion returns 400 and we collect a TOTP code
+  // here. pendingPromote remembers the conflict-override context so the retry
+  // carries the same force/reason as the original attempt.
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [pendingPromote, setPendingPromote] = useState<{
+    force: boolean;
+    reason?: string;
+  }>({ force: false });
 
   // Hydrate the form from the loaded policy once (and whenever the server's
   // version changes, e.g. after a save), but only when the user hasn't got
@@ -287,11 +317,21 @@ export function PolicyEditor() {
     }
   };
 
-  const promote = async (force = false, reason?: string) => {
+  const promote = async (
+    force = false,
+    reason?: string,
+    mfaAssertion?: string,
+  ) => {
     if (!policyId) return;
     try {
+      const input: PromoteInput = {};
+      if (force) {
+        input.force = true;
+        input.reason = reason;
+      }
+      if (mfaAssertion) input.mfaAssertion = mfaAssertion;
       await promoteMut.mutateAsync(
-        force ? { force: true, reason } : undefined,
+        Object.keys(input).length > 0 ? input : undefined,
       );
       toast.success(
         "Policy promoted",
@@ -301,6 +341,9 @@ export function PolicyEditor() {
       );
       setOverrideOpen(false);
       setOverrideReason("");
+      setMfaOpen(false);
+      setMfaCode("");
+      setMfaError(null);
       navigate({ to: "/policies/$policyId", params: { policyId } });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -314,11 +357,60 @@ export function PolicyEditor() {
               : { impact: zeroImpact(), conflicts: err.conflicts! },
           );
         }
+        // A 409 can arrive on the retry *after* a successful step-up (a
+        // concurrent promotion introduced new conflicts), so the MFA modal may
+        // still be open. Close it before opening the override modal so the two
+        // never stack — the mirror of the step-up handler below, which closes
+        // the override modal before opening MFA.
+        setMfaOpen(false);
+        setMfaCode("");
+        setMfaError(null);
         setOverrideOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && isStepUpRequired(err)) {
+        // The high-risk promote needs a fresh step-up assertion. Remember the
+        // (force, reason) context so the modal's retry matches this attempt,
+        // then prompt for the TOTP code. Close the conflict-override modal first
+        // so the MFA modal does not stack on top of it (the override reason is
+        // already captured in pendingPromote).
+        setPendingPromote({ force, reason });
+        setMfaError(null);
+        setMfaCode("");
+        setOverrideOpen(false);
+        setMfaOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && isStepUpFailed(err)) {
+        // Wrong or replayed code: keep the prompt open for another attempt and
+        // surface why the last one was rejected.
+        setPendingPromote({ force, reason });
+        setMfaError(err.message);
+        setMfaCode("");
+        setOverrideOpen(false);
+        setMfaOpen(true);
+        return;
+      }
+      if (err instanceof ApiError && isSessionMfaRequired(err)) {
+        // The session's own MFA claim is unsatisfied (not a step-up failure).
+        // A TOTP code cannot satisfy the JWT-claim gate, so close any prompt and
+        // tell the operator to re-authenticate rather than looping the modal.
+        setMfaOpen(false);
+        setOverrideOpen(false);
+        toast.error(
+          "Session needs MFA",
+          "Your session is not MFA-verified. Sign out and sign back in with MFA, then retry the promotion.",
+        );
         return;
       }
       toast.error("Could not promote", errMessage(err));
     }
+  };
+
+  const submitMfa = () => {
+    const code = mfaCode.trim();
+    if (!code) return;
+    void promote(pendingPromote.force, pendingPromote.reason, code);
   };
 
   const archive = async () => {
@@ -679,6 +771,67 @@ export function PolicyEditor() {
               onChange={(e) => setOverrideReason(e.target.value)}
             />
           </label>
+        </Modal>
+      )}
+
+      {mfaOpen && (
+        <Modal
+          title="Confirm with step-up MFA"
+          onClose={() => setMfaOpen(false)}
+          footer={
+            <>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setMfaOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn--primary"
+                disabled={mfaCode.trim().length < 6 || promoteMut.isPending}
+                onClick={submitMfa}
+              >
+                {promoteMut.isPending ? <Spinner /> : "Verify and promote"}
+              </button>
+            </>
+          }
+        >
+          <p>
+            Promoting a policy is a high-risk action and requires a fresh
+            multi-factor confirmation. Enter the current 6-digit code from your
+            authenticator app.
+          </p>
+          <label className="field">
+            <span>Authentication code</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={mfaCode}
+              placeholder="123456"
+              autoFocus
+              onChange={(e) =>
+                setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              onKeyDown={(e) => {
+                // Mirror the submit button's disabled guard so a rapid double
+                // Enter cannot fire two concurrent promote() calls.
+                if (
+                  e.key === "Enter" &&
+                  mfaCode.trim().length >= 6 &&
+                  !promoteMut.isPending
+                )
+                  submitMfa();
+              }}
+            />
+          </label>
+          {mfaError && (
+            <p className="muted" style={{ marginTop: 8, color: "var(--danger)" }}>
+              {mfaError}
+            </p>
+          )}
         </Modal>
       )}
     </>

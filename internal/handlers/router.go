@@ -18,7 +18,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/webui"
 )
 
@@ -42,6 +44,16 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// RBAC resolves and mutates workspace memberships for the authorization
+	// tier. When nil (degraded boot, or a legacy router construction without an
+	// RBAC store) AuthzMiddleware is NOT installed and the per-route
+	// RequirePermission gates no-op, preserving the pre-RBAC behavior. The
+	// production ztna-api always wires this, so enforcement is always on there.
+	RBAC *authz.RBACService
+	// StepUpMFA verifies a fresh step-up assertion (TOTP today; WebAuthn-ready)
+	// for the highest-risk actions. When nil the RequireStepUpMFA gates are not
+	// mounted; production wires the composite verifier.
+	StepUpMFA mfa.MFAVerifier
 	// ConnectorEncryptor seals/opens connector secrets for the connector
 	// management surface. It is the access-stack encryptor (the same one the
 	// access-connector-worker uses) so a connector created via the API is
@@ -87,7 +99,16 @@ func NewRouter(deps Deps) *gin.Engine {
 	if deps.Validator != nil && deps.DB != nil {
 		scoped := api.Group("")
 		scoped.Use(middleware.RequireTenant(deps.DB))
-		newLifecycleHandlers(deps).register(scoped)
+		// Install the RBAC tier when an RBAC store is wired. It runs after
+		// RequireTenant (it needs the resolved workspace + verified subject) and
+		// resolves the caller's role into a permission set for the per-route
+		// RequirePermission gates. When deps.RBAC is nil the tier is absent and
+		// those gates no-op, preserving pre-RBAC behavior for legacy callers.
+		if deps.RBAC != nil {
+			scoped.Use(middleware.AuthzMiddleware(deps.RBAC))
+			newRBACHandlers(deps.RBAC).register(scoped)
+		}
+		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)

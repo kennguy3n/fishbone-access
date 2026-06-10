@@ -9,8 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/connectorsetup"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 )
@@ -48,27 +50,34 @@ func newConnectorHandlers(deps Deps) *connectorHandlers {
 }
 
 // register mounts the connector routes on the tenant-scoped group, which must
-// already carry Auth + ResolveTenant + RequireTenant.
+// already carry Auth + ResolveTenant + RequireTenant + AuthzMiddleware.
 //
 // The catalogue routes live under the static /connectors/catalogue prefix so
 // they never collide with the /connectors/:connectorID instance routes: the
 // catalogue is keyed by provider key (a string like "microsoft"), while the
 // instance routes are keyed by a connector-row UUID. Keeping them on disjoint
 // path prefixes makes the two namespaces unambiguous.
+//
+// Reads require connector.read; every mutation of the workspace's connections
+// (create / test / sync / disconnect) requires connector.manage, so a read-only
+// role (operator/security_admin) cannot alter connectors and a compliance
+// auditor — which holds neither connector permission — cannot reach the surface
+// at all. The setup wizard is part of the connect-a-provider authoring flow, so
+// it is gated by connector.manage even though it only returns an advisory plan.
 func (h *connectorHandlers) register(g *gin.RouterGroup) {
 	// Capability matrix / gallery (provider-keyed, read-only).
-	g.GET("/connectors", h.listCatalogue)
-	g.GET("/connectors/catalogue/facets", h.catalogueFacets)
-	g.GET("/connectors/catalogue/:provider", h.catalogueDetail)
+	g.GET("/connectors", middleware.RequirePermission(authz.PermConnectorRead), h.listCatalogue)
+	g.GET("/connectors/catalogue/facets", middleware.RequirePermission(authz.PermConnectorRead), h.catalogueFacets)
+	g.GET("/connectors/catalogue/:provider", middleware.RequirePermission(authz.PermConnectorRead), h.catalogueDetail)
 	// AI-assisted setup wizard for a provider (advisory, fail-OPEN).
-	g.POST("/connectors/catalogue/:provider/setup-wizard", h.setupWizard)
+	g.POST("/connectors/catalogue/:provider/setup-wizard", middleware.RequirePermission(authz.PermConnectorManage), h.setupWizard)
 
 	// Connector instances (UUID-keyed, mutate the workspace's connections).
-	g.POST("/connectors", h.createConnector)
-	g.GET("/connectors/:connectorID", h.getConnector)
-	g.POST("/connectors/:connectorID/test", h.testConnector)
-	g.POST("/connectors/:connectorID/sync", h.syncConnector)
-	g.DELETE("/connectors/:connectorID", h.disconnectConnector)
+	g.POST("/connectors", middleware.RequirePermission(authz.PermConnectorManage), h.createConnector)
+	g.GET("/connectors/:connectorID", middleware.RequirePermission(authz.PermConnectorRead), h.getConnector)
+	g.POST("/connectors/:connectorID/test", middleware.RequirePermission(authz.PermConnectorManage), h.testConnector)
+	g.POST("/connectors/:connectorID/sync", middleware.RequirePermission(authz.PermConnectorManage), h.syncConnector)
+	g.DELETE("/connectors/:connectorID", middleware.RequirePermission(authz.PermConnectorManage), h.disconnectConnector)
 }
 
 // --- capability matrix / catalogue ---

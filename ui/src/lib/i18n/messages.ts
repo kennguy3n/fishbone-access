@@ -39,6 +39,7 @@ export type MessageKey =
   | "nav.directory"
   | "nav.campaigns"
   | "nav.evidence"
+  | "nav.rolesPermissions"
   | "nav.settings"
   // WS5 — access-request AI risk review surface.
   | "requests.risk.title"
@@ -83,6 +84,7 @@ const en: Catalog = {
   "nav.directory": "Directory",
   "nav.campaigns": "Certification campaigns",
   "nav.evidence": "Compliance evidence",
+  "nav.rolesPermissions": "Roles & permissions",
   "nav.settings": "Settings",
   "requests.risk.title": "AI risk review",
   "requests.risk.score": "Risk score",
@@ -125,6 +127,7 @@ const zhHans: Partial<Catalog> = {
   "nav.directory": "目录",
   "nav.campaigns": "认证活动",
   "nav.evidence": "合规证据",
+  "nav.rolesPermissions": "角色与权限",
   "nav.settings": "设置",
   "requests.risk.title": "AI 风险评审",
   "requests.risk.score": "风险评分",
@@ -167,6 +170,7 @@ const zhHant: Partial<Catalog> = {
   "nav.directory": "目錄",
   "nav.campaigns": "認證活動",
   "nav.evidence": "合規證據",
+  "nav.rolesPermissions": "角色與權限",
   "nav.settings": "設定",
   "requests.risk.title": "AI 風險審查",
   "requests.risk.score": "風險評分",
@@ -209,6 +213,7 @@ const ms: Partial<Catalog> = {
   "nav.directory": "Direktori",
   "nav.campaigns": "Kempen pensijilan",
   "nav.evidence": "Bukti pematuhan",
+  "nav.rolesPermissions": "Peranan & kebenaran",
   "nav.settings": "Tetapan",
   "requests.risk.title": "Semakan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -251,6 +256,7 @@ const id: Partial<Catalog> = {
   "nav.directory": "Direktori",
   "nav.campaigns": "Kampanye sertifikasi",
   "nav.evidence": "Bukti kepatuhan",
+  "nav.rolesPermissions": "Peran & izin",
   "nav.settings": "Pengaturan",
   "requests.risk.title": "Tinjauan risiko AI",
   "requests.risk.score": "Skor risiko",
@@ -293,6 +299,7 @@ const th: Partial<Catalog> = {
   "nav.directory": "ไดเรกทอรี",
   "nav.campaigns": "แคมเปญการรับรอง",
   "nav.evidence": "หลักฐานการปฏิบัติตามข้อกำหนด",
+  "nav.rolesPermissions": "บทบาทและสิทธิ์",
   "nav.settings": "การตั้งค่า",
   "requests.risk.title": "การตรวจสอบความเสี่ยงด้วย AI",
   "requests.risk.score": "คะแนนความเสี่ยง",
@@ -335,6 +342,7 @@ const vi: Partial<Catalog> = {
   "nav.directory": "Thư mục",
   "nav.campaigns": "Chiến dịch chứng nhận",
   "nav.evidence": "Bằng chứng tuân thủ",
+  "nav.rolesPermissions": "Vai trò & quyền",
   "nav.settings": "Cài đặt",
   "requests.risk.title": "Đánh giá rủi ro bằng AI",
   "requests.risk.score": "Điểm rủi ro",
@@ -377,6 +385,7 @@ const ja: Partial<Catalog> = {
   "nav.directory": "ディレクトリ",
   "nav.campaigns": "認証キャンペーン",
   "nav.evidence": "コンプライアンス証跡",
+  "nav.rolesPermissions": "ロールと権限",
   "nav.settings": "設定",
   "requests.risk.title": "AI リスクレビュー",
   "requests.risk.score": "リスクスコア",
@@ -419,6 +428,7 @@ const ko: Partial<Catalog> = {
   "nav.directory": "디렉터리",
   "nav.campaigns": "인증 캠페인",
   "nav.evidence": "컴플라이언스 증거",
+  "nav.rolesPermissions": "역할 및 권한",
   "nav.settings": "설정",
   "requests.risk.title": "AI 위험 검토",
   "requests.risk.score": "위험 점수",
@@ -461,6 +471,7 @@ const ar: Partial<Catalog> = {
   "nav.directory": "الدليل",
   "nav.campaigns": "حملات الاعتماد",
   "nav.evidence": "أدلة الامتثال",
+  "nav.rolesPermissions": "الأدوار والأذونات",
   "nav.settings": "الإعدادات",
   "requests.risk.title": "مراجعة المخاطر بالذكاء الاصطناعي",
   "requests.risk.score": "درجة المخاطر",
@@ -503,6 +514,7 @@ const de: Partial<Catalog> = {
   "nav.directory": "Verzeichnis",
   "nav.campaigns": "Zertifizierungskampagnen",
   "nav.evidence": "Compliance-Nachweise",
+  "nav.rolesPermissions": "Rollen & Berechtigungen",
   "nav.settings": "Einstellungen",
   "requests.risk.title": "KI-Risikoprüfung",
   "requests.risk.score": "Risikobewertung",
@@ -545,6 +557,7 @@ const fr: Partial<Catalog> = {
   "nav.directory": "Annuaire",
   "nav.campaigns": "Campagnes de certification",
   "nav.evidence": "Preuves de conformité",
+  "nav.rolesPermissions": "Rôles et autorisations",
   "nav.settings": "Paramètres",
   "requests.risk.title": "Évaluation des risques par l'IA",
   "requests.risk.score": "Score de risque",

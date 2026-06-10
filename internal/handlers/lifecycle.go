@@ -15,7 +15,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/packs"
 )
 
@@ -72,52 +74,75 @@ func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 }
 
 // register mounts the lifecycle routes on the tenant-scoped group. The group
-// must already carry Auth + ResolveTenant + RequireTenant.
-func (h *lifecycleHandlers) register(g *gin.RouterGroup) {
-	// Access requests.
-	g.POST("/access-requests", h.createRequest)
-	g.GET("/access-requests", h.listRequests)
-	g.GET("/access-requests/:id", h.getRequest)
-	g.GET("/access-requests/:id/history", h.requestHistory)
-	g.POST("/access-requests/:id/approve", h.approveRequest)
-	g.POST("/access-requests/:id/deny", h.denyRequest)
-	g.POST("/access-requests/:id/cancel", h.cancelRequest)
-	g.POST("/access-requests/:id/provision", h.provisionRequest)
+// must already carry Auth + ResolveTenant + RequireTenant (and, in production,
+// AuthzMiddleware so the RequirePermission gates below enforce; when RBAC is
+// not installed those gates no-op).
+//
+// stepUp verifies a fresh step-up MFA assertion on the highest-risk action
+// (policy promotion). When nil, the route falls back to the session-level
+// RequireMFA claim gate only.
+func (h *lifecycleHandlers) register(g *gin.RouterGroup, stepUp mfa.MFAVerifier) {
+	// Access requests. Reads require request.read; mutations require the
+	// matching verb permission so a viewer/auditor cannot approve or provision.
+	g.POST("/access-requests", middleware.RequirePermission(authz.PermRequestCreate), h.createRequest)
+	g.GET("/access-requests", middleware.RequirePermission(authz.PermRequestRead), h.listRequests)
+	g.GET("/access-requests/:id", middleware.RequirePermission(authz.PermRequestRead), h.getRequest)
+	g.GET("/access-requests/:id/history", middleware.RequirePermission(authz.PermRequestRead), h.requestHistory)
+	g.POST("/access-requests/:id/approve", middleware.RequirePermission(authz.PermRequestApprove), h.approveRequest)
+	g.POST("/access-requests/:id/deny", middleware.RequirePermission(authz.PermRequestDeny), h.denyRequest)
+	g.POST("/access-requests/:id/cancel", middleware.RequirePermission(authz.PermRequestCancel), h.cancelRequest)
+	g.POST("/access-requests/:id/provision", middleware.RequirePermission(authz.PermRequestProvision), h.provisionRequest)
 
 	// Grants.
-	g.POST("/grants/:id/revoke", h.revokeGrant)
-	g.POST("/grants/expiry-enforce", h.enforceExpiry)
+	g.POST("/grants/:id/revoke", middleware.RequirePermission(authz.PermGrantRevoke), h.revokeGrant)
+	g.POST("/grants/expiry-enforce", middleware.RequirePermission(authz.PermGrantAdmin), h.enforceExpiry)
 
 	// Policies.
-	g.POST("/policies", h.createPolicy)
-	g.GET("/policies", h.listPolicies)
-	g.GET("/policies/:id", h.getPolicy)
-	g.PUT("/policies/:id", h.updatePolicy)
-	g.POST("/policies/:id/simulate", h.simulatePolicy)
-	// Promotion mutates the data plane: require step-up MFA.
-	g.POST("/policies/:id/promote", middleware.RequireMFA(), h.promotePolicy)
-	g.POST("/policies/:id/archive", h.archivePolicy)
+	g.POST("/policies", middleware.RequirePermission(authz.PermPolicyWrite), h.createPolicy)
+	g.GET("/policies", middleware.RequirePermission(authz.PermPolicyRead), h.listPolicies)
+	g.GET("/policies/:id", middleware.RequirePermission(authz.PermPolicyRead), h.getPolicy)
+	g.PUT("/policies/:id", middleware.RequirePermission(authz.PermPolicyWrite), h.updatePolicy)
+	g.POST("/policies/:id/simulate", middleware.RequirePermission(authz.PermPolicySimulate), h.simulatePolicy)
+	// Promotion mutates the data plane: it is gated by the policy.promote
+	// permission, the session-level MFA claim, AND a fresh step-up assertion
+	// (composite verifier) when one is wired — the strongest gate in the API.
+	g.POST("/policies/:id/promote",
+		middleware.RequirePermission(authz.PermPolicyPromote),
+		middleware.RequireMFA(),
+		stepUpGate(stepUp, string(authz.PermPolicyPromote)),
+		h.promotePolicy)
+	g.POST("/policies/:id/archive", middleware.RequirePermission(authz.PermPolicyArchive), h.archivePolicy)
 
 	// Access review campaigns.
-	g.POST("/access-reviews", h.startReview)
-	g.GET("/access-reviews/:id", h.reviewReport)
-	g.GET("/access-reviews/:id/items", h.reviewItems)
-	g.POST("/access-reviews/:id/items/:itemID/decision", h.reviewDecision)
-	g.POST("/access-reviews/:id/complete", h.completeReview)
+	g.POST("/access-reviews", middleware.RequirePermission(authz.PermReviewStart), h.startReview)
+	g.GET("/access-reviews/:id", middleware.RequirePermission(authz.PermReviewRead), h.reviewReport)
+	g.GET("/access-reviews/:id/items", middleware.RequirePermission(authz.PermReviewRead), h.reviewItems)
+	g.POST("/access-reviews/:id/items/:itemID/decision", middleware.RequirePermission(authz.PermReviewRespond), h.reviewDecision)
+	g.POST("/access-reviews/:id/complete", middleware.RequirePermission(authz.PermReviewComplete), h.completeReview)
 
 	// JML / SCIM inbound.
-	g.POST("/scim/events", h.scimEvent)
+	g.POST("/scim/events", middleware.RequirePermission(authz.PermJMLEventWrite), h.scimEvent)
 
 	// Orphan reconciliation.
-	g.POST("/connectors/:connectorID/orphan-scan", h.orphanScan)
-	g.GET("/orphan-accounts", h.listOrphans)
-	g.POST("/orphan-accounts/:id/disposition", h.orphanDisposition)
+	g.POST("/connectors/:connectorID/orphan-scan", middleware.RequirePermission(authz.PermOrphanScan), h.orphanScan)
+	g.GET("/orphan-accounts", middleware.RequirePermission(authz.PermOrphanRead), h.listOrphans)
+	g.POST("/orphan-accounts/:id/disposition", middleware.RequirePermission(authz.PermOrphanDisposition), h.orphanDisposition)
 
 	// SSO enforcement.
-	g.GET("/connectors/:connectorID/sso-status", h.ssoStatus)
+	g.GET("/connectors/:connectorID/sso-status", middleware.RequirePermission(authz.PermConnectorSSORead), h.ssoStatus)
 
 	// Policy packs (curated templates that materialize as drafts).
 	h.registerPacks(g)
+}
+
+// stepUpGate returns the RequireStepUpMFA middleware for scope when a verifier
+// is wired, or a pass-through no-op when it is not, so the promote route mounts
+// the same shape regardless of whether the composite verifier is configured.
+func stepUpGate(verifier mfa.MFAVerifier, scope string) gin.HandlerFunc {
+	if verifier == nil {
+		return func(c *gin.Context) { c.Next() }
+	}
+	return middleware.RequireStepUpMFA(verifier, scope)
 }
 
 // --- access requests ---

@@ -262,6 +262,8 @@ export const qk = {
     ["certification-campaign", id, "items", reviewer ?? ""] as const,
   revocationPreview: (id: string) =>
     ["certification-campaign", id, "revocation-preview"] as const,
+  rbacRoles: ["rbac", "roles"] as const,
+  rbacMembers: ["rbac", "members"] as const,
   connectors: (filter: ConnectorCatalogueFilter) =>
     ["connectors", filter] as const,
   connector: (provider: string) => ["connector", provider] as const,
@@ -327,17 +329,36 @@ export const simulatePolicy = (id: string) =>
     conflicts: r.simulation.conflicts ?? [],
   }));
 
+/**
+ * Header carrying the step-up MFA assertion (a 6-digit TOTP code, or a WebAuthn
+ * assertion JSON blob) for a high-risk action. Must match the server constant
+ * middleware.StepUpAssertionHeader in internal/middleware/stepup.go.
+ */
+export const STEP_UP_ASSERTION_HEADER = "X-MFA-Assertion";
+
 export interface PromoteInput {
   force?: boolean;
   reason?: string;
+  /**
+   * Step-up MFA assertion sent as the X-MFA-Assertion header (NOT part of the
+   * JSON body) to satisfy the server's RequireStepUpMFA gate on promote. When
+   * omitted the server replies 400 ("step-up MFA assertion required") so the
+   * UI can prompt for it; a wrong/replayed code yields 403.
+   */
+  mfaAssertion?: string;
 }
 
-export const promotePolicy = (id: string, body?: PromoteInput) =>
-  call<{ policy: Policy }>({
-    url: `/policies/${id}/promote`,
+export const promotePolicy = (id: string, body?: PromoteInput) => {
+  const { mfaAssertion, ...rest } = body ?? {};
+  return call<{ policy: Policy }>({
+    url: `/policies/${encodeURIComponent(id)}/promote`,
     method: "POST",
-    data: body ?? {},
+    data: rest,
+    headers: mfaAssertion
+      ? { [STEP_UP_ASSERTION_HEADER]: mfaAssertion }
+      : undefined,
   }).then((r) => r.policy);
+};
 
 export const archivePolicy = (id: string) =>
   call<{ policy: Policy }>({
@@ -1029,6 +1050,75 @@ async function toApiErrorFromBlob(err: unknown): Promise<ApiError> {
 export function useExportEvidencePack() {
   return useMutation<ExportedPack, ApiError, ExportPackInput>({
     mutationFn: exportEvidencePack,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// RBAC — workspace roles, the permission matrix, and membership administration
+// ---------------------------------------------------------------------------
+
+/** One workspace role and the flat permission set it grants. */
+export interface RbacRole {
+  role: string;
+  permissions: string[];
+}
+
+/** The role catalogue plus the flat list of every permission (matrix columns). */
+export interface RbacCatalog {
+  roles: RbacRole[];
+  permissions: string[];
+}
+
+/** A single membership in the caller's workspace. */
+export interface RbacMember {
+  user_id: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const listRbacRoles = () =>
+  call<RbacCatalog>({ url: "/rbac/roles", method: "GET" }).then((r) => ({
+    roles: r.roles ?? [],
+    permissions: r.permissions ?? [],
+  }));
+
+export const listRbacMembers = () =>
+  call<{ members: RbacMember[] }>({ url: "/rbac/members", method: "GET" }).then(
+    (r) => r.members ?? [],
+  );
+
+export const assignRbacMember = (userId: string, role: string) =>
+  call<RbacMember>({
+    url: `/rbac/members/${encodeURIComponent(userId)}`,
+    method: "PUT",
+    data: { role },
+  });
+
+export function useRbacRoles(
+  options?: Partial<UseQueryOptions<RbacCatalog, ApiError>>,
+) {
+  return useQuery<RbacCatalog, ApiError>({
+    queryKey: qk.rbacRoles,
+    queryFn: listRbacRoles,
+    staleTime: 5 * 60_000,
+    ...options,
+  });
+}
+
+export function useRbacMembers(
+  options?: Partial<UseQueryOptions<RbacMember[], ApiError>>,
+) {
+  return useQuery<RbacMember[], ApiError>({
+    queryKey: qk.rbacMembers,
+    queryFn: listRbacMembers,
+    ...options,
+  });
+}
+
+export function useAssignRbacMember() {
+  return useMutation<RbacMember, ApiError, { userId: string; role: string }>({
+    mutationFn: ({ userId, role }) => assignRbacMember(userId, role),
   });
 }
 
