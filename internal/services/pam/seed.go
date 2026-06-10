@@ -2,6 +2,7 @@ package pam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -150,9 +151,10 @@ func (s *Seeder) SeedPrivilegedSession(ctx context.Context, in SeedPrivilegedSes
 }
 
 // ensureTarget resolves the scenario's target, creating one by name on first
-// use. Resolution by id is exact; resolution by name is a workspace-scoped
-// lookup over the existing catalog so repeated seed runs converge on a single
-// target rather than accumulating duplicates.
+// use. Resolution by id is exact; resolution by name is an exact, workspace-
+// scoped lookup so repeated seed runs converge on a single target rather than
+// accumulating duplicates — even for workspaces whose target catalog exceeds a
+// single ListTargets page.
 func (s *Seeder) ensureTarget(ctx context.Context, in SeedPrivilegedSessionInput) (*models.PAMTarget, error) {
 	if in.TargetID != uuid.Nil {
 		return s.vault.GetTarget(ctx, in.WorkspaceID, in.TargetID)
@@ -163,14 +165,13 @@ func (s *Seeder) ensureTarget(ctx context.Context, in SeedPrivilegedSessionInput
 	}
 
 	// Reuse an existing target with the same name so the seeder is idempotent.
-	existing, err := s.vault.ListTargets(ctx, in.WorkspaceID, 0)
-	if err != nil {
+	// An exact name lookup (rather than scanning a capped ListTargets) keeps this
+	// correct regardless of how many targets the workspace already holds.
+	switch existing, err := s.vault.FindTargetByName(ctx, in.WorkspaceID, name); {
+	case err == nil:
+		return existing, nil
+	case !errors.Is(err, ErrTargetNotFound):
 		return nil, err
-	}
-	for i := range existing {
-		if existing[i].Name == name {
-			return &existing[i], nil
-		}
 	}
 
 	protocol := in.Protocol

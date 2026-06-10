@@ -134,8 +134,10 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 	// imposes no entry ordering, so this is purely an assembly-order detail and
 	// does not affect how an unzip tool presents the files.
 
-	// evidence.jsonl — the chain-derived evidence stream for the period.
-	evInfo, evCount, err := pw.streamEvidence(ctx, zw, opts)
+	// evidence.jsonl — the chain-derived evidence stream for the period. The same
+	// pass collects the privileged-recording references so the recordings index
+	// below costs no additional chain scan.
+	evInfo, evCount, recordings, err := pw.streamEvidence(ctx, zw, opts)
 	if err != nil {
 		return PackManifest{}, err
 	}
@@ -144,8 +146,9 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 
 	// pam-recordings.jsonl — the privileged-session recording references (replay
 	// key + integrity hash) for the period, so an auditor can tie CC6.7/A.8.2
-	// evidence to tamper-evident recordings without parsing evidence.jsonl.
-	recInfo, err := pw.streamRecordings(ctx, zw, opts)
+	// evidence to tamper-evident recordings without parsing evidence.jsonl. It is
+	// written from the references gathered during the evidence pass above.
+	recInfo, err := pw.writeRecordings(zw, recordings)
 	if err != nil {
 		return PackManifest{}, err
 	}
@@ -208,27 +211,35 @@ func (pw *PackWriter) WritePack(ctx context.Context, w io.Writer, opts ExportOpt
 }
 
 // streamEvidence writes the period's evidence stream as JSONL, returning the
-// file info and row count.
-func (pw *PackWriter) streamEvidence(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, int, error) {
+// file info, the row count, and the privileged-recording references seen in the
+// same pass. Collecting the recordings here means the pack indexes them without
+// a second scan of the chain: the references are sparse (one per privileged
+// session), so buffering only those rows stays bounded well below the full
+// evidence stream, which is streamed straight to the archive and never buffered.
+func (pw *PackWriter) streamEvidence(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, int, []recordingIndexRow, error) {
 	fw, err := zw.Create("evidence.jsonl")
 	if err != nil {
-		return PackFileInfo{}, 0, fmt.Errorf("compliance: create evidence.jsonl: %w", err)
+		return PackFileInfo{}, 0, nil, fmt.Errorf("compliance: create evidence.jsonl: %w", err)
 	}
 	h := sha256.New()
 	enc := json.NewEncoder(io.MultiWriter(fw, h))
 	count := 0
+	var recordings []recordingIndexRow
 	if err := pw.evidence.streamPeriod(ctx, opts.WorkspaceID, opts.From, opts.To, func(rec EvidenceRecord) error {
 		count++
+		if rec.Kind == KindPrivilegedRecording {
+			recordings = append(recordings, projectRecordingRow(rec))
+		}
 		return enc.Encode(rec)
 	}); err != nil {
-		return PackFileInfo{}, 0, err
+		return PackFileInfo{}, 0, nil, err
 	}
 	return PackFileInfo{
 		Name:    "evidence.jsonl",
 		Comment: "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
 		Rows:    count,
 		SHA256:  hex.EncodeToString(h.Sum(nil)),
-	}, count, nil
+	}, count, recordings, nil
 }
 
 // recordingIndexRow is one line of pam-recordings.jsonl: a flattened, auditor-
@@ -261,51 +272,51 @@ type recordingMeta struct {
 	Truncated bool   `json:"truncated"`
 }
 
-// streamRecordings writes pam-recordings.jsonl: the privileged-session
-// recording references for the period, projected from the KindPrivilegedRecording
-// rows already present in the evidence stream. It is a derived index, not a new
-// source of truth — every row is reconstructed from a chain event, so it carries
-// no integrity weight the chain does not already guarantee, but it spares an
-// auditor from filtering evidence.jsonl by hand to tie CC6.7/A.8.2 records to
-// replayable recordings.
-func (pw *PackWriter) streamRecordings(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, error) {
+// projectRecordingRow flattens a KindPrivilegedRecording evidence record into a
+// pam-recordings.jsonl row, decoding the recording metadata best-effort: a
+// malformed metadata blob still yields a row (with whatever decoded) so the
+// recording stays indexed rather than silently dropped.
+func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
+	var md recordingMeta
+	if len(rec.Metadata) > 0 {
+		_ = json.Unmarshal(rec.Metadata, &md)
+	}
+	return recordingIndexRow{
+		ChainSeq:   rec.ChainSeq,
+		OccurredAt: rec.OccurredAt,
+		SessionID:  md.SessionID,
+		TargetRef:  rec.TargetRef,
+		Actor:      rec.Actor,
+		ReplayKey:  md.ReplayKey,
+		SHA256:     md.SHA256,
+		Bytes:      md.Bytes,
+		Truncated:  md.Truncated,
+		ChainHash:  rec.ChainHash,
+	}
+}
+
+// writeRecordings writes pam-recordings.jsonl from the privileged-recording
+// references gathered during the streamEvidence pass. It is a derived index, not
+// a new source of truth — every row was reconstructed from a chain event, so it
+// carries no integrity weight the chain does not already guarantee — but it
+// spares an auditor from filtering evidence.jsonl by hand to tie CC6.7/A.8.2
+// records to replayable recordings, and it adds no chain scan of its own.
+func (pw *PackWriter) writeRecordings(zw *zip.Writer, rows []recordingIndexRow) (PackFileInfo, error) {
 	fw, err := zw.Create("pam-recordings.jsonl")
 	if err != nil {
 		return PackFileInfo{}, fmt.Errorf("compliance: create pam-recordings.jsonl: %w", err)
 	}
 	h := sha256.New()
 	enc := json.NewEncoder(io.MultiWriter(fw, h))
-	count := 0
-	if err := pw.evidence.streamPeriod(ctx, opts.WorkspaceID, opts.From, opts.To, func(rec EvidenceRecord) error {
-		if rec.Kind != KindPrivilegedRecording {
-			return nil
+	for i := range rows {
+		if err := enc.Encode(rows[i]); err != nil {
+			return PackFileInfo{}, fmt.Errorf("compliance: encode recording row: %w", err)
 		}
-		var md recordingMeta
-		if len(rec.Metadata) > 0 {
-			// A malformed metadata blob must not abort the whole export; emit
-			// the row with whatever decoded so the recording is still indexed.
-			_ = json.Unmarshal(rec.Metadata, &md)
-		}
-		count++
-		return enc.Encode(recordingIndexRow{
-			ChainSeq:   rec.ChainSeq,
-			OccurredAt: rec.OccurredAt,
-			SessionID:  md.SessionID,
-			TargetRef:  rec.TargetRef,
-			Actor:      rec.Actor,
-			ReplayKey:  md.ReplayKey,
-			SHA256:     md.SHA256,
-			Bytes:      md.Bytes,
-			Truncated:  md.Truncated,
-			ChainHash:  rec.ChainHash,
-		})
-	}); err != nil {
-		return PackFileInfo{}, err
 	}
 	return PackFileInfo{
 		Name:    "pam-recordings.jsonl",
 		Comment: "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
-		Rows:    count,
+		Rows:    len(rows),
 		SHA256:  hex.EncodeToString(h.Sum(nil)),
 	}, nil
 }

@@ -3,6 +3,7 @@ package pam
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -70,6 +71,49 @@ func TestRecordRecordingAppendsEvidence(t *testing.T) {
 	// Nil session is a validation error.
 	if err := mgr.RecordRecording(ctx, nil, ref); err == nil {
 		t.Fatalf("expected error for nil session")
+	}
+}
+
+// TestFindTargetByName proves the exact, workspace-scoped name lookup the
+// seeder relies on for idempotency: it resolves an existing target by name and
+// reports ErrTargetNotFound for an absent one. Because it is an indexed lookup
+// rather than a scan of a capped ListTargets page, the seeder converges on a
+// single target regardless of how large the workspace's target catalog grows.
+func TestFindTargetByName(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	vault := NewVault(db, newTestEncryptor(t), nil)
+
+	created, err := vault.CreateTarget(ctx, CreateTargetInput{
+		WorkspaceID: ws,
+		Name:        "prod-db",
+		Protocol:    models.PAMProtocolSSH,
+		Address:     "db.internal:22",
+		Secret:      Secret{Password: "pw"},
+		Actor:       "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+
+	got, err := vault.FindTargetByName(ctx, ws, "prod-db")
+	if err != nil {
+		t.Fatalf("FindTargetByName: %v", err)
+	}
+	if got.ID != created.ID {
+		t.Fatalf("FindTargetByName returned %s, want %s", got.ID, created.ID)
+	}
+
+	// Surrounding whitespace is normalised to match CreateTarget's trim.
+	if _, err := vault.FindTargetByName(ctx, ws, "  prod-db  "); err != nil {
+		t.Fatalf("FindTargetByName trimmed: %v", err)
+	}
+
+	// An absent name is the not-found sentinel, not a hard error, so callers can
+	// branch to "create".
+	if _, err := vault.FindTargetByName(ctx, ws, "missing"); !errors.Is(err, ErrTargetNotFound) {
+		t.Fatalf("absent name: got %v, want ErrTargetNotFound", err)
 	}
 }
 
