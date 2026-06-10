@@ -3,6 +3,7 @@ package heroku
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -172,6 +173,69 @@ func TestSyncAndCountIdentities_MultiPageMembers(t *testing.T) {
 	}
 	if len(synced) != pages*perPage {
 		t.Fatalf("synced %d identities; want %d", len(synced), pages*perPage)
+	}
+}
+
+// Regression: a non-2xx status on a LATER page (e.g. the admin token expiring
+// mid-sweep) must surface as a real error. Previously doPaged returned the
+// failing page's status, so the audit caller's 401/403/404/422 gate mapped a
+// mid-sweep 401 to ErrAuditNotAvailable — silently soft-skipping the window and
+// advancing the cursor past unread events. The status must stay pinned to the
+// first page so only a first-page gate triggers the soft skip.
+func TestFetchAuditLogs_MidSweepAuthFailurePropagates(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if strings.TrimSpace(r.Header.Get("Range")) == "" {
+			// First page: a valid event plus a Next-Range pointing onward.
+			w.Header().Set("Next-Range", "page 1")
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = w.Write([]byte(`[{"id":"evt-1","type":"membership","action":"add","created_at":"2024-06-01T11:00:00Z","actor":{"id":"u-1","email":"a@example.com"}}]`))
+			return
+		}
+		// Subsequent page: token has expired.
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"id":"unauthorized","message":"token expired"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	err := c.FetchAccessAuditLogs(context.Background(), herokuAuditConfig(), herokuAuditSecrets(),
+		map[string]time.Time{},
+		func([]*access.AuditLogEntry, time.Time, string) error { return nil })
+	if err == nil {
+		t.Fatal("expected error from mid-sweep 401, got nil")
+	}
+	if errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Fatalf("mid-sweep 401 was soft-skipped as ErrAuditNotAvailable; want a propagated error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "status 401") {
+		t.Fatalf("err = %v; want a status 401 transport error", err)
+	}
+	if calls < 2 {
+		t.Fatalf("server saw %d calls; expected the walk to reach the second page", calls)
+	}
+}
+
+// Regression: a FIRST-page gating status (the tenant lacks the Enterprise/admin
+// grant) must still map to the soft skip ErrAuditNotAvailable.
+func TestFetchAuditLogs_FirstPageGateSoftSkips(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"id":"forbidden","message":"not enterprise"}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	err := c.FetchAccessAuditLogs(context.Background(), herokuAuditConfig(), herokuAuditSecrets(),
+		map[string]time.Time{},
+		func([]*access.AuditLogEntry, time.Time, string) error { return nil })
+	if !errors.Is(err, access.ErrAuditNotAvailable) {
+		t.Fatalf("err = %v; want ErrAuditNotAvailable for a first-page 403 gate", err)
 	}
 }
 

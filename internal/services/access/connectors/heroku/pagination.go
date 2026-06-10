@@ -48,13 +48,19 @@ func readBodyFull(resp *http.Response) ([]byte, error) {
 // response — as the connector did before — therefore truncated every result
 // set that spanned more than one page, dropping audit events and team members.
 //
-// The first page's HTTP status is returned to the caller so it can apply its
-// own soft-skip / error mapping (e.g. the audit pipeline maps 401/403/404/422
-// to access.ErrAuditNotAvailable) before consuming the accumulated pages. On a
-// non-2xx status onPage is never invoked and the returned error carries the
-// status and body. Each page body is streamed to onPage rather than
-// concatenated so callers decode incrementally instead of materialising the
-// whole dataset as one buffer.
+// The returned status is always the FIRST page's HTTP status, regardless of
+// where the walk stops. Callers use it solely for first-page gating — e.g. the
+// audit pipeline maps a first-page 401/403/404/422 to
+// access.ErrAuditNotAvailable (the tenant lacks the Enterprise/admin grant).
+// A non-2xx encountered on a LATER page (e.g. a token that expires mid-sweep)
+// must NOT be mistaken for that gate: it is surfaced as a returned error while
+// the status stays pinned to the first page's value, so the caller propagates
+// a genuine transient failure instead of silently soft-skipping the window and
+// advancing its cursor past unread events. On any non-2xx status onPage is
+// never invoked and the returned error carries the failing page's status and
+// body. Each page body is streamed to onPage rather than concatenated so
+// callers decode incrementally instead of materialising the whole dataset as
+// one buffer.
 func (c *HerokuAccessConnector) doPaged(
 	ctx context.Context,
 	secrets Secrets,
@@ -91,7 +97,10 @@ func (c *HerokuAccessConnector) doPaged(
 			return status, readErr
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return resp.StatusCode, fmt.Errorf("heroku: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
+			// Report the first page's status (the gating signal) while the
+			// error message carries the actual failing page's status. This
+			// keeps a mid-sweep failure from being mapped to a soft skip.
+			return status, fmt.Errorf("heroku: %s %s: status %d: %s", req.Method, req.URL.Path, resp.StatusCode, string(body))
 		}
 		if perr := onPage(body); perr != nil {
 			return status, perr
