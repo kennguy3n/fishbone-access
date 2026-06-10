@@ -243,7 +243,7 @@
     {
       "category": "Cloud Infra",
       "connected": true,
-      "connector_id": "8ff0aee3-1a49-4284-b158-f21aef44e97d",
+      "connector_id": "93ba3265-3dc4-4869-8d7b-d437167bd71a",
       "display_name": "Azure RBAC",
       "operational": {
         "access_audit_stream": true,
@@ -893,7 +893,7 @@
     {
       "category": "Observability",
       "connected": true,
-      "connector_id": "0bf1c608-1bbc-4524-8962-e0e453612e80",
+      "connector_id": "89208cb3-5ad3-489f-9e97-f5000cc504ab",
       "display_name": "Datadog",
       "operational": {
         "access_audit_stream": true,
@@ -1519,7 +1519,7 @@
     {
       "category": "DevOps",
       "connected": true,
-      "connector_id": "d2712827-5a64-48b1-8557-045457b48b56",
+      "connector_id": "47f49d13-1ef8-485e-9e14-cf5f55975cf7",
       "display_name": "GitHub",
       "operational": {
         "access_audit_stream": true,
@@ -2457,7 +2457,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "9b5eb88c-a370-456c-a395-0d57f86c1486",
+      "connector_id": "e6aefa0c-bd0f-4b10-a2f9-d7885a347cf1",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,

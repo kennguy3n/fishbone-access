@@ -10,12 +10,12 @@ an evidence source; every post ends with an honest "where we fall short."
 | # | Post | Scenario | Jurisdiction | Persona |
 | --- | --- | --- | --- | --- |
 | 0 | [Series intro + the honesty contract](00-series-intro.md) | — | — | — |
-| 1 | Singapore fintech: PDPA + MAS TRM + PCI-DSS | S1 | 🇸🇬 sg | Priya / Marcus |
-| 2 | US healthcare: HIPAA + CCPA, JML + the leaver kill switch | S2 | 🇺🇸 us | Sofia / Dmitri |
-| 3 | German retail: BDSG + BSI C5 + PCI-DSS + GDPR | S3 | 🇩🇪 de | Priya / Dmitri |
-| 4 | Vietnam: PDPD Decree 13 — an emerging-market posture from one pack | S4 | 🇻🇳 vn | Priya / Marcus |
-| 5 | UAE finance: PDPL + DESC — privileged access / PAM | S5 | 🇦🇪 ae | Sofia / Marcus |
-| 6 | Australian SaaS: Essential Eight + SOC 2 — certify, export, critique | S6 | 🇦🇺 au | Marcus / Aisha |
+| 1 | [Singapore fintech: PDPA + MAS TRM + PCI-DSS](01-singapore-fintech-pdpa-mas-trm.md) | S1 | 🇸🇬 sg | Priya / Marcus |
+| 2 | [US healthcare: HIPAA + CCPA, JML + the leaver kill switch](02-us-healthcare-hipaa-ccpa.md) | S2 | 🇺🇸 us | Sofia / Dmitri |
+| 3 | [German retail: BDSG + BSI C5 + PCI-DSS + GDPR](03-germany-retail-bdsg-c5-gdpr.md) | S3 | 🇩🇪 de | Priya / Dmitri |
+| 4 | [Vietnam: PDPD Decree 13 — an emerging-market posture from one pack](04-vietnam-logistics-pdpd-decree13.md) | S4 | 🇻🇳 vn | Priya / Marcus |
+| 5 | [UAE finance: PDPL + DESC — privileged access / PAM](05-uae-finance-pdpl-desc-pam.md) | S5 | 🇦🇪 ae | Sofia / Marcus |
+| 6 | [Australian SaaS: Essential Eight + SOC 2 — certify, export, critique](06-australia-saas-essential-eight-soc2.md) | S6 | 🇦🇺 au | Marcus / Aisha |
 
 Scenario definitions and the evidence map live in
 [`../scenarios/00-scenario-catalog.md`](../scenarios/00-scenario-catalog.md).

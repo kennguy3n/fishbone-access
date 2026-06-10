@@ -64,11 +64,8 @@
       "title": "Privileged access rights monitored"
     },
     {
-      "by_kind": {
-        "evidence_exported": 1
-      },
-      "covered": true,
-      "evidence_count": 1,
+      "covered": false,
+      "evidence_count": 0,
       "id": "A.8.15",
       "kinds": [
         "evidence_exported"
@@ -76,8 +73,8 @@
       "title": "Tamper-evident logging"
     }
   ],
-  "controls_covered": 4,
+  "controls_covered": 3,
   "controls_total": 5,
-  "evidence_total": 36,
+  "evidence_total": 35,
   "framework": "ISO 27001"
 }

@@ -1,0 +1,137 @@
+# Post 4 — Vietnam logistics: a credible "day one" posture under PDPD Decree 13
+
+> Workspace: **Umbrella Logistics** (`vn`, logistics) · Personas: **Priya**
+> (compliance officer), **Marcus** (CISO). Payloads verbatim from
+> [`../artifacts/payloads/`](../artifacts/payloads/).
+
+## The business problem
+
+Umbrella Logistics is an emerging-market logistics SME. Vietnam's **PDPD —
+Personal Data Protection Decree 13/2023**, enforced by the Ministry of Public
+Security (A05), is new, and most local mid-market companies are starting from
+*nothing*: no access policy, no review cadence, no evidence. The question isn't
+"how do we satisfy four frameworks" (Post 3) — it's "**how do we stand up a
+credible posture from one pack, this week**, that we can show a regulator?"
+
+This is the **day-one** story, and it's deliberately the smallest workspace in
+the series: **2 active policies**. The value isn't breadth — it's that even a
+minimal, single-pack start produces a *verifiable* chain.
+
+## One pack, two policies, real principles
+
+Umbrella applies a single pack, `vn-pdpd-decree13`. It is small and to the point
+([`s4-vn-umbrella-logistics-packs.json`](../artifacts/payloads/s4-vn-umbrella-logistics-packs.json)):
+
+```
+PACK: vn-pdpd-decree13 — "Vietnam — PDPD (Decree 13/2023)"
+      authority: Ministry of Public Security (A05) · frameworks: PDPD, Decree 13
+  • grant  "Authorised processors → personal data"
+           control: Decree 13 Art. 3 — Processing principles
+  • deny   "Restrict sensitive personal data"
+           control: Decree 13 Art. 2(4) — Sensitive personal data
+```
+
+Two templates, two cited articles of the Decree. The `grant` encodes the
+*authorised-processor* principle (Art. 3); the `deny` encodes the
+*sensitive-personal-data* restriction (Art. 2(4)). That's the entire starting
+posture — and it's enough to begin generating evidence.
+
+![Umbrella Logistics dashboard — 2 PDPD policies, the minimal day-one start](../artifacts/screenshots/s4-vn-dashboard.png)
+
+The fabric is equally lean: **GitHub** (logistics platform), **Slack**
+(operations), and a **manual warehouse-WMS** target. The WMS has no API; the
+manual connector still provisions and revokes it locally so the lifecycle is
+whole.
+
+## Small posture, full lifecycle, verifiable chain
+
+Even with two policies, Umbrella runs the *complete* lifecycle: a dispatcher and
+an inventory clerk are provisioned, a Decree-13 register review request is filed,
+a PDPD access review runs and makes real decisions, and a certification campaign
+closes.
+
+The PDPD review certified one grant and revoked another
+([`s4-vn-umbrella-logistics-review-report.json`](../artifacts/payloads/s4-vn-umbrella-logistics-review-report.json)):
+
+```json
+{
+  "report": {
+    "name": "Q2 2026 PDPD Decree 13 access review",
+    "total": 2, "certified": 1, "revoked": 1, "state": "active"
+  }
+}
+```
+
+The campaign closed, every item decided
+([`s4-vn-umbrella-logistics-campaign-report.json`](../artifacts/payloads/s4-vn-umbrella-logistics-campaign-report.json)):
+
+```json
+{ "name": "Q2 2026 PDPD Decree 13 certification", "state": "closed", "all_decided": true, "total": 1, "revoked": 1 }
+```
+
+And the chain — **53 records, valid** — is the artifact that turns "we have a
+policy" into "we can prove it"
+([`s4-vn-umbrella-logistics-chain-verify.json`](../artifacts/payloads/s4-vn-umbrella-logistics-chain-verify.json)):
+
+```json
+{ "length": 53, "ok": true, "status": "valid", "workspace_id": "d030dc2a-02ce-4b46-b177-84ae55b558d1" }
+```
+
+That's the day-one win: a Vietnamese SME with *two policies* still produces a
+tamper-evident, hash-linked record of every grant, review, and revocation — the
+exact thing A05 will ask to see.
+
+## Vietnamese, natively
+
+The compliance evidence view in Vietnamese (locale `vi`) — same chain, translated
+UI. For a logistics operator whose compliance lead works in Vietnamese, this is
+not a nicety; it's whether the control is understood:
+
+![Umbrella's compliance evidence in Vietnamese](../artifacts/screenshots/s4-vn-compliance-vi.png)
+
+The same page in English, for reference:
+
+![Umbrella's compliance evidence in English](../artifacts/screenshots/s4-vn-compliance.png)
+
+Even from one pack, the framework projection still runs — SOC 2 reads 4 / 6, with
+the now-familiar honest gaps at `CC6.7` and `CC7.3`.
+
+## Where we fall short
+
+- **Two policies is a *start*, not a program.** The single PDPD pack covers the
+  core processing principles, but a mature posture needs role-specific grants per
+  warehouse, per route, per data category. fishbone-access makes the start
+  credible; it does not pretend two policies are a finished control set.
+- **`CC6.7` and `CC7.3` are empty again** — no privileged-session monitoring, no
+  orphan/anomaly analytics. Same gap as every other workspace.
+- **PDPD is young; the pack is our interpretation.** The templates cite Decree 13
+  articles, but Vietnam's enforcement guidance is still settling. A local DPO
+  should review the mapping — we give a defensible starting point, not legal
+  advice.
+
+## How a buyer should compare this
+
+For an emerging-market SME, most of the "leaders" simply aren't realistic:
+
+| Capability | fishbone-access | SailPoint / Saviynt | Okta IGA | CyberArk |
+| --- | --- | --- | --- | --- |
+| Realistic for a 2-policy, day-one SME | ✅ | ❌ enterprise floor | ⚠️ | ❌ |
+| PDPD Decree 13 pack out of the box | ✅ | ❌ | ❌ | ❌ |
+| Vietnamese UI | ✅ | ❌ | ⚠️ | ❌ |
+| Verifiable evidence chain from 2 policies | ✅ | ⚠️ overkill | ⚠️ | ⚠️ |
+| Total cost realistic for the market | ✅ | ❌ | ⚠️ | ❌ |
+
+**The honest read:** SailPoint, Saviynt, and CyberArk are extraordinary products
+— and completely the wrong shape for a Vietnamese logistics SME standing up its
+*first* access posture under a *new* law. Their enterprise floor (price,
+deployment, expertise) exceeds the whole problem. Okta IGA is closer but still
+expects you to author the jurisdiction logic yourself. fishbone-access's edge
+here is precisely that it makes a *small* start *credible*: one PDPD pack, a full
+lifecycle, a valid 53-record chain, in Vietnamese, this week. The right tool is
+the one that meets the company where it actually is.
+
+---
+
+*Next: [Post 5 — UAE finance](05-uae-finance-pdpl-desc-pam.md): privileged access
+to core banking, the PAM story, and where we most clearly need CyberArk — in
+Arabic, right-to-left.*
