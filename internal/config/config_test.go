@@ -48,9 +48,9 @@ func TestDatabaseDriverParsing(t *testing.T) {
 		{"sqlite", "sqlite"},     // unknown returned as-typed for Validate to reject
 	}
 	for _, tc := range tests {
-		t.Setenv("DATABASE_DRIVER", tc.in)
+		t.Setenv("ACCESS_DATABASE_DRIVER", tc.in)
 		if got := Load().DatabaseDriver; got != tc.want {
-			t.Errorf("DATABASE_DRIVER=%q → %q, want %q", tc.in, got, tc.want)
+			t.Errorf("ACCESS_DATABASE_DRIVER=%q → %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }

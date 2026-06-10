@@ -86,7 +86,7 @@ func run() error {
 		}()
 
 		// Route RequireTenant's tenant→workspace resolution through the backend
-		// selected by DATABASE_DRIVER (WS10/WS15 GORM→pgx migration, starting
+		// selected by ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration, starting
 		// with the workspace-config read on the hot path of every authenticated
 		// request). Both backends honour the identical contract (same query, same
 		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged
@@ -123,7 +123,7 @@ func run() error {
 			// The branch is here so that adding a driver to DatabaseDriver.Valid()
 			// without wiring it here fails fast instead of leaving
 			// deps.WorkspaceResolver nil and panicking on the first request.
-			return fmt.Errorf("ztna-api: unsupported DATABASE_DRIVER %q", cfg.DatabaseDriver)
+			return fmt.Errorf("ztna-api: unsupported ACCESS_DATABASE_DRIVER %q", cfg.DatabaseDriver)
 		}
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")

@@ -377,7 +377,7 @@ func (r *GormWorkspaceConfigRepo) WorkspaceIDs(ctx context.Context) ([]uuid.UUID
 }
 
 // GormAuditRepo is the GORM-backed AuditAppender — the standalone-append
-// counterpart to PgxAuditRepo selected when DATABASE_DRIVER=gorm (and the
+// counterpart to PgxAuditRepo selected when ACCESS_DATABASE_DRIVER=gorm (and the
 // backend used on the SQLite unit-test path). It writes into the SAME
 // per-workspace chain with byte-identical semantics:
 //

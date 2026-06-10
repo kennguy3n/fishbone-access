@@ -88,7 +88,7 @@ func run() error {
 	}()
 
 	// Route the Vault's standalone audit appends through the backend selected by
-	// DATABASE_DRIVER (WS10/WS15 GORM→pgx migration). The chain bookkeeping is
+	// ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration). The chain bookkeeping is
 	// shared via the auditchain package — same advisory lock, same version-1
 	// canonical hash — so a standalone event links into the same per-workspace
 	// hash chain as the in-transaction (GORM) appends regardless of which backend
@@ -116,7 +116,7 @@ func run() error {
 		// Unreachable today: cfg.Validate() rejects any other value at boot. The
 		// branch is here so that adding a driver to DatabaseDriver.Valid() without
 		// wiring it here fails fast instead of leaving auditor nil and panicking.
-		return fmt.Errorf("pam-gateway: unsupported DATABASE_DRIVER %q", cfg.DatabaseDriver)
+		return fmt.Errorf("pam-gateway: unsupported ACCESS_DATABASE_DRIVER %q", cfg.DatabaseDriver)
 	}
 
 	listeners, err := buildListeners(ctx, cfg, gdb, auditor)

@@ -80,7 +80,7 @@ type Config struct {
 	// avoids accumulating server-side state on stale backends.
 	DBConnMaxLifetime time.Duration
 	// DatabaseDriver selects the backend (pgx or gorm) for the repositories that
-	// have both implementations. Read from DATABASE_DRIVER; defaults to pgx.
+	// have both implementations. Read from ACCESS_DATABASE_DRIVER; defaults to pgx.
 	// Validate rejects an unrecognised value so a typo fails the boot loudly
 	// rather than silently falling back to a backend the operator did not pick.
 	DatabaseDriver DatabaseDriver
@@ -182,7 +182,7 @@ func Load() Config {
 		DBPgxMaxConns:     getInt("ACCESS_DB_PGX_MAX_CONNS", 8),
 		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime: getDuration("ACCESS_DB_CONN_MAX_LIFETIME", 30*time.Minute),
-		DatabaseDriver:    parseDatabaseDriver(os.Getenv("DATABASE_DRIVER")),
+		DatabaseDriver:    parseDatabaseDriver(os.Getenv("ACCESS_DATABASE_DRIVER")),
 		ShutdownTimeout:   getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
@@ -202,17 +202,17 @@ func (c Config) DatabaseConfigured() bool { return c.DatabaseURL != "" }
 // Validate checks invariants that must hold before a binary wires its services,
 // returning a descriptive error so the caller can fail the boot fast. It is the
 // place to reject values that Load deliberately does not normalise away (an
-// unknown DATABASE_DRIVER), keeping Load total (never-panicking) while still
+// unknown ACCESS_DATABASE_DRIVER), keeping Load total (never-panicking) while still
 // surfacing misconfiguration loudly.
 func (c Config) Validate() error {
 	if !c.DatabaseDriver.Valid() {
-		return fmt.Errorf("config: unknown DATABASE_DRIVER %q (want %q or %q)",
+		return fmt.Errorf("config: unknown ACCESS_DATABASE_DRIVER %q (want %q or %q)",
 			c.DatabaseDriver, DriverPgx, DriverGorm)
 	}
 	return nil
 }
 
-// parseDatabaseDriver normalises the DATABASE_DRIVER env var (trimmed,
+// parseDatabaseDriver normalises the ACCESS_DATABASE_DRIVER env var (trimmed,
 // lower-cased) and maps an empty value to the default. An unrecognised value is
 // returned as-typed so Validate can name it in the error rather than silently
 // substituting a backend the operator never selected.
