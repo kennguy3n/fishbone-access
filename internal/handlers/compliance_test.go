@@ -30,25 +30,32 @@ func complianceTestDeps(t *testing.T) Deps {
 			t.Fatalf("seed workspace %s: %v", ten, err)
 		}
 	}
-	// The export gate is RBAC-enforced (middleware.RequirePermission resolves
-	// the caller's workspace role, not a raw token scope), so wire the RBAC
-	// tier and seed memberships. user-a is a plain operator (a member, so the
-	// un-permissioned campaign routes admit them, but WITHOUT compliance.export
-	// so the export permission gate denies them); user-auditor carries the
-	// compliance-scoped read+export permission.
+	// Every compliance route is RBAC-enforced (middleware.RequirePermission
+	// resolves the caller's workspace role, not a raw token scope), so wire the
+	// RBAC tier and seed memberships spanning the role gradient:
+	//   - user-a (operator): a member, but the RBAC model excludes operators
+	//     from compliance entirely — no compliance.read/manage/export.
+	//   - user-auditor (auditor): read-only compliance — compliance.read +
+	//     compliance.export, but NOT compliance.manage (cannot drive campaigns).
+	//   - user-admin (admin): full compliance surface incl. compliance.manage.
+	//   - user-b (auditor in tenant-b): holds compliance.read in its own
+	//     workspace so cross-tenant reads exercise tenant isolation (404), not
+	//     the permission gate (403).
 	wsA := workspaceIDByTenant(t, db, "tenant-a")
 	wsB := workspaceIDByTenant(t, db, "tenant-b")
 	rbac := authz.NewRBACService(db, 0)
 	seedMember(t, rbac, wsA, "user-a", authz.RoleOperator)
 	seedMember(t, rbac, wsA, "user-auditor", authz.RoleAuditor)
-	seedMember(t, rbac, wsB, "user-b", authz.RoleOperator)
+	seedMember(t, rbac, wsA, "user-admin", authz.RoleAdmin)
+	seedMember(t, rbac, wsB, "user-b", authz.RoleAuditor)
 
 	ready := &atomic.Bool{}
 	ready.Store(true)
 	return Deps{
 		Validator: mapValidator{byToken: map[string]*iamcore.Claims{
-			// operator member, no MFA: denied export (role lacks compliance.export).
+			// operator member, no MFA: excluded from compliance entirely.
 			"tok-a": {Subject: "user-a", TenantID: "tenant-a"},
+			// auditor in tenant-b: holds compliance.read in its own workspace.
 			"tok-b": {Subject: "user-b", TenantID: "tenant-b"},
 			// holds compliance.export (auditor) but NO MFA -> blocked by RequireMFA.
 			"tok-auditor": {Subject: "user-auditor", TenantID: "tenant-a"},
@@ -56,6 +63,8 @@ func complianceTestDeps(t *testing.T) Deps {
 			"tok-a-mfa": {Subject: "user-a", TenantID: "tenant-a", MFASatisfied: true},
 			// auditor (compliance.export) + MFA -> allowed.
 			"tok-a-export": {Subject: "user-auditor", TenantID: "tenant-a", MFASatisfied: true},
+			// admin: holds compliance.manage -> may drive campaigns.
+			"tok-admin": {Subject: "user-admin", TenantID: "tenant-a"},
 		}},
 		DB:        db,
 		Encryptor: crypto.PassthroughEncryptor{},
@@ -103,8 +112,8 @@ func TestExportPackAuthzGate(t *testing.T) {
 func TestCampaignCrossTenantIsolationHandler(t *testing.T) {
 	r := NewRouter(complianceTestDeps(t))
 
-	// tenant-a starts a campaign.
-	w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-a", map[string]any{"name": "Q1"})
+	// tenant-a starts a campaign (admin holds compliance.manage).
+	w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-admin", map[string]any{"name": "Q1"})
 	if w.Code != http.StatusCreated && w.Code != http.StatusOK {
 		t.Fatalf("start campaign: got %d body=%s", w.Code, w.Body.String())
 	}
@@ -126,7 +135,57 @@ func TestCampaignCrossTenantIsolationHandler(t *testing.T) {
 	}
 
 	// tenant-b must NOT be able to read tenant-a's campaign -> 404.
+	// (user-b is an auditor in tenant-b, so it clears the compliance.read gate;
+	// the 404 therefore proves tenant isolation, not a missing permission.)
 	if w := do(t, r, http.MethodGet, "/api/v1/compliance/campaigns/"+id, "tok-b", nil); w.Code != http.StatusNotFound {
 		t.Fatalf("cross-tenant read: got %d, want 404", w.Code)
+	}
+}
+
+// TestComplianceRoutesRBACGate proves every compliance route fails closed
+// against the RBAC model: an operator (excluded from compliance) is 403'd on
+// the read surface, and the read-only auditor — who can read and export — is
+// still 403'd on the campaign write surface, which requires compliance.manage.
+func TestComplianceRoutesRBACGate(t *testing.T) {
+	r := NewRouter(complianceTestDeps(t))
+
+	// --- Read surface: operator excluded, auditor admitted. ---------------
+	readRoutes := []string{
+		"/api/v1/compliance/evidence",
+		"/api/v1/compliance/coverage",
+		"/api/v1/compliance/chain/verify",
+		"/api/v1/compliance/campaigns",
+	}
+	for _, route := range readRoutes {
+		// operator lacks compliance.read -> 403.
+		if w := do(t, r, http.MethodGet, route, "tok-a", nil); w.Code != http.StatusForbidden {
+			t.Fatalf("operator GET %s: got %d body=%s, want 403", route, w.Code, w.Body.String())
+		}
+		// auditor holds compliance.read -> not 403 (200, or 4xx other than 403).
+		if w := do(t, r, http.MethodGet, route, "tok-auditor", nil); w.Code == http.StatusForbidden {
+			t.Fatalf("auditor GET %s: got 403, want allowed by read gate", route)
+		}
+	}
+
+	// --- Write surface: operator AND read-only auditor both excluded. -----
+	// startCampaign / overdue-enforce need no path params, so they reach the
+	// permission gate directly.
+	writeRoutes := []string{
+		"/api/v1/compliance/campaigns",
+		"/api/v1/compliance/campaigns/overdue-enforce",
+	}
+	for _, route := range writeRoutes {
+		if w := do(t, r, http.MethodPost, route, "tok-a", map[string]any{}); w.Code != http.StatusForbidden {
+			t.Fatalf("operator POST %s: got %d body=%s, want 403", route, w.Code, w.Body.String())
+		}
+		// auditor has compliance.read+export but NOT compliance.manage -> 403.
+		if w := do(t, r, http.MethodPost, route, "tok-auditor", map[string]any{}); w.Code != http.StatusForbidden {
+			t.Fatalf("auditor POST %s: got %d body=%s, want 403 (lacks compliance.manage)", route, w.Code, w.Body.String())
+		}
+	}
+
+	// admin holds compliance.manage -> campaign start is admitted past the gate.
+	if w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-admin", map[string]any{"name": "Q2"}); w.Code == http.StatusForbidden {
+		t.Fatalf("admin start campaign: got 403, want admitted by manage gate")
 	}
 }

@@ -65,21 +65,32 @@ func newComplianceHandlers(deps Deps) *complianceHandlers {
 // register mounts the compliance routes on the tenant-scoped group. The group
 // must already carry Auth + ResolveTenant + RequireTenant.
 func (h *complianceHandlers) register(g *gin.RouterGroup) {
+	// Every compliance surface is RBAC-gated and fails closed, matching the
+	// lifecycle/connectors/PAM handlers: the read surface requires
+	// compliance.read (owner/admin/security_admin/auditor — never operator) and
+	// the campaign write surface additionally requires compliance.manage
+	// (owner/admin/security_admin — NOT the read-only auditor). Without these
+	// gates any workspace member, including an operator the RBAC model excludes
+	// from compliance entirely, could read the evidence stream or drive a
+	// certification campaign.
+	read := middleware.RequirePermission(authz.PermComplianceRead)
+	manage := middleware.RequirePermission(authz.PermComplianceManage)
+
 	// Compliance evidence dashboard read surface.
-	g.GET("/compliance/evidence", h.listEvidence)
-	g.GET("/compliance/coverage", h.coverage)
-	g.GET("/compliance/chain/verify", h.verifyChain)
+	g.GET("/compliance/evidence", read, h.listEvidence)
+	g.GET("/compliance/coverage", read, h.coverage)
+	g.GET("/compliance/chain/verify", read, h.verifyChain)
 
 	// Certification campaigns.
-	g.POST("/compliance/campaigns", h.startCampaign)
-	g.GET("/compliance/campaigns", h.listCampaigns)
-	g.GET("/compliance/campaigns/:id", h.campaignReport)
-	g.GET("/compliance/campaigns/:id/items", h.campaignItems)
-	g.POST("/compliance/campaigns/:id/items/:itemID/decision", h.campaignDecision)
+	g.POST("/compliance/campaigns", manage, h.startCampaign)
+	g.GET("/compliance/campaigns", read, h.listCampaigns)
+	g.GET("/compliance/campaigns/:id", read, h.campaignReport)
+	g.GET("/compliance/campaigns/:id/items", read, h.campaignItems)
+	g.POST("/compliance/campaigns/:id/items/:itemID/decision", manage, h.campaignDecision)
 	// Dry-run preview of the destructive close (test-before-effect guardrail).
-	g.GET("/compliance/campaigns/:id/revocation-preview", h.previewRevocations)
-	g.POST("/compliance/campaigns/:id/close", h.closeCampaign)
-	g.POST("/compliance/campaigns/overdue-enforce", h.enforceOverdue)
+	g.GET("/compliance/campaigns/:id/revocation-preview", read, h.previewRevocations)
+	g.POST("/compliance/campaigns/:id/close", manage, h.closeCampaign)
+	g.POST("/compliance/campaigns/overdue-enforce", manage, h.enforceOverdue)
 
 	// Evidence-pack export: gated by an explicit permission scope AND step-up
 	// MFA, and itself audited. Both gates fail closed.
