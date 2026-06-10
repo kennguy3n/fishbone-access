@@ -210,6 +210,66 @@ func TestVaultRevealFailsClosedWithoutGate(t *testing.T) {
 	}
 }
 
+// fakeAuditor records the standalone audit appends routed to it so a unit test
+// can assert the Vault dispatches through the injected auditor (the pgxpool
+// PgxAuditRepo in production) instead of the GORM lifecycle fallback. It also
+// lets the test force an append failure. Even though standaloneAuditor is
+// unexported, the exported SetAuditor accepts any value implementing
+// AppendAudit, so the pgx routing path is unit-testable without Postgres.
+type fakeAuditor struct {
+	calls []database.AuditInput
+	err   error
+}
+
+func (f *fakeAuditor) AppendAudit(_ context.Context, _ time.Time, in database.AuditInput) error {
+	f.calls = append(f.calls, in)
+	return f.err
+}
+
+// TestVaultRevealRoutesThroughInjectedAuditor proves the standalone audit path
+// is wired end to end: with an auditor set, RevealSecret appends the
+// pam.secret.revealed event through it (not the GORM fallback) with the exact
+// AuditInput the pgx adapter will persist, and an auditor failure fails the
+// reveal closed — a secret is never returned without its audit event recorded.
+func TestVaultRevealRoutesThroughInjectedAuditor(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+
+	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
+		WorkspaceID: ws, Name: "db-prod", Protocol: models.PAMProtocolPostgres,
+		Address: "db.internal:5432", Username: "app",
+		Secret: Secret{Username: "app", Password: "s3cr3t"}, Actor: "admin",
+	})
+	if err != nil {
+		t.Fatalf("CreateTarget: %v", err)
+	}
+
+	// Wire the auditor AFTER CreateTarget so its (in-transaction, GORM) audit
+	// does not count: only the standalone reveal append should reach the fake.
+	auditor := &fakeAuditor{}
+	v.SetAuditor(auditor)
+
+	if _, err := v.RevealSecret(context.Background(), ws, target.ID, "alice", ""); err != nil {
+		t.Fatalf("RevealSecret: %v", err)
+	}
+	if len(auditor.calls) != 1 {
+		t.Fatalf("want exactly 1 standalone append through the injected auditor, got %d", len(auditor.calls))
+	}
+	got := auditor.calls[0]
+	if got.WorkspaceID != ws || got.Actor != "alice" || got.Action != "pam.secret.revealed" || got.TargetRef != target.ID.String() {
+		t.Fatalf("audit input mismatch: %+v", got)
+	}
+	if len(got.Metadata) == 0 {
+		t.Fatal("expected metadata JSON on the reveal audit event")
+	}
+
+	auditor.err = errors.New("append failed")
+	if _, err := v.RevealSecret(context.Background(), ws, target.ID, "alice", ""); err == nil {
+		t.Fatal("expected RevealSecret to fail closed when the auditor append fails")
+	}
+}
+
 func TestVaultGetTargetIsWorkspaceScoped(t *testing.T) {
 	db := newTestDB(t)
 	wsA := seedWorkspace(t, db, "tenant-a")

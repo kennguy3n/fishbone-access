@@ -1,15 +1,23 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-
-	"github.com/kennguy3n/fishbone-access/internal/models"
 )
+
+// WorkspaceResolver maps a verified iam-core tenant id to its ShieldNet
+// workspace UUID. It is the one read RequireTenant needs, lifted off the
+// concrete *gorm.DB so the middleware is agnostic to whether the lookup runs
+// through GORM or the pgxpool adapter — both repositories in
+// internal/pkg/database satisfy it and return gorm.ErrRecordNotFound on a miss.
+type WorkspaceResolver interface {
+	WorkspaceIDByTenant(ctx context.Context, tenantID string) (uuid.UUID, error)
+}
 
 // ctxKeyWorkspaceID stores the resolved ShieldNet workspace UUID. It is set
 // ONLY by RequireTenant, after the iam-core tenant_id claim has been
@@ -32,22 +40,18 @@ const ctxKeyWorkspaceID = "workspace_id"
 // Because the workspace id is derived from the verified claim — never from a
 // client-supplied value — a handler cannot be tricked into operating on another
 // tenant's data.
-func RequireTenant(db *gorm.DB) gin.HandlerFunc {
+func RequireTenant(ws WorkspaceResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant := TenantFromContext(c)
 		if tenant == "" {
 			abort(c, http.StatusForbidden, "no tenant resolved")
 			return
 		}
-		if db == nil {
+		if ws == nil {
 			abort(c, http.StatusServiceUnavailable, "tenant store unavailable")
 			return
 		}
-		var ws models.Workspace
-		err := db.WithContext(c.Request.Context()).
-			Select("id").
-			Where("iam_core_tenant_id = ?", tenant).
-			Take(&ws).Error
+		id, err := ws.WorkspaceIDByTenant(c.Request.Context(), tenant)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			abort(c, http.StatusForbidden, "no workspace for tenant")
 			return
@@ -56,7 +60,7 @@ func RequireTenant(db *gorm.DB) gin.HandlerFunc {
 			abort(c, http.StatusServiceUnavailable, "tenant lookup failed")
 			return
 		}
-		c.Set(ctxKeyWorkspaceID, ws.ID)
+		c.Set(ctxKeyWorkspaceID, id)
 		c.Next()
 	}
 }

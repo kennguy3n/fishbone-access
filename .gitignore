@@ -19,3 +19,7 @@ coverage.txt
 /ui/dist/
 # Embedded SPA build artifact (produced by `npm run build`, embedded under -tags embed_ui)
 /internal/webui/dist/
+
+# Security audit tooling cache + generated SBOM
+/.tooling/
+/dist/sbom.cyclonedx.json
