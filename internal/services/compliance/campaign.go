@@ -16,6 +16,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
+// campaignItemInsertBatch bounds the multi-row INSERT size when seeding a
+// campaign's items. CertificationItem has a handful of columns, so 500 rows per
+// statement stays well under Postgres' 65535 bound-parameter ceiling while
+// keeping the round-trip count low for large campaigns.
+const campaignItemInsertBatch = 500
+
 // GrantRevoker is the subset of the provisioning service the certification
 // service needs to tear a grant down when a revoke decision is APPLIED at
 // campaign close. It is the same contract the 1C review service uses; reusing
@@ -162,21 +168,29 @@ func (s *CertificationService) StartCampaign(ctx context.Context, workspaceID uu
 			return fmt.Errorf("compliance: enumerate grants for campaign: %w", err)
 		}
 
+		// Materialize the items then bulk-insert in batches: a campaign can scope
+		// thousands of grants, and a per-row INSERT loop would be that many round
+		// trips inside the transaction. CreateInBatches collapses them into a few
+		// multi-row INSERTs (still one transaction, so the all-or-nothing
+		// guarantee is unchanged) — a meaningful win at the 5000-tenant scale.
+		items := make([]models.CertificationItem, len(grants))
 		for i := range grants {
-			item := &models.CertificationItem{
+			items[i] = models.CertificationItem{
 				WorkspaceID: workspaceID,
 				CampaignID:  campaign.ID,
 				GrantID:     grants[i].ID,
 				Decision:    models.CertificationDecisionPending,
 				Reviewer:    assignReviewer(in.Reviewers, i),
 			}
-			item.CreatedAt = now
-			item.UpdatedAt = now
-			if err := tx.Create(item).Error; err != nil {
-				return fmt.Errorf("compliance: insert campaign item: %w", err)
-			}
-			itemCount++
+			items[i].CreatedAt = now
+			items[i].UpdatedAt = now
 		}
+		if len(items) > 0 {
+			if err := tx.CreateInBatches(items, campaignItemInsertBatch).Error; err != nil {
+				return fmt.Errorf("compliance: insert campaign items: %w", err)
+			}
+		}
+		itemCount = len(items)
 
 		meta := map[string]any{
 			"name":       in.Name,
