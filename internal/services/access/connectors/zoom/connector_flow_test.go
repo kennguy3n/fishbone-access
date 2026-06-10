@@ -47,7 +47,13 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/groups/g-1/members/u-1"):
-			member.Store(false)
+			// First delete → 204. A repeat delete of an absent member returns
+			// 404, like Zoom, so the loop below also exercises RevokeAccess's
+			// idempotent not-found no-op path.
+			if !member.Swap(false) {
+				http.Error(w, `{"code":404,"message":"Member not found"}`, http.StatusNotFound)
+				return
+			}
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/users/u-1/groups"):
 			if member.Load() {
