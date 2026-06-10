@@ -346,6 +346,14 @@ type AuditEvent struct {
 	Metadata    datatypes.JSON `json:"metadata,omitempty"`
 	PrevHash    string         `json:"prev_hash,omitempty"`
 	ChainHash   string         `gorm:"not null" json:"chain_hash"`
+	// ChainHashVersion records which hash-format pre-image produced ChainHash so
+	// a read-only verifier knows which rule recomputes the row. Rows that predate
+	// the canonical (microsecond-truncated timestamp + canonical-JSON metadata)
+	// format carry version 0 — they folded a non-persisted nanosecond clock into
+	// their pre-image and are NOT recomputable from stored columns, so the
+	// verifier validates them by chain linkage only. Every row the current
+	// appender writes carries lifecycle.AuditHashVersion and is fully recomputable.
+	ChainHashVersion int `gorm:"not null;default:0" json:"chain_hash_version"`
 }
 
 // AccessSyncState persists per-connector incremental-sync checkpoints. A
@@ -394,5 +402,7 @@ func All() []any {
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},
+		&CertificationCampaign{},
+		&CertificationItem{},
 	}
 }

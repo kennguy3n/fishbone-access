@@ -11,16 +11,17 @@ import {
   useResumePamSession,
   useTerminatePamSession,
   useMe,
+  useMyPermissions,
   type PamSession,
   ApiError,
 } from "@/api/access";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
-// TAKEOVER_SCOPE gates the high-risk live-control actions. The server enforces
-// RequirePermission("pam.takeover") + step-up MFA regardless (fail-closed); the
-// UI mirrors the gate so an unauthorized operator sees disabled controls with a
-// reason instead of a 403 surprise.
-const TAKEOVER_SCOPE = "pam.takeover";
+// TAKEOVER_PERMISSION gates the high-risk live-control actions. The server
+// enforces RequirePermission("pam.takeover") + step-up MFA regardless
+// (fail-closed); the UI mirrors the gate so an unauthorized operator sees
+// disabled controls with a reason instead of a 403 surprise.
+const TAKEOVER_PERMISSION = "pam.takeover";
 
 function isActive(s: PamSession): boolean {
   return s.state === "active";
@@ -29,6 +30,7 @@ function isActive(s: PamSession): boolean {
 export function PamSessions() {
   const toast = useToast();
   const me = useMe();
+  const { data: myPerms } = useMyPermissions();
   const [activeOnly, setActiveOnly] = useState(true);
   // Live console: poll so pause/terminate from another operator and new
   // sessions surface without a manual refresh.
@@ -38,23 +40,21 @@ export function PamSessions() {
   );
   const [detail, setDetail] = useState<PamSession | null>(null);
 
-  // Mirror the server's RequirePermission semantics exactly: iam-core may model
-  // pam.takeover as a granular scope OR fold it into a role, and the middleware
-  // accepts it in either claim set (auth.go hasClaim(Scopes) || hasClaim(Roles)).
-  // Checking scopes alone would disable the controls for an operator who holds
-  // the capability via a role — a false-negative the server would have allowed.
-  const hasTakeoverPerm = useMemo(() => {
-    const scopes = me.data?.scopes ?? [];
-    const roles = me.data?.roles ?? [];
-    return scopes.includes(TAKEOVER_SCOPE) || roles.includes(TAKEOVER_SCOPE);
-  }, [me.data]);
+  // Gate against the server's RBAC-resolved permission set (the exact set
+  // RequirePermission enforces), not the JWT scopes/roles which no longer drive
+  // RBAC. undefined = still loading or the RBAC tier isn't mounted (server gate
+  // then no-ops) → treat as allowed so an authorized operator never sees a
+  // false-negative disabled control; the server stays the authority either way.
+  const hasTakeoverPerm =
+    myPerms === undefined
+      ? true
+      : myPerms.permissions.includes(TAKEOVER_PERMISSION);
 
   const canTakeover = hasTakeoverPerm && !!me.data?.mfa_satisfied;
 
   const takeoverReason = useMemo(() => {
-    if (!me.data) return "Checking authorization…";
     if (!hasTakeoverPerm) return "Requires the pam.takeover permission.";
-    if (!me.data.mfa_satisfied) return "Requires step-up MFA.";
+    if (!me.data?.mfa_satisfied) return "Requires step-up MFA.";
     return "";
   }, [me.data, hasTakeoverPerm]);
 
