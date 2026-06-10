@@ -401,18 +401,30 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 	// the remaining staged revokes. It appends its own access_grant.revoked
 	// evidence; we then stamp revoked_at so a re-close skips already-applied
 	// items. A genuine teardown failure aborts so a re-close can retry.
+	//
+	// The teardown runs under a context detached from the request (cancellation
+	// stripped, values kept for tracing): the campaign is already committed as
+	// closed, so the decided end state must be reached regardless of whether the
+	// HTTP client that triggered the close disconnects mid-loop. Without this, a
+	// client cancel would abandon the remaining revokes — grants left live behind
+	// a "closed" campaign — and silently lean on an operator re-close to converge.
+	// Convergent re-close still backs us up for a process crash or a genuine
+	// teardown failure (the access_grant.revoked events + revoked_at guard make a
+	// re-close exactly resume), but the common single-close path no longer depends
+	// on the request staying connected.
+	applyCtx := context.WithoutCancel(ctx)
 	for i := range pendingRevokes {
 		p := pendingRevokes[i]
-		if err := s.revoker.RevokeGrant(ctx, workspaceID, p.GrantID, actor, defaultReason(p.Reason, "revoked by certification campaign")); err != nil {
+		if err := s.revoker.RevokeGrant(applyCtx, workspaceID, p.GrantID, actor, defaultReason(p.Reason, "revoked by certification campaign")); err != nil {
 			return CampaignReport{}, fmt.Errorf("compliance: apply revocation for grant %s: %w", p.GrantID, err)
 		}
-		if err := s.db.WithContext(ctx).Model(&models.CertificationItem{}).
+		if err := s.db.WithContext(applyCtx).Model(&models.CertificationItem{}).
 			Where("workspace_id = ? AND id = ? AND revoked_at IS NULL", workspaceID, p.ItemID).
 			Update("revoked_at", s.now().UTC()).Error; err != nil {
 			return CampaignReport{}, fmt.Errorf("compliance: stamp revoked item %s: %w", p.ItemID, err)
 		}
 	}
-	return s.Report(ctx, workspaceID, campaignID)
+	return s.Report(applyCtx, workspaceID, campaignID)
 }
 
 // EnforceOverdue stamps overdue_at on every running campaign that is past its

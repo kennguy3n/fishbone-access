@@ -123,6 +123,10 @@ type fakeRevoker struct {
 	db     *gorm.DB
 	calls  map[uuid.UUID]int
 	failOn map[uuid.UUID]bool
+	// beforeCall, if set, runs at the top of each RevokeGrant before any work.
+	// Tests use it to perturb state mid-loop (e.g. cancel the request context)
+	// and prove the post-commit teardown is resilient to it.
+	beforeCall func(grantID uuid.UUID)
 }
 
 func newFakeRevoker(db *gorm.DB) *fakeRevoker {
@@ -132,6 +136,9 @@ func newFakeRevoker(db *gorm.DB) *fakeRevoker {
 func (f *fakeRevoker) RevokeGrant(ctx context.Context, workspaceID, grantID uuid.UUID, actor, reason string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.beforeCall != nil {
+		f.beforeCall(grantID)
+	}
 	f.calls[grantID]++
 	if f.failOn[grantID] {
 		return context.DeadlineExceeded // any non-nil error to exercise retry

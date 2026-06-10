@@ -229,6 +229,67 @@ func TestCloseCampaignToleratesIndependentlyRevokedGrant(t *testing.T) {
 	}
 }
 
+// TestCloseCampaignCompletesTeardownAfterRequestCancel proves the post-commit
+// revoke loop is detached from the request context: once the campaign is
+// committed closed, cancelling the caller's context mid-loop must NOT abandon the
+// remaining staged revokes. The revoker cancels the parent ctx during the first
+// teardown; with the request ctx threaded straight through, the second revoke
+// (and the revoked_at stamp) would observe the cancellation and abort, leaving a
+// live grant behind a closed campaign. With context.WithoutCancel the loop runs
+// to completion regardless.
+func TestCloseCampaignCompletesTeardownAfterRequestCancel(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	g1 := seedGrant(t, db, ws, conn, "u1", "r1", "reader")
+	g2 := seedGrant(t, db, ws, conn, "u2", "r2", "reader")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rev := newFakeRevoker(db)
+	svc := NewCertificationService(db, rev)
+
+	camp, _, _ := svc.StartCampaign(ctx, ws, CampaignInput{Name: "c"}, "auditor")
+	items, _ := svc.ListItems(ctx, ws, camp.ID, "")
+	for _, it := range items { // stage BOTH grants for revoke
+		if err := svc.SubmitDecision(ctx, ws, camp.ID, it.ItemID, models.CertificationDecisionRevoke, "auditor", ""); err != nil {
+			t.Fatalf("decision: %v", err)
+		}
+	}
+
+	// Cancel the request context the moment the first teardown begins. If the
+	// loop used the request ctx, everything after this point would fail.
+	var once bool
+	rev.beforeCall = func(uuid.UUID) {
+		if !once {
+			once = true
+			cancel()
+		}
+	}
+
+	report, err := svc.CloseCampaign(ctx, ws, camp.ID, "auditor")
+	if err != nil {
+		t.Fatalf("close must complete teardown despite request cancel, got: %v", err)
+	}
+	if report.State != models.CertificationStateClosed {
+		t.Fatalf("expected closed, got %s", report.State)
+	}
+	// Both staged revokes must have been applied — the cancel did not strand the
+	// second one.
+	if rev.callCount(g1) != 1 || rev.callCount(g2) != 1 {
+		t.Fatalf("both grants must be torn down despite cancel, got g1=%d g2=%d", rev.callCount(g1), rev.callCount(g2))
+	}
+	var unstamped int64
+	if err := db.WithContext(context.Background()).Model(&models.CertificationItem{}).
+		Where("workspace_id = ? AND campaign_id = ? AND decision = ? AND revoked_at IS NULL",
+			ws, camp.ID, models.CertificationDecisionRevoke).
+		Count(&unstamped).Error; err != nil {
+		t.Fatalf("count unstamped: %v", err)
+	}
+	if unstamped != 0 {
+		t.Fatalf("all revoke items must be stamped revoked_at after close, %d left unstamped", unstamped)
+	}
+}
+
 func TestCloseWithoutRevokerFailsClosed(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
