@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -188,22 +189,7 @@ func parseTeamsTime(s string) time.Time {
 
 func readResponse(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	return io.ReadAll(resp.Body)
 }
 
 var _ access.AccessAuditor = (*MSTeamsAccessConnector)(nil)

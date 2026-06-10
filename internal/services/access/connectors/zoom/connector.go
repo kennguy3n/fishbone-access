@@ -442,8 +442,8 @@ func (c *ZoomAccessConnector) ListEntitlements(ctx context.Context, configRaw, s
 			Name string `json:"name"`
 		} `json:"groups"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("zoom: decode user groups: %w", err)
 	}
 	var out []access.Entitlement
 	for _, g := range resp.Groups {

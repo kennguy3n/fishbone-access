@@ -321,8 +321,8 @@ func (c *PagerDutyAccessConnector) ListEntitlements(ctx context.Context, configR
 			} `json:"teams"`
 		} `json:"user"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("pagerduty: decode user teams: %w", err)
 	}
 	var out []access.Entitlement
 	for _, t := range resp.User.Teams {

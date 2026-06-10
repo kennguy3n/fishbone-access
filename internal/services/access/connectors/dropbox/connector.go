@@ -336,8 +336,8 @@ func (c *DropboxAccessConnector) ListEntitlements(ctx context.Context, configRaw
 			Tag string `json:".tag"`
 		} `json:"role"`
 	}
-	if json.Unmarshal(respBody, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return nil, fmt.Errorf("dropbox: decode member info: %w", err)
 	}
 	if resp.Role.Tag == "" {
 		return nil, nil

@@ -369,8 +369,8 @@ func (c *ZendeskAccessConnector) ListEntitlements(ctx context.Context, configRaw
 			GroupID int `json:"group_id"`
 		} `json:"group_memberships"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("zendesk: decode group memberships: %w", err)
 	}
 	var out []access.Entitlement
 	for _, gm := range resp.GroupMemberships {

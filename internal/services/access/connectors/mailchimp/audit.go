@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -215,22 +216,7 @@ func readMailchimpBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("mailchimp: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	return io.ReadAll(resp.Body)
 }
 
 var _ access.AccessAuditor = (*MailchimpAccessConnector)(nil)
