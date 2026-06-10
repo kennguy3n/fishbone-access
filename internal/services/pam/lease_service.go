@@ -203,11 +203,12 @@ func (s *PAMLeaseService) RequestLease(ctx context.Context, in RequestLeaseInput
 	}
 	lease.ID = uuid.New()
 
+	now := s.now().UTC()
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(lease).Error; err != nil {
 			return fmt.Errorf("pam: create lease: %w", err)
 		}
-		return s.auditTx(ctx, tx, in.WorkspaceID, in.RequestedBy, "pam.lease.requested", lease.ID.String(), map[string]any{
+		return s.auditTx(ctx, tx, now, in.WorkspaceID, in.RequestedBy, "pam.lease.requested", lease.ID.String(), map[string]any{
 			"target_id":     in.TargetID.String(),
 			"subject":       in.Subject,
 			"ttl_seconds":   lease.RequestedTTLSeconds,
@@ -283,7 +284,7 @@ func (s *PAMLeaseService) ApproveLease(ctx context.Context, workspaceID, leaseID
 		lease.ExpiresAt = &expires
 		lease.ApprovedBy = approverID
 		out = lease
-		return s.auditTx(ctx, tx, workspaceID, approverID, "pam.lease.approved", leaseID.String(), map[string]any{
+		return s.auditTx(ctx, tx, now, workspaceID, approverID, "pam.lease.approved", leaseID.String(), map[string]any{
 			"subject":     lease.Subject,
 			"expires_at":  expires.Format(time.RFC3339),
 			"ttl_seconds": int(ttl.Seconds()),
@@ -335,7 +336,7 @@ func (s *PAMLeaseService) RevokeLease(ctx context.Context, workspaceID, leaseID 
 		lease.RevokedAt = &now
 		lease.RevokeReason = reason
 		out = lease
-		return s.auditTx(ctx, tx, workspaceID, actor, "pam.lease.revoked", leaseID.String(), map[string]any{
+		return s.auditTx(ctx, tx, now, workspaceID, actor, "pam.lease.revoked", leaseID.String(), map[string]any{
 			"subject": lease.Subject,
 			"reason":  reason,
 		})
@@ -410,7 +411,7 @@ func (s *PAMLeaseService) ExpireLeases(ctx context.Context, workspaceID uuid.UUI
 				return nil
 			}
 			claimed = true
-			return s.auditTx(ctx, tx, workspaceID, "system", "pam.lease.expired", lease.ID.String(), map[string]any{
+			return s.auditTx(ctx, tx, now, workspaceID, "system", "pam.lease.expired", lease.ID.String(), map[string]any{
 				"subject":    lease.Subject,
 				"expired_at": now.Format(time.RFC3339),
 			})
@@ -721,12 +722,15 @@ func (s *PAMLeaseService) stampState(lease *models.PAMLease) {
 }
 
 // auditTx appends one lease event to the workspace audit hash chain inside tx.
-func (s *PAMLeaseService) auditTx(ctx context.Context, tx *gorm.DB, workspaceID uuid.UUID, actor, action, targetRef string, meta map[string]any) error {
+// The caller passes the same `now` it stamped on the row mutation so the audit
+// event and the lease row share one timestamp instead of two independent
+// s.now() reads (mirrors SessionManager.setPause).
+func (s *PAMLeaseService) auditTx(ctx context.Context, tx *gorm.DB, now time.Time, workspaceID uuid.UUID, actor, action, targetRef string, meta map[string]any) error {
 	md, err := marshalMeta(meta)
 	if err != nil {
 		return err
 	}
-	return lifecycle.AppendAuditTx(ctx, tx, s.now(), lifecycle.AuditInput{
+	return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
 		WorkspaceID: workspaceID,
 		Actor:       actor,
 		Action:      action,
