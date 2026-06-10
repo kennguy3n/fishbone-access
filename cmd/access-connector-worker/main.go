@@ -37,6 +37,9 @@ func run() error {
 	defer stop()
 
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	logger.Infof(ctx, "access-connector-worker: starting; %s", cfg.String())
 	logger.Infof(ctx, "access-connector-worker: registered connectors: %d", access.RegisteredCount())
 

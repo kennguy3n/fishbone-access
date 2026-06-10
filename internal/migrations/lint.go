@@ -254,9 +254,10 @@ func lockSafety(name, sql string) []Violation {
 }
 
 // maskSQL blanks out content the lock-safety scanner must not match inside:
-// line comments (-- … EOL), block comments (/* … */), and single-quoted string
-// literals (including ” escapes). Masked spans are replaced with spaces so byte
-// offsets and statement boundaries are preserved.
+// line comments (-- … EOL), block comments (/* … */), single-quoted string
+// literals (including ” escapes), and dollar-quoted strings ($$…$$ or
+// $tag$…$tag$, e.g. PL/pgSQL bodies). Masked spans are replaced with spaces so
+// byte offsets and statement boundaries are preserved.
 func maskSQL(sql string) string {
 	out := []byte(sql)
 	n := len(out)
@@ -299,6 +300,34 @@ func maskSQL(sql string) string {
 				}
 				i++
 			}
+		case out[i] == '$':
+			// PostgreSQL dollar-quoted string ($$...$$ or $tag$...$tag$), used for
+			// PL/pgSQL bodies. Mask the whole span — including any LOCK TABLE / DROP
+			// COLUMN keywords or semicolons it contains — so a function body is never
+			// scanned as DDL. A bare '$' or a positional parameter like $1 is not a
+			// delimiter (dollarTag returns ""), so it is left intact.
+			if delim := dollarTag(out, i); delim != "" {
+				end := i + len(delim)
+				for k := i; k < end; k++ {
+					out[k] = ' '
+				}
+				i = end
+				for i < n {
+					if hasDelimAt(out, i, delim) {
+						for k := i; k < i+len(delim); k++ {
+							out[k] = ' '
+						}
+						i += len(delim)
+						break
+					}
+					if out[i] != '\n' {
+						out[i] = ' '
+					}
+					i++
+				}
+			} else {
+				i++
+			}
 		default:
 			i++
 		}
@@ -306,9 +335,38 @@ func maskSQL(sql string) string {
 	return string(out)
 }
 
+// dollarTag reports the dollar-quote opening delimiter starting at b[i] (which
+// must be '$'), e.g. "$$" or "$body$", or "" if b[i] does not open a
+// dollar-quoted string. The tag (between the dollar signs) may be empty or an
+// identifier that starts with a letter/underscore and continues with
+// letters/digits/underscores; this is what distinguishes a real delimiter from
+// a positional parameter such as $1.
+func dollarTag(b []byte, i int) string {
+	j := i + 1
+	if j < len(b) && (isLetter(b[j]) || b[j] == '_') {
+		j++
+		for j < len(b) && (isLetter(b[j]) || isDigit(b[j]) || b[j] == '_') {
+			j++
+		}
+	}
+	if j < len(b) && b[j] == '$' {
+		return string(b[i : j+1])
+	}
+	return ""
+}
+
+// hasDelimAt reports whether delim occurs in b starting at index i.
+func hasDelimAt(b []byte, i int, delim string) bool {
+	return i+len(delim) <= len(b) && string(b[i:i+len(delim)]) == delim
+}
+
+func isLetter(c byte) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+func isDigit(c byte) bool  { return c >= '0' && c <= '9' }
+
 // splitStatements splits masked SQL into statements on semicolons. The masker
-// has already removed quoted/commented semicolons, so a plain split is safe for
-// the DDL these migrations contain (no PL/pgSQL bodies are used).
+// has already blanked semicolons inside comments, string literals, and
+// dollar-quoted bodies, so a plain split is safe even for migrations that embed
+// a PL/pgSQL function body.
 func splitStatements(masked string) []string {
 	return strings.Split(masked, ";")
 }

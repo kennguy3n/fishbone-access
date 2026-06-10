@@ -187,9 +187,12 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	// This GORM path stamps ChainHashVersion = AuditHashVersion (canonical,
 	// microsecond-truncated, fully recomputable). The pgx audit backend
 	// (internal/pkg/database) links into the SAME per-workspace chain via the
-	// shared auditchain.LockKey + prev_hash, but writes version-0 rows with
-	// auditchain.Hash; the verifier accepts those on linkage alone, so the two
-	// backends coexist on one chain without false tamper reports.
+	// shared auditchain.LockKey + prev_hash and now writes byte-identical
+	// version-1 rows through the same auditchain.CanonicalHash, so a row is
+	// recomputable regardless of which backend appended it and the two coexist
+	// on one chain during the migration. (Pre-canonical version-0 rows that
+	// predate this format remain on older chains and are accepted by the
+	// verifier on linkage alone.)
 	canonMeta := canonicalJSON(e.Metadata)
 	chainHash := ComputeChainHash(prevHash, e.WorkspaceID, e.Action, e.TargetRef, canonMeta, now)
 

@@ -112,6 +112,11 @@ func run() error {
 		// Reuse the GORM pool already opened above; no second pool.
 		auditor = database.NewGormAuditRepo(gdb)
 		logger.Infof(ctx, "pam-gateway: GORM backend enabled for standalone audit appends")
+	default:
+		// Unreachable today: cfg.Validate() rejects any other value at boot. The
+		// branch is here so that adding a driver to DatabaseDriver.Valid() without
+		// wiring it here fails fast instead of leaving auditor nil and panicking.
+		return fmt.Errorf("pam-gateway: unsupported DATABASE_DRIVER %q", cfg.DatabaseDriver)
 	}
 
 	listeners, err := buildListeners(ctx, cfg, gdb, auditor)

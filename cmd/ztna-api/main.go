@@ -118,6 +118,12 @@ func run() error {
 			// Reuse the GORM pool already opened above; no second pool.
 			deps.WorkspaceResolver = database.NewGormWorkspaceConfigRepo(gdb)
 			logger.Infof(ctx, "ztna-api: GORM backend enabled for workspace-config reads")
+		default:
+			// Unreachable today: cfg.Validate() rejects any other value at boot.
+			// The branch is here so that adding a driver to DatabaseDriver.Valid()
+			// without wiring it here fails fast instead of leaving
+			// deps.WorkspaceResolver nil and panicking on the first request.
+			return fmt.Errorf("ztna-api: unsupported DATABASE_DRIVER %q", cfg.DatabaseDriver)
 		}
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")

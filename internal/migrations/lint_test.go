@@ -122,6 +122,20 @@ func TestLockSafety(t *testing.T) {
 			name: "set not null alone is allowed (no type rewrite, no add)",
 			sql:  `ALTER TABLE t ALTER COLUMN c SET NOT NULL;`,
 		},
+		{
+			name: "keyword inside dollar-quoted body is ignored",
+			sql: "CREATE FUNCTION f() RETURNS void AS $$\n" +
+				"BEGIN\n  LOCK TABLE t; -- DROP COLUMN x;\nEND;\n$$ LANGUAGE plpgsql;",
+		},
+		{
+			name: "keyword inside tagged dollar-quoted body is ignored",
+			sql:  "CREATE FUNCTION f() RETURNS void AS $body$ ALTER TABLE t DROP COLUMN c; $body$ LANGUAGE plpgsql;",
+		},
+		{
+			name:      "real violation outside dollar-quoted body is still flagged",
+			sql:       "CREATE FUNCTION f() RETURNS void AS $$ SELECT 1; $$ LANGUAGE sql;\nALTER TABLE t DROP COLUMN c;",
+			wantRules: []string{RuleDropColumn},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -138,6 +152,27 @@ func TestSplitTopLevelCommas(t *testing.T) {
 	}
 	if !strings.Contains(parts[0], "NUMERIC(10,2)") {
 		t.Errorf("first clause lost its parenthesised type: %q", parts[0])
+	}
+}
+
+func TestMaskSQLDollarQuoting(t *testing.T) {
+	// A dollar-quoted body is fully blanked (so its keywords/semicolons never
+	// reach the scanner) while a positional parameter like $1 is left intact.
+	in := "DO $$ DROP COLUMN x; $$; SELECT $1;"
+	masked := maskSQL(in)
+	if len(masked) != len(in) {
+		t.Fatalf("mask changed length: got %d want %d", len(masked), len(in))
+	}
+	if strings.Contains(masked, "DROP COLUMN") {
+		t.Errorf("dollar-quoted body not masked: %q", masked)
+	}
+	if !strings.Contains(masked, "$1") {
+		t.Errorf("positional parameter $1 should be left intact: %q", masked)
+	}
+	// Two semicolons survive: the one ending the DO statement and the trailing
+	// SELECT terminator; the one inside the body is masked.
+	if strings.Count(masked, ";") != 2 {
+		t.Errorf("expected 2 surviving semicolons, got %q", masked)
 	}
 }
 
