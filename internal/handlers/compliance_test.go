@@ -10,6 +10,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 )
 
@@ -66,10 +67,11 @@ func complianceTestDeps(t *testing.T) Deps {
 			// admin: holds compliance.manage -> may drive campaigns.
 			"tok-admin": {Subject: "user-admin", TenantID: "tenant-a"},
 		}},
-		DB:        db,
-		Encryptor: crypto.PassthroughEncryptor{},
-		Ready:     ready,
-		RBAC:      rbac,
+		DB:                 db,
+		Encryptor:          crypto.PassthroughEncryptor{},
+		ConnectorEncryptor: access.PassthroughEncryptor{},
+		Ready:              ready,
+		RBAC:               rbac,
 	}
 }
 

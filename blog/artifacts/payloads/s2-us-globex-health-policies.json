@@ -1,0 +1,108 @@
+{
+  "policies": [
+    {
+      "created_at": "2026-06-10T16:26:31.980602Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:consumer-pii"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "a7efc43b-8163-45a5-b35d-b2635c5d24bd",
+      "name": "Default-deny consumer data",
+      "promoted_at": "2026-06-10T16:26:31.996362Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:26:31.996362Z",
+      "version": 1,
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    },
+    {
+      "created_at": "2026-06-10T16:26:31.97992Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "db:consumer-pii"
+        ],
+        "role": "processor",
+        "subjects": [
+          "team:data"
+        ]
+      },
+      "deleted_at": null,
+      "id": "8f45cb4b-7aca-46ce-9ed0-c2f92880ee12",
+      "name": "Authorised staff → consumer data",
+      "promoted_at": "2026-06-10T16:26:32.000246Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:26:32.000246Z",
+      "version": 1,
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    },
+    {
+      "created_at": "2026-06-10T16:26:31.977159Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "app:ehr"
+        ],
+        "role": "break-glass",
+        "subjects": [
+          "role:incident-responder"
+        ]
+      },
+      "deleted_at": null,
+      "id": "9343ce29-e758-4b74-a12d-3df1a16aa8e7",
+      "name": "Break-glass — on-call responders",
+      "promoted_at": "2026-06-10T16:26:32.004519Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:26:32.004519Z",
+      "version": 1,
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    },
+    {
+      "created_at": "2026-06-10T16:26:31.976129Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:patient-records"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "2d2dc7d9-92b8-46f7-ab0e-48310d85475b",
+      "name": "Deny non-clinical staff to ePHI",
+      "promoted_at": "2026-06-10T16:27:01.083037Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:27:01.083037Z",
+      "version": 1,
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    },
+    {
+      "created_at": "2026-06-10T16:26:31.974976Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "app:ehr",
+          "db:patient-records"
+        ],
+        "role": "clinician",
+        "subjects": [
+          "team:clinical"
+        ]
+      },
+      "deleted_at": null,
+      "id": "cef35c85-a377-4958-a1ff-19b128f2d1f3",
+      "name": "Clinical staff → patient records",
+      "promoted_at": "2026-06-10T16:27:31.103907Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:27:31.103907Z",
+      "version": 1,
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    }
+  ]
+}

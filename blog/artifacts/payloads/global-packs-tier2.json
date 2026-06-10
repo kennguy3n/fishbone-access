@@ -1,0 +1,292 @@
+{
+  "packs": [
+    {
+      "authority": "Kementerian Kominfo",
+      "description": "Indonesia Personal Data Protection Law baseline: purpose-bound access to personal data with default-deny for the wider organisation.",
+      "frameworks": [
+        "PDP Law"
+      ],
+      "id": "id-pdp-law",
+      "industries": [
+        "any"
+      ],
+      "name": "Indonesia — PDP Law (UU PDP)",
+      "regions": [
+        "id"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "UU PDP Art. 35 — Data protection",
+          "key": "id-pii-access",
+          "name": "Authorised processors → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data-processing team access to personal data."
+        },
+        {
+          "action": "deny",
+          "control": "UU PDP Art. 35 — Security obligation",
+          "key": "id-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "Jabatan Perlindungan Data Peribadi (JPDP)",
+      "description": "Malaysia Personal Data Protection Act security-principle baseline: restrict personal-data access to authorised staff and default-deny the rest.",
+      "frameworks": [
+        "PDPA"
+      ],
+      "id": "my-pdpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Malaysia — PDPA 2010",
+      "regions": [
+        "my"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA Malaysia — Security Principle",
+          "key": "my-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA Malaysia — Security Principle",
+          "key": "my-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "National Privacy Commission",
+      "description": "Philippines Data Privacy Act baseline: access to personal data limited to authorised personnel with default-deny.",
+      "frameworks": [
+        "DPA"
+      ],
+      "id": "ph-dpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Philippines — Data Privacy Act",
+      "regions": [
+        "ph"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "DPA 2012 §20 — Security of personal information",
+          "key": "ph-pii-access",
+          "name": "Authorised personnel → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to personal data."
+        },
+        {
+          "action": "deny",
+          "control": "DPA 2012 §20 — Access control",
+          "key": "ph-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "PDPC / Monetary Authority of Singapore",
+      "description": "PDPA protection obligation plus MAS Technology Risk Management access guidance: least-privilege to customer data and strict control of privileged access in financial systems.",
+      "frameworks": [
+        "PDPA",
+        "MAS TRM"
+      ],
+      "id": "sg-pdpa-mas-trm",
+      "industries": [
+        "finance",
+        "saas",
+        "any"
+      ],
+      "name": "Singapore — PDPA + MAS TRM",
+      "regions": [
+        "sg"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA — Protection Obligation (s24)",
+          "key": "sg-customer-data",
+          "name": "Service team → customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "role": "agent",
+          "subjects": [
+            "team:customer-service"
+          ],
+          "summary": "Grant the customer-service team access to the customer database."
+        },
+        {
+          "action": "grant",
+          "control": "MAS TRM §11 — Access control",
+          "key": "sg-privileged-control",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "app:core-banking"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged access to core banking systems to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA — Reasonable security arrangements",
+          "key": "sg-deny-default",
+          "name": "Default-deny customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny the organisation to the customer database by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "PDPC Thailand",
+      "description": "Thai Personal Data Protection Act baseline: limit access to personal data to staff with a lawful basis and deny default access.",
+      "frameworks": [
+        "PDPA"
+      ],
+      "id": "th-pdpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Thailand — PDPA",
+      "regions": [
+        "th"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA Thailand s37 — Security measures",
+          "key": "th-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA Thailand s37 — Access restriction",
+          "key": "th-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "Ministry of Public Security (A05)",
+      "description": "Personal Data Protection Decree baseline: restrict access to personal data, separate sensitive-data handling, and deny default access to comply with Decree 13's processing-purpose rules.",
+      "frameworks": [
+        "PDPD",
+        "Decree 13"
+      ],
+      "id": "vn-pdpd-decree13",
+      "industries": [
+        "any"
+      ],
+      "name": "Vietnam — PDPD (Decree 13/2023)",
+      "regions": [
+        "vn"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "Decree 13 Art. 3 — Processing principles",
+          "key": "vn-pii-access",
+          "name": "Authorised processors → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data-processing team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "Decree 13 Art. 2(4) — Sensitive personal data",
+          "key": "vn-sensitive-deny",
+          "name": "Restrict sensitive personal data",
+          "resources": [
+            "db:sensitive-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to sensitive personal data categories."
+        }
+      ],
+      "tier": 2
+    }
+  ]
+}

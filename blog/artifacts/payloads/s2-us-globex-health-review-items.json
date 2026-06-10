@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "created_at": "2026-06-10T16:27:31.153094Z",
+      "decided_at": "2026-06-10T16:27:31.15739Z",
+      "decided_by": "us-globex-health-owner",
+      "decision": "revoke",
+      "deleted_at": null,
+      "grant_id": "f9e6f5a1-3789-4d9d-a4a4-72b2cc2a6377",
+      "id": "ae5bb197-a7bc-47db-b016-786424f18fe6",
+      "reason": "Seed: access no longer required.",
+      "review_id": "588234f5-4452-4398-bdcd-c829ec891631",
+      "updated_at": "2026-06-10T16:27:31.15739Z",
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.153094Z",
+      "decided_at": "2026-06-10T16:27:31.164124Z",
+      "decided_by": "us-globex-health-owner",
+      "decision": "certify",
+      "deleted_at": null,
+      "grant_id": "23898923-1e6c-4481-b560-cf2385794f5f",
+      "id": "b2303cfa-8be6-43b7-88b1-2092ad705f6f",
+      "reason": "Seed: access confirmed still required.",
+      "review_id": "588234f5-4452-4398-bdcd-c829ec891631",
+      "updated_at": "2026-06-10T16:27:31.164124Z",
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae"
+    }
+  ]
+}

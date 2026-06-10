@@ -92,6 +92,7 @@ var connectorCatalog = map[string]connectorCatalogData{
 	"splunk":            {DisplayName: "Splunk Cloud", Tier: "T3", Category: "Observability", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: true},
 	"grafana":           {DisplayName: "Grafana", Tier: "T3", Category: "Observability", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: false},
 	"mezmo":             {DisplayName: "Mezmo", Tier: "T3", Category: "Observability", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: false},
+	"manual":            {DisplayName: "Manual / Offline Target", Tier: "T1", Category: "Manual", SyncIdentity: false, ProvisionAccess: true, ListEntitlements: false, GetAccessLog: false, SSOFederation: false},
 	"sumo_logic":        {DisplayName: "Sumo Logic", Tier: "T3", Category: "Observability", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: true},
 	"zendesk":           {DisplayName: "Zendesk", Tier: "T3", Category: "Support", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: true},
 	"freshdesk":         {DisplayName: "Freshdesk", Tier: "T3", Category: "Support", SyncIdentity: true, ProvisionAccess: true, ListEntitlements: true, GetAccessLog: true, SSOFederation: true},

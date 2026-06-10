@@ -1,0 +1,995 @@
+{
+  "packs": [
+    {
+      "authority": "European Data Protection Board",
+      "description": "Limit access to systems holding EU personal data to staff with a processing purpose, and deny broad/default access in line with data-minimisation and integrity & confidentiality.",
+      "frameworks": [
+        "GDPR"
+      ],
+      "id": "gdpr-personal-data",
+      "industries": [
+        "any"
+      ],
+      "name": "GDPR — personal data least privilege",
+      "regions": [
+        "global",
+        "eu"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "GDPR Art. 5(1)(c) — Data minimisation",
+          "key": "pii-purpose-access",
+          "name": "Data team → customer PII store",
+          "resources": [
+            "db:customer-pii"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the customer PII database for defined processing."
+        },
+        {
+          "action": "deny",
+          "control": "GDPR Art. 32 — Integrity and confidentiality",
+          "key": "pii-deny-default",
+          "name": "Deny-all to customer PII by default",
+          "resources": [
+            "db:customer-pii"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny the whole organisation to the PII store; grant back by purpose."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "U.S. HHS Office for Civil Rights",
+      "description": "Role-based access to electronic protected health information (ePHI): clinical staff get access to patient records, everyone else is denied, and break-glass is reserved for on-call responders.",
+      "frameworks": [
+        "HIPAA"
+      ],
+      "id": "hipaa-security-rule",
+      "industries": [
+        "healthcare"
+      ],
+      "name": "HIPAA Security Rule — ePHI access",
+      "regions": [
+        "global",
+        "us"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(1) — Access control",
+          "key": "ephi-clinical-access",
+          "name": "Clinical staff → patient records",
+          "resources": [
+            "app:ehr",
+            "db:patient-records"
+          ],
+          "role": "clinician",
+          "subjects": [
+            "team:clinical"
+          ],
+          "summary": "Grant clinicians read/write access to the EHR system."
+        },
+        {
+          "action": "deny",
+          "control": "HIPAA §164.308(a)(4) — Information access management",
+          "key": "ephi-deny-nonclinical",
+          "name": "Deny non-clinical staff to ePHI",
+          "resources": [
+            "db:patient-records"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general/administrative staff direct access to patient records."
+        },
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(2)(ii) — Emergency access procedure",
+          "key": "ephi-breakglass",
+          "name": "Break-glass — on-call responders",
+          "resources": [
+            "app:ehr"
+          ],
+          "role": "break-glass",
+          "subjects": [
+            "role:incident-responder"
+          ],
+          "summary": "Grant the incident-response on-call group emergency access to ePHI (audited, simulate before promoting)."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "ISO/IEC",
+      "description": "Annex A.5 access-control baseline: business-need-driven access to information systems, restricted privileged utilities, and a default-deny posture.",
+      "frameworks": [
+        "ISO 27001"
+      ],
+      "id": "iso27001-annexa",
+      "industries": [
+        "any"
+      ],
+      "name": "ISO/IEC 27001 Annex A — access control",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "ISO 27001 A.5.15 — Access control",
+          "key": "info-need-to-know",
+          "name": "Business need-to-know access",
+          "resources": [
+            "app:erp"
+          ],
+          "role": "user",
+          "subjects": [
+            "team:operations"
+          ],
+          "summary": "Grant a department access to its own line-of-business application."
+        },
+        {
+          "action": "grant",
+          "control": "ISO 27001 A.8.18 — Use of privileged utility programs",
+          "key": "privileged-utilities",
+          "name": "Restrict privileged utility access",
+          "resources": [
+            "service:admin-console"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:sysadmin"
+          ],
+          "summary": "Grant only the sysadmin role access to privileged admin tooling."
+        },
+        {
+          "action": "deny",
+          "control": "ISO 27001 A.5.15 — Default-deny",
+          "key": "iso-deny-default",
+          "name": "Default-deny information systems",
+          "resources": [
+            "service:admin-console"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny everyone by default; grant access by business need."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "PCI Security Standards Council",
+      "description": "Least-privilege access to the cardholder data environment (CDE): restrict who can reach systems storing or processing cardholder data, and keep contractors and general staff out by default.",
+      "frameworks": [
+        "PCI-DSS"
+      ],
+      "id": "pci-dss-v4",
+      "industries": [
+        "finance",
+        "retail",
+        "ecommerce",
+        "saas"
+      ],
+      "name": "PCI-DSS v4.0 — Cardholder Data Environment",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PCI-DSS 7.2 — Restrict access by business need-to-know",
+          "key": "cde-admins-only",
+          "name": "CDE administration — payments team only",
+          "resources": [
+            "app:payment-gateway",
+            "db:cardholder"
+          ],
+          "role": "admin",
+          "subjects": [
+            "team:payments-ops"
+          ],
+          "summary": "Grant the payments operations team admin access to the cardholder data environment."
+        },
+        {
+          "action": "deny",
+          "control": "PCI-DSS 7.2.1 — Need-to-know for third parties",
+          "key": "cde-deny-contractors",
+          "name": "Block contractors from the CDE",
+          "resources": [
+            "app:payment-gateway",
+            "db:cardholder"
+          ],
+          "subjects": [
+            "contractor:*"
+          ],
+          "summary": "Deny all contractor identities access to cardholder systems."
+        },
+        {
+          "action": "deny",
+          "control": "PCI-DSS 7.3 — Default-deny access control system",
+          "key": "cde-deny-default",
+          "name": "Deny-all to cardholder data by default",
+          "resources": [
+            "db:cardholder"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny everyone to the cardholder database; grant back explicitly."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "AICPA Trust Services Criteria",
+      "description": "Common-Criteria logical access: production systems restricted to engineering/SRE, privileged access limited to admins, and default-deny for the rest.",
+      "frameworks": [
+        "SOC 2"
+      ],
+      "id": "soc2-logical-access",
+      "industries": [
+        "saas",
+        "any"
+      ],
+      "name": "SOC 2 — logical access controls",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "SOC 2 CC6.1 — Logical access security",
+          "key": "prod-engineering",
+          "name": "Engineering → production apps",
+          "resources": [
+            "app:production"
+          ],
+          "role": "operator",
+          "subjects": [
+            "team:engineering"
+          ],
+          "summary": "Grant engineering access to production application systems."
+        },
+        {
+          "action": "grant",
+          "control": "SOC 2 CC6.3 — Least privilege & segregation",
+          "key": "prod-admin-restrict",
+          "name": "Privileged prod access — admins only",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Grant the platform-admin group admin access to production infrastructure."
+        },
+        {
+          "action": "deny",
+          "control": "SOC 2 CC6.1 — Default-deny",
+          "key": "prod-deny-default",
+          "name": "Deny-all to production by default",
+          "resources": [
+            "host:prod"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny the organisation to production hosts; grant back per role."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "Kementerian Kominfo",
+      "description": "Indonesia Personal Data Protection Law baseline: purpose-bound access to personal data with default-deny for the wider organisation.",
+      "frameworks": [
+        "PDP Law"
+      ],
+      "id": "id-pdp-law",
+      "industries": [
+        "any"
+      ],
+      "name": "Indonesia — PDP Law (UU PDP)",
+      "regions": [
+        "id"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "UU PDP Art. 35 — Data protection",
+          "key": "id-pii-access",
+          "name": "Authorised processors → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data-processing team access to personal data."
+        },
+        {
+          "action": "deny",
+          "control": "UU PDP Art. 35 — Security obligation",
+          "key": "id-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "Jabatan Perlindungan Data Peribadi (JPDP)",
+      "description": "Malaysia Personal Data Protection Act security-principle baseline: restrict personal-data access to authorised staff and default-deny the rest.",
+      "frameworks": [
+        "PDPA"
+      ],
+      "id": "my-pdpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Malaysia — PDPA 2010",
+      "regions": [
+        "my"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA Malaysia — Security Principle",
+          "key": "my-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA Malaysia — Security Principle",
+          "key": "my-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "National Privacy Commission",
+      "description": "Philippines Data Privacy Act baseline: access to personal data limited to authorised personnel with default-deny.",
+      "frameworks": [
+        "DPA"
+      ],
+      "id": "ph-dpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Philippines — Data Privacy Act",
+      "regions": [
+        "ph"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "DPA 2012 §20 — Security of personal information",
+          "key": "ph-pii-access",
+          "name": "Authorised personnel → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to personal data."
+        },
+        {
+          "action": "deny",
+          "control": "DPA 2012 §20 — Access control",
+          "key": "ph-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "PDPC / Monetary Authority of Singapore",
+      "description": "PDPA protection obligation plus MAS Technology Risk Management access guidance: least-privilege to customer data and strict control of privileged access in financial systems.",
+      "frameworks": [
+        "PDPA",
+        "MAS TRM"
+      ],
+      "id": "sg-pdpa-mas-trm",
+      "industries": [
+        "finance",
+        "saas",
+        "any"
+      ],
+      "name": "Singapore — PDPA + MAS TRM",
+      "regions": [
+        "sg"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA — Protection Obligation (s24)",
+          "key": "sg-customer-data",
+          "name": "Service team → customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "role": "agent",
+          "subjects": [
+            "team:customer-service"
+          ],
+          "summary": "Grant the customer-service team access to the customer database."
+        },
+        {
+          "action": "grant",
+          "control": "MAS TRM §11 — Access control",
+          "key": "sg-privileged-control",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "app:core-banking"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged access to core banking systems to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA — Reasonable security arrangements",
+          "key": "sg-deny-default",
+          "name": "Default-deny customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny the organisation to the customer database by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "PDPC Thailand",
+      "description": "Thai Personal Data Protection Act baseline: limit access to personal data to staff with a lawful basis and deny default access.",
+      "frameworks": [
+        "PDPA"
+      ],
+      "id": "th-pdpa",
+      "industries": [
+        "any"
+      ],
+      "name": "Thailand — PDPA",
+      "regions": [
+        "th"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA Thailand s37 — Security measures",
+          "key": "th-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA Thailand s37 — Access restriction",
+          "key": "th-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "Ministry of Public Security (A05)",
+      "description": "Personal Data Protection Decree baseline: restrict access to personal data, separate sensitive-data handling, and deny default access to comply with Decree 13's processing-purpose rules.",
+      "frameworks": [
+        "PDPD",
+        "Decree 13"
+      ],
+      "id": "vn-pdpd-decree13",
+      "industries": [
+        "any"
+      ],
+      "name": "Vietnam — PDPD (Decree 13/2023)",
+      "regions": [
+        "vn"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "Decree 13 Art. 3 — Processing principles",
+          "key": "vn-pii-access",
+          "name": "Authorised processors → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data-processing team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "Decree 13 Art. 2(4) — Sensitive personal data",
+          "key": "vn-sensitive-deny",
+          "name": "Restrict sensitive personal data",
+          "resources": [
+            "db:sensitive-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to sensitive personal data categories."
+        }
+      ],
+      "tier": 2
+    },
+    {
+      "authority": "OAIC / Australian Cyber Security Centre",
+      "description": "Australian Privacy Principles plus ACSC Essential Eight 'restrict administrative privileges': purpose-bound access to personal information and admin-only privileged access.",
+      "frameworks": [
+        "Privacy Act",
+        "Essential Eight"
+      ],
+      "id": "au-privacy-e8",
+      "industries": [
+        "any"
+      ],
+      "name": "Australia — Privacy Act + Essential Eight",
+      "regions": [
+        "au"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "APP 11 — Security of personal information",
+          "key": "au-pii-access",
+          "name": "Authorised staff → personal information",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-information store."
+        },
+        {
+          "action": "grant",
+          "control": "Essential Eight — Restrict administrative privileges",
+          "key": "au-restrict-admin",
+          "name": "Restrict administrative privileges",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Grant privileged infrastructure access to admins only."
+        },
+        {
+          "action": "deny",
+          "control": "APP 11 — Access restriction",
+          "key": "au-deny-default",
+          "name": "Default-deny personal information",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal information by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "Autoridade Nacional de Proteção de Dados (ANPD)",
+      "description": "Brazilian General Data Protection Law baseline: restrict access to personal data to authorised agents with default-deny.",
+      "frameworks": [
+        "LGPD"
+      ],
+      "id": "br-lgpd",
+      "industries": [
+        "any"
+      ],
+      "name": "Brazil — LGPD",
+      "regions": [
+        "br"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "LGPD Art. 46 — Security measures",
+          "key": "br-pii-access",
+          "name": "Authorised agents → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "LGPD Art. 46 — Access restriction",
+          "key": "br-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "Commission Nationale de l'Informatique et des Libertés",
+      "description": "CNIL security guidance under GDPR: authenticate and authorise access to personal data on a need-to-know basis with default-deny.",
+      "frameworks": [
+        "CNIL",
+        "GDPR"
+      ],
+      "id": "fr-cnil",
+      "industries": [
+        "any"
+      ],
+      "name": "France — CNIL (GDPR)",
+      "regions": [
+        "fr"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "CNIL — Manage user authorisations",
+          "key": "fr-pii-access",
+          "name": "Data team → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "CNIL — Least privilege",
+          "key": "fr-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "BfDI / Bundesamt für Sicherheit in der Informationstechnik",
+      "description": "German Federal Data Protection Act plus BSI Cloud Computing Compliance Criteria (C5) access controls: least-privilege to personal data and admin-controlled privileged access.",
+      "frameworks": [
+        "BDSG",
+        "BSI C5"
+      ],
+      "id": "de-bdsg-c5",
+      "industries": [
+        "any"
+      ],
+      "name": "Germany — BDSG + BSI C5",
+      "regions": [
+        "de"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "BDSG §64 — Requirements for security of processing",
+          "key": "de-pii-access",
+          "name": "Data team → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "grant",
+          "control": "BSI C5 — IDM (identity & access management)",
+          "key": "de-privileged",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged infrastructure access to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "BDSG §64 — Access restriction",
+          "key": "de-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "Federal Data Protection and Information Commissioner",
+      "description": "Revised Swiss Federal Act on Data Protection baseline: purpose-bound access to personal data with default-deny.",
+      "frameworks": [
+        "nFADP"
+      ],
+      "id": "ch-nfadp",
+      "industries": [
+        "finance",
+        "any"
+      ],
+      "name": "Switzerland — nFADP",
+      "regions": [
+        "ch"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "nFADP Art. 8 — Data security",
+          "key": "ch-pii-access",
+          "name": "Data team → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "nFADP Art. 8 — Access restriction",
+          "key": "ch-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "UAE Data Office / Dubai Electronic Security Center",
+      "description": "UAE Personal Data Protection Law and DESC information-security baseline: least-privilege access to personal data and tightly controlled privileged access.",
+      "frameworks": [
+        "PDPL",
+        "DESC"
+      ],
+      "id": "ae-pdpl-desc",
+      "industries": [
+        "finance",
+        "government",
+        "any"
+      ],
+      "name": "UAE — PDPL + DESC",
+      "regions": [
+        "ae"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "UAE PDPL Art. 9 — Security of processing",
+          "key": "ae-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "grant",
+          "control": "DESC ISR — Access control",
+          "key": "ae-privileged",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "service:admin-console"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged access to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "UAE PDPL Art. 9 — Access restriction",
+          "key": "ae-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "Information Commissioner's Office (ICO)",
+      "description": "UK GDPR and Data Protection Act 2018 baseline: limit access to personal data to staff with a processing purpose and default-deny the wider organisation.",
+      "frameworks": [
+        "UK GDPR",
+        "DPA 2018"
+      ],
+      "id": "uk-gdpr-dpa2018",
+      "industries": [
+        "any"
+      ],
+      "name": "United Kingdom — UK GDPR / DPA 2018",
+      "regions": [
+        "uk"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "UK GDPR Art. 5(1)(f) — Integrity and confidentiality",
+          "key": "uk-pii-access",
+          "name": "Data team → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store for defined processing."
+        },
+        {
+          "action": "deny",
+          "control": "UK GDPR Art. 32 — Security of processing",
+          "key": "uk-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny the organisation to personal data by default."
+        }
+      ],
+      "tier": 3
+    },
+    {
+      "authority": "California Privacy Protection Agency",
+      "description": "California Consumer Privacy Act / CPRA baseline: restrict access to consumer personal information and apply reasonable security with default-deny.",
+      "frameworks": [
+        "CCPA",
+        "CPRA"
+      ],
+      "id": "us-ccpa-cpra",
+      "industries": [
+        "retail",
+        "ecommerce",
+        "saas",
+        "any"
+      ],
+      "name": "United States — CCPA / CPRA (California)",
+      "regions": [
+        "us"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "CPRA §1798.100(e) — Reasonable security",
+          "key": "us-consumer-data",
+          "name": "Authorised staff → consumer data",
+          "resources": [
+            "db:consumer-pii"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the consumer personal-information store."
+        },
+        {
+          "action": "deny",
+          "control": "CPRA §1798.100(e) — Access restriction",
+          "key": "us-deny-default",
+          "name": "Default-deny consumer data",
+          "resources": [
+            "db:consumer-pii"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to consumer data by default."
+        }
+      ],
+      "tier": 3
+    }
+  ]
+}

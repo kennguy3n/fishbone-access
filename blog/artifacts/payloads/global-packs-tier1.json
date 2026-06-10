@@ -1,0 +1,293 @@
+{
+  "packs": [
+    {
+      "authority": "European Data Protection Board",
+      "description": "Limit access to systems holding EU personal data to staff with a processing purpose, and deny broad/default access in line with data-minimisation and integrity & confidentiality.",
+      "frameworks": [
+        "GDPR"
+      ],
+      "id": "gdpr-personal-data",
+      "industries": [
+        "any"
+      ],
+      "name": "GDPR — personal data least privilege",
+      "regions": [
+        "global",
+        "eu"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "GDPR Art. 5(1)(c) — Data minimisation",
+          "key": "pii-purpose-access",
+          "name": "Data team → customer PII store",
+          "resources": [
+            "db:customer-pii"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the customer PII database for defined processing."
+        },
+        {
+          "action": "deny",
+          "control": "GDPR Art. 32 — Integrity and confidentiality",
+          "key": "pii-deny-default",
+          "name": "Deny-all to customer PII by default",
+          "resources": [
+            "db:customer-pii"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny the whole organisation to the PII store; grant back by purpose."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "U.S. HHS Office for Civil Rights",
+      "description": "Role-based access to electronic protected health information (ePHI): clinical staff get access to patient records, everyone else is denied, and break-glass is reserved for on-call responders.",
+      "frameworks": [
+        "HIPAA"
+      ],
+      "id": "hipaa-security-rule",
+      "industries": [
+        "healthcare"
+      ],
+      "name": "HIPAA Security Rule — ePHI access",
+      "regions": [
+        "global",
+        "us"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(1) — Access control",
+          "key": "ephi-clinical-access",
+          "name": "Clinical staff → patient records",
+          "resources": [
+            "app:ehr",
+            "db:patient-records"
+          ],
+          "role": "clinician",
+          "subjects": [
+            "team:clinical"
+          ],
+          "summary": "Grant clinicians read/write access to the EHR system."
+        },
+        {
+          "action": "deny",
+          "control": "HIPAA §164.308(a)(4) — Information access management",
+          "key": "ephi-deny-nonclinical",
+          "name": "Deny non-clinical staff to ePHI",
+          "resources": [
+            "db:patient-records"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general/administrative staff direct access to patient records."
+        },
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(2)(ii) — Emergency access procedure",
+          "key": "ephi-breakglass",
+          "name": "Break-glass — on-call responders",
+          "resources": [
+            "app:ehr"
+          ],
+          "role": "break-glass",
+          "subjects": [
+            "role:incident-responder"
+          ],
+          "summary": "Grant the incident-response on-call group emergency access to ePHI (audited, simulate before promoting)."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "ISO/IEC",
+      "description": "Annex A.5 access-control baseline: business-need-driven access to information systems, restricted privileged utilities, and a default-deny posture.",
+      "frameworks": [
+        "ISO 27001"
+      ],
+      "id": "iso27001-annexa",
+      "industries": [
+        "any"
+      ],
+      "name": "ISO/IEC 27001 Annex A — access control",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "ISO 27001 A.5.15 — Access control",
+          "key": "info-need-to-know",
+          "name": "Business need-to-know access",
+          "resources": [
+            "app:erp"
+          ],
+          "role": "user",
+          "subjects": [
+            "team:operations"
+          ],
+          "summary": "Grant a department access to its own line-of-business application."
+        },
+        {
+          "action": "grant",
+          "control": "ISO 27001 A.8.18 — Use of privileged utility programs",
+          "key": "privileged-utilities",
+          "name": "Restrict privileged utility access",
+          "resources": [
+            "service:admin-console"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:sysadmin"
+          ],
+          "summary": "Grant only the sysadmin role access to privileged admin tooling."
+        },
+        {
+          "action": "deny",
+          "control": "ISO 27001 A.5.15 — Default-deny",
+          "key": "iso-deny-default",
+          "name": "Default-deny information systems",
+          "resources": [
+            "service:admin-console"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny everyone by default; grant access by business need."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "PCI Security Standards Council",
+      "description": "Least-privilege access to the cardholder data environment (CDE): restrict who can reach systems storing or processing cardholder data, and keep contractors and general staff out by default.",
+      "frameworks": [
+        "PCI-DSS"
+      ],
+      "id": "pci-dss-v4",
+      "industries": [
+        "finance",
+        "retail",
+        "ecommerce",
+        "saas"
+      ],
+      "name": "PCI-DSS v4.0 — Cardholder Data Environment",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PCI-DSS 7.2 — Restrict access by business need-to-know",
+          "key": "cde-admins-only",
+          "name": "CDE administration — payments team only",
+          "resources": [
+            "app:payment-gateway",
+            "db:cardholder"
+          ],
+          "role": "admin",
+          "subjects": [
+            "team:payments-ops"
+          ],
+          "summary": "Grant the payments operations team admin access to the cardholder data environment."
+        },
+        {
+          "action": "deny",
+          "control": "PCI-DSS 7.2.1 — Need-to-know for third parties",
+          "key": "cde-deny-contractors",
+          "name": "Block contractors from the CDE",
+          "resources": [
+            "app:payment-gateway",
+            "db:cardholder"
+          ],
+          "subjects": [
+            "contractor:*"
+          ],
+          "summary": "Deny all contractor identities access to cardholder systems."
+        },
+        {
+          "action": "deny",
+          "control": "PCI-DSS 7.3 — Default-deny access control system",
+          "key": "cde-deny-default",
+          "name": "Deny-all to cardholder data by default",
+          "resources": [
+            "db:cardholder"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny everyone to the cardholder database; grant back explicitly."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "AICPA Trust Services Criteria",
+      "description": "Common-Criteria logical access: production systems restricted to engineering/SRE, privileged access limited to admins, and default-deny for the rest.",
+      "frameworks": [
+        "SOC 2"
+      ],
+      "id": "soc2-logical-access",
+      "industries": [
+        "saas",
+        "any"
+      ],
+      "name": "SOC 2 — logical access controls",
+      "regions": [
+        "global"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "SOC 2 CC6.1 — Logical access security",
+          "key": "prod-engineering",
+          "name": "Engineering → production apps",
+          "resources": [
+            "app:production"
+          ],
+          "role": "operator",
+          "subjects": [
+            "team:engineering"
+          ],
+          "summary": "Grant engineering access to production application systems."
+        },
+        {
+          "action": "grant",
+          "control": "SOC 2 CC6.3 — Least privilege & segregation",
+          "key": "prod-admin-restrict",
+          "name": "Privileged prod access — admins only",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Grant the platform-admin group admin access to production infrastructure."
+        },
+        {
+          "action": "deny",
+          "control": "SOC 2 CC6.1 — Default-deny",
+          "key": "prod-deny-default",
+          "name": "Deny-all to production by default",
+          "resources": [
+            "host:prod"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Default-deny the organisation to production hosts; grant back per role."
+        }
+      ],
+      "tier": 1
+    }
+  ]
+}

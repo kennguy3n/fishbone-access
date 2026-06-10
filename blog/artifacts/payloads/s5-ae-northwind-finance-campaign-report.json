@@ -1,0 +1,13 @@
+{
+  "all_decided": true,
+  "campaign_id": "bf8c1aa6-6869-401b-bd31-8eeb9b8d2dfb",
+  "certified": 0,
+  "escalated": 0,
+  "framework": "ISO 27001",
+  "name": "Q2 2026 ISO 27001 Annex A access certification",
+  "overdue": false,
+  "pending": 0,
+  "revoked": 1,
+  "state": "closed",
+  "total": 1
+}

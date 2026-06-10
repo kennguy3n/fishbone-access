@@ -134,6 +134,7 @@ import (
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mailchimp"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/make"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/malwarebytes"
+	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/manual"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/meraki"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mezmo"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/microsoft"

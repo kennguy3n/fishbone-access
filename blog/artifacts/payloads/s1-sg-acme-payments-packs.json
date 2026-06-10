@@ -1,0 +1,66 @@
+{
+  "packs": [
+    {
+      "authority": "PDPC / Monetary Authority of Singapore",
+      "description": "PDPA protection obligation plus MAS Technology Risk Management access guidance: least-privilege to customer data and strict control of privileged access in financial systems.",
+      "frameworks": [
+        "PDPA",
+        "MAS TRM"
+      ],
+      "id": "sg-pdpa-mas-trm",
+      "industries": [
+        "finance",
+        "saas",
+        "any"
+      ],
+      "name": "Singapore — PDPA + MAS TRM",
+      "regions": [
+        "sg"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "PDPA — Protection Obligation (s24)",
+          "key": "sg-customer-data",
+          "name": "Service team → customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "role": "agent",
+          "subjects": [
+            "team:customer-service"
+          ],
+          "summary": "Grant the customer-service team access to the customer database."
+        },
+        {
+          "action": "grant",
+          "control": "MAS TRM §11 — Access control",
+          "key": "sg-privileged-control",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "app:core-banking"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged access to core banking systems to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "PDPA — Reasonable security arrangements",
+          "key": "sg-deny-default",
+          "name": "Default-deny customer data",
+          "resources": [
+            "db:customer"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny the organisation to the customer database by default."
+        }
+      ],
+      "tier": 2
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "policies": [
+    {
+      "created_at": "2026-06-10T16:27:31.815697Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:cardholder"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "4f45bbe8-6f46-4fc6-aa1e-87471eb1c8ed",
+      "name": "Deny-all to cardholder data by default",
+      "promoted_at": "2026-06-10T16:27:31.838538Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:27:31.838538Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.814932Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "app:payment-gateway",
+          "db:cardholder"
+        ],
+        "subjects": [
+          "contractor:*"
+        ]
+      },
+      "deleted_at": null,
+      "id": "f36c54ed-773e-477e-8b00-0e16565dafa6",
+      "name": "Block contractors from the CDE",
+      "promoted_at": "2026-06-10T16:27:31.843218Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:27:31.843218Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.814016Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "app:payment-gateway",
+          "db:cardholder"
+        ],
+        "role": "admin",
+        "subjects": [
+          "team:payments-ops"
+        ]
+      },
+      "deleted_at": null,
+      "id": "c5650166-7a21-44b0-9982-b9c458f89b02",
+      "name": "CDE administration — payments team only",
+      "promoted_at": "2026-06-10T16:27:31.847119Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:27:31.847119Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.811556Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:customer-pii"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "0c4ded6a-48a9-4074-952d-6e117b0a0fea",
+      "name": "Deny-all to customer PII by default",
+      "promoted_at": "2026-06-10T16:28:01.937725Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:28:01.937725Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.810684Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "db:customer-pii"
+        ],
+        "role": "processor",
+        "subjects": [
+          "team:data"
+        ]
+      },
+      "deleted_at": null,
+      "id": "f7a0dec2-3f89-4af1-a12a-71754b9fd463",
+      "name": "Data team → customer PII store",
+      "promoted_at": "2026-06-10T16:28:31.949045Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:28:31.949045Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.807945Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:personal-data"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "7059662c-47fc-461d-82b6-a3e3e8de7566",
+      "name": "Default-deny personal data",
+      "promoted_at": "2026-06-10T16:29:01.956964Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:29:01.956964Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.807Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "host:prod"
+        ],
+        "role": "admin",
+        "subjects": [
+          "role:platform-admin"
+        ]
+      },
+      "deleted_at": null,
+      "id": "f3da4ac8-b702-4796-bbd8-a8c42af89bd3",
+      "name": "Privileged access — admins only",
+      "promoted_at": "2026-06-10T16:29:31.963408Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:29:31.963408Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    },
+    {
+      "created_at": "2026-06-10T16:27:31.805932Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "db:personal-data"
+        ],
+        "role": "processor",
+        "subjects": [
+          "team:data"
+        ]
+      },
+      "deleted_at": null,
+      "id": "f1dcb007-0990-4475-b168-293cce982da9",
+      "name": "Data team → personal data",
+      "promoted_at": "2026-06-10T16:30:01.983399Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:30:01.983399Z",
+      "version": 1,
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d"
+    }
+  ]
+}

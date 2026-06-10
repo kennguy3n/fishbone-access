@@ -128,15 +128,40 @@ func run() error {
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")
 	}
-	if cfg.IAMCore.Configured() {
+	switch {
+	case cfg.IAMCore.Configured():
 		v, err := iamcore.NewValidator(ctx, cfg.IAMCore)
 		if err != nil {
 			return fmt.Errorf("iam-core validator init: %w", err)
 		}
 		deps.Validator = v
 		logger.Infof(ctx, "ztna-api: iam-core token validation enabled (issuer=%s)", cfg.IAMCore.Issuer)
-	} else {
-		logger.Warnf(ctx, "ztna-api: iam-core NOT configured; authenticated API returns 503")
+		// iam-core takes precedence, so a co-configured AUTH_JWT_SECRET is inert
+		// — but silently ignoring it hides a misconfiguration. Surface it, and
+		// shout in a production environment where a lingering dev secret is a
+		// real posture smell (the case below never fires once iam-core wins).
+		if cfg.DevAuth.Configured() {
+			if cfg.IsProductionEnv() {
+				logger.Warnf(ctx, "ztna-api: AUTH_JWT_SECRET is set but IGNORED — iam-core validation is configured and takes precedence (ACCESS_ENV=%q). Unset AUTH_JWT_SECRET in production so no inert dev-auth credential lingers in the environment.", cfg.Env)
+			} else {
+				logger.Warnf(ctx, "ztna-api: AUTH_JWT_SECRET is set but ignored; iam-core validation takes precedence over dev HMAC auth.")
+			}
+		}
+	case cfg.DevAuthAllowed():
+		// Non-production shared-secret path: lets the blog harnesses (and local
+		// development) drive the authenticated API without an iam-core instance.
+		// Refused entirely when ACCESS_ENV is a production label, and absent
+		// from production builds by build tag (iamcore/devauth_prod.go).
+		v, err := iamcore.NewDevValidator(cfg.DevAuth.Secret, cfg.DevAuth.Issuer, cfg.DevAuth.Audience)
+		if err != nil {
+			return fmt.Errorf("dev HMAC validator init: %w", err)
+		}
+		deps.Validator = v
+		logger.Warnf(ctx, "ztna-api: DEV HMAC token validation enabled (issuer=%s); NOT for production", cfg.DevAuth.Issuer)
+	case cfg.DevAuth.Configured() && cfg.IsProductionEnv():
+		return fmt.Errorf("AUTH_JWT_SECRET set but ACCESS_ENV=%q is a production label; refusing to enable dev HMAC auth", cfg.Env)
+	default:
+		logger.Warnf(ctx, "ztna-api: no token validator configured; authenticated API returns 503")
 	}
 
 	// Credential encryptor opens connector secret envelopes for the lifecycle
@@ -233,7 +258,7 @@ func run() error {
 	// worker queue lands. The sweeps are idempotent and workspace-scoped, so
 	// running them on every replica is safe. Only started when a DB is present.
 	if deps.DB != nil {
-		resolver := lifecycle.NewDBConnectorResolver(deps.DB, deps.Encryptor)
+		resolver := lifecycle.NewDBConnectorResolver(deps.DB, deps.ConnectorEncryptor)
 		reqSvc := lifecycle.NewAccessRequestService(deps.DB)
 		prov := lifecycle.NewAccessProvisioningService(deps.DB, reqSvc, resolver)
 		sched := lifecycle.NewScheduler(

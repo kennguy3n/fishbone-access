@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -10,36 +9,31 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
-	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
 // DBConnectorResolver is the production ConnectorResolver. It loads a connector
-// row (workspace-scoped), decodes its JSON config, opens its AES-GCM sealed
-// secret envelope, and looks up the registered AccessConnector implementation
-// from the process-global registry.
+// row (workspace-scoped), then opens its JSON config and AES-GCM sealed secret
+// envelope through access.OpenConnectorRow — the same canonical path the
+// connector-management layer uses to seal them — and looks up the registered
+// AccessConnector implementation from the process-global registry.
 //
-// The secret envelope is bound to its connector id via AAD
-// ("access_connector:" || connector_id), matching how the connector-management
-// layer seals it: a ciphertext copied to another connector row fails to open.
+// Opening through the shared access helper (rather than re-deriving the cipher
+// inputs here) is what guarantees the open path can never drift from the seal
+// path: same connector-id AAD, same workspace DEK, same persisted key version.
 type DBConnectorResolver struct {
 	db  *gorm.DB
-	enc crypto.Encryptor
+	enc access.CredentialEncryptor
 	// lookup resolves a provider key to its implementation; defaults to the
 	// process-global registry but is overridable in tests.
 	lookup func(provider string) (access.AccessConnector, error)
 }
 
 // NewDBConnectorResolver wires the resolver to the DB and the credential
-// encryptor (built from config.CredentialDEK).
-func NewDBConnectorResolver(db *gorm.DB, enc crypto.Encryptor) *DBConnectorResolver {
+// encryptor (built from config.CredentialDEK, the same CredentialEncryptor the
+// connector-management service seals secrets with).
+func NewDBConnectorResolver(db *gorm.DB, enc access.CredentialEncryptor) *DBConnectorResolver {
 	return &DBConnectorResolver{db: db, enc: enc, lookup: access.GetAccessConnector}
-}
-
-// ConnectorAAD returns the additional-authenticated-data that binds a sealed
-// secret envelope to its connector row.
-func ConnectorAAD(connectorID uuid.UUID) []byte {
-	return []byte("access_connector:" + connectorID.String())
 }
 
 // Resolve implements ConnectorResolver.
@@ -60,39 +54,25 @@ func (r *DBConnectorResolver) Resolve(ctx context.Context, workspaceID, connecto
 		return nil, fmt.Errorf("%w: %v", ErrConnectorNotConfigured, err)
 	}
 
-	config := map[string]any{}
-	if len(row.Config) > 0 {
-		if err := json.Unmarshal(row.Config, &config); err != nil {
-			return nil, fmt.Errorf("lifecycle: decode connector config: %w", err)
-		}
+	if row.SecretEnvelope != "" && r.enc == nil {
+		return nil, fmt.Errorf("%w: connector has sealed secrets but no encryptor is configured", ErrConnectorNotConfigured)
 	}
 
-	secrets := map[string]any{}
-	if row.SecretEnvelope != "" {
-		if r.enc == nil {
-			return nil, fmt.Errorf("%w: connector has sealed secrets but no encryptor is configured", ErrConnectorNotConfigured)
+	config, secrets, err := access.OpenConnectorRow(ctx, r.enc, &row)
+	if err != nil {
+		// When no DEK is configured the wired encryptor is the fail-closed
+		// disabledEncryptor whose Decrypt returns access.ErrSecretsDisabled. A
+		// connector that has sealed secrets but no key to open them is an
+		// unusable-by-configuration connector, not an internal fault, so it
+		// must classify the same as the nil-encryptor guard above
+		// (ErrConnectorNotConfigured → 422). Without this the error falls
+		// through to the generic 500 path and misreports a config gap as an
+		// internal server error. Genuinely transient/decode failures stay
+		// unwrapped (→500).
+		if errors.Is(err, access.ErrSecretsDisabled) {
+			return nil, fmt.Errorf("%w: connector has sealed secrets but credential encryption is disabled (ACCESS_CREDENTIAL_DEK unset)", ErrConnectorNotConfigured)
 		}
-		plain, err := r.enc.Open(row.SecretEnvelope, ConnectorAAD(connectorID))
-		if err != nil {
-			// When no DEK is configured the wired encryptor is a
-			// PassthroughEncryptor whose Open returns ErrSecretsDisabled. A
-			// connector that has sealed secrets but no key to open them is an
-			// unusable-by-configuration connector, not an internal fault, so it
-			// must classify the same as the nil-encryptor guard above
-			// (ErrConnectorNotConfigured → 422). Without this the error falls
-			// through to the generic 500 path and misreports a config gap as an
-			// internal server error. Genuinely transient/decode failures stay
-			// unwrapped (→500).
-			if errors.Is(err, crypto.ErrSecretsDisabled) {
-				return nil, fmt.Errorf("%w: connector has sealed secrets but credential encryption is disabled (ACCESS_CREDENTIAL_DEK unset)", ErrConnectorNotConfigured)
-			}
-			return nil, fmt.Errorf("lifecycle: open connector secrets: %w", err)
-		}
-		if len(plain) > 0 {
-			if err := json.Unmarshal(plain, &secrets); err != nil {
-				return nil, fmt.Errorf("lifecycle: decode connector secrets: %w", err)
-			}
-		}
+		return nil, fmt.Errorf("lifecycle: open connector secrets: %w", err)
 	}
 
 	return &ResolvedConnector{

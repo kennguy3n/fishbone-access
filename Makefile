@@ -8,8 +8,15 @@ TEST_TIMEOUT  ?= 180s
 
 .DEFAULT_GOAL := help
 
+# Blog evidence pipeline (blog/harness/*). The harnesses drive the REAL API so
+# every artifact is a verbatim capture; see blog/posts/README.md for the env
+# vars they require (AUTH_JWT_SECRET, ACCESS_CREDENTIAL_DEK, ACCESS_DATABASE_URL).
+BLOG_API_BASE ?= http://localhost:8080
+BLOG_ARTIFACTS ?= blog/artifacts
+
 .PHONY: build vet test test-short test-integration tidy-check migrate-check lint-go lint ci \
-        audit audit-report docker-up docker-down docker-logs help
+        audit audit-report docker-up docker-down docker-logs help \
+        blog-seed blog-capture blog-test blog-all
 
 build: ## go build ./...
 	$(GO) build $(PKG)
@@ -54,6 +61,19 @@ docker-down: ## docker compose down -v
 
 docker-logs: ## tail compose logs
 	docker compose logs --no-color --tail=200
+
+blog-seed: ## seed 6 workspaces with the full lifecycle (idempotent; writes seed-summary.json)
+	$(GO) run ./blog/harness/seed -base $(BLOG_API_BASE) -out $(BLOG_ARTIFACTS)
+
+blog-capture: ## capture verbatim API payloads + step-up-gated evidence-pack exports
+	$(GO) run ./blog/harness/capture -base $(BLOG_API_BASE) -out $(BLOG_ARTIFACTS)/payloads -summary $(BLOG_ARTIFACTS)/seed-summary.json
+
+blog-test: ## run + tee the connector / compliance / handler test matrices
+	$(GO) test ./internal/services/access/connectors/... -v 2>&1 | tee $(BLOG_ARTIFACTS)/connector-test-matrix.txt
+	$(GO) test ./internal/services/compliance/... -v 2>&1 | tee $(BLOG_ARTIFACTS)/compliance-test-results.txt
+	$(GO) test ./internal/handlers/... -v 2>&1 | tee $(BLOG_ARTIFACTS)/handler-test-results.txt
+
+blog-all: blog-seed blog-capture blog-test ## seed, capture, then run the test matrices
 
 help: ## print this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \

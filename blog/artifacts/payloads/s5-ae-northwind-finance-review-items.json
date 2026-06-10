@@ -1,0 +1,30 @@
+{
+  "items": [
+    {
+      "created_at": "2026-06-10T16:31:31.690644Z",
+      "decided_at": "2026-06-10T16:31:31.695434Z",
+      "decided_by": "ae-northwind-finance-owner",
+      "decision": "revoke",
+      "deleted_at": null,
+      "grant_id": "1b2d120f-1a40-4f24-87f4-3c4ecaeaccf0",
+      "id": "103cbcb7-6c1a-44ce-b705-ea0af9811122",
+      "reason": "Seed: access no longer required.",
+      "review_id": "8e43a693-b73e-434c-9c9e-ebf71f792f6b",
+      "updated_at": "2026-06-10T16:31:31.695434Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    },
+    {
+      "created_at": "2026-06-10T16:31:31.690644Z",
+      "decided_at": "2026-06-10T16:31:31.701279Z",
+      "decided_by": "ae-northwind-finance-owner",
+      "decision": "certify",
+      "deleted_at": null,
+      "grant_id": "68372254-0820-4929-9498-ccfd8e6506db",
+      "id": "b6fda71a-27fe-4516-9110-0b1b470c595e",
+      "reason": "Seed: access confirmed still required.",
+      "review_id": "8e43a693-b73e-434c-9c9e-ebf71f792f6b",
+      "updated_at": "2026-06-10T16:31:31.701279Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    }
+  ]
+}

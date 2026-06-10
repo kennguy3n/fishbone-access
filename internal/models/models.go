@@ -206,6 +206,16 @@ type AccessRequestStateHistory struct {
 	Reason      string    `json:"reason,omitempty"`
 }
 
+// TableName pins the table to the singular name created by the SQL migration
+// (internal/migrations/0004_lifecycle.sql). Without this override GORM would
+// pluralise the model to "access_request_state_histories", which matches the
+// AutoMigrate-built test schema but NOT the production migration's
+// "access_request_state_history" — so every state-history insert failed in any
+// SQL-migrated database (the table appeared not to exist). Pinning the name
+// makes the model agree with the production schema and keeps AutoMigrate (used
+// by tests) on the same table.
+func (AccessRequestStateHistory) TableName() string { return "access_request_state_history" }
+
 // AccessGrant is an active (or revoked) entitlement materialised on a provider.
 type AccessGrant struct {
 	Base
@@ -369,6 +379,15 @@ type AccessSyncState struct {
 	DeltaLink    string     `json:"delta_link,omitempty"`
 	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
 }
+
+// TableName pins the table to the singular name created by the SQL migration
+// (internal/migrations/0003_access_sync_state.sql). Without this override GORM
+// would pluralise the model to "access_sync_states", which matches the
+// AutoMigrate-built test schema but NOT the production migration's
+// "access_sync_state" — so identity-sync delta reads/writes targeted a table
+// that does not exist in any SQL-migrated database. Pinning the name makes the
+// model agree with the production schema and keeps AutoMigrate (tests) aligned.
+func (AccessSyncState) TableName() string { return "access_sync_state" }
 
 // All returns every model for GORM auto-migrate. Keep in sync with the SQL
 // migrations in internal/migrations.

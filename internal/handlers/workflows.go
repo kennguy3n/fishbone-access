@@ -31,7 +31,7 @@ type workflowHandlers struct {
 
 func newWorkflowHandlers(deps Deps) *workflowHandlers {
 	db := deps.DB
-	resolver := lifecycle.NewDBConnectorResolver(db, deps.Encryptor)
+	resolver := lifecycle.NewDBConnectorResolver(db, deps.ConnectorEncryptor)
 	requests := lifecycle.NewAccessRequestService(db)
 	wfRouter := lifecycle.NewWorkflowService(requests)
 	prov := lifecycle.NewAccessProvisioningService(db, requests, resolver)

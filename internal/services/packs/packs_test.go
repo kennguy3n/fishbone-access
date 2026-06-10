@@ -190,6 +190,153 @@ func TestApplyMaterializesDrafts(t *testing.T) {
 	}
 }
 
+// TestApplyIsIdempotent proves re-applying the same pack to a workspace does
+// not create duplicate policies: the second Apply returns the same set and the
+// persisted policy count is unchanged. Without the (workspace, name) skip guard
+// every re-apply would multiply the tenant's policy set.
+func TestApplyIsIdempotent(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+	pack, _ := FindPack("pci-dss-v4")
+
+	first, err := svc.Apply(ctx, ws, "pci-dss-v4", nil, "admin@corp")
+	if err != nil {
+		t.Fatalf("first Apply: %v", err)
+	}
+	second, err := svc.Apply(ctx, ws, "pci-dss-v4", nil, "admin@corp")
+	if err != nil {
+		t.Fatalf("second Apply: %v", err)
+	}
+	if len(first) != len(second) || len(second) != len(pack.Templates) {
+		t.Fatalf("re-apply changed result size: first=%d second=%d templates=%d", len(first), len(second), len(pack.Templates))
+	}
+	// The second apply must return the SAME policy rows (same ids), not fresh
+	// duplicates.
+	firstIDs := map[string]string{}
+	for _, a := range first {
+		firstIDs[a.TemplateKey] = a.Policy.ID.String()
+	}
+	for _, a := range second {
+		if firstIDs[a.TemplateKey] != a.Policy.ID.String() {
+			t.Fatalf("template %q materialised a new policy on re-apply (%s != %s)", a.TemplateKey, firstIDs[a.TemplateKey], a.Policy.ID.String())
+		}
+	}
+	rows, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("ListPolicies: %v", err)
+	}
+	if len(rows) != len(pack.Templates) {
+		t.Fatalf("re-apply duplicated policies: expected %d persisted, got %d", len(pack.Templates), len(rows))
+	}
+}
+
+// TestApplyDedupsIdenticalSharedTemplate proves the idempotency key is (name,
+// definition), not name alone: two different jurisdiction packs that legitimately
+// share a byte-identical template (e.g. th-pdpa and my-pdpa both ship
+// "Default-deny personal data" / "Authorised staff → personal data") must
+// materialise that shared policy exactly once when both packs are applied to one
+// workspace — never erroring, never duplicating.
+func TestApplyDedupsIdenticalSharedTemplate(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+	packA, _ := FindPack("th-pdpa")
+	packB, _ := FindPack("my-pdpa")
+
+	if _, err := svc.Apply(ctx, ws, "th-pdpa", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply th-pdpa: %v", err)
+	}
+	if _, err := svc.Apply(ctx, ws, "my-pdpa", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply my-pdpa (shares identical templates, must not conflict): %v", err)
+	}
+
+	// Union of distinct template names across both packs — shared identical
+	// templates collapse to one persisted policy.
+	names := map[string]bool{}
+	for _, tm := range packA.Templates {
+		names[tm.Name] = true
+	}
+	for _, tm := range packB.Templates {
+		names[tm.Name] = true
+	}
+	rows, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("ListPolicies: %v", err)
+	}
+	if len(rows) != len(names) {
+		t.Fatalf("expected %d deduped policies (union of names), got %d", len(names), len(rows))
+	}
+}
+
+// TestApplyConflictingDefinitionSurfaces proves a same-name/different-definition
+// clash is reported, not silently dropped. sg-pdpa-mas-trm and ae-pdpl-desc both
+// define "Privileged access — admins only" with DIFFERENT rules; applying the
+// second to a workspace that already has the first must fail with
+// ErrPolicyConflict and must not mutate the first pack's materialised policies.
+func TestApplyConflictingDefinitionSurfaces(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+
+	if _, err := svc.Apply(ctx, ws, "sg-pdpa-mas-trm", nil, "admin@corp"); err != nil {
+		t.Fatalf("apply sg-pdpa-mas-trm: %v", err)
+	}
+	before, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("list before: %v", err)
+	}
+
+	_, err = svc.Apply(ctx, ws, "ae-pdpl-desc", nil, "admin@corp")
+	if !errors.Is(err, ErrPolicyConflict) {
+		t.Fatalf("expected ErrPolicyConflict applying a pack with a same-name/different-definition template, got %v", err)
+	}
+
+	// All-or-nothing: the failed apply rolled back, so the workspace still holds
+	// exactly the first pack's policies — no partial materialisation of ae-pdpl.
+	after, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("list after: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("conflicting apply was not atomic: policy count changed %d -> %d", len(before), len(after))
+	}
+}
+
+// TestSameDefinitionIsKeyOrderAndWhitespaceStable locks the contract the
+// conflict check relies on: two byte-different encodings of the SAME policy
+// (reordered JSON keys, extra whitespace) must compare equal, so a JSONB
+// round-trip never reads as a false conflict (spurious 409). It also pins the
+// reflect.DeepEqual nil-vs-empty concern: ParsePolicyDefinition routes every
+// definition through normalizeSet (which always returns a non-nil slice) and
+// rejects empty subject/resource sets, so an "absent field" can never reach the
+// comparison as nil on one side and []string{} on the other.
+func TestSameDefinitionIsKeyOrderAndWhitespaceStable(t *testing.T) {
+	// Same policy, different byte encodings: key order flipped + whitespace.
+	a := []byte(`{"action":"grant","subjects":["role:admin","role:sec"],"resources":["sys:db"]}`)
+	b := []byte("{\n  \"resources\": [\"sys:db\"],\n  \"subjects\": [\"role:sec\", \"role:admin\"],\n  \"action\": \"grant\"\n}")
+	same, err := sameDefinition(a, b)
+	if err != nil {
+		t.Fatalf("sameDefinition: %v", err)
+	}
+	if !same {
+		t.Fatal("expected key-reordered/whitespace-different encodings of the same policy to compare equal")
+	}
+
+	// A genuinely different definition (different action) must read as different.
+	c := []byte(`{"action":"deny","subjects":["role:admin","role:sec"],"resources":["sys:db"]}`)
+	diff, err := sameDefinition(a, c)
+	if err != nil {
+		t.Fatalf("sameDefinition: %v", err)
+	}
+	if diff {
+		t.Fatal("expected differing actions to compare unequal")
+	}
+
+	// An unparseable stored definition is surfaced as an error, not silently
+	// treated as "different" (which would mask corruption behind a 409).
+	if _, err := sameDefinition([]byte(`{"action":"grant"}`), a); err == nil {
+		t.Fatal("expected an error when the stored definition is invalid")
+	}
+}
+
 func TestApplySelectedTemplatesOnly(t *testing.T) {
 	svc, _, _, ws := newApplyService(t)
 	ctx := context.Background()

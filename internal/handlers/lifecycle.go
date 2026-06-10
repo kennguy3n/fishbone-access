@@ -45,7 +45,7 @@ type lifecycleHandlers struct {
 // and the iam-core identity disabler used by the leaver kill switch.
 func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 	db := deps.DB
-	resolver := lifecycle.NewDBConnectorResolver(db, deps.Encryptor)
+	resolver := lifecycle.NewDBConnectorResolver(db, deps.ConnectorEncryptor)
 	requests := lifecycle.NewAccessRequestService(db)
 	workflow := lifecycle.NewWorkflowService(requests)
 	prov := lifecycle.NewAccessProvisioningService(db, requests, resolver)

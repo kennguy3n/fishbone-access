@@ -15,7 +15,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
-	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
@@ -254,12 +253,13 @@ func TestResolverErrorClassificationIsPreserved(t *testing.T) {
 }
 
 // TestResolveSecretsDisabledClassifiesAsNotConfigured proves a connector that
-// has a sealed secret envelope but no DEK to open it (the PassthroughEncryptor
-// wired when ACCESS_CREDENTIAL_DEK is unset returns crypto.ErrSecretsDisabled
-// from Open) is classified as ErrConnectorNotConfigured (→422), not blanket
-// 500. It is unusable-by-configuration, the same class as the nil-encryptor
-// guard, so the caller gets an actionable "fix your config" response instead of
-// an opaque internal error.
+// has a sealed secret envelope but no DEK to open it (the fail-closed
+// disabledEncryptor wired when ACCESS_CREDENTIAL_DEK is unset returns
+// access.ErrSecretsDisabled from Decrypt) is classified as
+// ErrConnectorNotConfigured (→422), not blanket 500. It is
+// unusable-by-configuration, the same class as the nil-encryptor guard, so the
+// caller gets an actionable "fix your config" response instead of an opaque
+// internal error.
 func TestResolveSecretsDisabledClassifiesAsNotConfigured(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -273,7 +273,7 @@ func TestResolveSecretsDisabledClassifiesAsNotConfigured(t *testing.T) {
 		t.Fatalf("seed connector: %v", err)
 	}
 
-	resolver := NewDBConnectorResolver(db, crypto.PassthroughEncryptor{})
+	resolver := NewDBConnectorResolver(db, access.NewDisabledEncryptor())
 	// Make the provider lookup succeed so Resolve reaches the secret-open path.
 	resolver.lookup = func(string) (access.AccessConnector, error) { return &fakeConnector{}, nil }
 

@@ -1,0 +1,87 @@
+{
+  "controls": [
+    {
+      "by_kind": {
+        "access_granted": 3,
+        "policy_created": 6,
+        "policy_promoted": 6
+      },
+      "covered": true,
+      "evidence_count": 15,
+      "id": "7.2",
+      "kinds": [
+        "policy_promoted",
+        "policy_created",
+        "access_granted"
+      ],
+      "title": "Least-privilege access control system"
+    },
+    {
+      "by_kind": {
+        "certification_closed": 1,
+        "certification_decision": 1,
+        "certification_started": 1,
+        "review_started": 1
+      },
+      "covered": true,
+      "evidence_count": 4,
+      "id": "7.2.4",
+      "kinds": [
+        "review_started",
+        "review_completed",
+        "certification_started",
+        "certification_decision",
+        "certification_closed"
+      ],
+      "title": "Access reviewed at least every 6 months"
+    },
+    {
+      "by_kind": {
+        "access_revoked": 3,
+        "kill_switch_fired": 6
+      },
+      "covered": true,
+      "evidence_count": 9,
+      "id": "8.1.3",
+      "kinds": [
+        "access_revoked",
+        "access_expired",
+        "kill_switch_fired"
+      ],
+      "title": "Access for terminated users revoked promptly"
+    },
+    {
+      "by_kind": {
+        "access_granted": 3,
+        "access_requested": 4,
+        "joiner_provisioned": 1
+      },
+      "covered": true,
+      "evidence_count": 8,
+      "id": "8.2",
+      "kinds": [
+        "access_requested",
+        "access_granted",
+        "joiner_provisioned"
+      ],
+      "title": "Access provisioned on authorization"
+    },
+    {
+      "by_kind": {
+        "evidence_exported": 1
+      },
+      "covered": true,
+      "evidence_count": 1,
+      "id": "10.2",
+      "kinds": [
+        "privileged_command",
+        "evidence_exported"
+      ],
+      "title": "Audit trail of access to system components"
+    }
+  ],
+  "controls_covered": 5,
+  "controls_total": 5,
+  "evidence_total": 36,
+  "framework": "PCI-DSS"
+}

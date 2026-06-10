@@ -1,0 +1,66 @@
+{
+  "packs": [
+    {
+      "authority": "UAE Data Office / Dubai Electronic Security Center",
+      "description": "UAE Personal Data Protection Law and DESC information-security baseline: least-privilege access to personal data and tightly controlled privileged access.",
+      "frameworks": [
+        "PDPL",
+        "DESC"
+      ],
+      "id": "ae-pdpl-desc",
+      "industries": [
+        "finance",
+        "government",
+        "any"
+      ],
+      "name": "UAE — PDPL + DESC",
+      "regions": [
+        "ae"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "UAE PDPL Art. 9 — Security of processing",
+          "key": "ae-pii-access",
+          "name": "Authorised staff → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "grant",
+          "control": "DESC ISR — Access control",
+          "key": "ae-privileged",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "service:admin-console"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged access to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "UAE PDPL Art. 9 — Access restriction",
+          "key": "ae-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    }
+  ]
+}

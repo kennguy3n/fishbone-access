@@ -102,6 +102,16 @@ func (v *Validator) Validate(tokenString string) (*Claims, error) {
 }
 
 func (v *Validator) claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
+	return extractClaims(mc, v.issuer)
+}
+
+// extractClaims maps a verified JWT claim set to the application-level Claims
+// view. It is the single claim-extraction implementation shared by the
+// production JWKS Validator and the non-production HMAC dev validator
+// (devauth.go), so both terminate identity with byte-identical semantics —
+// roles, scopes and MFA state are read the same way regardless of which
+// signing scheme verified the token. issuer namespaces the roles claim.
+func extractClaims(mc jwt.MapClaims, issuer string) (*Claims, error) {
 	sub, _ := mc["sub"].(string)
 	if sub == "" {
 		return nil, fmt.Errorf("%w: missing sub", ErrInvalidToken)
@@ -109,7 +119,7 @@ func (v *Validator) claimsFromMap(mc jwt.MapClaims) (*Claims, error) {
 	c := &Claims{
 		Subject:      sub,
 		TenantID:     firstStringClaim(mc, "tenant_id", "tid"),
-		Roles:        rolesClaim(mc, v.issuer),
+		Roles:        rolesClaim(mc, issuer),
 		Scopes:       scopeClaim(mc),
 		MFASatisfied: mfaFromClaims(mc),
 		Raw:          map[string]any(mc),

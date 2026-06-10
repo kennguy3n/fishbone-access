@@ -82,6 +82,8 @@ func (h *lifecycleHandlers) failPack(c *gin.Context, err error) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, packs.ErrNoTemplates), errors.Is(err, packs.ErrTemplateNotInPack):
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, packs.ErrPolicyConflict):
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	default:
 		// Could be a lifecycle validation/transition error from CreatePolicy
 		// (e.g. ErrValidation -> 400) or a genuine internal fault. Defer to the

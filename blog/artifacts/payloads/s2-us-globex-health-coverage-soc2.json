@@ -1,0 +1,96 @@
+{
+  "controls": [
+    {
+      "by_kind": {
+        "access_granted": 3,
+        "policy_created": 5,
+        "policy_promoted": 5
+      },
+      "covered": true,
+      "evidence_count": 13,
+      "id": "CC6.1",
+      "kinds": [
+        "policy_promoted",
+        "policy_created",
+        "access_granted"
+      ],
+      "title": "Logical access security — least-privilege policy enforced"
+    },
+    {
+      "by_kind": {
+        "access_granted": 3,
+        "access_requested": 4,
+        "joiner_provisioned": 1
+      },
+      "covered": true,
+      "evidence_count": 8,
+      "id": "CC6.2",
+      "kinds": [
+        "access_requested",
+        "access_granted",
+        "joiner_provisioned"
+      ],
+      "title": "Access provisioned on authorization"
+    },
+    {
+      "by_kind": {
+        "access_revoked": 3,
+        "kill_switch_fired": 6
+      },
+      "covered": true,
+      "evidence_count": 9,
+      "id": "CC6.3",
+      "kinds": [
+        "access_revoked",
+        "access_expired",
+        "kill_switch_fired",
+        "mover_recorded"
+      ],
+      "title": "Access modified/removed when no longer required"
+    },
+    {
+      "covered": false,
+      "evidence_count": 0,
+      "id": "CC6.7",
+      "kinds": [
+        "privileged_command"
+      ],
+      "title": "Privileged access monitored"
+    },
+    {
+      "by_kind": {
+        "certification_closed": 1,
+        "certification_decision": 1,
+        "certification_started": 1,
+        "review_decision": 2,
+        "review_started": 1
+      },
+      "covered": true,
+      "evidence_count": 6,
+      "id": "CC7.2",
+      "kinds": [
+        "review_started",
+        "review_decision",
+        "review_completed",
+        "certification_started",
+        "certification_decision",
+        "certification_closed"
+      ],
+      "title": "Access reviewed/certified periodically"
+    },
+    {
+      "covered": false,
+      "evidence_count": 0,
+      "id": "CC7.3",
+      "kinds": [
+        "orphan_detected",
+        "orphan_disposition"
+      ],
+      "title": "Orphan / anomalous access detected and dispositioned"
+    }
+  ],
+  "controls_covered": 4,
+  "controls_total": 6,
+  "evidence_total": 33,
+  "framework": "SOC 2"
+}
