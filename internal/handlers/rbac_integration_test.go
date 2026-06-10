@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -206,6 +207,45 @@ func TestRBACWorkflowGating(t *testing.T) {
 	// create then succeeds; the point is it is NOT a 403 from RequirePermission).
 	if w := do(t, env.router, http.MethodPost, "/api/v1/workflows", "tok-admin", body); w.Code == http.StatusForbidden {
 		t.Fatalf("admin POST workflows = 403, want the permission gate to admit it; body=%s", w.Body.String())
+	}
+}
+
+// TestRBACPAMTargetGating proves the WS4 PAM target routes honor the
+// pam.target.read / pam.target.write split. Registering a target binds a sealed
+// credential to the workspace, so it is a privileged write: a standard operator
+// holds pam.target.read (may list) but not pam.target.write (may not register),
+// while an admin holds the write permission and clears the gate. This closes the
+// ungated-target-creation gap the review flagged at integration — before this,
+// any workspace member could register a target with a credential.
+func TestRBACPAMTargetGating(t *testing.T) {
+	// A real (test) DEK so newPAMHandlers builds a working vault that can seal
+	// the target credential; it is read at NewRouter time inside newRBACTestEnv.
+	t.Setenv("ACCESS_CREDENTIAL_DEK", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	env := newRBACTestEnv(t)
+
+	body := map[string]any{
+		"name": "db", "protocol": "postgres", "address": "db:5432",
+		"secret": map[string]any{"password": "pw"},
+	}
+
+	// Operator holds pam.target.read → listing targets is allowed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/pam/targets", "tok-operator", nil); w.Code != http.StatusOK {
+		t.Fatalf("operator GET pam/targets = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Operator lacks pam.target.write → registering a target is denied at the
+	// permission gate (before the vault ever seals a credential).
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-operator", body); w.Code != http.StatusForbidden {
+		t.Fatalf("operator POST pam/targets = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+	// Auditor is read-only across the board → target registration is denied too.
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-auditor", body); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST pam/targets = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Admin holds pam.target.write → the gate admits the registration and it
+	// succeeds (201), proving the gate is a permission split, not a blanket deny.
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-admin", body); w.Code != http.StatusCreated {
+		t.Fatalf("admin POST pam/targets = %d, want 201; body=%s", w.Code, w.Body.String())
 	}
 }
 

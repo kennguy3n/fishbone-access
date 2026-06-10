@@ -135,30 +135,38 @@ func buildReplayReader() gateway.ReplayReader {
 func (h *pamHandlers) register(g *gin.RouterGroup) {
 	pamG := g.Group("/pam")
 
-	// Targets.
-	pamG.GET("/targets", h.listTargets)
-	pamG.GET("/targets/:id", h.getTarget)
-	pamG.POST("/targets", h.createTarget)
+	// Targets. Reads need pam.target.read; registering a target binds a sealed
+	// credential to the workspace, so it needs the write permission (held by
+	// owner/admin/security_admin, not the standard operator) — every route is
+	// RBAC-gated like the rest of the privileged surface. The gates no-op when
+	// the RBAC tier is absent (legacy/test callers with a bare Deps), so the
+	// server stays the authority without breaking the non-RBAC boot.
+	pamG.GET("/targets", middleware.RequirePermission(authz.PermPAMTargetRead), h.listTargets)
+	pamG.GET("/targets/:id", middleware.RequirePermission(authz.PermPAMTargetRead), h.getTarget)
+	pamG.POST("/targets", middleware.RequirePermission(authz.PermPAMTargetWrite), h.createTarget)
 
-	// Leases. Approve and revoke open and close a privileged access window, so
-	// they are step-up-MFA gated (mirroring policies/:id/promote); request,
-	// list, get, and the operator-triggered expire sweep are not. Finer-grained
-	// RBAC (a distinct approver permission / separation-of-duties) is layered on
-	// at integration alongside the other cross-workspace RBAC wiring.
-	pamG.POST("/leases", h.requestLease)
-	pamG.GET("/leases", h.listLeases)
-	pamG.GET("/leases/:id", h.getLease)
-	pamG.POST("/leases/:id/approve", middleware.RequireMFA(), h.approveLease)
-	pamG.POST("/leases/:id/revoke", middleware.RequireMFA(), h.revokeLease)
-	pamG.POST("/leases/expire", h.expireLeases)
+	// Leases — the JIT access state machine, RBAC-gated for separation of
+	// duties: a requester (operator: pam.connect) raises and lists leases, but
+	// only an approver (pam.session.admin: owner/admin/security_admin) may grant
+	// or revoke a window — so no one can approve their own request. Approve and
+	// revoke additionally carry step-up MFA (mirroring policies/:id/promote)
+	// because they open/close a privileged window. The operator-triggered expire
+	// sweep is an administrative maintenance action (pam.session.admin).
+	pamG.POST("/leases", middleware.RequirePermission(authz.PermPAMConnect), h.requestLease)
+	pamG.GET("/leases", middleware.RequirePermission(authz.PermPAMSessionRead), h.listLeases)
+	pamG.GET("/leases/:id", middleware.RequirePermission(authz.PermPAMSessionRead), h.getLease)
+	pamG.POST("/leases/:id/approve", middleware.RequirePermission(authz.PermPAMSessionAdmin), middleware.RequireMFA(), h.approveLease)
+	pamG.POST("/leases/:id/revoke", middleware.RequirePermission(authz.PermPAMSessionAdmin), middleware.RequireMFA(), h.revokeLease)
+	pamG.POST("/leases/expire", middleware.RequirePermission(authz.PermPAMSessionAdmin), h.expireLeases)
 
-	// Connect tokens (mint).
-	pamG.POST("/connect-tokens", h.mintConnectToken)
+	// Connect tokens (mint) — brokering a credential is the pam.connect action.
+	pamG.POST("/connect-tokens", middleware.RequirePermission(authz.PermPAMConnect), h.mintConnectToken)
 
-	// Sessions.
-	pamG.GET("/sessions", h.listSessions)
-	pamG.GET("/sessions/:id", h.getSession)
-	pamG.GET("/sessions/:id/replay", h.getReplay)
+	// Sessions — reads (list/get/replay) need pam.session.read so an auditor can
+	// review recordings for compliance; live control below needs pam.takeover.
+	pamG.GET("/sessions", middleware.RequirePermission(authz.PermPAMSessionRead), h.listSessions)
+	pamG.GET("/sessions/:id", middleware.RequirePermission(authz.PermPAMSessionRead), h.getSession)
+	pamG.GET("/sessions/:id/replay", middleware.RequirePermission(authz.PermPAMSessionRead), h.getReplay)
 
 	// Live session control: RBAC pam.takeover permission + step-up MFA.
 	ctrl := pamG.Group("/sessions/:id", middleware.RequirePermission(authz.PermPAMTakeover), middleware.RequireMFA())
