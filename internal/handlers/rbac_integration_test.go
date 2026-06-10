@@ -94,6 +94,7 @@ func newRBACTestEnv(t *testing.T) rbacTestEnv {
 	rbac := authz.NewRBACService(db, 0)
 	seedMember(t, rbac, wsA, "user-owner", authz.RoleOwner)
 	seedMember(t, rbac, wsA, "user-admin", authz.RoleAdmin)
+	seedMember(t, rbac, wsA, "user-operator", authz.RoleOperator)
 	seedMember(t, rbac, wsA, "user-auditor", authz.RoleAuditor)
 	seedMember(t, rbac, wsB, "user-b-owner", authz.RoleOwner)
 	// user-stranger carries a valid tenant-a token but has NO membership row.
@@ -124,6 +125,7 @@ func newRBACTestEnv(t *testing.T) rbacTestEnv {
 		Validator: mapValidator{byToken: map[string]*iamcore.Claims{
 			"tok-owner":    {Subject: "user-owner", TenantID: "tenant-a", MFASatisfied: true},
 			"tok-admin":    {Subject: "user-admin", TenantID: "tenant-a", MFASatisfied: true},
+			"tok-operator": {Subject: "user-operator", TenantID: "tenant-a"},
 			"tok-auditor":  {Subject: "user-auditor", TenantID: "tenant-a"},
 			"tok-stranger": {Subject: "user-stranger", TenantID: "tenant-a"},
 			"tok-b-owner":  {Subject: "user-b-owner", TenantID: "tenant-b"},
@@ -175,6 +177,70 @@ func TestRBACAuditorReadAllowedWriteDenied(t *testing.T) {
 	body := map[string]any{"name": "p", "definition": map[string]any{}}
 	if w := do(t, env.router, http.MethodPost, "/api/v1/policies", "tok-auditor", body); w.Code != http.StatusForbidden {
 		t.Fatalf("auditor POST policies = %d, want 403", w.Code)
+	}
+}
+
+// TestRBACWorkflowGating proves the WS3 workflow routes honor the workflow.read
+// / workflow.edit split: a read-only auditor may list workflows but cannot
+// author one or fire the emergency-offboard kill switch, while an edit-holder
+// (admin) clears the permission gate. This guards the separation of duties the
+// RBAC model defines for the workflow engine.
+func TestRBACWorkflowGating(t *testing.T) {
+	env := newRBACTestEnv(t)
+
+	// Auditor holds workflow.read → list is allowed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/workflows", "tok-auditor", nil); w.Code != http.StatusOK {
+		t.Fatalf("auditor GET workflows = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Auditor lacks workflow.edit → authoring and the kill switch are denied at
+	// the permission gate (before any handler logic runs).
+	body := map[string]any{"name": "wf", "definition": map[string]any{}}
+	if w := do(t, env.router, http.MethodPost, "/api/v1/workflows", "tok-auditor", body); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST workflows = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+	if w := do(t, env.router, http.MethodPost, "/api/v1/emergency-offboard", "tok-auditor", map[string]any{"user_external_id": "x", "reason": "y"}); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST emergency-offboard = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Admin holds workflow.edit → the permission gate admits the request (the
+	// create then succeeds; the point is it is NOT a 403 from RequirePermission).
+	if w := do(t, env.router, http.MethodPost, "/api/v1/workflows", "tok-admin", body); w.Code == http.StatusForbidden {
+		t.Fatalf("admin POST workflows = 403, want the permission gate to admit it; body=%s", w.Body.String())
+	}
+}
+
+// TestRBACConnectorGating proves the WS2 connector routes honor the
+// connector.read / connector.manage split. An operator holds connector.read so
+// the catalogue list is allowed, but lacks connector.manage so creating a
+// connector is denied at the permission gate. A compliance auditor holds
+// neither connector permission, so even the read surface is fully closed. An
+// admin holds connector.manage, so the mutation gate admits the request. This
+// closes the separation-of-duties gap the review flagged for the connector
+// fabric.
+func TestRBACConnectorGating(t *testing.T) {
+	env := newRBACTestEnv(t)
+
+	// Operator holds connector.read → catalogue list is allowed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/connectors", "tok-operator", nil); w.Code != http.StatusOK {
+		t.Fatalf("operator GET connectors = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Operator lacks connector.manage → creating a connector is denied at the
+	// permission gate (before any handler logic runs).
+	body := map[string]any{"provider": "microsoft", "display_name": "x"}
+	if w := do(t, env.router, http.MethodPost, "/api/v1/connectors", "tok-operator", body); w.Code != http.StatusForbidden {
+		t.Fatalf("operator POST connectors = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Auditor holds neither connector permission → even the read surface is
+	// fully closed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/connectors", "tok-auditor", nil); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor GET connectors = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Admin holds connector.manage → the mutation gate admits the request (the
+	// point is it is NOT a 403 from RequirePermission).
+	if w := do(t, env.router, http.MethodPost, "/api/v1/connectors", "tok-admin", body); w.Code == http.StatusForbidden {
+		t.Fatalf("admin POST connectors = 403, want the permission gate to admit it; body=%s", w.Body.String())
 	}
 }
 

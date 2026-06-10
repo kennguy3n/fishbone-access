@@ -6,10 +6,12 @@
 -- breakdown). Dry-run simulations are NOT persisted as runs — they have no
 -- side effects and cache their result on workflows.draft_simulation instead.
 --
--- NOTE: prefixes 0005-0009 are reserved by Session 1D (PAM gateway) and 0010-
--- 0011 by Session 1E / PAM protocol expansion, so WS3 starts at 0012. The
--- runner keys schema_migrations by the numeric prefix, so the prefix must be
--- unique.
+-- NOTE: the runner keys schema_migrations by the numeric prefix, so the prefix
+-- must be unique. This file originally shipped as 0012, but 0012 was also taken
+-- by 0012_access_risk_verdicts (a separately-merged workstream); the duplicate
+-- prefix made the runner silently skip one of the two on a fresh DB. Renumbered
+-- to 0014 (0013 is WS2 connector setup; WS1 RBAC/TOTP is 0015) to restore a
+-- unique, strictly-increasing ordering.
 --
 -- Tenant isolation: workspace_id scopes every row; the workflow service only
 -- ever queries (workspace_id, id) together, and every run is scoped by

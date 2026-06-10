@@ -13,6 +13,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 )
@@ -49,25 +50,29 @@ func newWorkflowHandlers(deps Deps) *workflowHandlers {
 }
 
 // register mounts the workflow-builder routes on the tenant-scoped group (which
-// already carries Auth + ResolveTenant + RequireTenant). Publishing and running
-// mutate enforcement, so they require step-up MFA — mirroring policy promotion.
+// already carries Auth + ResolveTenant + RequireTenant + AuthzMiddleware). Reads
+// require workflow.read; every authoring/enforcement mutation (create, edit,
+// simulate, publish, archive, run, and the emergency-offboard kill switch)
+// requires workflow.edit, so a read-only role (auditor/operator) cannot author
+// or trigger workflows. Publishing, running, and emergency-offboard additionally
+// carry the session-level MFA claim, mirroring policy promotion.
 func (h *workflowHandlers) register(g *gin.RouterGroup) {
-	g.POST("/workflows", h.create)
-	g.GET("/workflows", h.list)
-	g.GET("/workflows/:id", h.get)
-	g.PUT("/workflows/:id", h.update)
-	g.POST("/workflows/:id/simulate", h.simulate)
-	g.POST("/workflows/:id/publish", middleware.RequireMFA(), h.publish)
-	g.POST("/workflows/:id/archive", h.archive)
-	g.POST("/workflows/:id/run", middleware.RequireMFA(), h.run)
+	g.POST("/workflows", middleware.RequirePermission(authz.PermWorkflowEdit), h.create)
+	g.GET("/workflows", middleware.RequirePermission(authz.PermWorkflowRead), h.list)
+	g.GET("/workflows/:id", middleware.RequirePermission(authz.PermWorkflowRead), h.get)
+	g.PUT("/workflows/:id", middleware.RequirePermission(authz.PermWorkflowEdit), h.update)
+	g.POST("/workflows/:id/simulate", middleware.RequirePermission(authz.PermWorkflowEdit), h.simulate)
+	g.POST("/workflows/:id/publish", middleware.RequirePermission(authz.PermWorkflowEdit), middleware.RequireMFA(), h.publish)
+	g.POST("/workflows/:id/archive", middleware.RequirePermission(authz.PermWorkflowEdit), h.archive)
+	g.POST("/workflows/:id/run", middleware.RequirePermission(authz.PermWorkflowEdit), middleware.RequireMFA(), h.run)
 
 	// JML dashboard: recent runs + per-run step audit.
-	g.GET("/workflow-runs", h.listRuns)
-	g.GET("/workflow-runs/:id", h.getRun)
+	g.GET("/workflow-runs", middleware.RequirePermission(authz.PermWorkflowRead), h.listRuns)
+	g.GET("/workflow-runs/:id", middleware.RequirePermission(authz.PermWorkflowRead), h.getRun)
 
-	// Standalone emergency offboard: the six-layer leaver kill switch, gated by
-	// step-up MFA.
-	g.POST("/emergency-offboard", middleware.RequireMFA(), h.emergencyOffboard)
+	// Standalone emergency offboard: the six-layer leaver kill switch. Gated by
+	// workflow.edit + the session-level MFA claim.
+	g.POST("/emergency-offboard", middleware.RequirePermission(authz.PermWorkflowEdit), middleware.RequireMFA(), h.emergencyOffboard)
 }
 
 type workflowBody struct {
