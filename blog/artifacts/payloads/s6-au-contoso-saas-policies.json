@@ -1,0 +1,128 @@
+{
+  "policies": [
+    {
+      "created_at": "2026-06-10T16:31:32.577221Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "host:prod"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "3780fb79-39a5-4b90-8fd6-59f00a388dec",
+      "name": "Deny-all to production by default",
+      "promoted_at": "2026-06-10T16:31:32.596967Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:31:32.596967Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    },
+    {
+      "created_at": "2026-06-10T16:31:32.576453Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "host:prod"
+        ],
+        "role": "admin",
+        "subjects": [
+          "role:platform-admin"
+        ]
+      },
+      "deleted_at": null,
+      "id": "17935c95-b28e-433c-973a-900b176a0406",
+      "name": "Privileged prod access — admins only",
+      "promoted_at": "2026-06-10T16:31:32.601193Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:31:32.601193Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    },
+    {
+      "created_at": "2026-06-10T16:31:32.575638Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "app:production"
+        ],
+        "role": "operator",
+        "subjects": [
+          "team:engineering"
+        ]
+      },
+      "deleted_at": null,
+      "id": "f4c5b672-94fd-44c9-9f58-e5d403df2dc7",
+      "name": "Engineering → production apps",
+      "promoted_at": "2026-06-10T16:31:32.605514Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:31:32.605514Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    },
+    {
+      "created_at": "2026-06-10T16:31:32.573193Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:personal-data"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "4db562e8-e99c-4076-baef-ff539290f5ad",
+      "name": "Default-deny personal information",
+      "promoted_at": "2026-06-10T16:32:01.710526Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:32:01.710526Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    },
+    {
+      "created_at": "2026-06-10T16:31:32.572453Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "host:prod"
+        ],
+        "role": "admin",
+        "subjects": [
+          "role:platform-admin"
+        ]
+      },
+      "deleted_at": null,
+      "id": "deef0a80-cc0e-4e9c-a7cf-017ff814995b",
+      "name": "Restrict administrative privileges",
+      "promoted_at": "2026-06-10T16:32:31.81583Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:32:31.81583Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    },
+    {
+      "created_at": "2026-06-10T16:31:32.571556Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "db:personal-data"
+        ],
+        "role": "processor",
+        "subjects": [
+          "team:data"
+        ]
+      },
+      "deleted_at": null,
+      "id": "1b2f64be-c247-4aa7-b540-fef01f5cc487",
+      "name": "Authorised staff → personal information",
+      "promoted_at": "2026-06-10T16:33:01.822448Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:33:01.822448Z",
+      "version": 1,
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+    }
+  ]
+}

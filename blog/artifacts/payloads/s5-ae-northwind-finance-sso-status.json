@@ -1,0 +1,7 @@
+{
+  "sso": {
+    "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+    "enforced": false,
+    "supported": false
+  }
+}

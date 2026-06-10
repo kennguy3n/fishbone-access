@@ -50,7 +50,7 @@ type complianceHandlers struct {
 // 1C review path uses, rather than a parallel one.
 func newComplianceHandlers(deps Deps) *complianceHandlers {
 	db := deps.DB
-	resolver := lifecycle.NewDBConnectorResolver(db, deps.Encryptor)
+	resolver := lifecycle.NewDBConnectorResolver(db, deps.ConnectorEncryptor)
 	requests := lifecycle.NewAccessRequestService(db)
 	prov := lifecycle.NewAccessProvisioningService(db, requests, resolver)
 	ev := compliance.NewEvidenceService(db)

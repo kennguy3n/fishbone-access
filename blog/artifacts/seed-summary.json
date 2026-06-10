@@ -1,0 +1,246 @@
+{
+  "generated_at": "2026-06-10T16:25:16.192069132Z",
+  "api_base": "http://localhost:8080",
+  "workspaces": [
+    {
+      "index": 1,
+      "slug": "sg-acme-payments",
+      "name": "Acme Payments",
+      "region": "sg",
+      "industry": "finance",
+      "tenant_id": "tenant-sg-acme-payments",
+      "workspace_id": "1942a932-c388-45b0-adac-ea0498b3b65d",
+      "locale": "en",
+      "counts": {
+        "members": 5,
+        "connectors": 4,
+        "policies": 6,
+        "policies_active": 6,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 61
+      },
+      "ids": {
+        "review_id": "97f79720-b823-43b3-b7a7-4cb762703a88",
+        "campaign_id": "3c96ba81-51a3-48d2-b4a4-e52047aaf8ab",
+        "manual_connector_id": "435f8867-6049-4432-ab8c-e43107236cfa",
+        "connector_ids": [
+          "62cfb1b5-e0fc-4c06-a49f-1888e05829ea",
+          "ec44fb21-6c62-454e-bfaf-f209683d6cda",
+          "435f8867-6049-4432-ab8c-e43107236cfa",
+          "8ac45fb0-57e5-48a1-be01-8fce37863766"
+        ],
+        "policy_ids": [
+          "9bbc79aa-640b-4fc3-90b8-f387d8724413",
+          "97ec775b-434d-438f-95e4-d4cbf2bc3d7b",
+          "65009a6e-5a3f-42f9-b9fe-1dbe32e22f46",
+          "6b979856-b37c-4431-b5a2-e54dad592249",
+          "d1edd56d-a55f-4809-9481-41dc77b6da8c",
+          "08568444-0f8e-496a-8370-62336533e592"
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "slug": "us-globex-health",
+      "name": "Globex Health",
+      "region": "us",
+      "industry": "healthcare",
+      "tenant_id": "tenant-us-globex-health",
+      "workspace_id": "7be5a65c-ee01-4799-89ff-2019022b7fae",
+      "locale": "en",
+      "counts": {
+        "members": 5,
+        "connectors": 3,
+        "policies": 5,
+        "policies_active": 5,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 59
+      },
+      "ids": {
+        "review_id": "588234f5-4452-4398-bdcd-c829ec891631",
+        "campaign_id": "4cb6a976-3c76-406a-b884-52489c96a706",
+        "manual_connector_id": "174edfd8-c049-4d4a-bd61-826687c162a2",
+        "connector_ids": [
+          "f8a9223a-fbad-4d3b-93d3-9decdd07c795",
+          "174edfd8-c049-4d4a-bd61-826687c162a2",
+          "0ce26747-cf88-4da7-82a5-951774d14c7d"
+        ],
+        "policy_ids": [
+          "a7efc43b-8163-45a5-b35d-b2635c5d24bd",
+          "8f45cb4b-7aca-46ce-9ed0-c2f92880ee12",
+          "9343ce29-e758-4b74-a12d-3df1a16aa8e7",
+          "2d2dc7d9-92b8-46f7-ab0e-48310d85475b",
+          "cef35c85-a377-4958-a1ff-19b128f2d1f3"
+        ]
+      }
+    },
+    {
+      "index": 3,
+      "slug": "de-initech-retail",
+      "name": "Initech Retail",
+      "region": "de",
+      "industry": "retail",
+      "tenant_id": "tenant-de-initech-retail",
+      "workspace_id": "1fe9376b-f3ad-4ea0-b81e-e9a41694c74d",
+      "locale": "de",
+      "counts": {
+        "members": 5,
+        "connectors": 4,
+        "policies": 8,
+        "policies_active": 8,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 65
+      },
+      "ids": {
+        "review_id": "e7ba8d9f-46a8-41f2-8d5f-4ee6f11a213c",
+        "campaign_id": "e56063ae-7b87-48ba-9bd6-f9b4345a1006",
+        "manual_connector_id": "9b5eb88c-a370-456c-a395-0d57f86c1486",
+        "connector_ids": [
+          "8ff0aee3-1a49-4284-b158-f21aef44e97d",
+          "0bf1c608-1bbc-4524-8962-e0e453612e80",
+          "d2712827-5a64-48b1-8557-045457b48b56",
+          "9b5eb88c-a370-456c-a395-0d57f86c1486"
+        ],
+        "policy_ids": [
+          "4f45bbe8-6f46-4fc6-aa1e-87471eb1c8ed",
+          "f36c54ed-773e-477e-8b00-0e16565dafa6",
+          "c5650166-7a21-44b0-9982-b9c458f89b02",
+          "0c4ded6a-48a9-4074-952d-6e117b0a0fea",
+          "f7a0dec2-3f89-4af1-a12a-71754b9fd463",
+          "7059662c-47fc-461d-82b6-a3e3e8de7566",
+          "f3da4ac8-b702-4796-bbd8-a8c42af89bd3",
+          "f1dcb007-0990-4475-b168-293cce982da9"
+        ]
+      }
+    },
+    {
+      "index": 4,
+      "slug": "vn-umbrella-logistics",
+      "name": "Umbrella Logistics",
+      "region": "vn",
+      "industry": "any",
+      "tenant_id": "tenant-vn-umbrella-logistics",
+      "workspace_id": "ca201bf2-5067-45a8-8c0d-03e9e4f4f37f",
+      "locale": "vi",
+      "counts": {
+        "members": 5,
+        "connectors": 3,
+        "policies": 2,
+        "policies_active": 2,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 53
+      },
+      "ids": {
+        "review_id": "f26318c6-9114-4106-8c86-2a78cfd28abc",
+        "campaign_id": "9ae7bdea-dcc5-4a8f-8a10-d06cf52771f8",
+        "manual_connector_id": "cc4a96a4-80e3-4c13-b23a-fa7b12e8e930",
+        "connector_ids": [
+          "c5726ffa-054f-4eb4-bc40-a1d413ca90c4",
+          "cc4a96a4-80e3-4c13-b23a-fa7b12e8e930",
+          "72a050d3-5bdf-4e3a-9dd2-aae4d89f5687"
+        ],
+        "policy_ids": [
+          "35f2204b-85b4-4975-ba18-286256e9487e",
+          "5d0fa359-14ad-4c3c-8696-60fb67414035"
+        ]
+      }
+    },
+    {
+      "index": 5,
+      "slug": "ae-northwind-finance",
+      "name": "Northwind Finance",
+      "region": "ae",
+      "industry": "finance",
+      "tenant_id": "tenant-ae-northwind-finance",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd",
+      "locale": "ar",
+      "counts": {
+        "members": 5,
+        "connectors": 3,
+        "policies": 6,
+        "policies_active": 6,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 61
+      },
+      "ids": {
+        "review_id": "8e43a693-b73e-434c-9c9e-ebf71f792f6b",
+        "campaign_id": "bf8c1aa6-6869-401b-bd31-8eeb9b8d2dfb",
+        "manual_connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+        "connector_ids": [
+          "fa731d7f-86b2-4460-b4b5-a688e0d54720",
+          "6f5494b6-d40c-4052-b9f0-fef6932e7b34",
+          "16dfade1-34e0-4f73-89fc-aad455d70677"
+        ],
+        "policy_ids": [
+          "27d4d5f1-1870-4d39-a8d1-798970b0d3d1",
+          "6a9ed100-32e3-471d-8bc7-869f529a9b34",
+          "6f142869-5b03-44c4-b1f0-940a46232219",
+          "e0bbf18e-cf2c-4821-a993-52e7ea3ee30b",
+          "392bb593-6613-4cd5-a0f7-4043564654ba",
+          "9e081021-304a-44ab-b574-a09f942f08da"
+        ]
+      }
+    },
+    {
+      "index": 6,
+      "slug": "au-contoso-saas",
+      "name": "Contoso SaaS",
+      "region": "au",
+      "industry": "saas",
+      "tenant_id": "tenant-au-contoso-saas",
+      "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3",
+      "locale": "en",
+      "counts": {
+        "members": 5,
+        "connectors": 4,
+        "policies": 6,
+        "policies_active": 6,
+        "access_requests": 4,
+        "grants": 2,
+        "review_items": 2,
+        "campaign_items": 1,
+        "orphan_accounts": 0,
+        "evidence_records": 61
+      },
+      "ids": {
+        "review_id": "7f943316-46a8-4dc8-96d6-b80aa9d9cab8",
+        "campaign_id": "d328d342-648a-430e-bbd1-9ae8a2a2182d",
+        "manual_connector_id": "62945dbe-0008-44d0-875c-e1243b5ff533",
+        "connector_ids": [
+          "f3db9edc-8e34-4a6f-998f-139f7f168663",
+          "8a79c96e-0401-4cdb-88b8-f53293efbeec",
+          "62945dbe-0008-44d0-875c-e1243b5ff533",
+          "b0515484-2bd9-4eab-9b04-7839dcd7dc46"
+        ],
+        "policy_ids": [
+          "3780fb79-39a5-4b90-8fd6-59f00a388dec",
+          "17935c95-b28e-433c-973a-900b176a0406",
+          "f4c5b672-94fd-44c9-9f58-e5d403df2dc7",
+          "4db562e8-e99c-4076-baef-ff539290f5ad",
+          "deef0a80-cc0e-4e9c-a7cf-017ff814995b",
+          "1b2f64be-c247-4aa7-b540-fef01f5cc487"
+        ]
+      }
+    }
+  ]
+}

@@ -306,11 +306,28 @@ func (s *ConnectorManagementService) loadConnector(ctx context.Context, db *gorm
 // returning the maps the AccessConnector methods expect. It is the single point
 // where connector secrets are decrypted, immediately before a provider call.
 func (s *ConnectorManagementService) openConnector(ctx context.Context, row *models.AccessConnector) (config, secrets map[string]interface{}, err error) {
+	return OpenConnectorRow(ctx, s.enc, row)
+}
+
+// OpenConnectorRow decodes a connector row's JSON config and opens its sealed
+// secret envelope, returning the (config, secrets) maps the AccessConnector
+// protocol methods expect. It is the single canonical way to recover a
+// connector's plaintext credentials from its persisted row and is shared by the
+// connector-management service AND the lifecycle connector resolver.
+//
+// Sharing one path is deliberate: the envelope is sealed under AES-256-GCM with
+// the connector row id as AAD, the workspace DEK, and a persisted key version.
+// Any caller that re-derives those inputs independently risks drifting from the
+// seal path (a mismatched AAD or wrong key surfaces as an opaque
+// "message authentication failed" 500). Routing every open through this helper
+// makes such drift impossible. A nil/empty envelope yields an empty secrets map
+// (a connector configured with no secrets), never an error.
+func OpenConnectorRow(ctx context.Context, enc CredentialEncryptor, row *models.AccessConnector) (config, secrets map[string]interface{}, err error) {
 	config, err = unmarshalConfig(row.Config)
 	if err != nil {
 		return nil, nil, err
 	}
-	secrets, err = decryptSecretsMap(ctx, s.enc, row.WorkspaceID.String(), row.SecretEnvelope, row.ID.String(), row.SecretKeyVersion)
+	secrets, err = decryptSecretsMap(ctx, enc, row.WorkspaceID.String(), row.SecretEnvelope, row.ID.String(), row.SecretKeyVersion)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -72,7 +72,7 @@ make ci      # full local CI gate
 
 This repository is built in sessions. 1A (this scaffold) ships the foundation:
 config, iam-core integration, models, migrations, middleware, the connector
-registry, and the worker/gateway supervisors. Subsequent sessions add the 200
+registry, and the worker/gateway supervisors. Subsequent sessions add the 200+
 connectors (1B), the access-request lifecycle and policy engine (1C), the full
 PAM implementation (1D), the AI agent and workflow engine (1E), and the client
 SDKs and deployment tooling (1F).

@@ -28,7 +28,7 @@ import (
 // expectedConnectorCount is the canonical number of providers
 // registered via init(). A future PR that adds or removes a
 // connector MUST update this number AND the matching docs.
-const expectedConnectorCount = 200
+const expectedConnectorCount = 201
 
 // expectedSessionRevokerCount is the canonical number of
 // AccessConnector implementations that also satisfy SessionRevoker.

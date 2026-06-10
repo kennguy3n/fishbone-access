@@ -58,9 +58,31 @@ type Config struct {
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
 
+	// DevAuth holds the non-production HMAC bearer-token settings. It is the
+	// developer-convenience identity path used by the blog seed/capture
+	// harnesses to drive the real control-plane API without standing up
+	// iam-core. It is honoured ONLY in non-production builds and refused when
+	// Env is a production label (see DevAuthAllowed); production binaries omit
+	// the validator entirely (internal/iamcore/devauth_prod.go).
+	DevAuth DevAuthConfig
+
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
 }
+
+// DevAuthConfig configures the non-production shared-secret token validator.
+type DevAuthConfig struct {
+	// Secret is the HMAC-SHA256 signing secret (AUTH_JWT_SECRET). When empty
+	// the dev path is disabled and the binary falls back to iam-core JWKS.
+	Secret string
+	// Issuer/Audience are the registered claims enforced on dev tokens. Each is
+	// checked only when non-empty, mirroring the JWKS validator.
+	Issuer   string
+	Audience string
+}
+
+// Configured reports whether a dev HMAC secret was supplied.
+func (c DevAuthConfig) Configured() bool { return c.Secret != "" }
 
 // IAMCoreConfig configures integration with uneycom/iam-core, the upstream
 // OAuth2/OIDC identity provider. See docs/iam-core-integration.md.
@@ -158,11 +180,36 @@ func Load() Config {
 			Audience:          os.Getenv("IAM_CORE_AUDIENCE"),
 			ManagementBaseURL: os.Getenv("IAM_CORE_MGMT_BASE_URL"),
 		},
+		DevAuth: DevAuthConfig{
+			Secret:   os.Getenv("AUTH_JWT_SECRET"),
+			Issuer:   getEnv("AUTH_JWT_ISSUER", "fishbone-access-dev"),
+			Audience: getEnv("AUTH_JWT_AUDIENCE", "fishbone-access"),
+		},
 	}
 }
 
 // DatabaseConfigured reports whether a Postgres DSN was supplied.
 func (c Config) DatabaseConfigured() bool { return c.DatabaseURL != "" }
+
+// IsProductionEnv reports whether the configured Env label denotes a production
+// deployment. The dev HMAC auth path is refused for these labels even in a
+// non-production build, so an operator cannot accidentally enable shared-secret
+// tokens against a production database by setting AUTH_JWT_SECRET.
+func (c Config) IsProductionEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(c.Env)) {
+	case "prod", "production", "live":
+		return true
+	default:
+		return false
+	}
+}
+
+// DevAuthAllowed reports whether the non-production HMAC validator may be
+// enabled: a secret must be supplied AND the environment must not be a
+// production label.
+func (c Config) DevAuthAllowed() bool {
+	return c.DevAuth.Configured() && !c.IsProductionEnv()
+}
 
 func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {

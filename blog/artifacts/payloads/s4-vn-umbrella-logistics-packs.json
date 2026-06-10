@@ -1,0 +1,50 @@
+{
+  "packs": [
+    {
+      "authority": "Ministry of Public Security (A05)",
+      "description": "Personal Data Protection Decree baseline: restrict access to personal data, separate sensitive-data handling, and deny default access to comply with Decree 13's processing-purpose rules.",
+      "frameworks": [
+        "PDPD",
+        "Decree 13"
+      ],
+      "id": "vn-pdpd-decree13",
+      "industries": [
+        "any"
+      ],
+      "name": "Vietnam — PDPD (Decree 13/2023)",
+      "regions": [
+        "vn"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "Decree 13 Art. 3 — Processing principles",
+          "key": "vn-pii-access",
+          "name": "Authorised processors → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data-processing team access to the personal-data store."
+        },
+        {
+          "action": "deny",
+          "control": "Decree 13 Art. 2(4) — Sensitive personal data",
+          "key": "vn-sensitive-deny",
+          "name": "Restrict sensitive personal data",
+          "resources": [
+            "db:sensitive-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to sensitive personal data categories."
+        }
+      ],
+      "tier": 2
+    }
+  ]
+}

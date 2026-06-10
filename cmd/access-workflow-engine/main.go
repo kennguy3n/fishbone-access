@@ -40,6 +40,7 @@ import (
 
 	// Blank-import connectors so the provisioning + leaver paths can dispatch to
 	// any provider when this binary executes provisioning/JML jobs.
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	_ "github.com/kennguy3n/fishbone-access/internal/services/access/connectors/all"
 )
 
@@ -92,9 +93,19 @@ func run() error {
 		return nil
 	}
 
+	// The connector resolver opens secret envelopes through the same
+	// CredentialEncryptor the connector-management layer seals them with, so the
+	// engine recovers credentials under the identical AAD / workspace-DEK / key
+	// version (a plain crypto.Encryptor would use a different AAD and fail to
+	// open). The passthrough guard above already proved the DEK is present.
+	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	if err != nil {
+		return fmt.Errorf("connector credential encryptor init: %w", err)
+	}
+
 	// Lifecycle services (1C): the engine orchestrates these; it never
 	// re-implements the FSM, connector protocol, or kill switch.
-	resolver := lifecycle.NewDBConnectorResolver(gdb, enc)
+	resolver := lifecycle.NewDBConnectorResolver(gdb, connEnc)
 	reqSvc := lifecycle.NewAccessRequestService(gdb)
 	prov := lifecycle.NewAccessProvisioningService(gdb, reqSvc, resolver)
 	workflowSvc := lifecycle.NewWorkflowService(reqSvc)

@@ -23,3 +23,7 @@ coverage.txt
 # Security audit tooling cache + generated SBOM
 /.tooling/
 /dist/sbom.cyclonedx.json
+
+# Blog evidence: export ZIPs are non-deterministic binary blobs (embedded
+# generation timestamps); the verifiable manifest.json is committed instead.
+blog/artifacts/payloads/*.zip

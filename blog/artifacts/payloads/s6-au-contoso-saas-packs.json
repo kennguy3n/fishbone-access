@@ -1,0 +1,64 @@
+{
+  "packs": [
+    {
+      "authority": "OAIC / Australian Cyber Security Centre",
+      "description": "Australian Privacy Principles plus ACSC Essential Eight 'restrict administrative privileges': purpose-bound access to personal information and admin-only privileged access.",
+      "frameworks": [
+        "Privacy Act",
+        "Essential Eight"
+      ],
+      "id": "au-privacy-e8",
+      "industries": [
+        "any"
+      ],
+      "name": "Australia — Privacy Act + Essential Eight",
+      "regions": [
+        "au"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "APP 11 — Security of personal information",
+          "key": "au-pii-access",
+          "name": "Authorised staff → personal information",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-information store."
+        },
+        {
+          "action": "grant",
+          "control": "Essential Eight — Restrict administrative privileges",
+          "key": "au-restrict-admin",
+          "name": "Restrict administrative privileges",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Grant privileged infrastructure access to admins only."
+        },
+        {
+          "action": "deny",
+          "control": "APP 11 — Access restriction",
+          "key": "au-deny-default",
+          "name": "Default-deny personal information",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal information by default."
+        }
+      ],
+      "tier": 3
+    }
+  ]
+}

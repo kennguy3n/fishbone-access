@@ -1,0 +1,80 @@
+{
+  "controls": [
+    {
+      "by_kind": {
+        "policy_created": 6,
+        "policy_promoted": 6
+      },
+      "covered": true,
+      "evidence_count": 12,
+      "id": "A.5.15",
+      "kinds": [
+        "policy_promoted",
+        "policy_created",
+        "policy_archived"
+      ],
+      "title": "Access control policy"
+    },
+    {
+      "by_kind": {
+        "joiner_provisioned": 1,
+        "kill_switch_fired": 6
+      },
+      "covered": true,
+      "evidence_count": 7,
+      "id": "A.5.16",
+      "kinds": [
+        "joiner_provisioned",
+        "mover_recorded",
+        "kill_switch_fired"
+      ],
+      "title": "Identity lifecycle management"
+    },
+    {
+      "by_kind": {
+        "access_granted": 3,
+        "access_requested": 4,
+        "access_revoked": 3,
+        "certification_closed": 1,
+        "certification_decision": 1,
+        "review_decision": 2
+      },
+      "covered": true,
+      "evidence_count": 14,
+      "id": "A.5.18",
+      "kinds": [
+        "access_requested",
+        "access_granted",
+        "access_revoked",
+        "access_expired",
+        "review_decision",
+        "review_completed",
+        "certification_decision",
+        "certification_closed"
+      ],
+      "title": "Access rights provisioned, reviewed and removed"
+    },
+    {
+      "covered": false,
+      "evidence_count": 0,
+      "id": "A.8.2",
+      "kinds": [
+        "privileged_command"
+      ],
+      "title": "Privileged access rights monitored"
+    },
+    {
+      "covered": false,
+      "evidence_count": 0,
+      "id": "A.8.15",
+      "kinds": [
+        "evidence_exported"
+      ],
+      "title": "Tamper-evident logging"
+    }
+  ],
+  "controls_covered": 3,
+  "controls_total": 5,
+  "evidence_total": 35,
+  "framework": "ISO 27001"
+}

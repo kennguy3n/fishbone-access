@@ -1,0 +1,13 @@
+{
+  "all_decided": true,
+  "campaign_id": "e56063ae-7b87-48ba-9bd6-f9b4345a1006",
+  "certified": 0,
+  "escalated": 0,
+  "framework": "ISO 27001",
+  "name": "Q2 2026 BSI C5 logical-access certification",
+  "overdue": false,
+  "pending": 0,
+  "revoked": 1,
+  "state": "closed",
+  "total": 1
+}

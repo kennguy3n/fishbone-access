@@ -1,0 +1,13 @@
+{
+  "all_decided": true,
+  "campaign_id": "9ae7bdea-dcc5-4a8f-8a10-d06cf52771f8",
+  "certified": 0,
+  "escalated": 0,
+  "framework": "ISO 27001",
+  "name": "Q2 2026 PDPD Decree 13 certification",
+  "overdue": false,
+  "pending": 0,
+  "revoked": 1,
+  "state": "closed",
+  "total": 1
+}

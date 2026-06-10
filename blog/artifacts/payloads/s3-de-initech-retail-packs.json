@@ -1,0 +1,64 @@
+{
+  "packs": [
+    {
+      "authority": "BfDI / Bundesamt für Sicherheit in der Informationstechnik",
+      "description": "German Federal Data Protection Act plus BSI Cloud Computing Compliance Criteria (C5) access controls: least-privilege to personal data and admin-controlled privileged access.",
+      "frameworks": [
+        "BDSG",
+        "BSI C5"
+      ],
+      "id": "de-bdsg-c5",
+      "industries": [
+        "any"
+      ],
+      "name": "Germany — BDSG + BSI C5",
+      "regions": [
+        "de"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "BDSG §64 — Requirements for security of processing",
+          "key": "de-pii-access",
+          "name": "Data team → personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the personal-data store."
+        },
+        {
+          "action": "grant",
+          "control": "BSI C5 — IDM (identity & access management)",
+          "key": "de-privileged",
+          "name": "Privileged access — admins only",
+          "resources": [
+            "host:prod"
+          ],
+          "role": "admin",
+          "subjects": [
+            "role:platform-admin"
+          ],
+          "summary": "Restrict privileged infrastructure access to the admin role."
+        },
+        {
+          "action": "deny",
+          "control": "BDSG §64 — Access restriction",
+          "key": "de-deny-default",
+          "name": "Default-deny personal data",
+          "resources": [
+            "db:personal-data"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to personal data by default."
+        }
+      ],
+      "tier": 3
+    }
+  ]
+}

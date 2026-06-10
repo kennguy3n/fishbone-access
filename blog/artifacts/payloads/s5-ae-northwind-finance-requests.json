@@ -1,0 +1,73 @@
+{
+  "requests": [
+    {
+      "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+      "created_at": "2026-06-10T16:31:31.720865Z",
+      "deleted_at": null,
+      "id": "ce5ea2ac-3768-4e12-bf8b-6b844dc92817",
+      "justification": "JML joiner baseline access",
+      "requester_id": "scim",
+      "resource_ref": "wms:dispatcher",
+      "risk_level": "low",
+      "role": "operator",
+      "state": "revoked",
+      "target_user_id": "jml-joiner@demo.test",
+      "updated_at": "2026-06-10T16:31:31.735662Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    },
+    {
+      "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+      "created_at": "2026-06-10T16:31:31.68107Z",
+      "deleted_at": null,
+      "id": "940ecf29-e6f7-41bc-bbe3-1fa95c0497af",
+      "justification": "UAE PDPL data-subject request fulfilment.",
+      "requester_id": "ae-northwind-finance-owner",
+      "resource_ref": "pdpl:dsr",
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "role": "auditor",
+      "state": "approved",
+      "target_user_id": "ae-northwind-finance-owner",
+      "updated_at": "2026-06-10T16:31:31.687869Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    },
+    {
+      "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+      "created_at": "2026-06-10T16:31:31.662988Z",
+      "deleted_at": null,
+      "id": "9d174eec-b3ff-4546-a248-dbc6d3638f70",
+      "justification": "Treasury settlement run for end-of-day processing.",
+      "requester_id": "ae-northwind-finance-owner",
+      "resource_ref": "t24:treasury",
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "role": "operator",
+      "state": "revoked",
+      "target_user_id": "ae-northwind-finance-owner",
+      "updated_at": "2026-06-10T16:31:31.698766Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    },
+    {
+      "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+      "created_at": "2026-06-10T16:31:31.641282Z",
+      "deleted_at": null,
+      "id": "ab2afd8e-c146-4b1d-93e7-39951b4a4ef0",
+      "justification": "DESC privileged-access review requires temporary core-banking admin.",
+      "requester_id": "ae-northwind-finance-owner",
+      "resource_ref": "t24:privileged-admin",
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "role": "operator",
+      "state": "revoked",
+      "target_user_id": "ae-northwind-finance-owner",
+      "updated_at": "2026-06-10T16:31:31.71542Z",
+      "workspace_id": "803a9403-16a7-40c4-91e9-66226cc07bcd"
+    }
+  ]
+}

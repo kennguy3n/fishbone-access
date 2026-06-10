@@ -1,0 +1,4834 @@
+{
+  "connectors": [
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "ActiveCampaign",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "activecampaign",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Airtable",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "airtable",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Alibaba Cloud",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "alibaba",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Anthropic (Claude)",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "anthropic",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Supply",
+      "connected": false,
+      "display_name": "Anvyl",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "anvyl",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Apollo.io",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "apollo",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Real Estate",
+      "connected": false,
+      "display_name": "AppFolio",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "appfolio",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Asana",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "asana",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Auth0",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "auth0",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "AWS IAM",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "aws",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Azure RBAC",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "azure",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "BambooHR",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": true,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "bamboohr",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Basecamp",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "basecamp",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/PAM",
+      "connected": false,
+      "display_name": "BeyondTrust",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "beyondtrust",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "BigCommerce",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "bigcommerce",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Bill.com",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "billdotcom",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "BitSight",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "bitsight",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Storage",
+      "connected": false,
+      "display_name": "Box",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "box",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Braze",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "braze",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Brex",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "brex",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Social",
+      "connected": false,
+      "display_name": "Buffer",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "buffer",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Real Estate",
+      "connected": false,
+      "display_name": "Buildium",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "buildium",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "Chargebee",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "chargebee",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Check Point",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "checkpoint",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "CircleCI",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "circleci",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "ClickUp",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "clickup",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "Clio",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "clio",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Close",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "close",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Cloudflare",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "cloudflare",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "CloudSigma",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "cloudsigma",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Constant Contact",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "constant_contact",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Copper",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "copper",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Copy.ai",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "copyai",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Supply",
+      "connected": false,
+      "display_name": "Coupa",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "coupa",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Education",
+      "connected": false,
+      "display_name": "Coursera",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "coursera",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Crisp",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "crisp",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "CrowdStrike",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "crowdstrike",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "Datadog",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "datadog",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Deel",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "deel",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "DigitalOcean",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "digitalocean",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "Discord",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "discord",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "Docker Hub",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "docker_hub",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "DocuSign",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "docusign",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "DocuSign CLM",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "docusign_clm",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Drift",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "drift",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Storage",
+      "connected": false,
+      "display_name": "Dropbox Business",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "dropbox",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/MFA",
+      "connected": false,
+      "display_name": "Duo Security",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "duo_security",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Storage",
+      "connected": false,
+      "display_name": "Egnyte",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "egnyte",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Events",
+      "connected": false,
+      "display_name": "Eventbrite",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "eventbrite",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Expensify",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "expensify",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Design",
+      "connected": false,
+      "display_name": "Figma",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "figma",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM",
+      "connected": false,
+      "display_name": "ForgeRock",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "forgerock",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Fortinet",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "fortinet",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "FreshBooks",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "freshbooks",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Freshdesk",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "freshdesk",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Front",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "front",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Analytics",
+      "connected": false,
+      "display_name": "FullStory",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "fullstory",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Analytics",
+      "connected": false,
+      "display_name": "GA4",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ga4",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "GCP IAM",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "gcp",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Google Gemini",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "gemini",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Generic OIDC",
+      "operational": {
+        "access_audit_stream": false,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "generic_oidc",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": false,
+        "list_entitlements": false,
+        "provision_access": false,
+        "sso_federation": true,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Generic SAML",
+      "operational": {
+        "access_audit_stream": false,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "generic_saml",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": false,
+        "list_entitlements": false,
+        "provision_access": false,
+        "sso_federation": true,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Web",
+      "connected": false,
+      "display_name": "Ghost",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ghost",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "GitHub",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "github",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "GitLab",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "gitlab",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Gong",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "gong",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Google Workspace",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "google_workspace",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Gorgias",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "gorgias",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "Grafana",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "grafana",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Gusto",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "gusto",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "HackerOne",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "hackerone",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Analytics",
+      "connected": false,
+      "display_name": "Heap",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "heap",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "HelloSign",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "hellosign",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Help Scout",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "helpscout",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Heroku",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "heroku",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Hibob",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "hibob",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "HIBP",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "hibp",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": false,
+        "provision_access": false,
+        "sso_federation": false,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Social",
+      "connected": false,
+      "display_name": "Hootsuite",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "hootsuite",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "CRM",
+      "connected": false,
+      "display_name": "HubSpot",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "hubspot",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Utility",
+      "connected": false,
+      "display_name": "IFTTT",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ifttt",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Insightly",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "insightly",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Intercom",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "intercom",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "Ironclad",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ironclad",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Jasper AI",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "jasper",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "JFrog",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "jfrog",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "Atlassian Jira",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "jira",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Customer-Feedback",
+      "connected": false,
+      "display_name": "Jotform",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "jotform",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Health",
+      "connected": false,
+      "display_name": "Kareo",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "kareo",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Secrets/Vault",
+      "connected": false,
+      "display_name": "Keeper",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "keeper",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Klaviyo",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "klaviyo",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security Training",
+      "connected": false,
+      "display_name": "KnowBe4",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "knowbe4",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Secrets/Vault",
+      "connected": false,
+      "display_name": "LastPass",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "lastpass",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "LaunchDarkly",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "launchdarkly",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Training",
+      "connected": false,
+      "display_name": "LinkedIn Learning",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "linkedin_learning",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Linode",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "linode",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "LiquidPlanner",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "liquidplanner",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "LiveChat",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "livechat",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "Loom",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "loom",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "Magento",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "magento",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Mailchimp",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "mailchimp",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Utility",
+      "connected": false,
+      "display_name": "Make",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "make",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Malwarebytes",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "malwarebytes",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Manual",
+      "connected": true,
+      "connector_id": "16dfade1-34e0-4f73-89fc-aad455d70677",
+      "display_name": "Manual / Offline Target",
+      "operational": {
+        "access_audit_stream": false,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "manual",
+      "registered": true,
+      "status": "pending",
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": false,
+        "list_entitlements": false,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Cisco Meraki",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "meraki",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "Mezmo",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "mezmo",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Microsoft Entra ID",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "microsoft",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Midjourney",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "midjourney",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Whiteboard",
+      "connected": false,
+      "display_name": "Miro",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "miro",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Mistral AI",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "mistral",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Analytics",
+      "connected": false,
+      "display_name": "Mixpanel",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "mixpanel",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Monday.com",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "monday",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "MS Teams",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ms_teams",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "MyCase",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "mycase",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Namely",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "namely",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Travel",
+      "connected": false,
+      "display_name": "Navan",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "navan",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Netlify",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "netlify",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Netskope",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "netskope",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "ERP",
+      "connected": false,
+      "display_name": "NetSuite",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "netsuite",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "New Relic",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "new_relic",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "NordLayer",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "nordlayer",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Notion",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "notion",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": true,
+      "connector_id": "fa731d7f-86b2-4460-b4b5-a688e0d54720",
+      "display_name": "Okta",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "okta",
+      "registered": true,
+      "status": "pending",
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Secrets/Vault",
+      "connected": false,
+      "display_name": "1Password",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "onepassword",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "OpenAI (ChatGPT)",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "openai",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "OVHcloud",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ovhcloud",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "PagerDuty",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "pagerduty",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Palo Alto Prisma",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "paloalto",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "PandaDoc",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "pandadoc",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Legal",
+      "connected": false,
+      "display_name": "PandaDoc CLM",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "pandadoc_clm",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Paychex",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "paychex",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "PayPal",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "paypal",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Perimeter 81",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "perimeter81",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "GenAI",
+      "connected": false,
+      "display_name": "Perplexity AI",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "perplexity",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Personio",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "personio",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "IAM/SSO",
+      "connected": false,
+      "display_name": "Ping Identity",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "ping_identity",
+      "registered": true,
+      "tier": "T1",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "CRM",
+      "connected": false,
+      "display_name": "Pipedrive",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "pipedrive",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Plaid",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "plaid",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Health",
+      "connected": false,
+      "display_name": "Practice Fusion",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "practice_fusion",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Qualys VMDR",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "qualys",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "QuickBooks Online",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "quickbooks",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Quip",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "quip",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Ramp",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ramp",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Rapid7",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "rapid7",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "Recurly",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "recurly",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Comm",
+      "connected": false,
+      "display_name": "RingCentral",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "ringcentral",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Rippling",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "rippling",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Sage Intacct",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sage_intacct",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "CRM",
+      "connected": true,
+      "connector_id": "6f5494b6-d40c-4052-b9f0-fef6932e7b34",
+      "display_name": "Salesforce",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "salesforce",
+      "registered": true,
+      "status": "pending",
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Sales",
+      "connected": false,
+      "display_name": "Salesloft",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "salesloft",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Supply",
+      "connected": false,
+      "display_name": "SAP Concur",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sap_concur",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "CDP",
+      "connected": false,
+      "display_name": "Segment",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "segment",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Comm",
+      "connected": false,
+      "display_name": "SendGrid",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sendgrid",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "SentinelOne",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sentinelone",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "Sentry",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sentry",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "Shopify",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "shopify",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "Slack",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "slack",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "Slack Enterprise",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "slack_enterprise",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Smartsheet",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "smartsheet",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Snyk",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "snyk",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "SonarCloud",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sonarcloud",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Sophos Central",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sophos_central",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Sophos XG",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sophos_xg",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "Splunk Cloud",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": true
+      },
+      "provider": "splunk",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Social",
+      "connected": false,
+      "display_name": "Sprout Social",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sprout_social",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "Square",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "square",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Web",
+      "connected": false,
+      "display_name": "Squarespace",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "squarespace",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Stripe",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "stripe",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Observability",
+      "connected": false,
+      "display_name": "Sumo Logic",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "sumo_logic",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "SurveyMonkey",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "surveymonkey",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Customer-Feedback",
+      "connected": false,
+      "display_name": "SurveySparrow",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "surveysparrow",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Tailscale",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": false
+      },
+      "provider": "tailscale",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Teamwork",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "teamwork",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "Tenable.io",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "tenable",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "Terraform",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "terraform",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "DevOps",
+      "connected": false,
+      "display_name": "Travis CI",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "travis_ci",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Trello",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "trello",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Comm",
+      "connected": false,
+      "display_name": "Twilio",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "twilio",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Marketing",
+      "connected": false,
+      "display_name": "Typeform",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "typeform",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Training",
+      "connected": false,
+      "display_name": "Udemy Business",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "udemy_business",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Vercel",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "vercel",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Security",
+      "connected": false,
+      "display_name": "VirusTotal",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "virustotal",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Comm",
+      "connected": false,
+      "display_name": "Vonage",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "vonage",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Cloud Infra",
+      "connected": false,
+      "display_name": "Vultr",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "vultr",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Storage",
+      "connected": false,
+      "display_name": "Wasabi",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wasabi",
+      "registered": true,
+      "tier": "T2",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Wave",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wave",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "SIEM",
+      "connected": false,
+      "display_name": "Wazuh",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wazuh",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": false
+      }
+    },
+    {
+      "category": "Web",
+      "connected": false,
+      "display_name": "Wix",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wix",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "E-comm",
+      "connected": false,
+      "display_name": "WooCommerce",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "woocommerce",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Web",
+      "connected": false,
+      "display_name": "WordPress",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wordpress",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Workday",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": false,
+        "sso_enforcement_check": true
+      },
+      "provider": "workday",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Productivity",
+      "connected": false,
+      "display_name": "Wrike",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wrike",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Customer-Feedback",
+      "connected": false,
+      "display_name": "Wufoo",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "wufoo",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Finance",
+      "connected": false,
+      "display_name": "Xero",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "xero",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Real Estate",
+      "connected": false,
+      "display_name": "Yardi",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "yardi",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Utility",
+      "connected": false,
+      "display_name": "Zapier",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "zapier",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Support",
+      "connected": false,
+      "display_name": "Zendesk",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": true,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "zendesk",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "HR",
+      "connected": false,
+      "display_name": "Zenefits",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "zenefits",
+      "registered": true,
+      "tier": "T4",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Health",
+      "connected": false,
+      "display_name": "Zocdoc",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "zocdoc",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "CRM",
+      "connected": false,
+      "display_name": "Zoho CRM",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "zoho_crm",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": true,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Collab",
+      "connected": false,
+      "display_name": "Zoom",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": true,
+        "identity_delta_sync": false,
+        "scim_provisioning": true,
+        "session_revoke": true,
+        "sso_enforcement_check": true
+      },
+      "provider": "zoom",
+      "registered": true,
+      "tier": "T3",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    },
+    {
+      "category": "Network",
+      "connected": false,
+      "display_name": "Zscaler",
+      "operational": {
+        "access_audit_stream": true,
+        "credential_renewal": false,
+        "group_sync": false,
+        "identity_delta_sync": false,
+        "scim_provisioning": false,
+        "session_revoke": false,
+        "sso_enforcement_check": false
+      },
+      "provider": "zscaler",
+      "registered": true,
+      "tier": "T5",
+      "user_facing": {
+        "get_access_log": true,
+        "list_entitlements": true,
+        "provision_access": true,
+        "sso_federation": false,
+        "sync_identity": true
+      }
+    }
+  ]
+}

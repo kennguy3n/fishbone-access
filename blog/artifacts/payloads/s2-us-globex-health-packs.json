@@ -1,0 +1,114 @@
+{
+  "packs": [
+    {
+      "authority": "U.S. HHS Office for Civil Rights",
+      "description": "Role-based access to electronic protected health information (ePHI): clinical staff get access to patient records, everyone else is denied, and break-glass is reserved for on-call responders.",
+      "frameworks": [
+        "HIPAA"
+      ],
+      "id": "hipaa-security-rule",
+      "industries": [
+        "healthcare"
+      ],
+      "name": "HIPAA Security Rule — ePHI access",
+      "regions": [
+        "global",
+        "us"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(1) — Access control",
+          "key": "ephi-clinical-access",
+          "name": "Clinical staff → patient records",
+          "resources": [
+            "app:ehr",
+            "db:patient-records"
+          ],
+          "role": "clinician",
+          "subjects": [
+            "team:clinical"
+          ],
+          "summary": "Grant clinicians read/write access to the EHR system."
+        },
+        {
+          "action": "deny",
+          "control": "HIPAA §164.308(a)(4) — Information access management",
+          "key": "ephi-deny-nonclinical",
+          "name": "Deny non-clinical staff to ePHI",
+          "resources": [
+            "db:patient-records"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general/administrative staff direct access to patient records."
+        },
+        {
+          "action": "grant",
+          "control": "HIPAA §164.312(a)(2)(ii) — Emergency access procedure",
+          "key": "ephi-breakglass",
+          "name": "Break-glass — on-call responders",
+          "resources": [
+            "app:ehr"
+          ],
+          "role": "break-glass",
+          "subjects": [
+            "role:incident-responder"
+          ],
+          "summary": "Grant the incident-response on-call group emergency access to ePHI (audited, simulate before promoting)."
+        }
+      ],
+      "tier": 1
+    },
+    {
+      "authority": "California Privacy Protection Agency",
+      "description": "California Consumer Privacy Act / CPRA baseline: restrict access to consumer personal information and apply reasonable security with default-deny.",
+      "frameworks": [
+        "CCPA",
+        "CPRA"
+      ],
+      "id": "us-ccpa-cpra",
+      "industries": [
+        "retail",
+        "ecommerce",
+        "saas",
+        "any"
+      ],
+      "name": "United States — CCPA / CPRA (California)",
+      "regions": [
+        "us"
+      ],
+      "templates": [
+        {
+          "action": "grant",
+          "control": "CPRA §1798.100(e) — Reasonable security",
+          "key": "us-consumer-data",
+          "name": "Authorised staff → consumer data",
+          "resources": [
+            "db:consumer-pii"
+          ],
+          "role": "processor",
+          "subjects": [
+            "team:data"
+          ],
+          "summary": "Grant the data team access to the consumer personal-information store."
+        },
+        {
+          "action": "deny",
+          "control": "CPRA §1798.100(e) — Access restriction",
+          "key": "us-deny-default",
+          "name": "Default-deny consumer data",
+          "resources": [
+            "db:consumer-pii"
+          ],
+          "subjects": [
+            "group:all-staff"
+          ],
+          "summary": "Deny general staff access to consumer data by default."
+        }
+      ],
+      "tier": 3
+    }
+  ]
+}

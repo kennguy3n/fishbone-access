@@ -1,0 +1,161 @@
+{
+  "chain_verification": {
+    "length": 62,
+    "ok": true,
+    "status": "valid",
+    "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+  },
+  "content_sha256": "91b01ba587eab71d34605184a51ea5d62ad42bf6631caafd22896d4fe059c8fb",
+  "coverage": {
+    "controls": [
+      {
+        "by_kind": {
+          "access_granted": 3,
+          "policy_created": 6,
+          "policy_promoted": 6
+        },
+        "covered": true,
+        "evidence_count": 15,
+        "id": "CC6.1",
+        "kinds": [
+          "policy_promoted",
+          "policy_created",
+          "access_granted"
+        ],
+        "title": "Logical access security — least-privilege policy enforced"
+      },
+      {
+        "by_kind": {
+          "access_granted": 3,
+          "access_requested": 4,
+          "joiner_provisioned": 1
+        },
+        "covered": true,
+        "evidence_count": 8,
+        "id": "CC6.2",
+        "kinds": [
+          "access_requested",
+          "access_granted",
+          "joiner_provisioned"
+        ],
+        "title": "Access provisioned on authorization"
+      },
+      {
+        "by_kind": {
+          "access_revoked": 3,
+          "kill_switch_fired": 6
+        },
+        "covered": true,
+        "evidence_count": 9,
+        "id": "CC6.3",
+        "kinds": [
+          "access_revoked",
+          "access_expired",
+          "kill_switch_fired",
+          "mover_recorded"
+        ],
+        "title": "Access modified/removed when no longer required"
+      },
+      {
+        "covered": false,
+        "evidence_count": 0,
+        "id": "CC6.7",
+        "kinds": [
+          "privileged_command"
+        ],
+        "title": "Privileged access monitored"
+      },
+      {
+        "by_kind": {
+          "certification_closed": 1,
+          "certification_decision": 1,
+          "certification_started": 1,
+          "review_decision": 2,
+          "review_started": 1
+        },
+        "covered": true,
+        "evidence_count": 6,
+        "id": "CC7.2",
+        "kinds": [
+          "review_started",
+          "review_decision",
+          "review_completed",
+          "certification_started",
+          "certification_decision",
+          "certification_closed"
+        ],
+        "title": "Access reviewed/certified periodically"
+      },
+      {
+        "covered": false,
+        "evidence_count": 0,
+        "id": "CC7.3",
+        "kinds": [
+          "orphan_detected",
+          "orphan_disposition"
+        ],
+        "title": "Orphan / anomalous access detected and dispositioned"
+      }
+    ],
+    "controls_covered": 4,
+    "controls_total": 6,
+    "evidence_total": 36,
+    "framework": "SOC 2"
+  },
+  "evidence_total": 62,
+  "files": [
+    {
+      "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
+      "name": "evidence.jsonl",
+      "rows": 62,
+      "sha256": "575697f66aed82a8c1fb08ff9625058215d372cb147db7b5d73b28ee8147c079"
+    },
+    {
+      "comment": "Every grant active at any point during the period (granted_at < to AND (revoked_at IS NULL OR revoked_at >= from)).",
+      "name": "access-grants.jsonl",
+      "rows": 3,
+      "sha256": "56554b62de72e99d51726d281d323c4c28bcd0e306354b1c62ee1afd7df2814f"
+    },
+    {
+      "comment": "Certification campaigns whose lifecycle overlapped the period.",
+      "name": "certification-campaigns.jsonl",
+      "rows": 1,
+      "sha256": "9f6633938e8e8c90d88b4eb07c2f4a235fe34b918022c5f1eade372b61a2be65"
+    },
+    {
+      "comment": "Per-grant certification decisions for the campaigns above. Sorted by (campaign_id, created_at).",
+      "name": "certification-items.jsonl",
+      "rows": 1,
+      "sha256": "01957a88f059e46ceade2ed0edbf355ab26e7b63ef7278621f2180ee14d16a6d"
+    },
+    {
+      "comment": "Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
+      "name": "policies.jsonl",
+      "rows": 6,
+      "sha256": "784ffe76cea389530006a6034b35fe4f4dcfeac18e45bd73e9110a4d5dece162"
+    },
+    {
+      "comment": "Per-control evidence coverage for the framework over the period.",
+      "name": "control-coverage.json",
+      "rows": 0,
+      "sha256": "de7bce4311b0972709f991db19e8d2ce24bbde6f7373236d602ed1878904b3aa"
+    },
+    {
+      "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
+      "name": "chain-verification.json",
+      "rows": 0,
+      "sha256": "f653f0c79134c8a0a719f473a70be71d93eec61dbfacbf945bf632ec02bc75cb"
+    },
+    {
+      "comment": "Auditor-facing guide to this evidence pack.",
+      "name": "README.md",
+      "rows": 0,
+      "sha256": "e0d4b89961ba9b4f017586b7d142fd2b5955dede0872305f593de181804924cc"
+    }
+  ],
+  "framework": "SOC 2",
+  "generated_at": "2026-06-10T16:34:05.44395163Z",
+  "generated_by": "au-contoso-saas-owner",
+  "schema_version": "1.0",
+  "workspace_id": "763597fe-6900-4fc5-81b4-d428b0379ed3"
+}

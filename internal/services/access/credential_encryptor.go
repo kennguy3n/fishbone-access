@@ -119,11 +119,15 @@ func encryptSecretsMap(ctx context.Context, enc CredentialEncryptor, workspaceID
 // call. A nil/empty envelope yields an empty map (a connector configured with
 // no secrets), never an error.
 func decryptSecretsMap(ctx context.Context, enc CredentialEncryptor, workspaceID, envelope, aad string, keyVersion int) (map[string]interface{}, error) {
-	if enc == nil {
-		return nil, fmt.Errorf("access: credential encryptor is required")
-	}
+	// An empty envelope is a connector configured with no secrets: it needs no
+	// key to "open", so this returns the empty map before requiring an
+	// encryptor. This lets a secret-less connector resolve even when the caller
+	// has no encryptor wired (e.g. a degraded boot with no DEK).
 	if envelope == "" {
 		return map[string]interface{}{}, nil
+	}
+	if enc == nil {
+		return nil, fmt.Errorf("access: credential encryptor is required")
 	}
 	if aad == "" {
 		return nil, fmt.Errorf("access: credential encryptor: aad is required")

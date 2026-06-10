@@ -198,10 +198,40 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 	// pack is all-or-nothing: a mid-loop failure rolls back the drafts already
 	// created instead of leaving orphaned ones the caller can't see (and would
 	// duplicate on retry).
+	//
+	// Apply is idempotent: a template whose policy already exists in the
+	// workspace (matched by name, ignoring archived/superseded rows) is NOT
+	// materialised again — the existing policy is returned instead. Without this
+	// guard, re-applying a pack (a routine operation: re-running a seed, an
+	// operator clicking "Apply" twice, a pack refreshed upstream) would create a
+	// duplicate draft per template every time, silently multiplying a tenant's
+	// policy set. The lookup is workspace-scoped, so cross-tenant isolation is
+	// preserved.
 	out := make([]AppliedPolicy, 0, len(selected))
 	err := a.policies.Transaction(ctx, func(tx *gorm.DB) error {
 		out = out[:0]
+
+		existing := map[string]*models.Policy{}
+		var rows []*models.Policy
+		if err := tx.WithContext(ctx).
+			Where("workspace_id = ? AND state <> ?", workspaceID, lifecycle.PolicyStateArchived).
+			Find(&rows).Error; err != nil {
+			return fmt.Errorf("packs: load existing policies: %w", err)
+		}
+		for _, r := range rows {
+			// First occurrence wins; a workspace should not hold two live
+			// policies with one name, but if it somehow does we keep the
+			// earliest so the skip decision is deterministic.
+			if _, seen := existing[r.Name]; !seen {
+				existing[r.Name] = r
+			}
+		}
+
 		for _, t := range selected {
+			if pol, ok := existing[t.Name]; ok {
+				out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
+				continue
+			}
 			def, err := t.definition()
 			if err != nil {
 				return err
@@ -215,6 +245,10 @@ func (a *ApplyService) Apply(ctx context.Context, workspaceID uuid.UUID, packID 
 			if err != nil {
 				return err
 			}
+			// Guard against a pack that lists the same Name in two templates:
+			// the second occurrence now resolves to the row we just created
+			// rather than inserting a duplicate.
+			existing[t.Name] = pol
 			out = append(out, AppliedPolicy{TemplateKey: t.Key, Policy: pol})
 		}
 		return nil

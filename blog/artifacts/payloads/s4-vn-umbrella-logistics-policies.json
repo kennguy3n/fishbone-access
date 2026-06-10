@@ -1,0 +1,45 @@
+{
+  "policies": [
+    {
+      "created_at": "2026-06-10T16:30:03.691698Z",
+      "definition": {
+        "action": "deny",
+        "resources": [
+          "db:sensitive-data"
+        ],
+        "subjects": [
+          "group:all-staff"
+        ]
+      },
+      "deleted_at": null,
+      "id": "35f2204b-85b4-4975-ba18-286256e9487e",
+      "name": "Restrict sensitive personal data",
+      "promoted_at": "2026-06-10T16:30:03.701444Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:30:03.701444Z",
+      "version": 1,
+      "workspace_id": "ca201bf2-5067-45a8-8c0d-03e9e4f4f37f"
+    },
+    {
+      "created_at": "2026-06-10T16:30:03.69049Z",
+      "definition": {
+        "action": "grant",
+        "resources": [
+          "db:personal-data"
+        ],
+        "role": "processor",
+        "subjects": [
+          "team:data"
+        ]
+      },
+      "deleted_at": null,
+      "id": "5d0fa359-14ad-4c3c-8696-60fb67414035",
+      "name": "Authorised processors → personal data",
+      "promoted_at": "2026-06-10T16:30:03.706113Z",
+      "state": "active",
+      "updated_at": "2026-06-10T16:30:03.706113Z",
+      "version": 1,
+      "workspace_id": "ca201bf2-5067-45a8-8c0d-03e9e4f4f37f"
+    }
+  ]
+}

@@ -190,6 +190,46 @@ func TestApplyMaterializesDrafts(t *testing.T) {
 	}
 }
 
+// TestApplyIsIdempotent proves re-applying the same pack to a workspace does
+// not create duplicate policies: the second Apply returns the same set and the
+// persisted policy count is unchanged. Without the (workspace, name) skip guard
+// every re-apply would multiply the tenant's policy set.
+func TestApplyIsIdempotent(t *testing.T) {
+	svc, policies, _, ws := newApplyService(t)
+	ctx := context.Background()
+	pack, _ := FindPack("pci-dss-v4")
+
+	first, err := svc.Apply(ctx, ws, "pci-dss-v4", nil, "admin@corp")
+	if err != nil {
+		t.Fatalf("first Apply: %v", err)
+	}
+	second, err := svc.Apply(ctx, ws, "pci-dss-v4", nil, "admin@corp")
+	if err != nil {
+		t.Fatalf("second Apply: %v", err)
+	}
+	if len(first) != len(second) || len(second) != len(pack.Templates) {
+		t.Fatalf("re-apply changed result size: first=%d second=%d templates=%d", len(first), len(second), len(pack.Templates))
+	}
+	// The second apply must return the SAME policy rows (same ids), not fresh
+	// duplicates.
+	firstIDs := map[string]string{}
+	for _, a := range first {
+		firstIDs[a.TemplateKey] = a.Policy.ID.String()
+	}
+	for _, a := range second {
+		if firstIDs[a.TemplateKey] != a.Policy.ID.String() {
+			t.Fatalf("template %q materialised a new policy on re-apply (%s != %s)", a.TemplateKey, firstIDs[a.TemplateKey], a.Policy.ID.String())
+		}
+	}
+	rows, err := policies.ListPolicies(ctx, ws)
+	if err != nil {
+		t.Fatalf("ListPolicies: %v", err)
+	}
+	if len(rows) != len(pack.Templates) {
+		t.Fatalf("re-apply duplicated policies: expected %d persisted, got %d", len(pack.Templates), len(rows))
+	}
+}
+
 func TestApplySelectedTemplatesOnly(t *testing.T) {
 	svc, _, _, ws := newApplyService(t)
 	ctx := context.Background()

@@ -1,0 +1,56 @@
+=== RUN   TestStartCampaignEnumeratesScopedGrants
+--- PASS: TestStartCampaignEnumeratesScopedGrants (0.02s)
+=== RUN   TestStartCampaignRejectsUnknownFrameworkAndConnector
+--- PASS: TestStartCampaignRejectsUnknownFrameworkAndConnector (0.02s)
+=== RUN   TestSubmitDecisionStagesRevokeUntilClose
+--- PASS: TestSubmitDecisionStagesRevokeUntilClose (0.02s)
+=== RUN   TestCloseCampaignAppliesStagedRevokes
+--- PASS: TestCloseCampaignAppliesStagedRevokes (0.02s)
+=== RUN   TestCloseCampaignToleratesIndependentlyRevokedGrant
+--- PASS: TestCloseCampaignToleratesIndependentlyRevokedGrant (0.02s)
+=== RUN   TestCloseCampaignCompletesTeardownAfterRequestCancel
+--- PASS: TestCloseCampaignCompletesTeardownAfterRequestCancel (0.02s)
+=== RUN   TestCloseCampaignBoundsHungRevoke
+--- PASS: TestCloseCampaignBoundsHungRevoke (0.07s)
+=== RUN   TestCloseWithoutRevokerFailsClosed
+--- PASS: TestCloseWithoutRevokerFailsClosed (0.02s)
+=== RUN   TestDecisionTerminalGuardAndIdempotency
+--- PASS: TestDecisionTerminalGuardAndIdempotency (0.02s)
+=== RUN   TestDecisionOnClosedCampaignRejected
+--- PASS: TestDecisionOnClosedCampaignRejected (0.02s)
+=== RUN   TestEnforceOverdue
+--- PASS: TestEnforceOverdue (0.02s)
+=== RUN   TestEscalatedItemsAreNotTerminallyDecided
+--- PASS: TestEscalatedItemsAreNotTerminallyDecided (0.02s)
+=== RUN   TestCampaignCrossTenantIsolation
+--- PASS: TestCampaignCrossTenantIsolation (0.02s)
+=== RUN   TestVerifyChainAcceptsLegacyPrefixThenCanonical
+--- PASS: TestVerifyChainAcceptsLegacyPrefixThenCanonical (0.02s)
+=== RUN   TestVerifyChainLegacyLinkageStillEnforced
+--- PASS: TestVerifyChainLegacyLinkageStillEnforced (0.02s)
+=== RUN   TestStreamClassifiesAndFilters
+--- PASS: TestStreamClassifiesAndFilters (0.02s)
+=== RUN   TestVerifyChainValidThenTamperDetected
+--- PASS: TestVerifyChainValidThenTamperDetected (0.02s)
+=== RUN   TestVerifyChainEmpty
+--- PASS: TestVerifyChainEmpty (0.02s)
+=== RUN   TestVerifyChainDetectsDeletedRow
+--- PASS: TestVerifyChainDetectsDeletedRow (0.02s)
+=== RUN   TestVerifyChainDetectsSoftDeletedRow
+--- PASS: TestVerifyChainDetectsSoftDeletedRow (0.02s)
+=== RUN   TestCoverageByFramework
+--- PASS: TestCoverageByFramework (0.02s)
+=== RUN   TestCoverageUnknownFramework
+--- PASS: TestCoverageUnknownFramework (0.02s)
+=== RUN   TestEvidenceCrossTenantIsolation
+--- PASS: TestEvidenceCrossTenantIsolation (0.02s)
+=== RUN   TestWritePackContentsAndMapping
+--- PASS: TestWritePackContentsAndMapping (0.02s)
+=== RUN   TestWritePackUnknownFramework
+--- PASS: TestWritePackUnknownFramework (0.02s)
+=== RUN   TestWritePackCrossTenantExcludesOtherTenant
+--- PASS: TestWritePackCrossTenantExcludesOtherTenant (0.02s)
+=== RUN   TestWritePackCrossTenantWithPeriodFilter
+--- PASS: TestWritePackCrossTenantWithPeriodFilter (0.02s)
+PASS
+ok  	github.com/kennguy3n/fishbone-access/internal/services/compliance	0.582s
