@@ -33,6 +33,55 @@ type ImpactReport struct {
 	AffectedGrants    int      `json:"affected_grants"`
 	AffectedSubjects  []string `json:"affected_subjects"`
 	AffectedResources []string `json:"affected_resources"`
+
+	// SoDViolations are the Separation-of-Duties toxic combinations this change
+	// would INTRODUCE (a subject gaining two entitlements that must stay
+	// segregated). Populated by the simulate/promote what-if; empty when there
+	// are no SoD rules or the change introduces none.
+	SoDViolations []SodViolation `json:"sod_violations,omitempty"`
+	// Catastrophic flags a change the operator should not apply blind: it
+	// introduces a high/critical SoD violation, or has an unbounded/very large
+	// blast radius. CatastrophicReasons lists the human-readable triggers. A
+	// high/critical SoD violation also hard-blocks promotion (override with an
+	// audited reason); blast-radius reasons are warnings, not blocks.
+	Catastrophic        bool     `json:"catastrophic"`
+	CatastrophicReasons []string `json:"catastrophic_reasons,omitempty"`
+}
+
+// Catastrophic-change blast-radius thresholds. A change at or above these is
+// flagged (not hard-blocked) so a 5,000-tenant operator cannot apply a sweeping
+// grant/teardown without the simulation loudly warning first. They are
+// deliberately generous: routine changes never trip them, only genuinely
+// large-footprint ones do.
+const (
+	catastrophicNewGrantPairs  = 100
+	catastrophicAffectedGrants = 100
+)
+
+// assessCatastrophic fills the SoD-driven and blast-radius-driven catastrophic
+// flags on report from its already-computed counts and SoDViolations. It is the
+// single place the "catastrophic change" verdict is decided so Simulate, the
+// ad-hoc what-if, and Promote all agree.
+func assessCatastrophic(report *ImpactReport, def PolicyDefinition) {
+	var reasons []string
+	if HasBlockingViolation(report.SoDViolations) {
+		reasons = append(reasons, "introduces high/critical separation-of-duties toxic combination(s)")
+	}
+	switch def.Action {
+	case PolicyActionGrant:
+		if report.WildcardResource {
+			reasons = append(reasons, "grants a wildcard ('*') resource — unbounded blast radius")
+		}
+		if report.NewGrantPairs >= catastrophicNewGrantPairs {
+			reasons = append(reasons, fmt.Sprintf("provisions %d new entitlement pairs (>= %d)", report.NewGrantPairs, catastrophicNewGrantPairs))
+		}
+	case PolicyActionDeny:
+		if report.AffectedGrants >= catastrophicAffectedGrants {
+			reasons = append(reasons, fmt.Sprintf("tears down %d live grants (>= %d)", report.AffectedGrants, catastrophicAffectedGrants))
+		}
+	}
+	report.CatastrophicReasons = reasons
+	report.Catastrophic = len(reasons) > 0
 }
 
 // ImpactResolver computes the blast radius of a policy definition by walking

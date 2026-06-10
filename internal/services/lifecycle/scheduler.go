@@ -28,27 +28,39 @@ type Scheduler struct {
 	db      *gorm.DB
 	expiry  *ExpiryEnforcer
 	orphans *OrphanReconciler
+	// anomaly and contractor are optional (nil disables the corresponding
+	// sweep); they are attached after construction via the Set* methods so the
+	// NewScheduler signature stays stable for existing callers.
+	anomaly    *AnomalyDetector
+	contractor *ContractorExpiryEnforcer
 
-	expiryInterval time.Duration
-	orphanInterval time.Duration
+	expiryInterval     time.Duration
+	orphanInterval     time.Duration
+	anomalyInterval    time.Duration
+	contractorInterval time.Duration
 }
 
 // SchedulerConfig tunes the periodic intervals. Zero values fall back to
-// sensible defaults (expiry every 5m, orphan scan every 24h).
+// sensible defaults (expiry every 5m, orphan scan every 24h, anomaly detection
+// every 1h, contractor expiry every 5m).
 type SchedulerConfig struct {
-	ExpiryInterval time.Duration
-	OrphanInterval time.Duration
+	ExpiryInterval     time.Duration
+	OrphanInterval     time.Duration
+	AnomalyInterval    time.Duration
+	ContractorInterval time.Duration
 }
 
 // NewScheduler wires the periodic runner. orphans may be nil to disable the
 // orphan sweep (e.g. when no connector resolver is configured).
 func NewScheduler(db *gorm.DB, expiry *ExpiryEnforcer, orphans *OrphanReconciler, cfg SchedulerConfig) *Scheduler {
 	s := &Scheduler{
-		db:             db,
-		expiry:         expiry,
-		orphans:        orphans,
-		expiryInterval: cfg.ExpiryInterval,
-		orphanInterval: cfg.OrphanInterval,
+		db:                 db,
+		expiry:             expiry,
+		orphans:            orphans,
+		expiryInterval:     cfg.ExpiryInterval,
+		orphanInterval:     cfg.OrphanInterval,
+		anomalyInterval:    cfg.AnomalyInterval,
+		contractorInterval: cfg.ContractorInterval,
 	}
 	if s.expiryInterval <= 0 {
 		s.expiryInterval = 5 * time.Minute
@@ -56,8 +68,22 @@ func NewScheduler(db *gorm.DB, expiry *ExpiryEnforcer, orphans *OrphanReconciler
 	if s.orphanInterval <= 0 {
 		s.orphanInterval = 24 * time.Hour
 	}
+	if s.anomalyInterval <= 0 {
+		s.anomalyInterval = time.Hour
+	}
+	if s.contractorInterval <= 0 {
+		s.contractorInterval = 5 * time.Minute
+	}
 	return s
 }
+
+// SetAnomalyDetector attaches the SoD anomaly→evidence detector so its periodic
+// sweep runs. nil leaves the sweep disabled.
+func (s *Scheduler) SetAnomalyDetector(d *AnomalyDetector) { s.anomaly = d }
+
+// SetContractorEnforcer attaches the contractor-grant expiry enforcer so its
+// periodic sweep runs. nil leaves the sweep disabled.
+func (s *Scheduler) SetContractorEnforcer(e *ContractorExpiryEnforcer) { s.contractor = e }
 
 // Run blocks running both loops until ctx is cancelled. It returns ctx.Err().
 // Each loop fires once on start so a freshly booted process does not wait a full
@@ -65,8 +91,12 @@ func NewScheduler(db *gorm.DB, expiry *ExpiryEnforcer, orphans *OrphanReconciler
 func (s *Scheduler) Run(ctx context.Context) error {
 	expiryTick := time.NewTicker(s.expiryInterval)
 	orphanTick := time.NewTicker(s.orphanInterval)
+	anomalyTick := time.NewTicker(s.anomalyInterval)
+	contractorTick := time.NewTicker(s.contractorInterval)
 	defer expiryTick.Stop()
 	defer orphanTick.Stop()
+	defer anomalyTick.Stop()
+	defer contractorTick.Stop()
 
 	// Fire the initial sweeps, but bail out between them if ctx is already
 	// cancelled so a process that is shutting down right after boot does not
@@ -76,11 +106,23 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		return ctx.Err()
 	}
 	s.runExpirySweep(ctx)
+	if s.contractor != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		s.runContractorSweep(ctx)
+	}
 	if s.orphans != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 		s.runOrphanSweep(ctx)
+	}
+	if s.anomaly != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		s.runAnomalySweep(ctx)
 	}
 
 	for {
@@ -92,6 +134,14 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		case <-orphanTick.C:
 			if s.orphans != nil {
 				s.runOrphanSweep(ctx)
+			}
+		case <-anomalyTick.C:
+			if s.anomaly != nil {
+				s.runAnomalySweep(ctx)
+			}
+		case <-contractorTick.C:
+			if s.contractor != nil {
+				s.runContractorSweep(ctx)
 			}
 		}
 	}
@@ -183,6 +233,81 @@ func (s *Scheduler) runOrphanSweep(ctx context.Context) {
 	}
 	if n > 0 {
 		logger.Infof(ctx, "lifecycle: orphan sweep recorded %d orphan(s)", n)
+	}
+}
+
+// RunAnomalySweep detects standing SoD violations across every workspace once,
+// recording + evidencing any new ones, and returns the total number of new
+// anomalies recorded. Exported so it can be triggered directly (e.g. a seeded
+// scenario or a test) without the ticker loop.
+func (s *Scheduler) RunAnomalySweep(ctx context.Context) (int, error) {
+	if s.anomaly == nil {
+		return 0, nil
+	}
+	ids, err := s.workspaceIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, ws := range ids {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		n, err := s.anomaly.DetectAndRecord(ctx, ws)
+		if err != nil {
+			logger.Errorf(ctx, "lifecycle: anomaly sweep for workspace %s: %v", ws, err)
+			continue
+		}
+		total += n
+	}
+	return total, nil
+}
+
+// RunContractorExpirySweep expires + deprovisions every contractor grant past
+// its time box across every workspace once, returning the total number revoked.
+// Exported so it can be triggered directly (e.g. a test) without the ticker loop.
+func (s *Scheduler) RunContractorExpirySweep(ctx context.Context) (int, error) {
+	if s.contractor == nil {
+		return 0, nil
+	}
+	ids, err := s.workspaceIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, ws := range ids {
+		if err := ctx.Err(); err != nil {
+			return total, err
+		}
+		n, err := s.contractor.EnforceExpired(ctx, ws)
+		if err != nil {
+			logger.Errorf(ctx, "lifecycle: contractor expiry sweep for workspace %s: %v", ws, err)
+			continue
+		}
+		total += n
+	}
+	return total, nil
+}
+
+func (s *Scheduler) runAnomalySweep(ctx context.Context) {
+	n, err := s.RunAnomalySweep(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "lifecycle: anomaly sweep: %v", err)
+		return
+	}
+	if n > 0 {
+		logger.Infof(ctx, "lifecycle: anomaly sweep recorded %d anomaly evidence record(s)", n)
+	}
+}
+
+func (s *Scheduler) runContractorSweep(ctx context.Context) {
+	n, err := s.RunContractorExpirySweep(ctx)
+	if err != nil {
+		logger.Errorf(ctx, "lifecycle: contractor expiry sweep: %v", err)
+		return
+	}
+	if n > 0 {
+		logger.Infof(ctx, "lifecycle: contractor expiry sweep revoked %d grant(s)", n)
 	}
 }
 

@@ -32,6 +32,7 @@ type PolicyService struct {
 	db       *gorm.DB
 	impact   *ImpactResolver
 	conflict *ConflictDetector
+	sod      *SodEngine
 	now      func() time.Time
 }
 
@@ -41,6 +42,7 @@ func NewPolicyService(db *gorm.DB) *PolicyService {
 		db:       db,
 		impact:   NewImpactResolver(db),
 		conflict: NewConflictDetector(db),
+		sod:      NewSodEngine(db),
 		now:      time.Now,
 	}
 }
@@ -232,6 +234,17 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 	if err != nil {
 		return SimulationResult{}, err
 	}
+	// Enrich the impact with the Separation-of-Duties what-if: the toxic
+	// combinations this change would introduce, plus the catastrophic-change
+	// verdict derived from them and the blast radius. This is cached on the
+	// draft so the operator sees the same warnings at simulate and promote time.
+	sodViolations, err := s.sod.EvaluatePolicyTx(ctx, s.db, workspaceID, def)
+	if err != nil {
+		return SimulationResult{}, err
+	}
+	impact.SoDViolations = sodViolations
+	assessCatastrophic(&impact, def)
+
 	result := SimulationResult{Impact: impact, Conflicts: conflicts}
 
 	if pol.State == PolicyStateDraft {
@@ -274,12 +287,75 @@ func (s *PolicyService) Simulate(ctx context.Context, workspaceID, policyID uuid
 	return result, nil
 }
 
+// SimulateDefinition runs the same read-only what-if as Simulate against an
+// ad-hoc policy definition that is NOT persisted — the engine behind a bulk
+// role-change preview. It surfaces the blast radius, grant-vs-deny conflicts,
+// SoD violations, and the catastrophic-change verdict so an operator can see the
+// consequences of a sweeping change before applying it, without first creating a
+// draft. It never mutates the data plane and caches nothing.
+func (s *PolicyService) SimulateDefinition(ctx context.Context, workspaceID uuid.UUID, def PolicyDefinition) (SimulationResult, error) {
+	if workspaceID == uuid.Nil {
+		return SimulationResult{}, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+	}
+	impact, err := s.impact.ResolveImpact(ctx, workspaceID, def)
+	if err != nil {
+		return SimulationResult{}, err
+	}
+	// excludeID is uuid.Nil: an ad-hoc definition is not a stored policy, so no
+	// policy is excluded from the conflict scan.
+	conflicts, err := s.conflict.DetectConflicts(ctx, workspaceID, uuid.Nil, def)
+	if err != nil {
+		return SimulationResult{}, err
+	}
+	sodViolations, err := s.sod.EvaluatePolicyTx(ctx, s.db, workspaceID, def)
+	if err != nil {
+		return SimulationResult{}, err
+	}
+	impact.SoDViolations = sodViolations
+	assessCatastrophic(&impact, def)
+	return SimulationResult{Impact: impact, Conflicts: conflicts}, nil
+}
+
 // PromoteOptions carries optional promotion controls. Force overrides the
-// grant-vs-deny conflict block (the simulation requirement is never waivable);
-// Reason is the audited justification recorded on the override.
+// grant-vs-deny conflict block AND the SoD catastrophic-change block (the
+// simulation requirement itself is never waivable); Reason is the audited
+// justification recorded on the override.
 type PromoteOptions struct {
 	Force  bool
 	Reason string
+}
+
+// PromoteSodError is returned when promotion is blocked because the candidate
+// policy would INTRODUCE one or more high/critical Separation-of-Duties toxic
+// combinations (a catastrophic change). It carries the offending violations so
+// the caller can surface them, and satisfies errors.Is(err, ErrPolicyHasSodViolations).
+type PromoteSodError struct {
+	Violations []SodViolation
+}
+
+func (e *PromoteSodError) Error() string {
+	return fmt.Sprintf("%v: %d high/critical SoD violation(s) block promotion", ErrPolicyHasSodViolations, len(e.Violations))
+}
+
+// Is lets callers match this typed error against the ErrPolicyHasSodViolations
+// sentinel (e.g. the REST layer's status mapping).
+func (e *PromoteSodError) Is(target error) bool {
+	return target == ErrPolicyHasSodViolations
+}
+
+// Unwrap exposes the sentinel so errors.Is also works through wrapping.
+func (e *PromoteSodError) Unwrap() error { return ErrPolicyHasSodViolations }
+
+// blockingViolations filters an SoD violation set down to the introduced,
+// high/critical violations that hard-block a promotion.
+func blockingViolations(in []SodViolation) []SodViolation {
+	var out []SodViolation
+	for _, v := range in {
+		if v.Introduced && sodBlockingSeverity(v.Severity) {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // PromoteConflictError is returned when promotion is blocked by unresolved
@@ -376,20 +452,43 @@ func (s *PolicyService) Promote(ctx context.Context, workspaceID, policyID uuid.
 		if err != nil {
 			return err
 		}
-		if hard := hardConflicts(conflicts); len(hard) > 0 {
-			if !opts.Force {
-				return &PromoteConflictError{Conflicts: hard}
-			}
-			// An override is a security-relevant action, so it must carry an
-			// audited justification — an empty reason is rejected rather than
-			// recorded as a blank audit entry.
+		hard := hardConflicts(conflicts)
+		if len(hard) > 0 && !opts.Force {
+			// Block on conflicts first so the operator's existing remediation
+			// flow (review conflicts → re-simulate → force) is unchanged.
+			return &PromoteConflictError{Conflicts: hard}
+		}
+
+		// Re-run the SoD what-if against the locked snapshot too, so a toxic
+		// combination introduced by grants added after this draft was simulated
+		// is still caught at rollout. A high/critical introduced violation is a
+		// catastrophic change that blocks promotion unless force-overridden.
+		sodViolations, err := s.sod.EvaluatePolicyTx(ctx, tx, workspaceID, def)
+		if err != nil {
+			return err
+		}
+		blockingSod := blockingViolations(sodViolations)
+		if len(blockingSod) > 0 && !opts.Force {
+			return &PromoteSodError{Violations: blockingSod}
+		}
+
+		// Either block may have been force-overridden. An override is a
+		// security-relevant action, so it must carry an audited justification —
+		// an empty reason is rejected rather than recorded as a blank audit
+		// entry — and the offending counts are recorded for the audit trail.
+		if len(hard) > 0 || len(blockingSod) > 0 {
 			if strings.TrimSpace(opts.Reason) == "" {
-				return fmt.Errorf("%w: a reason is required to override grant-vs-deny conflicts", ErrValidation)
+				return fmt.Errorf("%w: a reason is required to override a blocked promotion (conflicts or SoD violations)", ErrValidation)
 			}
 			meta := map[string]any{
-				"override":             true,
-				"reason":               opts.Reason,
-				"overridden_conflicts": len(hard),
+				"override": true,
+				"reason":   opts.Reason,
+			}
+			if len(hard) > 0 {
+				meta["overridden_conflicts"] = len(hard)
+			}
+			if len(blockingSod) > 0 {
+				meta["overridden_sod_violations"] = len(blockingSod)
 			}
 			b, err := json.Marshal(meta)
 			if err != nil {

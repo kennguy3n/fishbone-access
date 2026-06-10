@@ -27,17 +27,20 @@ import (
 // actor from the validated token subject — never from client-supplied input —
 // so a caller cannot operate on another tenant's data or spoof an actor.
 type lifecycleHandlers struct {
-	requests   *lifecycle.AccessRequestService
-	workflow   *lifecycle.WorkflowService
-	riskReview *lifecycle.RiskReviewService
-	policies   *lifecycle.PolicyService
-	prov       *lifecycle.AccessProvisioningService
-	reviews    *lifecycle.ReviewService
-	jml        *lifecycle.JMLService
-	orphans    *lifecycle.OrphanReconciler
-	expiry     *lifecycle.ExpiryEnforcer
-	sso        *lifecycle.SSOEnforcementChecker
-	packs      *packs.ApplyService
+	requests    *lifecycle.AccessRequestService
+	workflow    *lifecycle.WorkflowService
+	riskReview  *lifecycle.RiskReviewService
+	policies    *lifecycle.PolicyService
+	prov        *lifecycle.AccessProvisioningService
+	reviews     *lifecycle.ReviewService
+	jml         *lifecycle.JMLService
+	orphans     *lifecycle.OrphanReconciler
+	expiry      *lifecycle.ExpiryEnforcer
+	sso         *lifecycle.SSOEnforcementChecker
+	packs       *packs.ApplyService
+	sod         *lifecycle.SodService
+	anomalies   *lifecycle.AnomalyDetector
+	contractors *lifecycle.ContractorService
 }
 
 // newLifecycleHandlers wires the lifecycle services off the shared DB pool, the
@@ -59,17 +62,20 @@ func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 		ai = aiclient.NewAIClient("", nil, "")
 	}
 	return &lifecycleHandlers{
-		requests:   requests,
-		workflow:   workflow,
-		riskReview: lifecycle.NewRiskReviewService(db, requests, ai),
-		policies:   policies,
-		prov:       prov,
-		reviews:    lifecycle.NewReviewService(db, prov),
-		jml:        lifecycle.NewJMLService(db, requests, workflow, prov, resolver, deps.Disabler),
-		orphans:    lifecycle.NewOrphanReconciler(db, resolver),
-		expiry:     lifecycle.NewExpiryEnforcer(db, prov),
-		sso:        lifecycle.NewSSOEnforcementChecker(db, resolver),
-		packs:      packs.NewApplyService(policies),
+		requests:    requests,
+		workflow:    workflow,
+		riskReview:  lifecycle.NewRiskReviewService(db, requests, ai),
+		policies:    policies,
+		prov:        prov,
+		reviews:     lifecycle.NewReviewService(db, prov),
+		jml:         lifecycle.NewJMLService(db, requests, workflow, prov, resolver, deps.Disabler),
+		orphans:     lifecycle.NewOrphanReconciler(db, resolver),
+		expiry:      lifecycle.NewExpiryEnforcer(db, prov),
+		sso:         lifecycle.NewSSOEnforcementChecker(db, resolver),
+		packs:       packs.NewApplyService(policies),
+		sod:         lifecycle.NewSodService(db),
+		anomalies:   lifecycle.NewAnomalyDetector(db),
+		contractors: lifecycle.NewContractorService(db, prov),
 	}
 }
 
@@ -112,6 +118,27 @@ func (h *lifecycleHandlers) register(g *gin.RouterGroup, stepUp mfa.MFAVerifier)
 		stepUpGate(stepUp, string(authz.PermPolicyPromote)),
 		h.promotePolicy)
 	g.POST("/policies/:id/archive", middleware.RequirePermission(authz.PermPolicyArchive), h.archivePolicy)
+	// Ad-hoc what-if for a bulk role change: the same simulation a draft runs
+	// (blast radius, conflicts, SoD violations, catastrophic verdict) against an
+	// un-persisted definition, so an operator previews a sweeping change before
+	// touching the data plane.
+	g.POST("/policies/simulate-definition", middleware.RequirePermission(authz.PermPolicySimulate), h.simulateDefinition)
+
+	// Separation-of-Duties toxic-combination ruleset.
+	g.POST("/sod-rules", middleware.RequirePermission(authz.PermPolicyWrite), h.createSodRule)
+	g.GET("/sod-rules", middleware.RequirePermission(authz.PermPolicyRead), h.listSodRules)
+	g.DELETE("/sod-rules/:id", middleware.RequirePermission(authz.PermPolicyWrite), h.deleteSodRule)
+	// Standing SoD anomalies surfaced as dispositioned evidence (CC7.3).
+	g.GET("/sod-anomalies", middleware.RequirePermission(authz.PermOrphanRead), h.listAnomalies)
+
+	// Time-boxed contractor / external access lifecycle.
+	g.POST("/contractor-grants", middleware.RequirePermission(authz.PermRequestCreate), h.createContractorGrant)
+	g.GET("/contractor-grants", middleware.RequirePermission(authz.PermRequestRead), h.listContractorGrants)
+	g.GET("/contractor-grants/:id", middleware.RequirePermission(authz.PermRequestRead), h.getContractorGrant)
+	g.POST("/contractor-grants/:id/approve", middleware.RequirePermission(authz.PermRequestApprove), h.approveContractorGrant)
+	g.POST("/contractor-grants/:id/reject", middleware.RequirePermission(authz.PermRequestDeny), h.rejectContractorGrant)
+	g.POST("/contractor-grants/:id/revoke", middleware.RequirePermission(authz.PermGrantRevoke), h.revokeContractorGrant)
+	g.POST("/contractor-grants/:id/extend", middleware.RequirePermission(authz.PermRequestApprove), h.extendContractorGrant)
 
 	// Access review campaigns.
 	g.POST("/access-reviews", middleware.RequirePermission(authz.PermReviewStart), h.startReview)
@@ -580,10 +607,288 @@ func (h *lifecycleHandlers) promotePolicy(c *gin.Context) {
 			})
 			return
 		}
+		// A SoD catastrophic-change block carries the introduced toxic
+		// combinations so the operator can review them before overriding with
+		// {"force":true,"reason":"..."}.
+		var se *lifecycle.PromoteSodError
+		if errors.As(err, &se) {
+			c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+				"error":          se.Error(),
+				"sod_violations": se.Violations,
+			})
+			return
+		}
 		h.fail(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"policy": pol})
+}
+
+// --- ad-hoc bulk-change simulation ---
+
+func (h *lifecycleHandlers) simulateDefinition(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	var body struct {
+		Definition json.RawMessage `json:"definition" binding:"required"`
+	}
+	if !bind(c, &body) {
+		return
+	}
+	def, err := lifecycle.ParsePolicyDefinition(body.Definition)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	sim, err := h.policies.SimulateDefinition(c.Request.Context(), ws, def)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"simulation": sim})
+}
+
+// --- separation of duties ---
+
+type createSodRuleBody struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+	Severity    string `json:"severity"`
+	ResourceA   string `json:"resource_a"`
+	RoleA       string `json:"role_a"`
+	ResourceB   string `json:"resource_b"`
+	RoleB       string `json:"role_b"`
+}
+
+func (h *lifecycleHandlers) createSodRule(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	var body createSodRuleBody
+	if !bind(c, &body) {
+		return
+	}
+	rule, err := h.sod.CreateRule(c.Request.Context(), lifecycle.CreateSodRuleInput{
+		WorkspaceID: ws,
+		Name:        body.Name,
+		Description: body.Description,
+		Severity:    body.Severity,
+		ResourceA:   body.ResourceA,
+		RoleA:       body.RoleA,
+		ResourceB:   body.ResourceB,
+		RoleB:       body.RoleB,
+		Actor:       actor(c),
+	})
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"rule": rule})
+}
+
+func (h *lifecycleHandlers) listSodRules(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	rows, err := h.sod.ListRules(c.Request.Context(), ws)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"rules": rows})
+}
+
+func (h *lifecycleHandlers) deleteSodRule(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	if err := h.sod.DeleteRule(c.Request.Context(), ws, id, actor(c)); err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+func (h *lifecycleHandlers) listAnomalies(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	rows, err := h.anomalies.ListAnomalies(c.Request.Context(), ws)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"anomalies": rows})
+}
+
+// --- contractor access lifecycle ---
+
+type createContractorGrantBody struct {
+	ContractorUserID string    `json:"contractor_user_id" binding:"required"`
+	DisplayName      string    `json:"display_name"`
+	ConnectorID      uuid.UUID `json:"connector_id" binding:"required"`
+	ResourceRef      string    `json:"resource_ref" binding:"required"`
+	Role             string    `json:"role"`
+	SponsorID        string    `json:"sponsor_id" binding:"required"`
+	Justification    string    `json:"justification"`
+	ExpiresAt        time.Time `json:"expires_at" binding:"required"`
+}
+
+func (h *lifecycleHandlers) createContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	var body createContractorGrantBody
+	if !bind(c, &body) {
+		return
+	}
+	grant, err := h.contractors.CreateGrant(c.Request.Context(), lifecycle.CreateContractorGrantInput{
+		WorkspaceID:      ws,
+		ContractorUserID: body.ContractorUserID,
+		DisplayName:      body.DisplayName,
+		ConnectorID:      body.ConnectorID,
+		ResourceRef:      body.ResourceRef,
+		Role:             body.Role,
+		SponsorID:        body.SponsorID,
+		RequestedBy:      actor(c),
+		Justification:    body.Justification,
+		ExpiresAt:        body.ExpiresAt,
+	})
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"contractor_grant": grant})
+}
+
+func (h *lifecycleHandlers) listContractorGrants(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	rows, err := h.contractors.ListGrants(c.Request.Context(), ws)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grants": rows})
+}
+
+func (h *lifecycleHandlers) getContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	grant, err := h.contractors.GetGrant(c.Request.Context(), ws, id)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grant": grant})
+}
+
+func (h *lifecycleHandlers) approveContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	grant, err := h.contractors.ApproveGrant(c.Request.Context(), ws, id, actor(c))
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grant": grant})
+}
+
+func (h *lifecycleHandlers) rejectContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if !bindOptional(c, &body) {
+		return
+	}
+	grant, err := h.contractors.RejectGrant(c.Request.Context(), ws, id, actor(c), body.Reason)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grant": grant})
+}
+
+func (h *lifecycleHandlers) revokeContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if !bindOptional(c, &body) {
+		return
+	}
+	grant, err := h.contractors.RevokeGrant(c.Request.Context(), ws, id, actor(c), body.Reason)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grant": grant})
+}
+
+type extendContractorGrantBody struct {
+	ExpiresAt time.Time `json:"expires_at" binding:"required"`
+	Reason    string    `json:"reason"`
+}
+
+func (h *lifecycleHandlers) extendContractorGrant(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "id")
+	if !ok {
+		return
+	}
+	var body extendContractorGrantBody
+	if !bind(c, &body) {
+		return
+	}
+	grant, err := h.contractors.ExtendExpiry(c.Request.Context(), ws, id, actor(c), body.ExpiresAt, body.Reason)
+	if err != nil {
+		h.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"contractor_grant": grant})
 }
 
 func (h *lifecycleHandlers) archivePolicy(c *gin.Context) {
@@ -923,7 +1228,9 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, lifecycle.ErrReviewNotFound),
 		errors.Is(err, lifecycle.ErrReviewItemNotFound),
 		errors.Is(err, lifecycle.ErrGrantNotFound),
-		errors.Is(err, lifecycle.ErrOrphanNotFound):
+		errors.Is(err, lifecycle.ErrOrphanNotFound),
+		errors.Is(err, lifecycle.ErrSodRuleNotFound),
+		errors.Is(err, lifecycle.ErrContractorGrantNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrInvalidStateTransition),
 		errors.Is(err, lifecycle.ErrReviewClosed),
@@ -931,7 +1238,9 @@ func (h *lifecycleHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, lifecycle.ErrPolicyNotPromotable),
 		errors.Is(err, lifecycle.ErrPolicyNotEditable),
 		errors.Is(err, lifecycle.ErrPolicyNotSimulated),
-		errors.Is(err, lifecycle.ErrPolicyHasConflicts):
+		errors.Is(err, lifecycle.ErrPolicyHasConflicts),
+		errors.Is(err, lifecycle.ErrPolicyHasSodViolations),
+		errors.Is(err, lifecycle.ErrContractorState):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, lifecycle.ErrConnectorNotConfigured):
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})

@@ -423,5 +423,10 @@ func All() []any {
 		&PAMTOTPUsedCode{},
 		&CertificationCampaign{},
 		&CertificationItem{},
+		// Workstream 2: SoD analytics, anomaly evidence, contractor lifecycle.
+		&SodRule{},
+		&AccessAnomaly{},
+		&ContractorGrant{},
+		&ContractorGrantExtension{},
 	}
 }
