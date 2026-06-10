@@ -17,6 +17,35 @@ import (
 	"time"
 )
 
+// DatabaseDriver selects which backend implements the repository contracts that
+// have both a GORM and a pgxpool implementation (workspace-config reads in
+// ztna-api, standalone audit appends in pam-gateway). The two backends honour an
+// identical contract — same queries, same soft-delete scoping, same
+// gorm.ErrRecordNotFound sentinel, and the same per-workspace advisory lock and
+// version-1 canonical audit hash via the shared auditchain package — so the flag
+// only chooses the driver, never the behaviour, and lets the GORM→pgx migration
+// proceed by flipping one environment variable per deployment with an instant
+// rollback path.
+type DatabaseDriver string
+
+const (
+	// DriverPgx routes those repositories through the github.com/jackc/pgx/v5
+	// pgxpool adapter. It is the default because it is the lighter path for the
+	// hot workspace-config read and the standalone audit append.
+	DriverPgx DatabaseDriver = "pgx"
+	// DriverGorm routes those repositories through the incumbent GORM pool, so a
+	// deployment can fall back to the battle-tested backend without a redeploy.
+	DriverGorm DatabaseDriver = "gorm"
+	// defaultDatabaseDriver preserves the pre-flag behaviour, where ztna-api and
+	// pam-gateway always used the pgx adapter for these paths.
+	defaultDatabaseDriver = DriverPgx
+)
+
+// Valid reports whether d is a recognised driver.
+func (d DatabaseDriver) Valid() bool {
+	return d == DriverPgx || d == DriverGorm
+}
+
 // Config is the fully-resolved platform configuration.
 type Config struct {
 	// Env is the deployment environment label ("dev", "staging", "prod").
@@ -50,6 +79,11 @@ type Config struct {
 	// being recycled, so a long-lived process picks up Postgres failovers and
 	// avoids accumulating server-side state on stale backends.
 	DBConnMaxLifetime time.Duration
+	// DatabaseDriver selects the backend (pgx or gorm) for the repositories that
+	// have both implementations. Read from ACCESS_DATABASE_DRIVER; defaults to pgx.
+	// Validate rejects an unrecognised value so a typo fails the boot loudly
+	// rather than silently falling back to a backend the operator did not pick.
+	DatabaseDriver DatabaseDriver
 	// CredentialDEK is the base64-encoded 32-byte AES-256 key used to seal
 	// connector secrets at rest. When empty the binary refuses to persist
 	// secrets (fails closed) rather than storing plaintext.
@@ -148,6 +182,7 @@ func Load() Config {
 		DBPgxMaxConns:     getInt("ACCESS_DB_PGX_MAX_CONNS", 8),
 		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime: getDuration("ACCESS_DB_CONN_MAX_LIFETIME", 30*time.Minute),
+		DatabaseDriver:    parseDatabaseDriver(os.Getenv("ACCESS_DATABASE_DRIVER")),
 		ShutdownTimeout:   getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
@@ -163,6 +198,31 @@ func Load() Config {
 
 // DatabaseConfigured reports whether a Postgres DSN was supplied.
 func (c Config) DatabaseConfigured() bool { return c.DatabaseURL != "" }
+
+// Validate checks invariants that must hold before a binary wires its services,
+// returning a descriptive error so the caller can fail the boot fast. It is the
+// place to reject values that Load deliberately does not normalise away (an
+// unknown ACCESS_DATABASE_DRIVER), keeping Load total (never-panicking) while still
+// surfacing misconfiguration loudly.
+func (c Config) Validate() error {
+	if !c.DatabaseDriver.Valid() {
+		return fmt.Errorf("config: unknown ACCESS_DATABASE_DRIVER %q (want %q or %q)",
+			c.DatabaseDriver, DriverPgx, DriverGorm)
+	}
+	return nil
+}
+
+// parseDatabaseDriver normalises the ACCESS_DATABASE_DRIVER env var (trimmed,
+// lower-cased) and maps an empty value to the default. An unrecognised value is
+// returned as-typed so Validate can name it in the error rather than silently
+// substituting a backend the operator never selected.
+func parseDatabaseDriver(v string) DatabaseDriver {
+	s := DatabaseDriver(strings.ToLower(strings.TrimSpace(v)))
+	if s == "" {
+		return defaultDatabaseDriver
+	}
+	return s
+}
 
 func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
@@ -204,8 +264,8 @@ func getDuration(key string, def time.Duration) time.Duration {
 // (ClientSecret, CredentialDEK) are never included.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t redis=%t dek=%t iamcore=%t issuer=%q}",
-		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.RedisURL != "",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t iamcore=%t issuer=%q}",
+		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }

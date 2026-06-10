@@ -61,6 +61,9 @@ func run() error {
 	defer stop()
 
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	logger.Infof(ctx, "ztna-api: starting; %s", cfg.String())
 	logger.Infof(ctx, "ztna-api: registered connectors: %d", access.RegisteredCount())
 
@@ -82,31 +85,46 @@ func run() error {
 			}
 		}()
 
-		// Open a pgxpool alongside the GORM pool and route RequireTenant's
-		// tenant→workspace resolution through the pgxpool adapter (WS10 GORM→pgx
-		// migration, starting with the workspace-config read on the hot path of
-		// every authenticated request). The rest of the control plane still
-		// queries through GORM; the two pools share the same Postgres and the
-		// adapter honours the identical contract (same query, same
-		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged.
-		// The pgx pool is sized by its own bound (DBPgxMaxConns), independent of
-		// the GORM pool, because the workspace-config read is light; this keeps
-		// the added per-process connection footprint small and explicit.
-		pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
-		if err != nil {
-			return fmt.Errorf("pgx pool setup: %w", err)
+		// Route RequireTenant's tenant→workspace resolution through the backend
+		// selected by ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration, starting
+		// with the workspace-config read on the hot path of every authenticated
+		// request). Both backends honour the identical contract (same query, same
+		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged
+		// whichever is selected.
+		switch cfg.DatabaseDriver {
+		case config.DriverPgx:
+			// Open a pgxpool alongside the GORM pool. It is sized by its own bound
+			// (DBPgxMaxConns), independent of the GORM pool, because the
+			// workspace-config read is light; this keeps the added per-process
+			// connection footprint small and explicit. Opened only on the pgx path
+			// so a gorm-driver boot pays no second pool.
+			pool, err := database.OpenPool(ctx, cfg.DatabaseURL, int32(cfg.DBPgxMaxConns), cfg.DBConnMaxLifetime, 0)
+			if err != nil {
+				return fmt.Errorf("pgx pool setup: %w", err)
+			}
+			deps.WorkspaceResolver = database.NewPgxWorkspaceConfigRepo(pool)
+			// Close the pgx pool on shutdown. It is queried only by RequireTenant
+			// on the HTTP request path. On the normal (signal) exit, run() returns
+			// only after srv.Shutdown has drained in-flight requests, so no request
+			// races this close. On the fatal-serve-error exit, run() returns
+			// without draining, but srv.Serve has already stopped so no new request
+			// can start; this close has exactly the same exposure as the GORM
+			// pool's deferred close above (both fire in LIFO order on the same
+			// path), so the pgx pool adds no shutdown race the process did not
+			// already have.
+			defer pool.Close()
+			logger.Infof(ctx, "ztna-api: pgxpool adapter enabled for workspace-config reads")
+		case config.DriverGorm:
+			// Reuse the GORM pool already opened above; no second pool.
+			deps.WorkspaceResolver = database.NewGormWorkspaceConfigRepo(gdb)
+			logger.Infof(ctx, "ztna-api: GORM backend enabled for workspace-config reads")
+		default:
+			// Unreachable today: cfg.Validate() rejects any other value at boot.
+			// The branch is here so that adding a driver to DatabaseDriver.Valid()
+			// without wiring it here fails fast instead of leaving
+			// deps.WorkspaceResolver nil and panicking on the first request.
+			return fmt.Errorf("ztna-api: unsupported ACCESS_DATABASE_DRIVER %q", cfg.DatabaseDriver)
 		}
-		deps.WorkspaceResolver = database.NewPgxWorkspaceConfigRepo(pool)
-		// Close the pgx pool on shutdown. It is queried only by RequireTenant on
-		// the HTTP request path. On the normal (signal) exit, run() returns only
-		// after srv.Shutdown has drained in-flight requests, so no request races
-		// this close. On the fatal-serve-error exit, run() returns without
-		// draining, but srv.Serve has already stopped so no new request can start;
-		// this close has exactly the same exposure as the GORM pool's deferred
-		// close above (both fire in LIFO order on the same path), so the pgx pool
-		// adds no shutdown race the process did not already have.
-		defer pool.Close()
-		logger.Infof(ctx, "ztna-api: pgxpool adapter enabled for workspace-config reads")
 	} else {
 		logger.Warnf(ctx, "ztna-api: ACCESS_DATABASE_URL unset; booting in degraded mode (no DB)")
 	}

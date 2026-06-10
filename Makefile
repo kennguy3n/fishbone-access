@@ -8,7 +8,7 @@ TEST_TIMEOUT  ?= 180s
 
 .DEFAULT_GOAL := help
 
-.PHONY: build vet test test-short test-integration tidy-check lint-go lint ci \
+.PHONY: build vet test test-short test-integration tidy-check migrate-check lint-go lint ci \
         audit audit-report docker-up docker-down docker-logs help
 
 build: ## go build ./...
@@ -30,7 +30,10 @@ tidy-check: ## fail if go.mod/go.sum are not tidy
 	$(GO) mod tidy
 	git diff --exit-code -- go.mod go.sum
 
-lint-go: ## golangci-lint over the full tree
+migrate-check: ## validate SQL migrations (version integrity + lock-safety)
+	$(GO) run ./cmd/migrate-lint
+
+lint-go: migrate-check ## golangci-lint over the full tree (+ migrate-check)
 	$(GOLANGCI) run
 
 lint: vet lint-go ## run all lint gates

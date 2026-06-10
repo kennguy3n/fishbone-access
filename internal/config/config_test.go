@@ -27,6 +27,41 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ShutdownTimeout != 10*time.Second {
 		t.Errorf("ShutdownTimeout = %s, want 10s", cfg.ShutdownTimeout)
 	}
+	if cfg.DatabaseDriver != DriverPgx {
+		t.Errorf("DatabaseDriver = %q, want %q (default)", cfg.DatabaseDriver, DriverPgx)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("default config failed Validate: %v", err)
+	}
+}
+
+func TestDatabaseDriverParsing(t *testing.T) {
+	tests := []struct {
+		in   string
+		want DatabaseDriver
+	}{
+		{"", DriverPgx},          // unset → default
+		{"pgx", DriverPgx},       //
+		{"gorm", DriverGorm},     //
+		{"  GORM  ", DriverGorm}, // trimmed + lower-cased
+		{"PgX", DriverPgx},       //
+		{"sqlite", "sqlite"},     // unknown returned as-typed for Validate to reject
+	}
+	for _, tc := range tests {
+		t.Setenv("ACCESS_DATABASE_DRIVER", tc.in)
+		if got := Load().DatabaseDriver; got != tc.want {
+			t.Errorf("ACCESS_DATABASE_DRIVER=%q → %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestValidateRejectsUnknownDriver(t *testing.T) {
+	if err := (Config{DatabaseDriver: DriverGorm}).Validate(); err != nil {
+		t.Errorf("gorm should validate: %v", err)
+	}
+	if err := (Config{DatabaseDriver: "mariadb"}).Validate(); err == nil {
+		t.Error("unknown driver should fail Validate")
+	}
 }
 
 func TestIAMCoreDerivedURLs(t *testing.T) {
