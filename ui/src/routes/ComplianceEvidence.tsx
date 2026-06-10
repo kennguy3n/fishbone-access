@@ -34,7 +34,9 @@ export function ComplianceEvidence() {
   const [framework, setFramework] = useState<Framework>("SOC 2");
 
   const coverageQ = useCoverage(framework);
-  const evidenceQ = useEvidence({ limit: 50 });
+  // Newest-first so the bounded read returns the most-recent events the card
+  // advertises (the server caps the limit; order=desc takes the latest N).
+  const evidenceQ = useEvidence({ limit: 50, order: "desc" });
 
   return (
     <>

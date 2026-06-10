@@ -98,6 +98,18 @@ func (h *complianceHandlers) listEvidence(c *gin.Context) {
 		return
 	}
 	filter := compliance.EvidenceFilter{ControlledOnly: c.Query("controlled_only") == "true"}
+	// order=desc returns the most-recent events first (the dashboard timeline);
+	// the default ascending order walks the chain from its start. Any other
+	// value is rejected rather than silently ignored so the contract is explicit.
+	switch order := c.Query("order"); order {
+	case "", "asc":
+		filter.Newest = false
+	case "desc":
+		filter.Newest = true
+	default:
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid order (want asc or desc)"})
+		return
+	}
 	if t, ok := parseTimeQuery(c, "from"); ok {
 		filter.From = t
 	} else if c.Query("from") != "" {
