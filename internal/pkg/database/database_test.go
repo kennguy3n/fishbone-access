@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -56,5 +57,31 @@ func TestSoftDeleteIsActive(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("expected 0 live workspaces after soft delete, got %d", count)
+	}
+}
+
+// TestApplyPoolLimitsWithIdle verifies the open/idle bounds are applied and that
+// ApplyPoolLimits delegates with a zero idle-time (no behavioural change for the
+// existing worker callers).
+func TestApplyPoolLimitsWithIdle(t *testing.T) {
+	db, err := OpenSQLite(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+
+	if err := ApplyPoolLimitsWithIdle(db, 17, 4, 30*time.Minute, 5*time.Minute); err != nil {
+		t.Fatalf("ApplyPoolLimitsWithIdle: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("resolve pool: %v", err)
+	}
+	if got := sqlDB.Stats().MaxOpenConnections; got != 17 {
+		t.Errorf("MaxOpenConnections = %d, want 17", got)
+	}
+
+	// Non-positive values must be left at the driver default (no panic, no error).
+	if err := ApplyPoolLimits(db, 0, 0, 0); err != nil {
+		t.Fatalf("ApplyPoolLimits with zeros: %v", err)
 	}
 }

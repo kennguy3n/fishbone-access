@@ -43,6 +43,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -289,6 +290,47 @@ func run() error {
 		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation)")
 	}
 
+	// Tenant hibernation (WS1 scale/NoOps): track per-tenant activity, classify
+	// the dormant-trial fraction, and let periodic workers skip them so the
+	// dormant majority costs ~nothing. Wired only with a DB and only when the
+	// feature is enabled. Two background loops are tied to the signal context
+	// and joined on the way out (LIFO, after the scheduler, before the DB-pool
+	// close) so neither can touch an already-closed pool:
+	//   - the async activity recorder drains buffered request-path activity and
+	//     lazily wakes dormant tenants; it is fed by the router's activity
+	//     middleware (deps.ActivityRecorder, set just below);
+	//   - the reconcile loop periodically (re)classifies tenants set-based.
+	if deps.DB != nil && cfg.Tenancy.HibernationEnabled {
+		tenancySvc := tenancy.NewService(deps.DB, tenancy.Config{
+			Enabled:       cfg.Tenancy.HibernationEnabled,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			DefaultTier:   cfg.Tenancy.DefaultTier,
+		})
+
+		recorder := tenancy.NewAsyncRecorder(tenancySvc, tenancy.AsyncRecorderConfig{
+			Throttle:      cfg.Tenancy.ActivityFlushInterval,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+		})
+		recCtx, recCancel := context.WithCancel(ctx)
+		joinRecorder := recorder.Run(recCtx)
+		defer func() {
+			recCancel()
+			joinRecorder()
+		}()
+		deps.ActivityRecorder = recorder
+
+		reconcileCtx, reconcileCancel := context.WithCancel(ctx)
+		joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).Run(reconcileCtx)
+		defer func() {
+			reconcileCancel()
+			joinReconcile()
+		}()
+		logger.Infof(ctx, "ztna-api: tenant hibernation enabled (idle threshold %s, reconcile every %s); dormant tenants skip periodic work and wake on activity",
+			cfg.Tenancy.DormantIdleThreshold, cfg.Tenancy.ReconcileInterval)
+	} else if deps.DB != nil {
+		logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active")
+	}
+
 	srv := &http.Server{
 		Handler:           handlers.NewRouter(deps),
 		ReadHeaderTimeout: 10 * time.Second,
@@ -353,8 +395,11 @@ func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 	// Bound the pool before doing any work on it (migrations included) so this
-	// process can never open more Postgres connections than configured.
-	if err := database.ApplyPoolLimits(gdb, cfg.DBMaxOpenConns, cfg.DBMaxIdleConns, cfg.DBConnMaxLifetime); err != nil {
+	// process can never open more Postgres connections than configured. The API
+	// is the most-replicated tier serving the 5,000-tenant fleet, so it also
+	// caps idle-connection time: a replica that goes quiet releases connections
+	// back to Postgres instead of reserving max_connections headroom (NoOps).
+	if err := database.ApplyPoolLimitsWithIdle(gdb, cfg.DBMaxOpenConns, cfg.DBMaxIdleConns, cfg.DBConnMaxLifetime, cfg.DBConnMaxIdleTime); err != nil {
 		_ = sqlDB.Close()
 		return nil, err
 	}
