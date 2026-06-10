@@ -70,6 +70,12 @@ type CertificationService struct {
 	// defaults to campaignRevokeTimeout and is overridable in tests to exercise
 	// the hung-connector path without a real wall-clock wait.
 	revokeTimeout time.Duration
+	// beforeSnapshotHook, if set, is invoked inside the CloseCampaign
+	// transaction after the campaign's FOR UPDATE lock is acquired and before
+	// the staged-revoke snapshot is read. Test-only: it lets a test deterministically
+	// interleave a concurrent SubmitDecision while the close holds the lock, to
+	// exercise the late-decision serialization. nil in production.
+	beforeSnapshotHook func()
 }
 
 // NewCertificationService wires the service. revoker may be nil in read-only
@@ -263,7 +269,16 @@ func (s *CertificationService) SubmitDecision(ctx context.Context, workspaceID, 
 	now := s.now().UTC()
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var campaign models.CertificationCampaign
-		if err := tx.WithContext(ctx).
+		// FOR SHARE on the campaign row: a shared lock serializes this decision
+		// against a concurrent CloseCampaign (which takes FOR UPDATE on the same
+		// row) without serializing decisions against each other (shared locks are
+		// mutually compatible). This closes the late-decision TOCTOU: a decision
+		// in flight when a close runs either commits before the close acquires its
+		// exclusive lock — so its staged revoke is in the close's snapshot — or
+		// blocks until the close commits and then reads state=closed below and is
+		// rejected. It can never commit a revoke that the close has already
+		// snapshotted past and would strand with the grant left live.
+		if err := forShare(tx.WithContext(ctx)).
 			Where("workspace_id = ? AND id = ?", workspaceID, campaignID).
 			Take(&campaign).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -337,8 +352,18 @@ func (s *CertificationService) PreviewRevocations(ctx context.Context, workspace
 	if err := s.assertCampaign(ctx, workspaceID, campaignID); err != nil {
 		return nil, err
 	}
+	return stagedRevokes(s.db.WithContext(ctx), workspaceID, campaignID)
+}
+
+// stagedRevokes is the query body shared by the read-only PreviewRevocations
+// surface and CloseCampaign's in-transaction snapshot. db is whichever handle
+// the caller wants the read to run on: PreviewRevocations passes the pooled
+// connection, while CloseCampaign passes its transaction so the snapshot is
+// taken under the campaign's FOR UPDATE lock (closing the late-decision race —
+// see CloseCampaign).
+func stagedRevokes(db *gorm.DB, workspaceID, campaignID uuid.UUID) ([]RevocationPreview, error) {
 	var rows []RevocationPreview
-	if err := s.db.WithContext(ctx).
+	if err := db.
 		Model(&models.CertificationItem{}).
 		Select("certification_items.id AS item_id, certification_items.grant_id AS grant_id, "+
 			"access_grants.resource_ref AS resource_ref, access_grants.role AS role, "+
@@ -361,18 +386,9 @@ func (s *CertificationService) PreviewRevocations(ctx context.Context, workspace
 // re-drives any revoke whose teardown previously failed, so the campaign is
 // guaranteed to converge on the decided end state.
 func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, campaignID uuid.UUID, actor string) (CampaignReport, error) {
-	// Fail closed: if there are staged revokes but no revoker is wired, refuse
-	// to close rather than mark the campaign closed with grants left live.
-	pendingRevokes, err := s.PreviewRevocations(ctx, workspaceID, campaignID)
-	if err != nil {
-		return CampaignReport{}, err
-	}
-	if len(pendingRevokes) > 0 && s.revoker == nil {
-		return CampaignReport{}, ErrNoRevoker
-	}
-
 	now := s.now().UTC()
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var pendingRevokes []RevocationPreview
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var campaign models.CertificationCampaign
 		if err := forUpdate(tx.WithContext(ctx)).
 			Where("workspace_id = ? AND id = ?", workspaceID, campaignID).
@@ -382,6 +398,33 @@ func (s *CertificationService) CloseCampaign(ctx context.Context, workspaceID, c
 			}
 			return fmt.Errorf("compliance: load campaign: %w", err)
 		}
+
+		if s.beforeSnapshotHook != nil {
+			s.beforeSnapshotHook()
+		}
+
+		// Snapshot the staged revokes INSIDE the close transaction, under the
+		// campaign's FOR UPDATE lock taken above. SubmitDecision takes a FOR
+		// SHARE lock on the same campaign row, so any in-flight decision either
+		// commits before this lock is granted (and is therefore in this
+		// snapshot) or blocks until the close commits and then observes
+		// state=closed and is rejected. That makes the snapshot a consistent,
+		// complete view of what this close must tear down: no staged revoke can
+		// be added after the snapshot and then be silently missed by the
+		// post-commit teardown (the TOCTOU the previous out-of-transaction read
+		// allowed). The teardown still runs post-commit because it touches
+		// external connectors and must not hold the row lock.
+		var err error
+		if pendingRevokes, err = stagedRevokes(tx.WithContext(ctx), workspaceID, campaignID); err != nil {
+			return err
+		}
+		// Fail closed: if there are staged revokes but no revoker is wired,
+		// refuse to close rather than mark the campaign closed with grants left
+		// live. Checked under the lock so the decision is on the final snapshot.
+		if len(pendingRevokes) > 0 && s.revoker == nil {
+			return ErrNoRevoker
+		}
+
 		if campaign.State == models.CertificationStateClosed {
 			return nil // idempotent: teardown of any outstanding revokes still runs below
 		}
@@ -682,6 +725,18 @@ func (s *CertificationService) assertCampaign(ctx context.Context, workspaceID, 
 func forUpdate(tx *gorm.DB) *gorm.DB {
 	if tx.Dialector != nil && tx.Name() == "postgres" {
 		return tx.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	return tx
+}
+
+// forShare adds a row-level SHARE lock on Postgres. Shared locks are mutually
+// compatible (so concurrent SubmitDecisions don't serialize against each other)
+// but conflict with the FOR UPDATE lock CloseCampaign takes on the campaign row,
+// which is what serializes a decision against a close. A no-op on SQLite, whose
+// single global write lock already serializes the two transactions.
+func forShare(tx *gorm.DB) *gorm.DB {
+	if tx.Dialector != nil && tx.Name() == "postgres" {
+		return tx.Clauses(clause.Locking{Strength: "SHARE"})
 	}
 	return tx
 }
