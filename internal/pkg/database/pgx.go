@@ -26,8 +26,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/auditchain"
 )
 
@@ -235,12 +237,18 @@ var _ AuditAppender = (*PgxAuditRepo)(nil)
 //  2. The chain head is the row with the greatest chain_seq, read WITHOUT a
 //     soft-delete filter (matching GORM's Unscoped()) so a should-never-happen
 //     soft-deleted tail cannot be skipped and orphan the chain.
-//  3. chain_hash = auditchain.Hash(prev, workspace, action, target, metadata, ts)
-//     and the new row takes prev_seq + 1.
+//  3. The row is a version-1 (canonical) event: the timestamp is truncated to
+//     UTC microseconds and the metadata is canonicalised (auditchain) BEFORE it
+//     is both hashed and stored, so the row recomputes byte-for-byte on read —
+//     chain_hash = auditchain.CanonicalHash(...) and chain_hash_version = 1 —
+//     and the next row takes prev_seq + 1.
 //
-// The id is generated client-side (uuid.New, matching the models.Base
-// BeforeCreate hook) and empty metadata is stored as SQL NULL (matching
-// datatypes.JSON's Valuer), so the persisted row is identical to the GORM path.
+// This is the identical pre-image, version stamp and persisted shape the GORM
+// appender writes, so a row written through this adapter is byte-for-byte what
+// the GORM path would write into the same workspace chain, and the compliance
+// verifier recomputes it (not merely linkage-checks it). The id is generated
+// client-side (uuid.New, matching the models.Base BeforeCreate hook) and empty
+// metadata is stored as SQL NULL (matching datatypes.JSON's Valuer).
 func (r *PgxAuditRepo) AppendAudit(ctx context.Context, now time.Time, in AuditInput) error {
 	if in.WorkspaceID == uuid.Nil {
 		return fmt.Errorf("%w: audit event requires a workspace id", ErrValidation)
@@ -248,6 +256,11 @@ func (r *PgxAuditRepo) AppendAudit(ctx context.Context, now time.Time, in AuditI
 	if in.Action == "" {
 		return fmt.Errorf("%w: audit event requires an action", ErrValidation)
 	}
+
+	// Normalise the timestamp and metadata to their canonical, persisted form
+	// BEFORE hashing so the stored row recomputes exactly (see auditchain).
+	now = now.UTC().Truncate(time.Microsecond)
+	canonMeta := auditchain.CanonicalMetadata(in.Metadata)
 
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -276,17 +289,20 @@ func (r *PgxAuditRepo) AppendAudit(ctx context.Context, now time.Time, in AuditI
 		return fmt.Errorf("database: read audit chain head: %w", err)
 	}
 
-	chainHash := auditchain.Hash(prevHash, in.WorkspaceID, in.Action, in.TargetRef, in.Metadata, now)
+	chainHash := auditchain.CanonicalHash(prevHash, in.WorkspaceID, in.Action, in.TargetRef, canonMeta, now)
 
+	// Store the canonical metadata bytes (NULL when empty) so the persisted
+	// jsonb pre-image matches what was hashed; storing the caller's raw bytes
+	// would let jsonb re-order keys and break the recompute.
 	var metadata any
-	if len(in.Metadata) > 0 {
-		metadata = string(in.Metadata)
+	if len(canonMeta) > 0 {
+		metadata = string(canonMeta)
 	}
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO audit_events
-		   (id, workspace_id, chain_seq, actor, action, target_ref, metadata, prev_hash, chain_hash, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)`,
-		uuid.New(), in.WorkspaceID, prevSeq+1, in.Actor, in.Action, in.TargetRef, metadata, prevHash, chainHash, now, now,
+		   (id, workspace_id, chain_seq, actor, action, target_ref, metadata, prev_hash, chain_hash, chain_hash_version, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12)`,
+		uuid.New(), in.WorkspaceID, prevSeq+1, in.Actor, in.Action, in.TargetRef, metadata, prevHash, chainHash, auditchain.HashVersion, now, now,
 	); err != nil {
 		return fmt.Errorf("database: insert audit event: %w", err)
 	}
@@ -358,6 +374,104 @@ func (r *GormWorkspaceConfigRepo) WorkspaceIDs(ctx context.Context) ([]uuid.UUID
 		return nil, err
 	}
 	return ids, nil
+}
+
+// GormAuditRepo is the GORM-backed AuditAppender — the standalone-append
+// counterpart to PgxAuditRepo selected when DATABASE_DRIVER=gorm (and the
+// backend used on the SQLite unit-test path). It writes into the SAME
+// per-workspace chain with byte-identical semantics:
+//
+//   - the per-workspace advisory lock on Postgres (auditchain.LockKey),
+//   - the soft-delete-blind head read by chain_seq (Unscoped, matching the
+//     lifecycle appender so a should-never-happen soft-deleted tail cannot fork
+//     the chain),
+//   - a version-1 canonical row whose timestamp and metadata are normalised
+//     before hashing via the shared auditchain primitives.
+//
+// A row written here is therefore indistinguishable from one written by
+// PgxAuditRepo or lifecycle.AppendAudit, so the two drivers coexist on one chain
+// and a deployment can switch between them without a verifier-visible seam. The
+// logic is reimplemented on *gorm.DB rather than delegating to the lifecycle
+// service to keep this package free of an import cycle (lifecycle's in-package
+// tests import this package), the same pattern GormWorkspaceConfigRepo follows.
+type GormAuditRepo struct {
+	db *gorm.DB
+}
+
+// NewGormAuditRepo builds the GORM audit repository.
+func NewGormAuditRepo(db *gorm.DB) *GormAuditRepo { return &GormAuditRepo{db: db} }
+
+var _ AuditAppender = (*GormAuditRepo)(nil)
+
+// AppendAudit writes one tamper-evident audit event in its own transaction with
+// the same canonical pre-image and version stamp as PgxAuditRepo.
+func (r *GormAuditRepo) AppendAudit(ctx context.Context, now time.Time, in AuditInput) error {
+	if in.WorkspaceID == uuid.Nil {
+		return fmt.Errorf("%w: audit event requires a workspace id", ErrValidation)
+	}
+	if in.Action == "" {
+		return fmt.Errorf("%w: audit event requires an action", ErrValidation)
+	}
+
+	// Normalise the timestamp and metadata to their canonical, persisted form
+	// BEFORE hashing so the stored row recomputes exactly (see auditchain).
+	now = now.UTC().Truncate(time.Microsecond)
+	canonMeta := auditchain.CanonicalMetadata(in.Metadata)
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Serialise concurrent appends in this workspace so the head-read/insert
+		// pair is atomic and the chain cannot fork. Postgres only; the SQLite
+		// test path serialises writers with a single global write lock.
+		if tx.Dialector != nil && tx.Name() == "postgres" {
+			if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", auditchain.LockKey(in.WorkspaceID)).Error; err != nil {
+				return fmt.Errorf("database: lock workspace: %w", err)
+			}
+		}
+
+		var prev models.AuditEvent
+		prevHash := ""
+		var prevSeq int64
+		err := tx.Unscoped().
+			Where("workspace_id = ?", in.WorkspaceID).
+			Order("chain_seq desc").
+			Limit(1).
+			Take(&prev).Error
+		switch {
+		case err == nil:
+			prevHash = prev.ChainHash
+			prevSeq = prev.ChainSeq
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			prevHash, prevSeq = "", 0
+		default:
+			return fmt.Errorf("database: read audit chain head: %w", err)
+		}
+
+		chainHash := auditchain.CanonicalHash(prevHash, in.WorkspaceID, in.Action, in.TargetRef, canonMeta, now)
+
+		// nil datatypes.JSON persists as SQL NULL (its Valuer returns nil for an
+		// empty value), matching the pgx path's NULL for empty metadata.
+		var stored datatypes.JSON
+		if len(canonMeta) > 0 {
+			stored = datatypes.JSON(canonMeta)
+		}
+		row := &models.AuditEvent{
+			WorkspaceID:      in.WorkspaceID,
+			ChainSeq:         prevSeq + 1,
+			Actor:            in.Actor,
+			Action:           in.Action,
+			TargetRef:        in.TargetRef,
+			Metadata:         stored,
+			PrevHash:         prevHash,
+			ChainHash:        chainHash,
+			ChainHashVersion: auditchain.HashVersion,
+		}
+		row.CreatedAt = now
+		row.UpdatedAt = now
+		if err := tx.Create(row).Error; err != nil {
+			return fmt.Errorf("database: insert audit event: %w", err)
+		}
+		return nil
+	})
 }
 
 // workspacesModel is a minimal GORM model bound to the workspaces table for the

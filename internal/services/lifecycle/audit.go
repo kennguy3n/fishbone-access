@@ -1,11 +1,7 @@
 package lifecycle
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -223,62 +219,25 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 }
 
 // AuditHashVersion is the pre-image format the current appender stamps on every
-// audit row it writes. It lets a read-only verifier select the rule that
-// recomputes a given row instead of assuming one global formula forever:
-//
-//	0 — legacy / pre-canonical: the pre-image folded the raw nanosecond wall
-//	    clock (now.UnixNano()) and the caller's raw metadata bytes. Neither is
-//	    recoverable from stored columns — Postgres timestamptz keeps only
-//	    microseconds and jsonb reorders metadata on read-back — so version-0 rows
-//	    are NOT recomputable and are validated by chain linkage only.
-//	1 — canonical: the pre-image truncates the timestamp to UTC microseconds (the
-//	    precision Postgres persists) and folds canonical-JSON metadata, so the row
-//	    recomputes byte-for-byte from its stored columns on every dialect.
-//
-// When this constant advances, ComputeChainHash and the compliance verifier must
-// branch per version so older canonical rows keep verifying under their own rule.
-const AuditHashVersion = 1
+// audit row it writes. It is an alias of auditchain.HashVersion — the single
+// home for the chain-hash contract shared by every backend — kept here under
+// the name lifecycle callers and the compliance verifier already reference.
+// See auditchain.HashVersion for the per-version pre-image semantics.
+const AuditHashVersion = auditchain.HashVersion
 
-// ComputeChainHash derives the SHA-256 chain hash for one audit event from its
-// linking pre-image:
-//
-//	SHA256(prevHash \n workspace \n action \n targetRef \n metadata \n ts_unixnano)
-//
-// It is the single source of truth for the pre-image so the appender and any
-// read-only verifier (the compliance evidence stream) can never drift. Callers
-// MUST pass the canonical metadata bytes (see CanonicalAuditMetadata) and a
-// timestamp; the timestamp is truncated to UTC microseconds here so the hashed
-// value matches what Postgres timestamptz persists (it keeps only microseconds).
+// ComputeChainHash derives the version-1 SHA-256 chain hash for one audit event.
+// It delegates to auditchain.CanonicalHash so the pre-image (field order,
+// timestamp truncation, canonical-metadata folding) is defined once and shared
+// by the GORM appender, the pgx appender, and this verifier path — they can
+// never drift. Callers MUST pass the canonical metadata bytes (see
+// CanonicalAuditMetadata).
 func ComputeChainHash(prevHash string, workspaceID uuid.UUID, action, targetRef string, metadata []byte, ts time.Time) string {
-	h := sha256.New()
-	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
-		prevHash, workspaceID, action, targetRef, string(metadata),
-		ts.UTC().Truncate(time.Microsecond).UnixNano())
-	return hex.EncodeToString(h.Sum(nil))
+	return auditchain.CanonicalHash(prevHash, workspaceID, action, targetRef, metadata, ts)
 }
 
 // CanonicalAuditMetadata returns a stable, canonical JSON encoding of raw so the
-// audit chain hash is invariant under the jsonb round-trip (Postgres reorders
-// object keys and rewrites whitespace/number formatting when it stores jsonb).
-// Re-canonicalizing the bytes read back from jsonb reproduces this exact form,
-// because Go's json.Marshal emits object keys in sorted order with no
-// insignificant whitespace. Empty/whitespace-only input maps to nil so a missing
-// metadata column hashes identically to an explicit empty value.
-func CanonicalAuditMetadata(raw []byte) []byte { return canonicalJSON(raw) }
+// audit chain hash is invariant under the jsonb round-trip. It delegates to
+// auditchain.CanonicalMetadata, the shared definition used by every backend.
+func CanonicalAuditMetadata(raw []byte) []byte { return auditchain.CanonicalMetadata(raw) }
 
-func canonicalJSON(raw []byte) []byte {
-	if len(bytes.TrimSpace(raw)) == 0 {
-		return nil
-	}
-	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
-		// Not valid JSON: fall back to the raw bytes so a (malformed) value still
-		// hashes deterministically rather than silently dropping it.
-		return raw
-	}
-	canon, err := json.Marshal(v)
-	if err != nil {
-		return raw
-	}
-	return canon
-}
+func canonicalJSON(raw []byte) []byte { return auditchain.CanonicalMetadata(raw) }

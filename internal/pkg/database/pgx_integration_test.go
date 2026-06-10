@@ -193,20 +193,21 @@ func TestPgxWorkspaceConfigParity(t *testing.T) {
 
 // auditRow is the read-back view of one chain row used to assert chain integrity.
 type auditRow struct {
-	ChainSeq  int64
-	PrevHash  string
-	ChainHash string
-	Action    string
-	TargetRef string
-	Actor     string
-	Metadata  *string // nil when the column is SQL NULL
+	ChainSeq         int64
+	PrevHash         string
+	ChainHash        string
+	ChainHashVersion int
+	Action           string
+	TargetRef        string
+	Actor            string
+	Metadata         *string // nil when the column is SQL NULL
 }
 
 // readChain returns the workspace's audit rows ordered by chain_seq.
 func readChain(t *testing.T, ctx context.Context, pool *pgxpool.Pool, workspaceID uuid.UUID) []auditRow {
 	t.Helper()
 	rows, err := pool.Query(ctx,
-		`SELECT chain_seq, prev_hash, chain_hash, action, target_ref, actor, metadata::text
+		`SELECT chain_seq, prev_hash, chain_hash, chain_hash_version, action, target_ref, actor, metadata::text
 		   FROM audit_events WHERE workspace_id = $1 ORDER BY chain_seq`, workspaceID)
 	if err != nil {
 		t.Fatalf("read chain: %v", err)
@@ -215,7 +216,7 @@ func readChain(t *testing.T, ctx context.Context, pool *pgxpool.Pool, workspaceI
 	var out []auditRow
 	for rows.Next() {
 		var r auditRow
-		if err := rows.Scan(&r.ChainSeq, &r.PrevHash, &r.ChainHash, &r.Action, &r.TargetRef, &r.Actor, &r.Metadata); err != nil {
+		if err := rows.Scan(&r.ChainSeq, &r.PrevHash, &r.ChainHash, &r.ChainHashVersion, &r.Action, &r.TargetRef, &r.Actor, &r.Metadata); err != nil {
 			t.Fatalf("scan chain row: %v", err)
 		}
 		out = append(out, r)
@@ -248,7 +249,8 @@ func assertChainIntact(t *testing.T, chain []auditRow) {
 // TestPgxAuditChainInteropWithGorm proves an event appended through the pgx
 // adapter and one appended through the GORM lifecycle appender link into the
 // SAME hash chain: the chain stays intact when the two backends interleave, and
-// the recorded hashes match an independent recomputation via auditchain.Hash.
+// the recorded hashes match an independent recomputation via
+// auditchain.CanonicalHash (the shared version-1 pre-image).
 func TestPgxAuditChainInteropWithGorm(t *testing.T) {
 	ctx, gdb, pool := pgxTestSetup(t)
 	pgxRepo := database.NewPgxAuditRepo(pool)
@@ -292,9 +294,15 @@ func TestPgxAuditChainInteropWithGorm(t *testing.T) {
 	}
 	prev := ""
 	for i, in := range inputs {
-		want := auditchain.Hash(prev, ws.ID, in.action, in.target, in.meta, clock)
+		// Both backends write version-1 rows, so recompute with the canonical
+		// pre-image: canonical metadata and the timestamp CanonicalHash truncates
+		// to UTC microseconds (a no-op for this whole-second clock).
+		want := auditchain.CanonicalHash(prev, ws.ID, in.action, in.target, auditchain.CanonicalMetadata(in.meta), clock)
 		if chain[i].ChainHash != want {
 			t.Fatalf("row %d chain_hash=%s want %s", i, chain[i].ChainHash, want)
+		}
+		if chain[i].ChainHashVersion != auditchain.HashVersion {
+			t.Fatalf("row %d chain_hash_version=%d want %d", i, chain[i].ChainHashVersion, auditchain.HashVersion)
 		}
 		prev = chain[i].ChainHash
 	}
