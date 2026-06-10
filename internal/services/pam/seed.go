@@ -92,15 +92,21 @@ func (s *Seeder) SeedPrivilegedSession(ctx context.Context, in SeedPrivilegedSes
 		return nil, fmt.Errorf("%w: subject is required", ErrValidation)
 	}
 
+	// Resolve the acting principal once, before any work, so every audit event
+	// the scenario emits — including the pam.target.created row written when
+	// ensureTarget creates the target on first use — attributes to the same
+	// actor rather than leaving the target-creation event unattributed.
+	actor := in.Actor
+	if actor == "" {
+		actor = in.Subject
+	}
+	in.Actor = actor
+
 	target, err := s.ensureTarget(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 
-	actor := in.Actor
-	if actor == "" {
-		actor = in.Subject
-	}
 	rawToken, _, err := s.broker.MintConnectToken(ctx, MintInput{
 		WorkspaceID: in.WorkspaceID,
 		TargetID:    target.ID,

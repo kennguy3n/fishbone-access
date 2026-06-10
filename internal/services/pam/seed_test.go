@@ -180,6 +180,16 @@ func TestSeederSeedsPrivilegedSession(t *testing.T) {
 		t.Fatalf("want 1 closed session row, got %d", closed)
 	}
 
+	// The target-creation event is attributed to the scenario's actor, not left
+	// blank — the seeder resolves the actor before creating the target.
+	var created models.AuditEvent
+	if err := db.Where("workspace_id = ? AND action = ?", ws, "pam.target.created").Take(&created).Error; err != nil {
+		t.Fatalf("query pam.target.created: %v", err)
+	}
+	if created.Actor != "admin" {
+		t.Errorf("pam.target.created actor = %q, want %q", created.Actor, "admin")
+	}
+
 	// Idempotent target reuse: a second seed run must not create a duplicate target.
 	if _, err := seeder.SeedPrivilegedSession(ctx, in); err != nil {
 		t.Fatalf("second SeedPrivilegedSession: %v", err)
