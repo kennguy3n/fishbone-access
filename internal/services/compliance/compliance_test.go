@@ -134,11 +134,14 @@ func newFakeRevoker(db *gorm.DB) *fakeRevoker {
 }
 
 func (f *fakeRevoker) RevokeGrant(ctx context.Context, workspaceID, grantID uuid.UUID, actor, reason string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	// Run the perturbation hook BEFORE taking f.mu so a hook is free to call the
+	// revoker's own lock-taking helpers (e.g. callCount) without deadlocking.
+	// beforeCall is set once during test setup, so reading it here is race-free.
 	if f.beforeCall != nil {
 		f.beforeCall(grantID)
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls[grantID]++
 	if f.failOn[grantID] {
 		return context.DeadlineExceeded // any non-nil error to exercise retry
