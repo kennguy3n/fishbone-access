@@ -12,7 +12,7 @@ import { HelpTooltip } from "@/components/HelpTooltip";
 import { formatDateTime, titleCase } from "@/lib/format";
 import {
   useMe,
-  useMyAccess,
+  useMyPermissions,
   useCoverage,
   useChainVerification,
   useEvidence,
@@ -24,7 +24,6 @@ import {
 } from "@/api/access";
 
 const EXPORT_PERMISSION = "compliance.export";
-const READ_PERMISSION = "compliance.read";
 
 // Compliance evidence dashboard: control coverage by framework (computed from
 // the audit hash chain), a tamper-evidence check on that chain, an evidence
@@ -33,36 +32,12 @@ const READ_PERMISSION = "compliance.read";
 // mirrors that gate so the affordance reads honestly.
 export function ComplianceEvidence() {
   const [framework, setFramework] = useState<Framework>("SOC 2");
-  const { data: access } = useMyAccess();
-  // compliance.read gates this dashboard server-side (the auditor/compliance
-  // surface; deliberately NOT held by plain operators). Mirror that here so a
-  // member without it sees an honest empty state rather than a wall of 403s.
-  // The server gate is authoritative; this only governs the affordance, and we
-  // wait for /rbac/me to resolve before deciding so we don't flash the denial.
-  const accessLoaded = access !== undefined;
-  const canRead = access?.permissions.includes(READ_PERMISSION) ?? false;
 
-  const coverageQ = useCoverage(framework, undefined, undefined, {
-    enabled: canRead,
-  });
-  // Newest-first so the bounded read returns the most-recent events the card
-  // advertises (the server caps the limit; order=desc takes the latest N).
-  const evidenceQ = useEvidence({ limit: 50, order: "desc" }, { enabled: canRead });
-
-  if (accessLoaded && !canRead) {
-    return (
-      <>
-        <PageHeader
-          title="Compliance evidence"
-          subtitle="Control coverage and tamper-evident evidence assembled as a side effect of normal access operations."
-        />
-        <EmptyState
-          title="Compliance evidence is restricted"
-          description="Viewing the evidence dashboard requires the compliance.read permission. Ask a workspace owner or admin for the auditor role."
-        />
-      </>
-    );
-  }
+  const coverageQ = useCoverage(framework);
+  // order: "desc" so the bounded read returns the most-recent events (matching
+  // the "Most recent" timeline label); without it the chain scans oldest-first
+  // and a workspace with >50 events would permanently show its oldest 50.
+  const evidenceQ = useEvidence({ limit: 50, order: "desc" });
 
   return (
     <>
@@ -72,7 +47,7 @@ export function ComplianceEvidence() {
         actions={<ExportButton framework={framework} />}
       />
 
-      <ChainStatus enabled={canRead} />
+      <ChainStatus />
 
       <div className="pill-tabs" role="tablist" aria-label="Framework">
         {FRAMEWORKS.map((f) => (
@@ -89,7 +64,7 @@ export function ComplianceEvidence() {
       </div>
 
       <AsyncBoundary
-        isLoading={!accessLoaded || coverageQ.isLoading}
+        isLoading={coverageQ.isLoading}
         error={coverageQ.error}
         data={coverageQ.data}
         onRetry={coverageQ.refetch}
@@ -125,7 +100,7 @@ export function ComplianceEvidence() {
         subtitle="Most recent control-relevant events on the audit chain."
       >
         <AsyncBoundary
-          isLoading={!accessLoaded || evidenceQ.isLoading}
+          isLoading={evidenceQ.isLoading}
           error={evidenceQ.error}
           data={evidenceQ.data}
           onRetry={evidenceQ.refetch}
@@ -144,8 +119,8 @@ export function ComplianceEvidence() {
   );
 }
 
-function ChainStatus({ enabled }: { enabled: boolean }) {
-  const chainQ = useChainVerification({ enabled });
+function ChainStatus() {
+  const chainQ = useChainVerification();
   if (chainQ.isLoading || !chainQ.data) return null;
   const v = chainQ.data;
   return (
@@ -235,15 +210,18 @@ function EvidenceTimeline({ records }: { records: EvidenceRecord[] }) {
 function ExportButton({ framework }: { framework: Framework }) {
   const toast = useToast();
   const { data: me } = useMe();
-  // The export permission is an RBAC permission resolved from the caller's
-  // workspace role (server: RequirePermission(compliance.export)), NOT an IAM
-  // token scope — so it is read from /rbac/me, not me.scopes. MFA, by contrast,
-  // is a token-claim property, so it still comes from /me. Both gates are
-  // independently enforced server-side; this only governs the affordance.
-  const { data: access } = useMyAccess();
+  const { data: myPerms } = useMyPermissions();
   const exportMut = useExportEvidencePack();
 
-  const hasPerm = access?.permissions.includes(EXPORT_PERMISSION) ?? false;
+  // Gate against the server's RBAC-resolved permission set (the exact set
+  // RequirePermission enforces), not the JWT scopes which no longer drive RBAC.
+  // undefined = still loading or the RBAC tier isn't mounted (server gate then
+  // no-ops) → treat as allowed so an authorized auditor never sees a
+  // false-negative disabled button; the server stays the authority either way.
+  const hasPerm =
+    myPerms === undefined
+      ? true
+      : myPerms.permissions.includes(EXPORT_PERMISSION);
   const mfaOk = me?.mfa_satisfied ?? false;
   const blocked = !hasPerm || !mfaOk;
   const reason = !hasPerm

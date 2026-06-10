@@ -43,18 +43,18 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    labelId: "nav.group.compliance",
-    items: [
-      { labelId: "nav.campaigns", to: "/compliance/campaigns", icon: "audit" },
-      { labelId: "nav.evidence", to: "/compliance/evidence", icon: "compliance" },
-    ],
-  },
-  {
     labelId: "nav.group.pam",
     items: [
       { labelId: "nav.pam.targets", to: "/pam/targets", icon: "key" },
       { labelId: "nav.pam.leases", to: "/pam/leases", icon: "playbooks" },
       { labelId: "nav.pam.sessions", to: "/pam/sessions", icon: "troubleshoot" },
+    ],
+  },
+  {
+    labelId: "nav.group.compliance",
+    items: [
+      { labelId: "nav.campaigns", to: "/compliance/campaigns", icon: "audit" },
+      { labelId: "nav.evidence", to: "/compliance/evidence", icon: "compliance" },
     ],
   },
   {

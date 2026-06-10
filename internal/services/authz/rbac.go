@@ -202,7 +202,16 @@ const (
 	PermWorkflowEdit Permission = "workflow.edit"
 
 	// --- Compliance / evidence ----------------------------------------
+	//
+	// PermComplianceRead gates the read surface (evidence stream, control
+	// coverage, chain verification, campaign listing/reports). PermComplianceManage
+	// gates the campaign write surface (start/decide/close/overdue-enforce); it is
+	// held by the governance roles (owner/admin/security_admin) but NOT by the
+	// read-only auditor, so an auditor can observe and export evidence without
+	// being able to drive (or close) a certification campaign. PermComplianceExport
+	// gates the framework-mapped pack export (also step-up-MFA gated at the route).
 	PermComplianceRead   Permission = "compliance.read"
+	PermComplianceManage Permission = "compliance.manage"
 	PermComplianceExport Permission = "compliance.export"
 
 	// --- Audit trail --------------------------------------------------
@@ -249,7 +258,7 @@ var AllPermissions = []Permission{
 	PermPAMSessionRead, PermPAMSessionAdmin,
 	PermPAMConnect, PermPAMTakeover,
 	PermWorkflowRead, PermWorkflowEdit,
-	PermComplianceRead, PermComplianceExport,
+	PermComplianceRead, PermComplianceManage, PermComplianceExport,
 	PermAuditRead,
 	PermDirectoryRead, PermTeamRead, PermTeamWrite,
 	PermRBACRead, PermRBACManage,
@@ -323,7 +332,7 @@ var rolePermissionSlices = map[WorkspaceRole][]Permission{
 		PermPAMSessionRead, PermPAMSessionAdmin,
 		PermPAMConnect, PermPAMTakeover,
 		PermWorkflowRead, PermWorkflowEdit,
-		PermComplianceRead, PermComplianceExport,
+		PermComplianceRead, PermComplianceManage, PermComplianceExport,
 		PermAuditRead,
 		PermDirectoryRead, PermTeamRead, PermTeamWrite,
 		PermRBACRead, PermRBACManage,
@@ -354,7 +363,7 @@ var rolePermissionSlices = map[WorkspaceRole][]Permission{
 		PermPAMSessionRead, PermPAMSessionAdmin,
 		PermPAMConnect, PermPAMTakeover,
 		PermWorkflowRead, PermWorkflowEdit,
-		PermComplianceRead, PermComplianceExport,
+		PermComplianceRead, PermComplianceManage, PermComplianceExport,
 		PermAuditRead,
 		PermDirectoryRead, PermTeamRead,
 		PermRBACRead,

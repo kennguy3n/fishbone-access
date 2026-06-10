@@ -3,6 +3,8 @@ package lifecycle
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -185,10 +187,13 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 	// would re-serialize a differently-ordered object). Folding the canonical
 	// form into both the hash AND the stored row makes the pre-image identical at
 	// append and verify time, independent of jsonb's internal normalization.
-	// ComputeChainHash routes the SHA through the shared auditchain.Hash primitive
-	// (the single definition both the GORM and pgx backends use) after applying
-	// the canonical-metadata + microsecond-timestamp contract, so the row stays
-	// recomputable without forking that shared definition.
+	//
+	// This GORM path stamps ChainHashVersion = AuditHashVersion (canonical,
+	// microsecond-truncated, fully recomputable). The pgx audit backend
+	// (internal/pkg/database) links into the SAME per-workspace chain via the
+	// shared auditchain.LockKey + prev_hash, but writes version-0 rows with
+	// auditchain.Hash; the verifier accepts those on linkage alone, so the two
+	// backends coexist on one chain without false tamper reports.
 	canonMeta := canonicalJSON(e.Metadata)
 	chainHash := ComputeChainHash(prevHash, e.WorkspaceID, e.Action, e.TargetRef, canonMeta, now)
 
@@ -234,24 +239,22 @@ func appendAudit(ctx context.Context, tx *gorm.DB, now time.Time, e auditEntry) 
 // branch per version so older canonical rows keep verifying under their own rule.
 const AuditHashVersion = 1
 
-// ComputeChainHash derives the SHA-256 chain hash for one canonical (version-1)
-// audit event from its linking pre-image:
+// ComputeChainHash derives the SHA-256 chain hash for one audit event from its
+// linking pre-image:
 //
 //	SHA256(prevHash \n workspace \n action \n targetRef \n metadata \n ts_unixnano)
 //
-// The actual SHA is delegated to auditchain.Hash — the single, backend-shared
-// definition of the pre-image (the GORM appender here and the pgx appender both
-// call it, so they can never drift). This function layers the canonical version-1
-// input contract on top of that primitive so a stored row recomputes byte-for-
-// byte on read-back: callers MUST pass the canonical metadata bytes (see
-// CanonicalAuditMetadata), and the timestamp is truncated to UTC microseconds
-// here — the precision Postgres timestamptz persists — before hashing. Because
-// auditchain.Hash hashes ts.UnixNano(), feeding it an already-microsecond-
-// truncated instant yields the same digest a verifier reproduces from the stored
-// created_at on every dialect. The compliance verifier recomputes version-1 rows
-// through this same function so the appender and verifier can never diverge.
+// It is the single source of truth for the pre-image so the appender and any
+// read-only verifier (the compliance evidence stream) can never drift. Callers
+// MUST pass the canonical metadata bytes (see CanonicalAuditMetadata) and a
+// timestamp; the timestamp is truncated to UTC microseconds here so the hashed
+// value matches what Postgres timestamptz persists (it keeps only microseconds).
 func ComputeChainHash(prevHash string, workspaceID uuid.UUID, action, targetRef string, metadata []byte, ts time.Time) string {
-	return auditchain.Hash(prevHash, workspaceID, action, targetRef, metadata, ts.UTC().Truncate(time.Microsecond))
+	h := sha256.New()
+	fmt.Fprintf(h, "%s\n%s\n%s\n%s\n%s\n%d",
+		prevHash, workspaceID, action, targetRef, string(metadata),
+		ts.UTC().Truncate(time.Microsecond).UnixNano())
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // CanonicalAuditMetadata returns a stable, canonical JSON encoding of raw so the

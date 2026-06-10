@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -209,6 +210,45 @@ func TestRBACWorkflowGating(t *testing.T) {
 	}
 }
 
+// TestRBACPAMTargetGating proves the WS4 PAM target routes honor the
+// pam.target.read / pam.target.write split. Registering a target binds a sealed
+// credential to the workspace, so it is a privileged write: a standard operator
+// holds pam.target.read (may list) but not pam.target.write (may not register),
+// while an admin holds the write permission and clears the gate. This closes the
+// ungated-target-creation gap the review flagged at integration — before this,
+// any workspace member could register a target with a credential.
+func TestRBACPAMTargetGating(t *testing.T) {
+	// A real (test) DEK so newPAMHandlers builds a working vault that can seal
+	// the target credential; it is read at NewRouter time inside newRBACTestEnv.
+	t.Setenv("ACCESS_CREDENTIAL_DEK", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	env := newRBACTestEnv(t)
+
+	body := map[string]any{
+		"name": "db", "protocol": "postgres", "address": "db:5432",
+		"secret": map[string]any{"password": "pw"},
+	}
+
+	// Operator holds pam.target.read → listing targets is allowed.
+	if w := do(t, env.router, http.MethodGet, "/api/v1/pam/targets", "tok-operator", nil); w.Code != http.StatusOK {
+		t.Fatalf("operator GET pam/targets = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	// Operator lacks pam.target.write → registering a target is denied at the
+	// permission gate (before the vault ever seals a credential).
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-operator", body); w.Code != http.StatusForbidden {
+		t.Fatalf("operator POST pam/targets = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+	// Auditor is read-only across the board → target registration is denied too.
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-auditor", body); w.Code != http.StatusForbidden {
+		t.Fatalf("auditor POST pam/targets = %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+
+	// Admin holds pam.target.write → the gate admits the registration and it
+	// succeeds (201), proving the gate is a permission split, not a blanket deny.
+	if w := do(t, env.router, http.MethodPost, "/api/v1/pam/targets", "tok-admin", body); w.Code != http.StatusCreated {
+		t.Fatalf("admin POST pam/targets = %d, want 201; body=%s", w.Code, w.Body.String())
+	}
+}
+
 // TestRBACConnectorGating proves the WS2 connector routes honor the
 // connector.read / connector.manage split. An operator holds connector.read so
 // the catalogue list is allowed, but lacks connector.manage so creating a
@@ -251,6 +291,49 @@ func TestRBACListRolesRequiresMembership(t *testing.T) {
 	}
 	if w := do(t, env.router, http.MethodGet, "/api/v1/rbac/roles", "tok-stranger", nil); w.Code != http.StatusForbidden {
 		t.Fatalf("non-member GET rbac/roles = %d, want 403", w.Code)
+	}
+}
+
+// TestRBACMyPermissions proves /rbac/permissions returns the caller's resolved
+// role + the exact permission set the per-route RequirePermission gates enforce
+// (so the UI can gate affordances honestly), and that it fails closed for a
+// non-member like every other tenant-scoped route.
+func TestRBACMyPermissions(t *testing.T) {
+	env := newRBACTestEnv(t)
+
+	w := do(t, env.router, http.MethodGet, "/api/v1/rbac/permissions", "tok-auditor", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("auditor GET rbac/permissions = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var got struct {
+		Role        string   `json:"role"`
+		Permissions []string `json:"permissions"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v; body=%s", err, w.Body.String())
+	}
+	if got.Role != string(authz.RoleAuditor) {
+		t.Fatalf("role = %q, want %q", got.Role, authz.RoleAuditor)
+	}
+	// The payload must equal the authoritative resolved set exactly — the same
+	// set AuthzMiddleware seeds and RequirePermission checks against.
+	want := authz.PermissionsForRole(authz.RoleAuditor)
+	if len(got.Permissions) != len(want) {
+		t.Fatalf("permission count = %d, want %d; got=%v", len(got.Permissions), len(want), got.Permissions)
+	}
+	for _, p := range got.Permissions {
+		if !want.Has(authz.Permission(p)) {
+			t.Fatalf("unexpected permission %q in resolved set %v", p, got.Permissions)
+		}
+	}
+	// The compliance-export affordance the UI gates on is present for an auditor.
+	if !contains(w.Body.String(), string(authz.PermComplianceExport)) {
+		t.Fatalf("auditor should resolve %s; body=%s", authz.PermComplianceExport, w.Body.String())
+	}
+
+	// Fail closed: a valid token with no membership row is denied at AuthzMiddleware.
+	if s := do(t, env.router, http.MethodGet, "/api/v1/rbac/permissions", "tok-stranger", nil); s.Code != http.StatusForbidden {
+		t.Fatalf("non-member GET rbac/permissions = %d, want 403", s.Code)
 	}
 }
 

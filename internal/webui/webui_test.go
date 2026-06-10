@@ -1,7 +1,6 @@
 package webui
 
 import (
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -135,5 +134,5 @@ func TestRegisterNoopWhenDisabled(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("disabled: status = %d, want 404 (gin default)", w.Code)
 	}
-	var _ fs.FS = Assets
+	var _ = Assets
 }

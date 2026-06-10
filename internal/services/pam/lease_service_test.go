@@ -111,6 +111,57 @@ func TestLeaseLifecycle(t *testing.T) {
 	}
 }
 
+// TestMintAgainstRevokedLeaseFailsClosed proves the connect-token mint validates
+// the lease inside the same transaction as the token insert: once a lease is
+// revoked, minting a lease-bound token against it fails closed with no token row
+// and no pam.connect_token.minted audit event. This is the hermetic counterpart
+// to the Postgres FOR UPDATE serialization that closes the validate→insert
+// TOCTOU window (a concurrent revoke can no longer slip between the two).
+func TestMintAgainstRevokedLeaseFailsClosed(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	target := seedLeaseTarget(t, v, ws, "box")
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+	leases := NewPAMLeaseService(db, nil)
+	leases.SetClock(clock)
+	broker := NewBroker(db, v, nil)
+	broker.SetClock(clock)
+	broker.SetLeaseValidator(leases)
+
+	lease, err := leases.RequestLease(context.Background(), RequestLeaseInput{
+		WorkspaceID: ws, TargetID: target.ID, Subject: "alice", RequestedBy: "alice", TTL: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("RequestLease: %v", err)
+	}
+	if _, err := leases.ApproveLease(context.Background(), ws, lease.ID, "carol", time.Hour); err != nil {
+		t.Fatalf("ApproveLease: %v", err)
+	}
+	if _, err := leases.RevokeLease(context.Background(), ws, lease.ID, "admin", "kill"); err != nil {
+		t.Fatalf("RevokeLease: %v", err)
+	}
+
+	if _, _, err := broker.MintConnectToken(context.Background(), MintInput{
+		WorkspaceID: ws, TargetID: target.ID, Subject: "alice", Actor: "alice", LeaseID: &lease.ID,
+	}); !errors.Is(err, ErrLeaseTerminal) {
+		t.Fatalf("mint against revoked lease: want ErrLeaseTerminal, got %v", err)
+	}
+
+	// The failed mint left neither a token row nor a minted audit event.
+	var tokens, mintedAudits int64
+	db.Model(&models.PAMConnectToken{}).Where("workspace_id = ?", ws).Count(&tokens)
+	if tokens != 0 {
+		t.Fatalf("revoked-lease mint persisted %d token rows (want 0)", tokens)
+	}
+	db.Model(&models.AuditEvent{}).Where("workspace_id = ? AND action = ?", ws, "pam.connect_token.minted").Count(&mintedAudits)
+	if mintedAudits != 0 {
+		t.Fatalf("revoked-lease mint wrote %d minted audit events (want 0)", mintedAudits)
+	}
+}
+
 // TestApproveTerminalRejected confirms illegal transitions out of the terminal
 // states are rejected with ErrLeaseTerminal.
 func TestApproveTerminalRejected(t *testing.T) {

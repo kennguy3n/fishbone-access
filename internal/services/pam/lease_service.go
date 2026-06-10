@@ -591,6 +591,27 @@ func (s *PAMLeaseService) ValidateLeaseTx(ctx context.Context, tx *gorm.DB, work
 	return s.validateLease(&lease, subject, targetID)
 }
 
+// ValidateLeaseForUpdateTx is ValidateLeaseTx but takes a FOR UPDATE row lock on
+// the lease (via loadForUpdate, the same lock the approve/revoke/expire
+// transitions take). The caller's transaction therefore serializes against a
+// concurrent revoke or expire: a revoke that would otherwise commit "between"
+// the liveness check and the caller's own insert cannot interleave — it blocks
+// on the row lock until this transaction commits or rolls back. This is what
+// lets connect-token mint validate-and-insert atomically and close the TOCTOU
+// window the plain (snapshot-only) ValidateLeaseTx leaves open. The validated
+// lease is returned so the caller can clamp to its expiry from the same locked
+// read.
+func (s *PAMLeaseService) ValidateLeaseForUpdateTx(ctx context.Context, tx *gorm.DB, workspaceID, leaseID uuid.UUID, subject string, targetID uuid.UUID) (*models.PAMLease, error) {
+	lease, err := s.loadForUpdate(ctx, tx, workspaceID, leaseID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.validateLease(lease, subject, targetID); err != nil {
+		return nil, err
+	}
+	return lease, nil
+}
+
 // MarkActivatedTx flips an approved lease to active on first session open by
 // stamping activated_at (if not already set) inside tx. It is idempotent — a
 // lease that already has a session keeps its original activation time — so the

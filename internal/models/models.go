@@ -398,11 +398,11 @@ func All() []any {
 		&PAMConnectToken{},
 		&PAMSession{},
 		&PAMSessionCommand{},
-		&CertificationCampaign{},
-		&CertificationItem{},
 		&PAMLease{},
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},
+		&CertificationCampaign{},
+		&CertificationItem{},
 	}
 }

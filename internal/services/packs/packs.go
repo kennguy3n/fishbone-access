@@ -99,9 +99,9 @@ type Filter struct {
 }
 
 func contains(set []string, want string) bool {
-	want = strings.ToLower(strings.TrimSpace(want))
+	want = strings.TrimSpace(want)
 	for _, v := range set {
-		if strings.ToLower(v) == want {
+		if strings.EqualFold(v, want) {
 			return true
 		}
 	}
