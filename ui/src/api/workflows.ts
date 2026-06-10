@@ -279,12 +279,40 @@ export const getRun = (id: string) =>
     method: "GET",
   }).then((r) => normalizeRun(r.run));
 
+// emergencyOffboard resolves with the per-layer leaver breakdown on success.
+// On a completed offboard with layer failures the server returns 500 carrying
+// the SAME breakdown under `leaver` (with `errored: true`), which `call`
+// surfaces as an ApiError. The breakdown is preserved on `ApiError.details` —
+// use `failedOffboardFromError` to recover it so the caller can render which
+// layers failed instead of an opaque error, mirroring the Android/iOS SDKs.
 export const emergencyOffboard = (userExternalID: string, reason?: string) =>
   call<{ leaver: LeaverResult }>({
     url: "/emergency-offboard",
     method: "POST",
     data: { user_external_id: userExternalID, reason },
-  }).then((r) => r.leaver);
+  }).then((r) => normalizeLeaver(r.leaver));
+
+// failedOffboardFromError extracts the per-layer leaver breakdown a failed
+// emergencyOffboard call carries on its ApiError (the 500 body's `leaver`),
+// returning undefined when the error is not a partial-failure offboard (e.g. a
+// 403 step-up-MFA or 404) so the caller falls through to the generic error
+// path. Mirrors OkHttpAccessClient/URLSessionAccessClient, which likewise
+// recover the LeaverResult from a 500 partial-failure body.
+export function failedOffboardFromError(
+  err: unknown,
+): LeaverResult | undefined {
+  if (!(err instanceof ApiError)) return undefined;
+  const details = err.details;
+  if (typeof details !== "object" || details === null) return undefined;
+  const leaver = (details as { leaver?: LeaverResult }).leaver;
+  return leaver ? normalizeLeaver(leaver) : undefined;
+}
+
+// Idiomatic Go marshals an empty slice as JSON null; the breakdown UI maps over
+// `layers`, so normalize a missing/null slice to [] once here.
+function normalizeLeaver(r: LeaverResult): LeaverResult {
+  return { ...r, layers: r.layers ?? [] };
+}
 
 // Idiomatic Go marshals an empty slice as JSON null; the UI treats steps/layers
 // as always-present arrays, so normalize here rather than guarding at every use.

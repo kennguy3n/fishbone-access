@@ -14,6 +14,7 @@ import { useToast } from "@/components/Toast";
 import {
   useRuns,
   useEmergencyOffboard,
+  failedOffboardFromError,
   type WorkflowRun,
   type LeaverResult,
 } from "@/api/workflows";
@@ -205,6 +206,19 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
         toast.error(
           "Step-up MFA required",
           "Re-authenticate with MFA to run an emergency offboard.",
+        );
+        return;
+      }
+      // A partial failure comes back as HTTP 500 carrying the same per-layer
+      // breakdown under `leaver`; recover and render it (as both SDKs do) so
+      // the operator sees which layers failed and can retry, rather than an
+      // opaque error toast.
+      const partial = failedOffboardFromError(err);
+      if (partial) {
+        setResult(partial);
+        toast.error(
+          "Offboard completed with failures",
+          "One or more layers failed — review the per-layer breakdown.",
         );
         return;
       }
