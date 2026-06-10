@@ -125,8 +125,8 @@ func (p *RedisProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "redis-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
@@ -291,6 +291,10 @@ func (p *RedisProxy) splice(ctx context.Context, operator net.Conn, operatorBuf 
 // command) rather than being severed.
 func (p *RedisProxy) pump(ctx context.Context, operator io.Writer, operatorBuf *bufio.Reader, upstream net.Conn, upstreamBuf *bufio.Reader, session *models.PAMSession, rec *IORecorder) {
 	for {
+		// Honour the live soft-pause gate before reading the next operator
+		// command: while an admin has frozen the session no further RESP
+		// command is pulled or forwarded to the upstream server.
+		rec.WaitWhilePaused()
 		args, raw, err := readRESPCommand(operatorBuf)
 		if err != nil {
 			return

@@ -125,10 +125,10 @@ func (p *K8sExecProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "k8s-proxy: session %s opened for %s → %s %s", session.ID, session.Subject, req.Method, req.URL.Path)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
-	rec.Annotate(fmt.Sprintf("[exec %s %s]", req.Method, req.URL.RequestURI()))
 	sessCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
+	rec.Annotate(fmt.Sprintf("[exec %s %s]", req.Method, req.URL.RequestURI()))
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
 	}

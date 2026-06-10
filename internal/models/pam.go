@@ -135,6 +135,13 @@ type PAMConnectToken struct {
 	ExpiresAt   time.Time  `gorm:"not null" json:"expires_at"`
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
 	SessionID   *uuid.UUID `gorm:"type:uuid;index" json:"session_id,omitempty"`
+	// LeaseID binds the token to the JIT lease that authorized it. When set, the
+	// broker re-validates the lease is live (granted, not revoked, not expired)
+	// at both mint and redeem time, so a target's sealed credential is only ever
+	// brokered into a session a live lease authorizes. Nil for the legacy
+	// direct-mint path (a token minted without a lease, gated solely by the
+	// target's own MFA requirement).
+	LeaseID *uuid.UUID `gorm:"type:uuid;index" json:"lease_id,omitempty"`
 }
 
 // PAMSession is one proxied privileged connection. It is created when a connect
@@ -154,6 +161,19 @@ type PAMSession struct {
 	StartedAt    time.Time  `json:"started_at"`
 	EndedAt      *time.Time `json:"ended_at,omitempty"`
 	TerminatedBy string     `json:"terminated_by,omitempty"`
+	// LeaseID links the session to the JIT lease that authorized it (nil for the
+	// legacy direct-mint path). The expiry/revoke sweep uses it to find and tear
+	// down sessions whose lease is no longer live.
+	LeaseID *uuid.UUID `gorm:"type:uuid;index" json:"lease_id,omitempty"`
+	// Paused is the operator-controlled soft-pause flag. While true the gateway
+	// reconciler holds the session's operator→upstream byte path (buffered, not
+	// dropped) so no further wire bytes reach the upstream until an operator
+	// resumes or terminates. It is the durable, cross-process intent the gateway
+	// loop reconciles against the in-process pause gate; PausedBy/PausedAt record
+	// who paused it and when for the audit trail and the live-sessions console.
+	Paused   bool       `gorm:"not null;default:false" json:"paused"`
+	PausedBy string     `json:"paused_by,omitempty"`
+	PausedAt *time.Time `json:"paused_at,omitempty"`
 }
 
 // PAMSessionCommand is one logged command (SSH) or statement (SQL) observed on

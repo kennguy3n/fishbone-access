@@ -131,8 +131,8 @@ func (p *MySQLProxy) Handle(ctx context.Context, conn net.Conn) {
 	session := leased.Session
 	logger.Infof(ctx, "mysql-proxy: session %s opened for %s → %s", session.ID, session.Subject, leased.Target.Address)
 
-	rec := NewIORecorder(session.ID.String(), p.recMaxBytes)
 	sessCtx, cancel := context.WithCancel(ctx)
+	rec := NewIORecorder(sessCtx, session.ID.String(), p.recMaxBytes)
 	defer cancel()
 	if p.hub != nil {
 		defer p.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)()
@@ -287,6 +287,10 @@ func (p *MySQLProxy) splice(ctx context.Context, operator, upstream net.Conn, se
 // protocol state.
 func (p *MySQLProxy) forwardOperatorPackets(ctx context.Context, operator, upstream net.Conn, session *models.PAMSession, rec *IORecorder) {
 	for {
+		// Honour the live soft-pause gate before reading the next operator
+		// packet: while an admin has frozen the session no further command
+		// packet is pulled or forwarded to the upstream server.
+		rec.WaitWhilePaused()
 		payload, seq, err := readPacket(operator)
 		if err != nil {
 			return

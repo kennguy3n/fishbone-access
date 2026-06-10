@@ -390,6 +390,7 @@ func All() []any {
 		&PAMConnectToken{},
 		&PAMSession{},
 		&PAMSessionCommand{},
+		&PAMLease{},
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},

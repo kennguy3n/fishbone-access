@@ -470,7 +470,7 @@ func TestMongoRelayUpstreamRepliesFramed(t *testing.T) {
 	upstream := bytes.NewReader(append(append([]byte{}, small...), big...))
 
 	w := &chunkRecordingWriter{}
-	rec := NewIORecorder("test-relay", 0)
+	rec := NewIORecorder(context.Background(), "test-relay", 0)
 	p := &MongoProxy{}
 	p.relayUpstreamReplies(w, upstream, rec)
 
