@@ -313,176 +313,56 @@ func parseSuppressions(name, sql string) (map[string]bool, []Violation) {
 	return allowed, violations
 }
 
-// maskSQL blanks out content the lock-safety scanner must not match inside:
-// line comments (-- … EOL), block comments (/* … */, which PostgreSQL allows to
-// nest), single-quoted string literals (with ” escapes), escape strings
-// (E'…', where a backslash escapes the next byte so \' does not close), and
-// dollar-quoted strings ($$…$$ or $tag$…$tag$, e.g. PL/pgSQL bodies). Masked
-// spans are replaced with spaces so byte offsets and statement boundaries are
-// preserved.
-func maskSQL(sql string) string {
-	out := []byte(sql)
-	n := len(out)
-	for i := 0; i < n; {
-		switch {
-		case out[i] == '-' && i+1 < n && out[i+1] == '-':
-			for i < n && out[i] != '\n' {
-				out[i] = ' '
-				i++
-			}
-		case out[i] == '/' && i+1 < n && out[i+1] == '*':
-			// PostgreSQL block comments nest, so track depth rather than stopping at
-			// the first */ (which would leave the tail of an outer comment exposed to
-			// the scanner).
-			depth := 0
-			for i < n {
-				if out[i] == '/' && i+1 < n && out[i+1] == '*' {
-					out[i], out[i+1] = ' ', ' '
-					i += 2
-					depth++
-					continue
-				}
-				if out[i] == '*' && i+1 < n && out[i+1] == '/' {
-					out[i], out[i+1] = ' ', ' '
-					i += 2
-					depth--
-					if depth == 0 {
-						break
-					}
-					continue
-				}
-				if out[i] != '\n' {
-					out[i] = ' '
-				}
-				i++
-			}
-		case (out[i] == 'E' || out[i] == 'e') && i+1 < n && out[i+1] == '\'' &&
-			(i == 0 || !isWordChar(out[i-1])):
-			// PostgreSQL escape string E'…': unlike a standard literal, a backslash
-			// escapes the next byte, so \' and \\ do NOT end the string. Mask the E
-			// prefix, the quotes, and the body. The leading-word guard keeps the tail
-			// of an identifier (e.g. a column named foo_e) from being read as a prefix.
-			out[i] = ' ' // E/e prefix
-			i++
-			out[i] = ' ' // opening quote
-			i++
-			for i < n {
-				if out[i] == '\\' && i+1 < n {
-					out[i] = ' '
-					i++
-					if out[i] != '\n' {
-						out[i] = ' '
-					}
-					i++
-					continue
-				}
-				if out[i] == '\'' {
-					// A doubled '' is an escaped quote in an E-string too.
-					if i+1 < n && out[i+1] == '\'' {
-						out[i], out[i+1] = ' ', ' '
-						i += 2
-						continue
-					}
-					out[i] = ' '
-					i++
-					break
-				}
-				if out[i] != '\n' {
-					out[i] = ' '
-				}
-				i++
-			}
-		case out[i] == '\'':
-			out[i] = ' '
-			i++
-			for i < n {
-				if out[i] == '\'' {
-					// Doubled '' is an escaped quote inside the literal.
-					if i+1 < n && out[i+1] == '\'' {
-						out[i], out[i+1] = ' ', ' '
-						i += 2
-						continue
-					}
-					out[i] = ' '
-					i++
-					break
-				}
-				if out[i] != '\n' {
-					out[i] = ' '
-				}
-				i++
-			}
-		case out[i] == '$':
-			// PostgreSQL dollar-quoted string ($$...$$ or $tag$...$tag$), used for
-			// PL/pgSQL bodies. Mask the whole span — including any LOCK TABLE / DROP
-			// COLUMN keywords or semicolons it contains — so a function body is never
-			// scanned as DDL. A bare '$' or a positional parameter like $1 is not a
-			// delimiter (dollarTag returns ""), so it is left intact.
-			if delim := dollarTag(out, i); delim != "" {
-				end := i + len(delim)
-				for k := i; k < end; k++ {
-					out[k] = ' '
-				}
-				i = end
-				for i < n {
-					if hasDelimAt(out, i, delim) {
-						for k := i; k < i+len(delim); k++ {
-							out[k] = ' '
-						}
-						i += len(delim)
-						break
-					}
-					if out[i] != '\n' {
-						out[i] = ' '
-					}
-					i++
-				}
-			} else {
-				i++
-			}
-		default:
-			i++
-		}
-	}
-	return string(out)
-}
+// regionKind classifies a contiguous span of SQL produced by scanRegions.
+type regionKind int
 
-// commentText is the inverse of maskSQL: it returns sql with everything EXCEPT
-// line- and block-comment bodies blanked to spaces (length and newlines
-// preserved). It shares maskSQL's lexical rules — string literals, E'…' escape
-// strings, and dollar-quoted bodies are skipped wholesale so a -- or /* that
-// appears inside one is never mistaken for the start of a comment. This is what
-// lets parseSuppressions trust that a matched directive really sits in a
-// comment rather than in data.
-func commentText(sql string) string {
+const (
+	regionCode    regionKind = iota // ordinary SQL outside comments and strings
+	regionComment                   // -- … EOL or /* … */ (nestable) comment, delimiters included
+	regionLiteral                   // '…', E'…', or $tag$…$tag$ string, delimiters included
+)
+
+// scanRegions performs a single PostgreSQL-aware lexical pass over sql and calls
+// visit once per contiguous region with its [start,end) byte range and kind. It
+// is the single source of truth for the lexical rules that maskSQL and
+// commentText each used to re-implement: line comments (-- … EOL), block
+// comments (/* … */, which PostgreSQL allows to nest), single-quoted literals
+// (with '' escapes), E'…' escape strings (a backslash escapes the next byte, so
+// \' does not close), and dollar-quoted bodies ($$…$$ / $tag$…$tag$, e.g.
+// PL/pgSQL). A bare '$' or a positional parameter like $1 is not a delimiter
+// (dollarTag returns ""), so it stays code. Splitting the lexer from the two
+// renderers removes the duplicate parsing logic that previously lived in each
+// and guarantees they can never drift.
+func scanRegions(sql string, visit func(start, end int, kind regionKind)) {
 	src := []byte(sql)
 	n := len(src)
-	out := make([]byte, n)
-	for i := range out {
-		if src[i] == '\n' {
-			out[i] = '\n'
-		} else {
-			out[i] = ' '
+	codeStart := 0
+	flushCode := func(end int) {
+		if end > codeStart {
+			visit(codeStart, end, regionCode)
 		}
 	}
 	for i := 0; i < n; {
 		switch {
 		case src[i] == '-' && i+1 < n && src[i+1] == '-':
+			flushCode(i)
+			start := i
 			for i < n && src[i] != '\n' {
-				out[i] = src[i]
 				i++
 			}
+			visit(start, i, regionComment)
+			codeStart = i
 		case src[i] == '/' && i+1 < n && src[i+1] == '*':
+			flushCode(i)
+			start := i
 			depth := 0
 			for i < n {
 				if src[i] == '/' && i+1 < n && src[i+1] == '*' {
-					out[i], out[i+1] = src[i], src[i+1]
 					i += 2
 					depth++
 					continue
 				}
 				if src[i] == '*' && i+1 < n && src[i+1] == '/' {
-					out[i], out[i+1] = src[i], src[i+1]
 					i += 2
 					depth--
 					if depth == 0 {
@@ -490,18 +370,24 @@ func commentText(sql string) string {
 					}
 					continue
 				}
-				out[i] = src[i]
 				i++
 			}
+			visit(start, i, regionComment)
+			codeStart = i
 		case (src[i] == 'E' || src[i] == 'e') && i+1 < n && src[i+1] == '\'' &&
 			(i == 0 || !isWordChar(src[i-1])):
-			i += 2
+			// The leading-word guard keeps the tail of an identifier (e.g. a column
+			// named foo_e) from being read as an E-string prefix.
+			flushCode(i)
+			start := i
+			i += 2 // E/e prefix + opening quote
 			for i < n {
 				if src[i] == '\\' && i+1 < n {
 					i += 2
 					continue
 				}
 				if src[i] == '\'' {
+					// A doubled '' is an escaped quote in an E-string too.
 					if i+1 < n && src[i+1] == '\'' {
 						i += 2
 						continue
@@ -511,10 +397,15 @@ func commentText(sql string) string {
 				}
 				i++
 			}
+			visit(start, i, regionLiteral)
+			codeStart = i
 		case src[i] == '\'':
+			flushCode(i)
+			start := i
 			i++
 			for i < n {
 				if src[i] == '\'' {
+					// Doubled '' is an escaped quote inside the literal.
 					if i+1 < n && src[i+1] == '\'' {
 						i += 2
 						continue
@@ -524,25 +415,67 @@ func commentText(sql string) string {
 				}
 				i++
 			}
+			visit(start, i, regionLiteral)
+			codeStart = i
 		case src[i] == '$':
-			if delim := dollarTag(src, i); delim != "" {
-				i += len(delim)
-				for i < n {
-					if hasDelimAt(src, i, delim) {
-						i += len(delim)
-						break
-					}
-					i++
+			delim := dollarTag(src, i)
+			if delim == "" {
+				i++ // bare '$' or positional parameter — part of the code span
+				continue
+			}
+			flushCode(i)
+			start := i
+			i += len(delim)
+			for i < n {
+				if hasDelimAt(src, i, delim) {
+					i += len(delim)
+					break
 				}
-			} else {
 				i++
 			}
+			visit(start, i, regionLiteral)
+			codeStart = i
 		default:
 			i++
 		}
 	}
+	flushCode(n)
+}
+
+// renderRegions returns sql with every byte NOT inside a region of kind keep
+// blanked to a space, preserving newlines (so line numbers and statement
+// boundaries are unchanged) and the kept regions verbatim. It drives both
+// maskSQL and commentText off the single scanRegions lexer.
+func renderRegions(sql string, keep regionKind) string {
+	src := []byte(sql)
+	out := make([]byte, len(src))
+	for i, c := range src {
+		if c == '\n' {
+			out[i] = '\n'
+		} else {
+			out[i] = ' '
+		}
+	}
+	scanRegions(sql, func(start, end int, kind regionKind) {
+		if kind == keep {
+			copy(out[start:end], src[start:end])
+		}
+	})
 	return string(out)
 }
+
+// maskSQL blanks every non-code region (comments and string/dollar literals) to
+// spaces — including any LOCK TABLE / DROP COLUMN keyword or semicolon they
+// contain — so the lock-safety scanner sees only real SQL code. Byte offsets and
+// statement boundaries are preserved. See scanRegions for the lexical rules.
+func maskSQL(sql string) string { return renderRegions(sql, regionCode) }
+
+// commentText is the inverse of maskSQL: it keeps only comment-region bytes and
+// blanks code and string literals, so parseSuppressions can trust that a matched
+// migrate-lint:allow directive genuinely lives in a SQL comment rather than in
+// data (e.g. INSERT INTO t VALUES ('-- migrate-lint:allow drop-column') can no
+// longer smuggle a suppression past a real violation). See scanRegions.
+func commentText(sql string) string { return renderRegions(sql, regionComment) }
 
 // dollarTag reports the dollar-quote opening delimiter starting at b[i] (which
 // must be '$'), e.g. "$$" or "$body$", or "" if b[i] does not open a
