@@ -2,6 +2,7 @@ package zoom
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,6 +21,23 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/groups/g-1/members"):
+			// Assert the body shape the live Zoom API requires:
+			// {"members":[{"id":"u-1"}]}. A flat {"id":"u-1"} body (the
+			// pre-fix bug) decodes to an empty members slice and is rejected
+			// here, so the regression can never silently reappear.
+			var payload struct {
+				Members []struct {
+					ID string `json:"id"`
+				} `json:"members"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			if len(payload.Members) != 1 || payload.Members[0].ID != "u-1" {
+				http.Error(w, "members array required", http.StatusBadRequest)
+				return
+			}
 			member.Store(true)
 			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/groups/g-1/members/u-1"):
