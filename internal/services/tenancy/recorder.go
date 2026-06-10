@@ -170,6 +170,15 @@ func (r *AsyncRecorder) pruneLocked(now time.Time) {
 // lifecycle scheduler's start/join pattern so shutdown is race-free against the
 // DB pool close.
 func (r *AsyncRecorder) Run(ctx context.Context) (join func()) {
+	// The persist write context is decoupled from ctx's cancellation up front:
+	// when ctx is cancelled at shutdown, select may still pick a ready queue
+	// item over ctx.Done(), and persisting that item with the cancelled ctx
+	// would make persist's bounded-timeout context start already-cancelled, fail
+	// the write, and silently lose an event that was already dequeued. Using a
+	// non-cancellable derivative keeps ctx's values (for logging/tracing) while
+	// letting every write run to its own 5s deadline — the same base the final
+	// drain uses, so the hot-loop and shutdown paths behave identically.
+	writeCtx := context.WithoutCancel(ctx)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -178,23 +187,24 @@ func (r *AsyncRecorder) Run(ctx context.Context) (join func()) {
 			case <-ctx.Done():
 				// Best-effort drain of what is already buffered so activity that
 				// arrived just before shutdown is not lost.
-				r.drainRemaining()
+				r.drainRemaining(writeCtx)
 				return
 			case req := <-r.queue:
-				r.persist(ctx, req)
+				r.persist(writeCtx, req)
 			}
 		}
 	}()
 	return func() { <-done }
 }
 
-// drainRemaining flushes already-queued events without blocking, using a
-// background context so a cancelled ctx does not abort the final writes.
-func (r *AsyncRecorder) drainRemaining() {
+// drainRemaining flushes already-queued events without blocking, using the
+// non-cancellable write context so a cancelled ctx does not abort the final
+// writes.
+func (r *AsyncRecorder) drainRemaining(writeCtx context.Context) {
 	for {
 		select {
 		case req := <-r.queue:
-			r.persist(context.WithoutCancel(context.Background()), req)
+			r.persist(writeCtx, req)
 		default:
 			return
 		}

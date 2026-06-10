@@ -11,21 +11,25 @@ import (
 
 // fakeSink records activity calls for assertions.
 type fakeSink struct {
-	mu    sync.Mutex
-	calls int64
-	seen  map[uuid.UUID]int
-	woke  bool
-	notes chan struct{}
+	mu             sync.Mutex
+	calls          int64
+	cancelledCalls int64
+	seen           map[uuid.UUID]int
+	woke           bool
+	notes          chan struct{}
 }
 
 func newFakeSink() *fakeSink {
 	return &fakeSink{seen: make(map[uuid.UUID]int), notes: make(chan struct{}, 1024)}
 }
 
-func (s *fakeSink) RecordActivity(_ context.Context, ws uuid.UUID, _ string) (bool, error) {
+func (s *fakeSink) RecordActivity(ctx context.Context, ws uuid.UUID, _ string) (bool, error) {
 	s.mu.Lock()
 	s.calls++
 	s.seen[ws]++
+	if ctx.Err() != nil {
+		s.cancelledCalls++
+	}
 	woke := s.woke
 	s.mu.Unlock()
 	select {
@@ -33,6 +37,12 @@ func (s *fakeSink) RecordActivity(_ context.Context, ws uuid.UUID, _ string) (bo
 	default:
 	}
 	return woke, nil
+}
+
+func (s *fakeSink) cancelled() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cancelledCalls
 }
 
 func (s *fakeSink) count() int64 {
@@ -126,6 +136,39 @@ func TestAsyncRecorderFlushesBufferedOnShutdown(t *testing.T) {
 	join()
 	if got := sink.count(); got != 10 {
 		t.Fatalf("flushed = %d, want 10 on shutdown", got)
+	}
+	// Regression: every flushed write must run with a live context. If the
+	// persist context were tied to the loop's cancellation, these dequeued
+	// events would hit an already-cancelled timeout context and be lost.
+	if got := sink.cancelled(); got != 0 {
+		t.Fatalf("%d writes saw a cancelled context, want 0", got)
+	}
+}
+
+// TestAsyncRecorderPersistsWithLiveContextAfterCancel exercises the drain loop
+// with a context that is cancelled while items remain queued, asserting that
+// persist always receives a non-cancelled context regardless of whether the
+// hot-loop branch or the ctx.Done() drain branch wins the select. This guards
+// the shutdown event-loss bug where persist(ctx) on a cancelled ctx aborts the
+// write.
+func TestAsyncRecorderPersistsWithLiveContextAfterCancel(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		sink := newFakeSink()
+		r := NewAsyncRecorder(sink, AsyncRecorderConfig{QueueSize: 64})
+		const n = 16
+		for j := 0; j < n; j++ {
+			r.Record(uuid.New(), KindAPI)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // cancelled with a full queue: both select branches are ready
+		join := r.Run(ctx)
+		join()
+		if got := sink.count(); got != n {
+			t.Fatalf("iter %d: persisted = %d, want %d", i, got, n)
+		}
+		if got := sink.cancelled(); got != 0 {
+			t.Fatalf("iter %d: %d writes saw a cancelled context, want 0", i, got)
+		}
 	}
 }
 
