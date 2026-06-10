@@ -30,7 +30,6 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
-	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
@@ -80,17 +79,12 @@ func run() error {
 		}
 	}()
 
-	// Credential encryptor opens connector secret envelopes for the lifecycle
-	// provisioning / JML services this engine drives. Like the connector worker,
-	// this binary is an asynchronous executor of provisioning/JML jobs that MUST
-	// open real connector secrets, so it refuses to boot under the fail-closed
-	// passthrough encryptor (DEK unset) rather than degrading to per-job
-	// failures. FromKey treats a non-empty but malformed key as a hard error.
-	enc, err := crypto.FromKey(cfg.CredentialDEK)
-	if err != nil {
-		return fmt.Errorf("credential encryptor init: %w", err)
-	}
-	if crypto.IsPassthrough(enc) {
+	// This binary is an asynchronous executor of provisioning/JML jobs that MUST
+	// open real connector secrets, so it refuses to boot without a DEK (the
+	// fail-closed encryptor would degrade every job to a decrypt failure)
+	// rather than starting and failing per job. The DEK presence is the boot
+	// gate; an empty ACCESS_CREDENTIAL_DEK is the passthrough/disabled case.
+	if cfg.CredentialDEK == "" {
 		logger.Errorf(ctx, "access-workflow-engine: refusing to start without ACCESS_CREDENTIAL_DEK; provisioning/JML jobs cannot open connector secrets under the passthrough encryptor")
 		stop()
 		return nil
@@ -100,7 +94,8 @@ func run() error {
 	// CredentialEncryptor the connector-management layer seals them with, so the
 	// engine recovers credentials under the identical AAD / workspace-DEK / key
 	// version (a plain crypto.Encryptor would use a different AAD and fail to
-	// open). The passthrough guard above already proved the DEK is present.
+	// open). CredentialEncryptorFromKey hard-errors on a non-empty but malformed
+	// key, so a typo'd DEK aborts boot rather than silently mis-decrypting.
 	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
