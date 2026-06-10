@@ -49,6 +49,10 @@ type LeaseValidator interface {
 	// ValidateLeaseTx returns nil iff the lease is live (granted, not revoked,
 	// not expired) and bound to the given subject and target.
 	ValidateLeaseTx(ctx context.Context, tx *gorm.DB, workspaceID, leaseID uuid.UUID, subject string, targetID uuid.UUID) error
+	// ValidateLeaseForUpdateTx is ValidateLeaseTx plus a FOR UPDATE row lock on
+	// the lease, returning the validated lease so the caller can clamp to its
+	// expiry. Used at mint time to serialize against a concurrent revoke/expire.
+	ValidateLeaseForUpdateTx(ctx context.Context, tx *gorm.DB, workspaceID, leaseID uuid.UUID, subject string, targetID uuid.UUID) (*models.PAMLease, error)
 	// MarkActivatedTx flips the lease approved→active on first session open.
 	MarkActivatedTx(ctx context.Context, tx *gorm.DB, workspaceID, leaseID uuid.UUID, now time.Time) error
 }
@@ -126,15 +130,11 @@ func (b *Broker) MintConnectToken(ctx context.Context, in MintInput) (rawToken s
 	// Lease binding: a token may only be minted against a live lease bound to
 	// the same subject and target. Fail-closed: a LeaseID with no configured
 	// validator is rejected rather than silently minting an unchecked token.
-	if in.LeaseID != nil {
-		if b.leases == nil {
-			return "", nil, fmt.Errorf("%w: lease-bound mint requested but lease validator is not configured", ErrValidation)
-		}
-		if err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			return b.leases.ValidateLeaseTx(ctx, tx, in.WorkspaceID, *in.LeaseID, in.Subject, in.TargetID)
-		}); err != nil {
-			return "", nil, err
-		}
+	// The liveness check itself is deferred into the mint transaction below (so
+	// it is atomic with the insert under a FOR UPDATE lock); here we only reject
+	// the misconfiguration up front.
+	if in.LeaseID != nil && b.leases == nil {
+		return "", nil, fmt.Errorf("%w: lease-bound mint requested but lease validator is not configured", ErrValidation)
 	}
 	if target.RequireMFA {
 		if !b.stepUp.Enabled() {
@@ -167,20 +167,28 @@ func (b *Broker) MintConnectToken(ctx context.Context, in MintInput) (rawToken s
 		ExpiresAt:   now.Add(ttl),
 		LeaseID:     in.LeaseID,
 	}
-	// A lease-bound token must never outlive its lease window: clamp the token
-	// TTL so an expired lease cannot still have a redeemable token. The redeem
-	// path re-validates the lease regardless, but clamping keeps the token's own
-	// expires_at honest for the operator and the sweep.
-	if in.LeaseID != nil {
-		if lease, lerr := b.loadLeaseExpiry(ctx, in.WorkspaceID, *in.LeaseID); lerr == nil && lease != nil && lease.Before(row.ExpiresAt) {
-			row.ExpiresAt = *lease
-		}
-	}
-	// Create the token row and its chained audit record in one transaction so a
-	// minted token can never exist without an audit trail (and a failed audit
-	// append rolls the token back rather than leaving an orphaned pending row
-	// that only the lease sweep can clean up). Mirrors RedeemConnectToken.
+	// Validate the lease, clamp the TTL, create the token row, and append its
+	// chained audit record in ONE transaction, so:
+	//   - a minted token can never exist without an audit trail (a failed audit
+	//     append rolls the token back rather than leaving an orphaned pending
+	//     row that only the lease sweep can clean up), and
+	//   - the lease's liveness is checked under a FOR UPDATE lock held until the
+	//     insert commits, closing the TOCTOU window where a concurrent revoke or
+	//     expire could otherwise slip between a separate validate-transaction and
+	//     this insert and leave a token (plus its minted audit event) bound to a
+	//     dead lease. A lease-bound token must also never outlive its window, so
+	//     we clamp expires_at to the (locked) lease expiry from the same read.
+	// Mirrors RedeemConnectToken's single-transaction validate-then-mutate.
 	if err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if in.LeaseID != nil {
+			lease, verr := b.leases.ValidateLeaseForUpdateTx(ctx, tx, in.WorkspaceID, *in.LeaseID, in.Subject, in.TargetID)
+			if verr != nil {
+				return verr
+			}
+			if lease.ExpiresAt != nil && lease.ExpiresAt.Before(row.ExpiresAt) {
+				row.ExpiresAt = *lease.ExpiresAt
+			}
+		}
 		if err := tx.Create(row).Error; err != nil {
 			return fmt.Errorf("pam: mint connect token: %w", err)
 		}
@@ -311,21 +319,6 @@ func (b *Broker) RedeemConnectToken(ctx context.Context, rawToken, clientAddr st
 		return nil, err
 	}
 	return leased, nil
-}
-
-// loadLeaseExpiry returns a lease's expires_at for TTL clamping at mint time,
-// or nil when the lease has no expiry (not yet approved). It is a best-effort
-// read outside any transaction; the authoritative liveness check is
-// ValidateLeaseTx inside the mint/redeem transaction.
-func (b *Broker) loadLeaseExpiry(ctx context.Context, workspaceID, leaseID uuid.UUID) (*time.Time, error) {
-	var lease models.PAMLease
-	if err := b.db.WithContext(ctx).
-		Select("expires_at").
-		Where("workspace_id = ? AND id = ?", workspaceID, leaseID).
-		Take(&lease).Error; err != nil {
-		return nil, err
-	}
-	return lease.ExpiresAt, nil
 }
 
 // newToken returns a fresh random raw token and its storage hash.

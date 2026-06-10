@@ -265,8 +265,13 @@ func (pw *PackWriter) streamCampaigns(ctx context.Context, zw *zip.Writer, opts 
 	return campInfo, itemInfo, nil
 }
 
-// streamPolicies writes policies created or updated during the period (includes
-// soft-deleted rows so an auditor can reconstruct the policy graph).
+// streamPolicies writes the policy graph relevant to the period: every live
+// policy created before `to` (regardless of when it was last touched, so the
+// auditor sees the full policy state in effect), plus any soft-deleted policy
+// that was updated/tombstoned on or after `from`. The `deleted_at IS NULL`
+// branch of the filter is what keeps untouched-but-live policies in scope; the
+// `updated_at >= from` branch bounds only the tombstones so ancient deletions
+// don't bloat the pack.
 func (pw *PackWriter) streamPolicies(ctx context.Context, zw *zip.Writer, opts ExportOptions) (PackFileInfo, error) {
 	q := pw.db.WithContext(ctx).Unscoped().Model(&models.Policy{}).Where("workspace_id = ?", opts.WorkspaceID)
 	if opts.To != nil {
@@ -277,7 +282,7 @@ func (pw *PackWriter) streamPolicies(ctx context.Context, zw *zip.Writer, opts E
 	}
 	q = q.Order("created_at asc, id asc")
 	return pw.streamRows(zw, "policies.jsonl",
-		"Policies created, edited, promoted, or tombstoned during the period. Includes soft-deleted rows.",
+		"All policies live as of the export (created before `to`), plus policies tombstoned during the period. Includes soft-deleted rows so an auditor can reconstruct the policy graph.",
 		q, func() any { return &models.Policy{} })
 }
 
