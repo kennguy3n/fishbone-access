@@ -429,4 +429,21 @@ class OkHttpAccessClientTest {
         }
         assertEquals(500, ex.statusCode)
     }
+
+    @Test
+    fun `emergencyOffboard with a malformed breakdown rethrows the original Http error`() {
+        // A 500 whose {leaver} is present but malformed (missing the required
+        // user_external_id) must fall through to the original Http error, not a
+        // decode error — preserving the transport context (matches iOS `try?`).
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody(
+                """{"error":"one or more layers failed","leaver":{"errored":true}}""",
+            ),
+        )
+        val ex = assertFailsWith<AccessSDKException.Http> {
+            runBlocking { client.emergencyOffboard("ext-1") }
+        }
+        assertEquals(500, ex.statusCode)
+        assertTrue(ex.body!!.contains("one or more layers failed"))
+    }
 }

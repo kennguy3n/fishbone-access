@@ -255,6 +255,22 @@ final class URLSessionClientTests: XCTestCase {
         }
     }
 
+    func testEmergencyOffboardWithMalformedBreakdownRethrowsHttp() async {
+        // A 500 whose {leaver} is present but malformed (missing the required
+        // user_external_id) must fall through to the original Http error, not a
+        // decode error — preserving the transport context (matches Android).
+        respond(500, #"{"error":"one or more layers failed","leaver":{"errored":true}}"#)
+        do {
+            _ = try await client.emergencyOffboard(userExternalID: "ext-1")
+            XCTFail("expected http error")
+        } catch let AccessSDKError.http(status, body) {
+            XCTAssertEqual(status, 500)
+            XCTAssertTrue(body?.contains("one or more layers failed") ?? false)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     func testUnauthorizedMapsToUnauthenticated() async {
         respond(401, #"{"error":"invalid token"}"#)
         await assertThrows(.unauthenticated) { _ = try await self.client.me() }

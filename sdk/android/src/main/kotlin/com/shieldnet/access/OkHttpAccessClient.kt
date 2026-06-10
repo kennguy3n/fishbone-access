@@ -148,13 +148,18 @@ class OkHttpAccessClient(
         }
         // A partial failure is HTTP 500 carrying the SAME { leaver } breakdown
         // (workflows.go); recover it from the typed Http error so the host can
-        // render which layers failed instead of only a generic message.
+        // render which layers failed instead of only a generic message. If the
+        // body is absent, unparseable, or the leaver is malformed, fall through
+        // to rethrow the original HTTP error rather than masking it with a
+        // decode error (matches URLSessionAccessClient's `try?`).
         val raw = try {
             post("/emergency-offboard", body.toString())
         } catch (e: AccessSDKException.Http) {
-            val leaver = e.body?.let { runCatching { parseObject(it) }.getOrNull() }
-                ?.optJSONObject("leaver")
-            if (leaver != null) return leaver.toLeaverResult()
+            val recovered = e.body?.let { errBody ->
+                runCatching { parseObject(errBody).requireObject("leaver").toLeaverResult() }
+                    .getOrNull()
+            }
+            if (recovered != null) return recovered
             throw e
         }
         return parseObject(raw).requireObject("leaver").toLeaverResult()

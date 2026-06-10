@@ -27,6 +27,15 @@ function errMessage(err: unknown): string {
   return "Something went wrong.";
 }
 
+// emergency-offboard is gated by middleware.RequireMFA, which returns 403
+// "step-up MFA required" when the session JWT lacks the MFA claim. Only that
+// exact message means "re-authenticate with MFA" — other 403s (missing
+// workspace permission, tenant mismatch) must NOT be mislabeled as a step-up
+// prompt. Anchored to stay disjoint, mirroring PolicyEditor's matcher and the
+// SDKs' isStepUp / isStepUp(_:) checks (which likewise key off the marker).
+const isSessionMfaRequired = (err: ApiError) =>
+  err.status === 403 && /^step-up mfa required$/i.test(err.message.trim());
+
 // Per-run step audit, shown in a modal from the dashboard.
 function RunDetail({ run }: { run: WorkflowRun }) {
   const steps = run.steps ?? [];
@@ -202,7 +211,7 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
         );
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError && isSessionMfaRequired(err)) {
         toast.error(
           "Step-up MFA required",
           "Re-authenticate with MFA to run an emergency offboard.",
