@@ -125,6 +125,7 @@ scheduled work.
 | `ACCESS_TENANCY_DORMANT_IDLE` | `336h` (14d) | Idle threshold before a tenant is dormant — one trial-length of inactivity. |
 | `ACCESS_TENANCY_RECONCILE_INTERVAL` | `15m` | How often the set-based dormancy sweep runs. The sweep is O(changed rows), so this is cheap even at 5,000 tenants. |
 | `ACCESS_TENANCY_ACTIVITY_FLUSH` | `60s` | Per-tenant coalescing window for activity writes: a tenant hammering the API produces ~1 write/minute, not one per request. Must stay ≪ the idle threshold (enforced in code) so coalescing can never hide a wake. |
+| `ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE` | `8192` | Buffered enqueue channel for the activity recorder, sized above the 5,000-tenant target so a synchronised cold-start burst (every tenant's first request in one drain cycle, before coalescing populates) is absorbed without drops. Steady-state depth is far lower because coalescing caps enqueues at one per tenant per flush window. Dropped events are best-effort and re-enqueued by the next request, so this is a tuning lever, not a correctness bound. |
 | `ACCESS_TENANCY_DEFAULT_TIER` | `trial` | Budget tier for tenants without an explicit budget row — the most-constrained tier, so an un-tiered tenant can never claim more than the smallest share. |
 
 ### Tiered resource budgets

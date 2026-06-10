@@ -145,6 +145,16 @@ type TenancyConfig struct {
 	// coalesced burst can never hide a wake-from-dormant. Read from
 	// ACCESS_TENANCY_ACTIVITY_FLUSH; defaults to 60s.
 	ActivityFlushInterval time.Duration
+	// ActivityQueueSize bounds the recorder's buffered enqueue channel. It is
+	// sized above the tenant target so a synchronised cold-start burst (every
+	// tenant's first request landing in one drain cycle, before per-tenant
+	// coalescing has populated) is absorbed without dropping events; steady
+	// state sits far below this because coalescing caps enqueues at one per
+	// tenant per ActivityFlushInterval. Read from
+	// ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE; defaults to 8192 (> the 5,000-tenant
+	// target with headroom). Dropped events are best-effort and re-enqueued by
+	// the next request, so this is a tuning lever, not a correctness bound.
+	ActivityQueueSize int
 	// DefaultTier is the resource-budget tier applied to a tenant with no
 	// explicit per-workspace budget row (see internal/services/tenancy). Read
 	// from ACCESS_TENANCY_DEFAULT_TIER; defaults to "trial" (the most
@@ -261,6 +271,7 @@ func Load() Config {
 			DormantIdleThreshold:  getDuration("ACCESS_TENANCY_DORMANT_IDLE", 14*24*time.Hour),
 			ReconcileInterval:     getDuration("ACCESS_TENANCY_RECONCILE_INTERVAL", 15*time.Minute),
 			ActivityFlushInterval: getDuration("ACCESS_TENANCY_ACTIVITY_FLUSH", 60*time.Second),
+			ActivityQueueSize:     getInt("ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE", 8192),
 			DefaultTier:           getEnv("ACCESS_TENANCY_DEFAULT_TIER", "trial"),
 		},
 		IAMCore: IAMCoreConfig{

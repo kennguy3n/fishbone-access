@@ -292,24 +292,32 @@ func run() error {
 
 	// Tenant hibernation (WS1 scale/NoOps): track per-tenant activity, classify
 	// the dormant-trial fraction, and let periodic workers skip them so the
-	// dormant majority costs ~nothing. Wired only with a DB and only when the
-	// feature is enabled. Two background loops are tied to the signal context
-	// and joined on the way out (LIFO, after the scheduler, before the DB-pool
-	// close) so neither can touch an already-closed pool:
-	//   - the async activity recorder drains buffered request-path activity and
-	//     lazily wakes dormant tenants; it is fed by the router's activity
-	//     middleware (deps.ActivityRecorder, set just below);
-	//   - the reconcile loop periodically (re)classifies tenants set-based.
-	if deps.DB != nil && cfg.Tenancy.HibernationEnabled {
+	// dormant majority costs ~nothing. Background loops are tied to the signal
+	// context and joined on the way out (LIFO, after the scheduler, before the
+	// DB-pool close) so none can touch an already-closed pool.
+	//
+	// Activity recording is wired whenever a DB is present, INDEPENDENT of
+	// HibernationEnabled: Service.RecordActivity ignores the gate, and the
+	// documented contract is that activity is always captured so the feature can
+	// be toggled on later with accurate history (otherwise a later enable would
+	// classify every tenant from workspaces.created_at and wrongly hibernate
+	// long-lived active tenants until their next request). The reconcile sweep,
+	// by contrast, only earns its keep when hibernation is enabled — when it is
+	// off the gate short-circuits to "run" for everyone, so classifying is
+	// pointless work — so only that loop is conditional.
+	if deps.DB != nil {
 		tenancySvc := tenancy.NewService(deps.DB, tenancy.Config{
 			Enabled:       cfg.Tenancy.HibernationEnabled,
 			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
 			DefaultTier:   cfg.Tenancy.DefaultTier,
 		})
 
+		// Always: drain request-path activity and lazily wake dormant tenants.
+		// Fed by the router's activity middleware (deps.ActivityRecorder).
 		recorder := tenancy.NewAsyncRecorder(tenancySvc, tenancy.AsyncRecorderConfig{
 			Throttle:      cfg.Tenancy.ActivityFlushInterval,
 			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			QueueSize:     cfg.Tenancy.ActivityQueueSize,
 		})
 		recCtx, recCancel := context.WithCancel(ctx)
 		joinRecorder := recorder.Run(recCtx)
@@ -319,16 +327,19 @@ func run() error {
 		}()
 		deps.ActivityRecorder = recorder
 
-		reconcileCtx, reconcileCancel := context.WithCancel(ctx)
-		joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).Run(reconcileCtx)
-		defer func() {
-			reconcileCancel()
-			joinReconcile()
-		}()
-		logger.Infof(ctx, "ztna-api: tenant hibernation enabled (idle threshold %s, reconcile every %s); dormant tenants skip periodic work and wake on activity",
-			cfg.Tenancy.DormantIdleThreshold, cfg.Tenancy.ReconcileInterval)
-	} else if deps.DB != nil {
-		logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active")
+		if cfg.Tenancy.HibernationEnabled {
+			// Only when enabled: periodically (re)classify tenants set-based.
+			reconcileCtx, reconcileCancel := context.WithCancel(ctx)
+			joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).Run(reconcileCtx)
+			defer func() {
+				reconcileCancel()
+				joinReconcile()
+			}()
+			logger.Infof(ctx, "ztna-api: tenant hibernation enabled (idle threshold %s, reconcile every %s); dormant tenants skip periodic work and wake on activity",
+				cfg.Tenancy.DormantIdleThreshold, cfg.Tenancy.ReconcileInterval)
+		} else {
+			logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active, but activity is still recorded so the feature can be enabled later with accurate history")
+		}
 	}
 
 	srv := &http.Server{
