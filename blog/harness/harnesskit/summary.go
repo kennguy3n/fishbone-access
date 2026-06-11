@@ -58,9 +58,11 @@ type WorkspaceIDs struct {
 	ConnectorIDs    []string `json:"connector_ids"`
 	PolicyIDs       []string `json:"policy_ids"`
 
-	PAMTargetIDs       []string `json:"pam_target_ids,omitempty"`
-	PAMLeaseID         string   `json:"pam_lease_id,omitempty"`
-	PAMSessionID       string   `json:"pam_session_id,omitempty"`
+	PAMTargetIDs []string `json:"pam_target_ids,omitempty"`
+	PAMLeaseID   string   `json:"pam_lease_id,omitempty"`
+	// No PAMSessionID: privileged sessions are intentionally never opened in this
+	// demo (pam_sessions = 0 — the lease is governed and chained, the session is
+	// not recorded), so there is no session id to carry.
 	ContractorGrantIDs []string `json:"contractor_grant_ids,omitempty"`
 	SodRuleIDs         []string `json:"sod_rule_ids,omitempty"`
 }
