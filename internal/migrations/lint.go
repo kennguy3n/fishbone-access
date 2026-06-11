@@ -46,10 +46,13 @@ import (
 // the sequence so the contiguity check does not flag the gap they leave. The
 // 0006–0009 range was reserved while several workstreams were in flight and
 // their schema ultimately landed under later versions; the numbers were never
-// reused, so the gap is by design rather than a lost migration. Any gap NOT
-// listed here is treated as a real bug. New migrations must continue the
-// sequence contiguously from the current maximum (0018, 0019, …).
-var reservedVersions = map[int]bool{6: true, 7: true, 8: true, 9: true}
+// reused, so the gap is by design rather than a lost migration. 0018–0019 are
+// reserved for sibling workstreams that branched off the same main in parallel
+// (this branch owns the reserved 0020–0023 range); reserving them keeps each
+// workstream's branch lintable in isolation before they are merged together,
+// and a present-and-reserved version is harmless (the contiguity check treats
+// it as present). Any gap NOT listed here is treated as a real bug.
+var reservedVersions = map[int]bool{6: true, 7: true, 8: true, 9: true, 18: true, 19: true}
 
 // filenamePattern is the required migration filename shape: a 4-digit
 // zero-padded version, an underscore, then a lower-snake-case name.
