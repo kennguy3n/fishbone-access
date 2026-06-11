@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // FetchAccessAuditLogs streams Mixpanel organization audit events into
@@ -170,7 +170,7 @@ func readMixpanelBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("mixpanel: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*MixpanelAccessConnector)(nil)

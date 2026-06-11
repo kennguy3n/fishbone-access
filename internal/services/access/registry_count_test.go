@@ -135,6 +135,10 @@ func TestRegistry_NoOrphanDirectories(t *testing.T) {
 	// whenever a future helper package lands under connectors/.
 	nonConnectorDirs := map[string]struct{}{
 		"all": {},
+		// connutil holds shared HTTP helpers (e.g. the bounded,
+		// fail-closed body reader) imported by the provider packages;
+		// it is not itself a connector.
+		"connutil": {},
 	}
 	const connectorsDir = "connectors"
 	entries, err := os.ReadDir(connectorsDir)

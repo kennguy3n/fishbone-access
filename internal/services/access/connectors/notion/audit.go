@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // FetchAccessAuditLogs streams Notion audit log entries into the access
@@ -188,7 +188,7 @@ func parseNotionTime(s string) time.Time {
 
 func readNotionResponse(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*NotionAccessConnector)(nil)

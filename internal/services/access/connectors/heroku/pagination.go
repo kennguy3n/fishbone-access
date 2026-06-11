@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // herokuMaxPages bounds Range-based pagination so a misbehaving upstream
@@ -34,7 +35,7 @@ func readBodyFull(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("heroku: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 // doPaged issues GET requests for path, transparently following Heroku's

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 const (
@@ -458,7 +459,7 @@ func (c *HelpScoutAccessConnector) userInTeam(ctx context.Context, secrets Secre
 		if err != nil {
 			return false, err
 		}
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := connutil.ReadBody(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound {
 			return false, nil

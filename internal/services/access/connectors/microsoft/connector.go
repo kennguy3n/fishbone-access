@@ -32,6 +32,7 @@ import (
 	"golang.org/x/oauth2/microsoft"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // ErrNotImplemented is retained for any future capability that is deliberately
@@ -735,7 +736,7 @@ func doJSON(client httpDoer, req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("microsoft: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 // extractRolesFromJWT parses the "roles" claim from an Entra-issued JWT

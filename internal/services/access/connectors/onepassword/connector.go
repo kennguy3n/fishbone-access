@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // ErrNotImplemented is retained for any future capability that is not yet
@@ -433,7 +434,7 @@ func (c *OnePasswordAccessConnector) do(req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("onepassword: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 func (c *OnePasswordAccessConnector) doRaw(req *http.Request) (*http.Response, error) {
