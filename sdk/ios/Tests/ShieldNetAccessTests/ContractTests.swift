@@ -27,6 +27,14 @@ private actor FakeAccessClient: AccessClient {
 
     func getRequest(id: String) async throws -> AccessRequest { sample(.active, id: id) }
 
+    func getRequestDetail(id: String) async throws -> AccessRequestDetail {
+        AccessRequestDetail(
+            request: sample(.active, id: id, risk: .high),
+            risk: RiskVerdict(id: "rv_1", requestID: id, score: .high, recommendation: .highRisk, factors: ["sensitive_resource"]),
+            anomalies: [AnomalyFlag(id: "af_1", requestID: id, kind: "impossible_travel", severity: "high")]
+        )
+    }
+
     func requestHistory(id: String) async throws -> [StateHistoryEntry] {
         [StateHistoryEntry(id: "h1", requestID: id, fromState: "requested", toState: "approved", actor: "user_2", reason: "ok", createdAt: Date(timeIntervalSince1970: 0))]
     }
@@ -44,6 +52,14 @@ private actor FakeAccessClient: AccessClient {
     }
 
     func revokeGrant(id: String, reason: String?) async throws {}
+
+    func emergencyOffboard(userExternalID: String, reason: String?) async throws -> LeaverResult {
+        LeaverResult(
+            userExternalID: userExternalID,
+            errored: false,
+            layers: KillSwitchLayer.allCases.map { KillSwitchLayerResult(layer: $0, status: .done) }
+        )
+    }
 
     private func sample(_ state: AccessRequestState, id: String = "req_1", resource: String = "projects/foo", risk: RiskLevel? = nil) -> AccessRequest {
         AccessRequest(
@@ -87,14 +103,34 @@ final class ContractTests: XCTestCase {
         XCTAssertEqual(grant.state, .active)
         XCTAssertTrue(grant.isActive(now: Date(timeIntervalSince1970: 0)))
         try await client.revokeGrant(id: grant.id)
+
+        let detail = try await client.getRequestDetail(id: "req_1")
+        XCTAssertEqual(detail.risk?.recommendation, .highRisk)
+        XCTAssertEqual(detail.anomalies.count, 1)
+
+        let leaver = try await client.emergencyOffboard(userExternalID: "user_1", reason: "left the company")
+        XCTAssertEqual(leaver.userExternalID, "user_1")
+        XCTAssertFalse(leaver.errored)
+        XCTAssertEqual(leaver.layers.count, KillSwitchLayer.allCases.count)
     }
 
     func testEnumWireValues() {
         XCTAssertEqual(AccessRequestState.provisionFailed.rawValue, "provision_failed")
         XCTAssertEqual(AccessRequestState(rawValue: "active"), .active)
+        // ai_reviewed is a real intermediate state (requested -> ai_reviewed ->
+        // approved/denied) that getRequestDetail can surface; it must decode.
+        XCTAssertEqual(AccessRequestState.aiReviewed.rawValue, "ai_reviewed")
+        XCTAssertEqual(AccessRequestState(rawValue: "ai_reviewed"), .aiReviewed)
         XCTAssertEqual(WorkflowStep.securityReview.rawValue, "security_review")
         XCTAssertEqual(GrantState(rawValue: "revoked"), .revoked)
         XCTAssertNil(AccessRequestState(rawValue: "nope"))
+
+        XCTAssertEqual(RiskRecommendation.highRisk.rawValue, "high_risk")
+        XCTAssertEqual(RiskRecommendation(rawValue: "auto_approve_eligible"), .autoApproveEligible)
+        XCTAssertEqual(KillSwitchLayer(rawValue: "scim_deprovision"), .scimDeprovision)
+        XCTAssertEqual(KillSwitchLayerStatus(rawValue: "failed"), .failed)
+        XCTAssertNil(RiskRecommendation(rawValue: "maybe"))
+        XCTAssertNil(KillSwitchLayer(rawValue: "nuke"))
     }
 
     func testTypedErrorsAreEquatable() {

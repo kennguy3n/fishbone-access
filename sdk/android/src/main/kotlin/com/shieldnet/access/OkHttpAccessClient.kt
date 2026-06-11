@@ -103,6 +103,15 @@ class OkHttpAccessClient(
         return env.requireObject("request").toAccessRequest()
     }
 
+    override suspend fun getRequestDetail(id: String): AccessRequestDetail {
+        val env = getObject("/access-requests/${id.requireId()}")
+        return AccessRequestDetail(
+            request = env.requireObject("request").toAccessRequest(),
+            risk = env.optJSONObject("risk")?.takeIf { it.length() > 0 }?.toRiskVerdict(),
+            anomalies = env.objectArray("anomalies").map { it.toAnomalyFlag() },
+        )
+    }
+
     override suspend fun requestHistory(id: String): List<StateHistoryEntry> {
         val env = getObject("/access-requests/${id.requireId()}/history")
         return env.objectArray("history").map { it.toStateHistoryEntry() }
@@ -126,6 +135,34 @@ class OkHttpAccessClient(
 
     override suspend fun revokeGrant(id: String, reason: String?) {
         post("/grants/${id.requireId()}/revoke", decisionBody(reason), allowEmpty = true)
+    }
+
+    override suspend fun emergencyOffboard(userExternalId: String, reason: String?): LeaverResult {
+        val externalId = userExternalId.trim()
+        if (externalId.isBlank()) {
+            throw AccessSDKException.InvalidInput("user_external_id is required")
+        }
+        val body = JSONObject().apply {
+            put("user_external_id", externalId)
+            reason?.let { put("reason", it) }
+        }
+        // A partial failure is HTTP 500 carrying the SAME { leaver } breakdown
+        // (workflows.go); recover it from the typed Http error so the host can
+        // render which layers failed instead of only a generic message. If the
+        // body is absent, unparseable, or the leaver is malformed, fall through
+        // to rethrow the original HTTP error rather than masking it with a
+        // decode error (matches URLSessionAccessClient's `try?`).
+        val raw = try {
+            post("/emergency-offboard", body.toString())
+        } catch (e: AccessSDKException.Http) {
+            val recovered = e.body?.let { errBody ->
+                runCatching { parseObject(errBody).requireObject("leaver").toLeaverResult() }
+                    .getOrNull()
+            }
+            if (recovered != null) return recovered
+            throw e
+        }
+        return parseObject(raw).requireObject("leaver").toLeaverResult()
     }
 
     private suspend fun transition(id: String, action: String, reason: String?): AccessRequest {
@@ -314,4 +351,42 @@ private fun JSONObject.toAccessGrant(): AccessGrant = AccessGrant(
     grantedAt = optInstant("granted_at"),
     expiresAt = optInstant("expires_at"),
     revokedAt = optInstant("revoked_at"),
+)
+
+private fun JSONObject.optDoubleOrNull(key: String): Double? =
+    if (!has(key) || isNull(key)) null else optDouble(key).takeIf { !it.isNaN() }
+
+private fun JSONObject.toRiskVerdict(): RiskVerdict = RiskVerdict(
+    id = requireString("id"),
+    requestId = requireString("request_id"),
+    score = RiskLevel.fromWire(requireString("score")),
+    recommendation = RiskRecommendation.fromWire(requireString("recommendation")),
+    factors = stringList("factors"),
+    rationale = optStringOrNull("rationale"),
+    source = optStringOrNull("source"),
+    degraded = optBoolean("degraded", false),
+    createdAt = optInstant("created_at"),
+)
+
+private fun JSONObject.toAnomalyFlag(): AnomalyFlag = AnomalyFlag(
+    id = requireString("id"),
+    requestId = requireString("request_id"),
+    grantId = optStringOrNull("grant_id"),
+    kind = requireString("kind"),
+    severity = optStringOrNull("severity"),
+    reason = optStringOrNull("reason"),
+    confidence = optDoubleOrNull("confidence"),
+    createdAt = optInstant("created_at"),
+)
+
+private fun JSONObject.toLeaverResult(): LeaverResult = LeaverResult(
+    userExternalId = requireString("user_external_id"),
+    errored = optBoolean("errored", false),
+    layers = objectArray("layers").map { it.toKillSwitchLayerResult() },
+)
+
+private fun JSONObject.toKillSwitchLayerResult(): KillSwitchLayerResult = KillSwitchLayerResult(
+    layer = KillSwitchLayer.fromWire(requireString("layer")),
+    status = KillSwitchLayerStatus.fromWire(requireString("status")),
+    detail = optStringOrNull("detail"),
 )

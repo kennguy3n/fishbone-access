@@ -14,9 +14,11 @@ import { useToast } from "@/components/Toast";
 import {
   useRuns,
   useEmergencyOffboard,
+  failedOffboardFromError,
   type WorkflowRun,
+  type LeaverResult,
 } from "@/api/workflows";
-import { ApiError } from "@/api/access";
+import { ApiError, useMe } from "@/api/access";
 import { formatRelative, titleCase } from "@/lib/format";
 
 function errMessage(err: unknown): string {
@@ -24,6 +26,19 @@ function errMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "Something went wrong.";
 }
+
+// emergency-offboard is gated ONLY by middleware.RequireMFA, which 403s with
+// "step-up MFA required" when the session JWT lacks the MFA claim. Unlike
+// PolicyEditor's promote path (RequireMFA AND RequireStepUpMFA, whose three
+// sibling "step-up mfa ..." messages must be told apart with anchored regexes),
+// this endpoint has no sibling step-up message to disambiguate — so we key off
+// the same "step-up mfa" marker the Android/iOS SDKs use (STEP_UP_MARKER /
+// isStepUp), keeping web/Android/iOS byte-for-byte identical and robust if the
+// server ever appends context (e.g. "...required for emergency offboard").
+// Other 403s (missing workspace permission, tenant mismatch) don't carry the
+// marker, so they correctly fall through to the real server message.
+const isSessionMfaRequired = (err: ApiError) =>
+  err.status === 403 && /step-up mfa/i.test(err.message);
 
 // Per-run step audit, shown in a modal from the dashboard.
 function RunDetail({ run }: { run: WorkflowRun }) {
@@ -109,16 +124,83 @@ function RunDetail({ run }: { run: WorkflowRun }) {
   );
 }
 
+// The six kill-switch layers, in execution order, so the result breakdown lists
+// every layer even when the server omits a no-op layer from a partial failure.
+const KILL_SWITCH_LAYERS = [
+  "grant_revoke",
+  "team_remove",
+  "iam_core_disable",
+  "session_revoke",
+  "scim_deprovision",
+  "identity_disable",
+] as const;
+
+// LeaverBreakdown renders the per-layer outcome of an emergency offboard so the
+// operator can see exactly which of the six layers succeeded, and retry/escalate
+// the ones that failed on a partial failure (errored=true).
+function LeaverBreakdown({ result }: { result: LeaverResult }) {
+  const byLayer = new Map(result.layers.map((l) => [l.layer, l]));
+  return (
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th style={{ width: 120 }}>Outcome</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {KILL_SWITCH_LAYERS.map((layer) => {
+            const outcome = byLayer.get(layer);
+            return (
+              <tr key={layer}>
+                <td>
+                  <b>{titleCase(layer)}</b>
+                </td>
+                <td>
+                  {outcome ? (
+                    <StatusBadge status={outcome.status} />
+                  ) : (
+                    <Badge tone="neutral">Skipped</Badge>
+                  )}
+                </td>
+                <td className="muted">{outcome?.detail || "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // Standalone six-layer leaver kill switch — the "break glass" path, gated by
-// step-up MFA server-side and confirmed here before firing.
+// step-up MFA server-side (the RequireMFA claim) and confirmed here before
+// firing. On completion the per-layer breakdown stays on screen so the operator
+// can verify every layer (and retry any failed one on a partial failure).
 function EmergencyOffboard({ onClose }: { onClose: () => void }) {
   const intl = useIntl();
   const toast = useToast();
+  // staleTime: 0 so the MFA advisory below reflects the *current* session each
+  // time the dialog opens (the global default is a 5-min cache with no
+  // refetch-on-focus, which would otherwise show a stale claim after the
+  // operator completes step-up MFA out-of-band).
+  const me = useMe({ staleTime: 0 });
   const [externalId, setExternalId] = useState("");
   const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [result, setResult] = useState<LeaverResult | null>(null);
   const offboard = useEmergencyOffboard();
 
+  // middleware.RequireMFA is the authoritative gate: the server rejects a
+  // session whose token lacks the step-up MFA claim with 403 "step-up MFA
+  // required", which `run` catches via isSessionMfaRequired and surfaces as a
+  // toast. We therefore do NOT disable the button on the (cacheable) client
+  // mfa_satisfied claim — doing so could strand the operator with a disabled
+  // button after they satisfy MFA out-of-band. The claim drives an advisory
+  // banner only; the server stays the source of truth.
+  const mfaSatisfied = me.data?.mfa_satisfied ?? false;
   const armed = externalId.trim().length > 0 && confirm.trim() === "OFFBOARD";
 
   const run = async () => {
@@ -127,10 +209,11 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
         userExternalID: externalId.trim(),
         reason: reason.trim() || undefined,
       });
+      setResult(res);
       if (res.errored) {
         toast.error(
           "Offboard completed with failures",
-          "One or more layers failed — review the run audit.",
+          "One or more layers failed — review the per-layer breakdown.",
         );
       } else {
         toast.success(
@@ -138,12 +221,24 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
           "All six layers ran for this identity.",
         );
       }
-      onClose();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError && isSessionMfaRequired(err)) {
         toast.error(
           "Step-up MFA required",
           "Re-authenticate with MFA to run an emergency offboard.",
+        );
+        return;
+      }
+      // A partial failure comes back as HTTP 500 carrying the same per-layer
+      // breakdown under `leaver`; recover and render it (as both SDKs do) so
+      // the operator sees which layers failed and can retry, rather than an
+      // opaque error toast.
+      const partial = failedOffboardFromError(err);
+      if (partial) {
+        setResult(partial);
+        toast.error(
+          "Offboard completed with failures",
+          "One or more layers failed — review the per-layer breakdown.",
         );
         return;
       }
@@ -159,53 +254,83 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
       })}
       onClose={onClose}
       footer={
-        <>
-          <button className="btn btn--ghost" onClick={onClose}>
-            Cancel
+        result ? (
+          <button className="btn btn--primary" onClick={onClose}>
+            Done
           </button>
-          <button
-            className="btn btn--danger"
-            onClick={run}
-            disabled={!armed || offboard.isPending}
-          >
-            {offboard.isPending ? "Running…" : "Run kill switch"}
-          </button>
-        </>
+        ) : (
+          <>
+            <button className="btn btn--ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="btn btn--danger"
+              onClick={run}
+              disabled={!armed || offboard.isPending}
+            >
+              {offboard.isPending ? "Running…" : "Run kill switch"}
+            </button>
+          </>
+        )
       }
     >
-      <div className="notice notice--danger" style={{ marginBottom: 12 }}>
-        This runs all six offboarding layers (grant revoke → team remove →
-        iam-core disable → session revoke → SCIM deprovision → identity disable)
-        for the identity. It is irreversible and requires step-up MFA.
-      </div>
-      <label className="field">
-        <span>User external ID</span>
-        <input
-          value={externalId}
-          placeholder="e.g. ada@corp.example"
-          onChange={(e) => setExternalId(e.target.value)}
-        />
-      </label>
-      <label className="field">
-        <span>
-          Reason <span className="muted">(audited)</span>
-        </span>
-        <input
-          value={reason}
-          placeholder="Why this offboard is happening"
-          onChange={(e) => setReason(e.target.value)}
-        />
-      </label>
-      <label className="field">
-        <span>
-          Type <code>OFFBOARD</code> to confirm
-        </span>
-        <input
-          value={confirm}
-          placeholder="OFFBOARD"
-          onChange={(e) => setConfirm(e.target.value)}
-        />
-      </label>
+      {result ? (
+        <>
+          <div
+            className={`notice ${result.errored ? "notice--danger" : "notice--info"}`}
+            style={{ marginBottom: 12 }}
+          >
+            {result.errored
+              ? `Offboard of ${result.user_external_id} completed with failures — retry the failed layers below.`
+              : `All six layers ran for ${result.user_external_id}.`}
+          </div>
+          <LeaverBreakdown result={result} />
+        </>
+      ) : (
+        <>
+          <div className="notice notice--danger" style={{ marginBottom: 12 }}>
+            This runs all six offboarding layers (grant revoke → team remove →
+            iam-core disable → session revoke → SCIM deprovision → identity
+            disable) for the identity. It is irreversible and requires step-up
+            MFA.
+          </div>
+          {!mfaSatisfied && (
+            <div className="notice notice--warn" style={{ marginBottom: 12 }}>
+              Your session has not completed step-up MFA, so the server will
+              reject this offboard. Re-authenticate with MFA, then run the kill
+              switch.
+            </div>
+          )}
+          <label className="field">
+            <span>User external ID</span>
+            <input
+              value={externalId}
+              placeholder="e.g. ada@corp.example"
+              onChange={(e) => setExternalId(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>
+              Reason <span className="muted">(audited)</span>
+            </span>
+            <input
+              value={reason}
+              placeholder="Why this offboard is happening"
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>
+              Type <code>OFFBOARD</code> to confirm
+            </span>
+            <input
+              value={confirm}
+              placeholder="OFFBOARD"
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </label>
+        </>
+      )}
     </Modal>
   );
 }

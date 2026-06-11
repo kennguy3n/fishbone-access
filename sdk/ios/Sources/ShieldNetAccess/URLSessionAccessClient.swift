@@ -72,6 +72,11 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
         return env.request
     }
 
+    public func getRequestDetail(id: String) async throws -> AccessRequestDetail {
+        let env: DetailEnvelope = try await get(path: "/access-requests/\(try idPath(id))")
+        return AccessRequestDetail(request: env.request, risk: env.risk, anomalies: env.anomalies)
+    }
+
     public func requestHistory(id: String) async throws -> [StateHistoryEntry] {
         let env: HistoryEnvelope = try await get(path: "/access-requests/\(try idPath(id))/history")
         return env.history
@@ -108,6 +113,29 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
         )
     }
 
+    public func emergencyOffboard(userExternalID: String, reason: String?) async throws -> LeaverResult {
+        let trimmed = userExternalID.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            throw AccessSDKError.invalidInput("user_external_id is required")
+        }
+        do {
+            let env: LeaverEnvelope = try await post(
+                path: "/emergency-offboard",
+                body: OffboardBody(userExternalID: trimmed, reason: reason)
+            )
+            return env.leaver
+        } catch let AccessSDKError.http(statusCode, body) {
+            // A partial failure is HTTP 500 carrying the SAME { leaver }
+            // breakdown (workflows.go); recover it so the host can render which
+            // layers failed instead of only a generic message.
+            if let body, let data = body.data(using: .utf8),
+               let env = try? Self.decoder().decode(LeaverEnvelope.self, from: data) {
+                return env.leaver
+            }
+            throw AccessSDKError.http(statusCode: statusCode, body: body)
+        }
+    }
+
     private func transition(id: String, action: String, reason: String?) async throws -> AccessRequest {
         let env: RequestEnvelope = try await post(
             path: "/access-requests/\(try idPath(id))/\(action)",
@@ -130,6 +158,37 @@ public final class URLSessionAccessClient: AccessClient, @unchecked Sendable {
     }
     private struct RequestEnvelope: Decodable { let request: AccessRequest }
     private struct GrantEnvelope: Decodable { let grant: AccessGrant }
+    private struct LeaverEnvelope: Decodable { let leaver: LeaverResult }
+
+    private struct OffboardBody: Encodable {
+        let userExternalID: String
+        let reason: String?
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(userExternalID, forKey: .userExternalID)
+            try c.encodeIfPresent(reason, forKey: .reason)
+        }
+        enum CodingKeys: String, CodingKey {
+            case userExternalID = "user_external_id"
+            case reason
+        }
+    }
+
+    // The detail envelope reads the same `{request}` the request endpoint
+    // returns plus the optional `risk` verdict and the `anomalies` array,
+    // tolerating a missing/`null` array (parity with the list envelopes).
+    private struct DetailEnvelope: Decodable {
+        let request: AccessRequest
+        let risk: RiskVerdict?
+        let anomalies: [AnomalyFlag]
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            request = try c.decode(AccessRequest.self, forKey: .request)
+            risk = try c.decodeIfPresent(RiskVerdict.self, forKey: .risk)
+            anomalies = try c.decodeIfPresent([AnomalyFlag].self, forKey: .anomalies) ?? []
+        }
+        enum CodingKeys: String, CodingKey { case request, risk, anomalies }
+    }
 
     // The list envelopes decode a JSON `null` or a missing key to an empty
     // array rather than throwing. The current server always emits `[]` (GORM's

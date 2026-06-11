@@ -12,12 +12,14 @@
 //   createRequest    → POST   /api/v1/access-requests
 //   listRequests     → GET    /api/v1/access-requests
 //   getRequest       → GET    /api/v1/access-requests/:id
+//   getRequestDetail → GET    /api/v1/access-requests/:id  (+ risk, anomalies)
 //   requestHistory   → GET    /api/v1/access-requests/:id/history
 //   approveRequest   → POST   /api/v1/access-requests/:id/approve
 //   denyRequest      → POST   /api/v1/access-requests/:id/deny
 //   cancelRequest    → POST   /api/v1/access-requests/:id/cancel
 //   provisionRequest → POST   /api/v1/access-requests/:id/provision
 //   revokeGrant      → POST   /api/v1/grants/:id/revoke
+//   emergencyOffboard→ POST   /api/v1/emergency-offboard
 //
 // There is NO on-device inference. AI risk review (WS5) is server-side; the
 // SDK only reads the resulting `AccessRequest.riskLevel` / `riskFactors` and
@@ -80,6 +82,15 @@ public protocol AccessClient: Sendable {
     /// poll status and read the lease countdown via `expiresAt`.
     func getRequest(id: String) async throws -> AccessRequest
 
+    /// Fetch a request together with its risky-access signals: the latest AI
+    /// ``RiskVerdict`` and any advisory ``AnomalyFlag``s. This is the same
+    /// endpoint as ``getRequest(id:)`` but reads the `risk` / `anomalies`
+    /// envelope keys the server already returns, so a host can surface
+    /// high-risk / anomalous active access and offer a one-tap revoke. Feed the
+    /// result to ``RiskAssessment/evaluate(_:)`` for a ready-to-render
+    /// ``RiskAdvisory``. (`GET /access-requests/:id`.)
+    func getRequestDetail(id: String) async throws -> AccessRequestDetail
+
     /// Fetch the immutable state-transition history of a request
     /// (`GET /access-requests/:id/history`).
     func requestHistory(id: String) async throws -> [StateHistoryEntry]
@@ -102,8 +113,20 @@ public protocol AccessClient: Sendable {
     func provisionRequest(id: String) async throws -> AccessGrant
 
     /// Revoke a grant (end the JIT lease early; idempotent server-side).
-    /// `POST /grants/:id/revoke`, optional `{ reason }`.
+    /// `POST /grants/:id/revoke`, optional `{ reason }`. Permission-gated only;
+    /// not step-up-gated server-side. For a high-risk revoke, gate the call
+    /// behind step-up MFA on the client first — see ``Revocation``.
     func revokeGrant(id: String, reason: String?) async throws
+
+    /// Run the six-layer leaver kill switch for one identity as an emergency
+    /// offboard — the "revoke everything for this user" path. Step-up-MFA-gated
+    /// server-side: a token without a satisfied MFA claim is rejected and
+    /// surfaces as ``AccessSDKError/stepUpRequired(_:)``, so the host can drive
+    /// an iam-core step-up and retry. Returns the per-layer ``LeaverResult``; a
+    /// partial failure (``LeaverResult/errored``) still returns the full
+    /// breakdown rather than throwing.
+    /// `POST /emergency-offboard`, `{ user_external_id, reason? }`.
+    func emergencyOffboard(userExternalID: String, reason: String?) async throws -> LeaverResult
 }
 
 // Default-argument conveniences so callers can omit `reason`.
@@ -118,5 +141,9 @@ public extension AccessClient {
 
     func revokeGrant(id: String) async throws {
         try await revokeGrant(id: id, reason: nil)
+    }
+
+    func emergencyOffboard(userExternalID: String) async throws -> LeaverResult {
+        try await emergencyOffboard(userExternalID: userExternalID, reason: nil)
     }
 }

@@ -618,6 +618,32 @@ export function useRequestAction(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Grants — one-tap revoke of a provisioned JIT lease (WS5)
+// ---------------------------------------------------------------------------
+
+// revokeGrant ends one active grant early via POST /grants/:id/revoke. The
+// endpoint is permission-gated only (grant.revoke) — NOT step-up-gated — so an
+// operator can kill risky access in a single tap; the server records the actor
+// and optional reason on the grant. The six-layer "revoke everything for this
+// identity" kill switch is the separate, MFA-gated `emergencyOffboard`.
+export const revokeGrant = (id: string, reason?: string) =>
+  call<{ status: string }>({
+    url: `/grants/${encodeURIComponent(id)}/revoke`,
+    method: "POST",
+    data: reason ? { reason } : {},
+  });
+
+export function useRevokeGrant() {
+  return useMutation<
+    { status: string },
+    ApiError,
+    { id: string; reason?: string }
+  >({
+    mutationFn: ({ id, reason }) => revokeGrant(id, reason),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Directory — orphan accounts (leaver / un-grant detection)
 // ---------------------------------------------------------------------------
 

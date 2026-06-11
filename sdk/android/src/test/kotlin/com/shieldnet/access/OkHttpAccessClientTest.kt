@@ -314,4 +314,136 @@ class OkHttpAccessClientTest {
         assertTrue(me.roles.isEmpty())
         assertTrue(!me.mfaSatisfied)
     }
+
+    @Test
+    fun `getRequestDetail unwraps request, risk verdict and anomalies`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"request":{"id":"r1","workspace_id":"ws1","requester_id":"u1",
+                     "resource_ref":"projects/foo","state":"active","risk_level":"high",
+                     "created_at":"2025-01-01T00:00:00Z"},
+                   "risk":{"id":"rv1","request_id":"r1","score":"high","recommendation":"high_risk",
+                     "factors":["sensitive_resource","off_hours"],"rationale":"sensitive prod access",
+                     "source":"ai_agent","degraded":false,"created_at":"2025-01-01T00:00:00Z"},
+                   "anomalies":[{"id":"af1","request_id":"r1","grant_id":"g1","kind":"impossible_travel",
+                     "severity":"high","reason":"two geos in 5m","confidence":0.92,
+                     "created_at":"2025-01-01T00:05:00Z"}]}""",
+            ),
+        )
+        val detail = client.getRequestDetail("r1")
+        assertEquals("/api/v1/access-requests/r1", server.takeRequest().path)
+        assertEquals(AccessRequestState.ACTIVE, detail.request.state)
+        assertEquals(RiskLevel.HIGH, detail.risk?.score)
+        assertEquals(RiskRecommendation.HIGH_RISK, detail.risk?.recommendation)
+        assertEquals(listOf("sensitive_resource", "off_hours"), detail.risk?.factors)
+        assertEquals(1, detail.anomalies.size)
+        assertEquals("impossible_travel", detail.anomalies.first().kind)
+        assertEquals(0.92, detail.anomalies.first().confidence)
+        assertTrue(detail.anomalies.first().isElevated)
+    }
+
+    @Test
+    fun `getRequestDetail tolerates a request with no risk or anomalies`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"request":{"id":"r1","workspace_id":"ws1","requester_id":"u1",
+                     "resource_ref":"projects/foo","state":"requested",
+                     "created_at":"2025-01-01T00:00:00Z"}}""",
+            ),
+        )
+        val detail = client.getRequestDetail("r1")
+        assertEquals(AccessRequestState.REQUESTED, detail.request.state)
+        assertEquals(null, detail.risk)
+        assertTrue(detail.anomalies.isEmpty())
+    }
+
+    @Test
+    fun `emergencyOffboard posts identity and parses the per-layer breakdown`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"leaver":{"user_external_id":"ext-1","errored":false,"layers":[
+                     {"layer":"grant_revoke","status":"done"},
+                     {"layer":"team_remove","status":"done"},
+                     {"layer":"iam_core_disable","status":"done"},
+                     {"layer":"session_revoke","status":"done"},
+                     {"layer":"scim_deprovision","status":"skipped","detail":"no scim connector"},
+                     {"layer":"identity_disable","status":"done"}]}}""",
+            ),
+        )
+        val result = client.emergencyOffboard("ext-1", reason = "left the company")
+        val recorded = server.takeRequest()
+        assertEquals("/api/v1/emergency-offboard", recorded.path)
+        val sent = recorded.body.readUtf8()
+        assertTrue(sent.contains("\"user_external_id\":\"ext-1\""))
+        assertTrue(sent.contains("\"reason\":\"left the company\""))
+        assertEquals("ext-1", result.userExternalId)
+        assertTrue(!result.errored)
+        assertEquals(6, result.layers.size)
+        assertEquals(KillSwitchLayerStatus.SKIPPED, result.layers[4].status)
+        assertTrue(result.failedLayers.isEmpty())
+    }
+
+    @Test
+    fun `emergencyOffboard recovers the breakdown from a 500 partial failure`() = runBlocking {
+        // The server returns 500 carrying the SAME {leaver} breakdown when a
+        // layer fails; the SDK must surface it rather than only a generic Http.
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody(
+                """{"error":"one or more layers failed","leaver":{"user_external_id":"ext-1",
+                     "errored":true,"layers":[
+                     {"layer":"grant_revoke","status":"done"},
+                     {"layer":"iam_core_disable","status":"failed","detail":"idp timeout"}]}}""",
+            ),
+        )
+        val result = client.emergencyOffboard("ext-1")
+        assertTrue(result.errored)
+        assertEquals(1, result.failedLayers.size)
+        assertEquals(KillSwitchLayer.IAM_CORE_DISABLE, result.failedLayers.first().layer)
+        assertEquals("idp timeout", result.failedLayers.first().detail)
+    }
+
+    @Test
+    fun `emergencyOffboard surfaces the step-up MFA gate`() {
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":"step-up MFA required"}"""))
+        val ex = assertFailsWith<AccessSDKException.StepUpRequired> {
+            runBlocking { client.emergencyOffboard("ext-1") }
+        }
+        assertTrue(ex.body!!.contains("step-up MFA required"))
+    }
+
+    @Test
+    fun `emergencyOffboard rejects a blank identity before any network call`() {
+        assertFailsWith<AccessSDKException.InvalidInput> {
+            runBlocking { client.emergencyOffboard("  ") }
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `emergencyOffboard without a breakdown rethrows the Http error`() {
+        // A 500 that does NOT carry a {leaver} body (e.g. a gateway error) must
+        // stay a typed Http error, not silently become an empty result.
+        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"error":"upstream unavailable"}"""))
+        val ex = assertFailsWith<AccessSDKException.Http> {
+            runBlocking { client.emergencyOffboard("ext-1") }
+        }
+        assertEquals(500, ex.statusCode)
+    }
+
+    @Test
+    fun `emergencyOffboard with a malformed breakdown rethrows the original Http error`() {
+        // A 500 whose {leaver} is present but malformed (missing the required
+        // user_external_id) must fall through to the original Http error, not a
+        // decode error — preserving the transport context (matches iOS `try?`).
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody(
+                """{"error":"one or more layers failed","leaver":{"errored":true}}""",
+            ),
+        )
+        val ex = assertFailsWith<AccessSDKException.Http> {
+            runBlocking { client.emergencyOffboard("ext-1") }
+        }
+        assertEquals(500, ex.statusCode)
+        assertTrue(ex.body!!.contains("one or more layers failed"))
+    }
 }

@@ -279,12 +279,69 @@ export const getRun = (id: string) =>
     method: "GET",
   }).then((r) => normalizeRun(r.run));
 
-export const emergencyOffboard = (userExternalID: string, reason?: string) =>
-  call<{ leaver: LeaverResult }>({
+// emergencyOffboard resolves with the per-layer leaver breakdown on success.
+// On a completed offboard with layer failures the server returns 500 carrying
+// the SAME breakdown under `leaver` (with `errored: true`), which `call`
+// surfaces as an ApiError. The breakdown is preserved on `ApiError.details` —
+// use `failedOffboardFromError` to recover it so the caller can render which
+// layers failed instead of an opaque error, mirroring the Android/iOS SDKs.
+//
+// Identity is trimmed and required up-front, matching the Android/iOS SDK
+// contract (both trim and throw InvalidInput on a blank id) so a direct caller
+// can't send an empty user_external_id and we skip a guaranteed-400 round-trip.
+// `reason` is forwarded verbatim — exactly as the SDKs do (Android
+// `reason?.let { put(...) }`, iOS `encodeIfPresent`) — for byte-for-byte
+// parity; an undefined reason is dropped from the JSON, and the UI already
+// trims/omits a blank reason at the call site.
+export const emergencyOffboard = (userExternalID: string, reason?: string) => {
+  const externalID = userExternalID.trim();
+  if (!externalID) {
+    return Promise.reject(new ApiError(0, "user_external_id is required"));
+  }
+  return call<{ leaver: LeaverResult }>({
     url: "/emergency-offboard",
     method: "POST",
-    data: { user_external_id: userExternalID, reason },
-  }).then((r) => r.leaver);
+    data: { user_external_id: externalID, reason },
+  }).then((r) => normalizeLeaver(r.leaver));
+};
+
+// A recovered breakdown must carry the identity the server always stamps on a
+// real partial failure. This mirrors the SDK decode contract — Android's
+// `requireString("user_external_id")` and iOS's typed `Decodable` both reject a
+// malformed leaver and fall through to rethrow the original HTTP error — so a
+// truthy-but-malformed body (e.g. `{"leaver":{"errored":true}}`) is NOT
+// mistaken for a result and rendered as "Offboard of  completed with failures".
+function isLeaverResult(v: unknown): v is LeaverResult {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as { user_external_id?: unknown }).user_external_id === "string" &&
+    (v as { user_external_id: string }).user_external_id.length > 0
+  );
+}
+
+// failedOffboardFromError extracts the per-layer leaver breakdown a failed
+// emergencyOffboard call carries on its ApiError (the 500 body's `leaver`),
+// returning undefined when the error is not a partial-failure offboard (e.g. a
+// 403 step-up-MFA or 404) or the breakdown is malformed, so the caller falls
+// through to the generic error path. Mirrors OkHttpAccessClient/
+// URLSessionAccessClient, which likewise recover — and validate — the
+// LeaverResult from a 500 partial-failure body.
+export function failedOffboardFromError(
+  err: unknown,
+): LeaverResult | undefined {
+  if (!(err instanceof ApiError)) return undefined;
+  const details = err.details;
+  if (typeof details !== "object" || details === null) return undefined;
+  const leaver = (details as { leaver?: unknown }).leaver;
+  return isLeaverResult(leaver) ? normalizeLeaver(leaver) : undefined;
+}
+
+// Idiomatic Go marshals an empty slice as JSON null; the breakdown UI maps over
+// `layers`, so normalize a missing/null slice to [] once here.
+function normalizeLeaver(r: LeaverResult): LeaverResult {
+  return { ...r, layers: r.layers ?? [] };
+}
 
 // Idiomatic Go marshals an empty slice as JSON null; the UI treats steps/layers
 // as always-present arrays, so normalize here rather than guarding at every use.
