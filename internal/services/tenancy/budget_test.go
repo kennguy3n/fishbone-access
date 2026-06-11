@@ -26,6 +26,19 @@ func TestTierBudgetDefaultsAndUnknownFallback(t *testing.T) {
 	}
 }
 
+func TestIsKnownTier(t *testing.T) {
+	for _, in := range []string{TierTrial, TierBase, TierPro, TierEnterprise, "  PRO  "} {
+		if !IsKnownTier(in) {
+			t.Errorf("IsKnownTier(%q) = false, want true", in)
+		}
+	}
+	for _, in := range []string{"", "gold", "platinum", "tria"} {
+		if IsKnownTier(in) {
+			t.Errorf("IsKnownTier(%q) = true, want false", in)
+		}
+	}
+}
+
 func TestResolveBudgetOverrides(t *testing.T) {
 	// Pro tier with a single concurrency override; the other fields inherit.
 	row := TenantResourceBudget{Tier: TierPro, MaxConcurrentSyncs: 16}

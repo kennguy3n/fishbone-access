@@ -51,6 +51,16 @@ func TierBudget(tier string) Budget {
 	return tierDefaults[normalizeTier(tier)]
 }
 
+// IsKnownTier reports whether tier (trimmed/lower-cased) names a recognised
+// tier in the ladder. An unrecognised name still resolves safely to TierTrial
+// at runtime, so this exists only so the boot path can warn loudly that a
+// configured ACCESS_TENANCY_DEFAULT_TIER did not match a real tier — surfacing
+// a typo early without coupling the leaf config package to the tier ladder.
+func IsKnownTier(tier string) bool {
+	_, ok := tierDefaults[strings.ToLower(strings.TrimSpace(tier))]
+	return ok
+}
+
 // resolveBudget applies a per-workspace TenantResourceBudget row over the tier
 // defaults: each non-zero override field wins, each zero field inherits the
 // tier default. This lets one knob be pinned per tenant without restating the

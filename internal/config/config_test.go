@@ -122,3 +122,41 @@ func TestGetDurationParsing(t *testing.T) {
 		t.Errorf("duration string = %s, want 2m", got)
 	}
 }
+
+func TestTenancyWarnings(t *testing.T) {
+	// A well-formed tenancy config (matching the loaded defaults) emits nothing.
+	healthy := TenancyConfig{
+		DormantIdleThreshold:  14 * 24 * time.Hour,
+		ReconcileInterval:     15 * time.Minute,
+		ActivityFlushInterval: 60 * time.Second,
+		ActivityQueueSize:     8192,
+		DefaultTier:           "trial",
+	}
+	if w := healthy.Warnings(); len(w) != 0 {
+		t.Errorf("healthy tenancy config produced warnings: %v", w)
+	}
+
+	// Each misconfigured knob that has a safe fallback should surface a warning
+	// (so the operator learns the value was overridden) without being fatal.
+	bad := TenancyConfig{
+		DormantIdleThreshold:  -1, // non-positive idle window
+		ReconcileInterval:     0,  // non-positive sweep interval
+		ActivityFlushInterval: 60 * time.Second,
+		ActivityQueueSize:     -5, // non-positive queue size
+	}
+	if got := len(bad.Warnings()); got != 3 {
+		t.Errorf("bad tenancy config warnings = %d, want 3: %v", got, bad.Warnings())
+	}
+
+	// A flush window wider than idle/10 is clamped by SafeThrottle at runtime, so
+	// it must be flagged even though every other knob is sane.
+	clamped := TenancyConfig{
+		DormantIdleThreshold:  100 * time.Minute,
+		ReconcileInterval:     15 * time.Minute,
+		ActivityFlushInterval: 30 * time.Minute, // > idle/10 (10m)
+		ActivityQueueSize:     8192,
+	}
+	if got := clamped.Warnings(); len(got) != 1 {
+		t.Errorf("over-wide flush window warnings = %v, want exactly 1", got)
+	}
+}

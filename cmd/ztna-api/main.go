@@ -67,6 +67,18 @@ func run() error {
 	}
 	logger.Infof(ctx, "ztna-api: starting; %s", cfg.String())
 	logger.Infof(ctx, "ztna-api: registered connectors: %d", access.RegisteredCount())
+	// Surface tenancy knobs whose value will be silently overridden by a safe
+	// fallback. These are deliberately non-fatal (the dormant-trial fleet must
+	// boot even with a fat-fingered knob; see config.Config.Warnings), but
+	// logging them loudly here means a misconfiguration is caught at startup
+	// rather than only inferred from later behaviour. The tier-name check lives
+	// here because config is a leaf package that does not know the tier ladder.
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "ztna-api: tenancy config: %s", warning)
+	}
+	if t := cfg.Tenancy.DefaultTier; !tenancy.IsKnownTier(t) {
+		logger.Warnf(ctx, "ztna-api: tenancy config: ACCESS_TENANCY_DEFAULT_TIER=%q is not a recognised tier; un-tiered tenants will fall back to the most-constrained (trial) budget", t)
+	}
 
 	ready := &atomic.Bool{}
 

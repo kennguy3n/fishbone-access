@@ -78,8 +78,11 @@ type Deps struct {
 	// ActivityRecorder records tenant activity on the authenticated request
 	// path — the LAZY WAKE side of tenant hibernation (WS1 scale/NoOps). When
 	// set, ActivityMiddleware is mounted on the tenant-scoped group so a dormant
-	// tenant's first API call wakes it. nil in degraded boots / when hibernation
-	// is disabled, in which case no activity middleware is mounted (no-op).
+	// tenant's first API call wakes it. It is wired whenever a DB is present,
+	// INDEPENDENT of whether hibernation is enabled: activity is always recorded
+	// so the feature can be turned on later with accurate history (see
+	// cmd/ztna-api/main.go). It is nil only in a degraded (no-DB) boot, in which
+	// case no activity middleware is mounted (no-op).
 	ActivityRecorder tenancy.ActivityRecorder
 }
 

@@ -50,9 +50,10 @@ type activitySink interface {
 // threshold, by which point any in-window suppression has long expired, so the
 // first post-dormancy request always enqueues and wakes the tenant.
 type AsyncRecorder struct {
-	sink     activitySink
-	throttle time.Duration
-	clock    func() time.Time
+	sink         activitySink
+	throttle     time.Duration
+	drainTimeout time.Duration
+	clock        func() time.Time
 
 	queue chan recordReq
 
@@ -75,9 +76,19 @@ type AsyncRecorderConfig struct {
 	IdleThreshold time.Duration
 	// QueueSize bounds the buffered enqueue channel. Defaults to 4096.
 	QueueSize int
+	// DrainTimeout bounds the total wall time the shutdown drain may spend
+	// flushing the buffered queue, so a slow/stuck DB cannot make the join wedge
+	// the process for queue_size×per-write-timeout (hours in the worst case) and
+	// stall a rolling deploy. <=0 uses the 30s default. Per-write timeouts still
+	// apply within this budget; once it elapses the remaining best-effort events
+	// are abandoned (the next boot re-derives state from the reconcile sweep).
+	DrainTimeout time.Duration
 	// Clock overrides time.Now in tests.
 	Clock func() time.Time
 }
+
+// defaultDrainTimeout bounds the shutdown flush when DrainTimeout is unset.
+const defaultDrainTimeout = 30 * time.Second
 
 // SafeThrottle returns throttle if it is positive and at most a small fraction
 // of idle (so coalescing can never mask a wake), else 0 (coalescing off). The
@@ -103,12 +114,17 @@ func NewAsyncRecorder(sink activitySink, cfg AsyncRecorderConfig) *AsyncRecorder
 	if qs <= 0 {
 		qs = 4096
 	}
+	drainTimeout := cfg.DrainTimeout
+	if drainTimeout <= 0 {
+		drainTimeout = defaultDrainTimeout
+	}
 	return &AsyncRecorder{
-		sink:     sink,
-		throttle: SafeThrottle(cfg.Throttle, cfg.IdleThreshold),
-		clock:    clock,
-		queue:    make(chan recordReq, qs),
-		lastSeen: make(map[uuid.UUID]time.Time),
+		sink:         sink,
+		throttle:     SafeThrottle(cfg.Throttle, cfg.IdleThreshold),
+		drainTimeout: drainTimeout,
+		clock:        clock,
+		queue:        make(chan recordReq, qs),
+		lastSeen:     make(map[uuid.UUID]time.Time),
 	}
 }
 
@@ -183,12 +199,23 @@ func (r *AsyncRecorder) Run(ctx context.Context) (join func()) {
 	go func() {
 		defer close(done)
 		for {
+			// Check shutdown first so a cancelled ctx deterministically enters the
+			// bounded drain rather than racing the queue branch (select picks
+			// uniformly when both are ready), which would persist with the
+			// unbounded base context.
+			if ctx.Err() != nil {
+				// Best-effort drain of what is already buffered so activity that
+				// arrived just before shutdown is not lost. Bounded by
+				// drainTimeout so a slow DB can never wedge the join (and thus
+				// the process) for queue_size×per-write-timeout.
+				drainCtx, cancel := context.WithTimeout(writeCtx, r.drainTimeout)
+				r.drainRemaining(drainCtx)
+				cancel()
+				return
+			}
 			select {
 			case <-ctx.Done():
-				// Best-effort drain of what is already buffered so activity that
-				// arrived just before shutdown is not lost.
-				r.drainRemaining(writeCtx)
-				return
+				// Loop back; the top-of-loop check runs the bounded drain.
 			case req := <-r.queue:
 				r.persist(writeCtx, req)
 			}
@@ -197,14 +224,23 @@ func (r *AsyncRecorder) Run(ctx context.Context) (join func()) {
 	return func() { <-done }
 }
 
-// drainRemaining flushes already-queued events without blocking, using the
-// non-cancellable write context so a cancelled ctx does not abort the final
-// writes.
-func (r *AsyncRecorder) drainRemaining(writeCtx context.Context) {
+// drainRemaining flushes already-queued events using drainCtx, which carries
+// both the non-cancellable base (so a cancelled parent does not abort the final
+// writes) and the overall drain deadline. It returns as soon as the queue is
+// empty or the deadline elapses, whichever comes first — so the total flush is
+// bounded regardless of queue depth or DB latency.
+func (r *AsyncRecorder) drainRemaining(drainCtx context.Context) {
 	for {
 		select {
+		case <-drainCtx.Done():
+			return
+		default:
+		}
+		select {
+		case <-drainCtx.Done():
+			return
 		case req := <-r.queue:
-			r.persist(writeCtx, req)
+			r.persist(drainCtx, req)
 		default:
 			return
 		}
