@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -69,8 +70,13 @@ func (e *ContractorExpiryEnforcer) EnforceExpired(ctx context.Context, workspace
 
 		// Flip the contractor grant to expired (stamping revoked_at) first so the
 		// "remaining active" check below excludes it.
-		if err := e.service.markTerminal(ctx, workspaceID, cg.ID, models.ContractorStateExpired, contractorExpiryActor, "contractor.grant.expired", "time box elapsed"); err != nil {
-			logger.Errorf(ctx, "lifecycle: expire contractor grant %s: %v", cg.ID, err)
+		if err := e.service.markTerminal(ctx, workspaceID, cg.ID, models.ContractorStateActive, models.ContractorStateExpired, contractorExpiryActor, "contractor.grant.expired", "time box elapsed"); err != nil {
+			// A concurrent revoke/extend already moved this grant out of active;
+			// ErrContractorState here is a benign race (the grant was handled
+			// elsewhere), so skip it without counting rather than logging noise.
+			if !errors.Is(err, ErrContractorState) {
+				logger.Errorf(ctx, "lifecycle: expire contractor grant %s: %v", cg.ID, err)
+			}
 			continue
 		}
 

@@ -574,3 +574,70 @@ func TestContractorExpiryPreciseRevokeWhenEngagementRemains(t *testing.T) {
 		t.Fatalf("expected the lapsed grant's access revoked, got %s", g.State)
 	}
 }
+
+// TestContractorMarkTerminalIsStateGuarded proves the shared terminal-transition
+// helper writes the terminal state and its disposition exactly once. A second
+// transition racing on a grant that already left fromState (e.g. a manual revoke
+// arriving after the expiry sweep already expired it) matches no row, returns
+// ErrContractorState, and appends NO audit event — so the expiry sweep and a
+// manual revoke can never both stamp the tamper-evident chain or overwrite each
+// other's terminal state.
+func TestContractorMarkTerminalIsStateGuarded(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	now := time.Now()
+	st := newContractorStack(t, db, now)
+	ctx := context.Background()
+
+	cg := st.create(t, ws, conn, "ext-1", now.Add(time.Hour))
+	if _, err := st.svc.ApproveGrant(ctx, ws, cg.ID, "sponsor-1"); err != nil {
+		t.Fatalf("ApproveGrant: %v", err)
+	}
+
+	// First terminal transition wins: active -> expired.
+	if err := st.svc.markTerminal(ctx, ws, cg.ID, models.ContractorStateActive, models.ContractorStateExpired, "system", "contractor.grant.expired", "box elapsed"); err != nil {
+		t.Fatalf("first markTerminal: %v", err)
+	}
+	assertAuditCount(t, db, ws, "contractor.grant.expired", 1)
+
+	// The loser of the race finds the grant no longer active.
+	err := st.svc.markTerminal(ctx, ws, cg.ID, models.ContractorStateActive, models.ContractorStateRevoked, "sponsor-1", "contractor.grant.revoked", "late revoke")
+	if !errors.Is(err, ErrContractorState) {
+		t.Fatalf("expected ErrContractorState for a stale terminal transition, got %v", err)
+	}
+	// State is unchanged and NO revoked disposition was written.
+	reload, _ := st.svc.GetGrant(ctx, ws, cg.ID)
+	if reload.State != models.ContractorStateExpired {
+		t.Fatalf("expected state to remain expired, got %s", reload.State)
+	}
+	assertAuditCount(t, db, ws, "contractor.grant.revoked", 0)
+}
+
+// TestContractorRejectAfterApproveIsConflict proves RejectGrant never records a
+// rejection for a grant that is no longer pending (e.g. a concurrent approval
+// won the race): it returns ErrContractorState, appends no rejected disposition
+// to the audit chain, and leaves the grant active.
+func TestContractorRejectAfterApproveIsConflict(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	conn := seedConnector(t, db, ws, "fake")
+	now := time.Now()
+	st := newContractorStack(t, db, now)
+	ctx := context.Background()
+
+	cg := st.create(t, ws, conn, "ext-1", now.Add(time.Hour))
+	if _, err := st.svc.ApproveGrant(ctx, ws, cg.ID, "sponsor-1"); err != nil {
+		t.Fatalf("ApproveGrant: %v", err)
+	}
+
+	_, err := st.svc.RejectGrant(ctx, ws, cg.ID, "sponsor-2", "too late")
+	if !errors.Is(err, ErrContractorState) {
+		t.Fatalf("expected ErrContractorState rejecting an approved grant, got %v", err)
+	}
+	assertAuditCount(t, db, ws, "contractor.grant.rejected", 0)
+	reload, _ := st.svc.GetGrant(ctx, ws, cg.ID)
+	if reload.State != models.ContractorStateActive {
+		t.Fatalf("expected the grant to remain active, got %s", reload.State)
+	}
+}

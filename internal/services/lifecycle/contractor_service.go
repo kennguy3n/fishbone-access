@@ -254,10 +254,18 @@ func (s *ContractorService) RejectGrant(ctx context.Context, workspaceID, contra
 	}
 	now := s.now()
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.ContractorGrant{}).
+		// State-guarded update: if a concurrent ApproveGrant flipped the grant
+		// out of pending between the read above and here, this matches 0 rows.
+		// Bail before the audit append so the tamper-evident chain never records
+		// a rejection that did not take effect (and the caller sees the conflict).
+		res := tx.Model(&models.ContractorGrant{}).
 			Where("workspace_id = ? AND id = ? AND state = ?", workspaceID, contractorGrantID, models.ContractorStatePendingApproval).
-			Updates(map[string]any{"state": models.ContractorStateRejected, "updated_at": now}).Error; err != nil {
-			return fmt.Errorf("lifecycle: reject contractor grant: %w", err)
+			Updates(map[string]any{"state": models.ContractorStateRejected, "updated_at": now})
+		if res.Error != nil {
+			return fmt.Errorf("lifecycle: reject contractor grant: %w", res.Error)
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("%w: contractor grant is no longer pending", ErrContractorState)
 		}
 		return appendAudit(ctx, tx, now, auditEntry{
 			WorkspaceID: workspaceID,
@@ -294,7 +302,7 @@ func (s *ContractorService) RevokeGrant(ctx context.Context, workspaceID, contra
 	if err := s.deprovisionGrant(ctx, workspaceID, cg, actor, firstNonEmpty(strings.TrimSpace(reason), "contractor grant revoked")); err != nil {
 		return nil, err
 	}
-	if err := s.markTerminal(ctx, workspaceID, contractorGrantID, models.ContractorStateRevoked, actor, "contractor.grant.revoked", reason); err != nil {
+	if err := s.markTerminal(ctx, workspaceID, contractorGrantID, models.ContractorStateActive, models.ContractorStateRevoked, actor, "contractor.grant.revoked", reason); err != nil {
 		return nil, err
 	}
 	return s.GetGrant(ctx, workspaceID, contractorGrantID)
@@ -424,15 +432,23 @@ func (s *ContractorService) deprovisionGrant(ctx context.Context, workspaceID uu
 	return nil
 }
 
-// markTerminal flips a contractor grant to a terminal state and records the
-// disposition, stamping revoked_at.
-func (s *ContractorService) markTerminal(ctx context.Context, workspaceID, contractorGrantID uuid.UUID, state, actor, action, reason string) error {
+// markTerminal flips a contractor grant from fromState to a terminal state and
+// records the disposition, stamping revoked_at. The update is guarded on
+// fromState so two terminal transitions racing on the same grant (e.g. the
+// expiry sweep and a manual revoke) cannot both win: the loser matches 0 rows
+// and returns ErrContractorState before appending audit, so the terminal state
+// and its disposition event are written exactly once.
+func (s *ContractorService) markTerminal(ctx context.Context, workspaceID, contractorGrantID uuid.UUID, fromState, state, actor, action, reason string) error {
 	now := s.now()
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.ContractorGrant{}).
-			Where("workspace_id = ? AND id = ?", workspaceID, contractorGrantID).
-			Updates(map[string]any{"state": state, "revoked_at": now, "updated_at": now}).Error; err != nil {
-			return fmt.Errorf("lifecycle: mark contractor grant %s: %w", state, err)
+		res := tx.Model(&models.ContractorGrant{}).
+			Where("workspace_id = ? AND id = ? AND state = ?", workspaceID, contractorGrantID, fromState).
+			Updates(map[string]any{"state": state, "revoked_at": now, "updated_at": now})
+		if res.Error != nil {
+			return fmt.Errorf("lifecycle: mark contractor grant %s: %w", state, res.Error)
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("%w: contractor grant is no longer %s", ErrContractorState, fromState)
 		}
 		return appendAudit(ctx, tx, now, auditEntry{
 			WorkspaceID: workspaceID,

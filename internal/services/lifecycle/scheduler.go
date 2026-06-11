@@ -90,13 +90,27 @@ func (s *Scheduler) SetContractorEnforcer(e *ContractorExpiryEnforcer) { s.contr
 // interval before its first sweep.
 func (s *Scheduler) Run(ctx context.Context) error {
 	expiryTick := time.NewTicker(s.expiryInterval)
-	orphanTick := time.NewTicker(s.orphanInterval)
-	anomalyTick := time.NewTicker(s.anomalyInterval)
-	contractorTick := time.NewTicker(s.contractorInterval)
 	defer expiryTick.Stop()
-	defer orphanTick.Stop()
-	defer anomalyTick.Stop()
-	defer contractorTick.Stop()
+
+	// Optional sweeps get a ticker only when their dependency is wired. A nil
+	// channel is never selected, so a disabled sweep costs no ticker goroutine
+	// and its select case below is inert without an explicit nil guard.
+	var orphanC, anomalyC, contractorC <-chan time.Time
+	if s.orphans != nil {
+		t := time.NewTicker(s.orphanInterval)
+		defer t.Stop()
+		orphanC = t.C
+	}
+	if s.anomaly != nil {
+		t := time.NewTicker(s.anomalyInterval)
+		defer t.Stop()
+		anomalyC = t.C
+	}
+	if s.contractor != nil {
+		t := time.NewTicker(s.contractorInterval)
+		defer t.Stop()
+		contractorC = t.C
+	}
 
 	// Fire the initial sweeps, but bail out between them if ctx is already
 	// cancelled so a process that is shutting down right after boot does not
@@ -131,18 +145,12 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-expiryTick.C:
 			s.runExpirySweep(ctx)
-		case <-orphanTick.C:
-			if s.orphans != nil {
-				s.runOrphanSweep(ctx)
-			}
-		case <-anomalyTick.C:
-			if s.anomaly != nil {
-				s.runAnomalySweep(ctx)
-			}
-		case <-contractorTick.C:
-			if s.contractor != nil {
-				s.runContractorSweep(ctx)
-			}
+		case <-orphanC:
+			s.runOrphanSweep(ctx)
+		case <-anomalyC:
+			s.runAnomalySweep(ctx)
+		case <-contractorC:
+			s.runContractorSweep(ctx)
 		}
 	}
 }
