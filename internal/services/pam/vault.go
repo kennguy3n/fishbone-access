@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
+	"reflect"
 	"strings"
 	"time"
 
@@ -130,16 +130,17 @@ func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models
 // AES-GCM AAD so the sealed envelope is cryptographically tied to this exact row
 // and cannot be copied to another.
 //
-// Registration is idempotent and converging: a target is identified by its
+// Registration is strictly idempotent: a target is identified by its
 // workspace-scoped name (the uq_pam_targets_name partial unique index).
-// Re-registering the SAME upstream (same protocol + address) returns the
-// existing row with created=false, reconciling any drift in the mutable,
-// non-secret attributes (username, require_mfa, lease TTL, config) to the
-// requested desired state and auditing the change — so a bootstrapper can
-// re-run, even with an adjusted spec, without erroring, duplicating, or
-// silently keeping stale settings. A name already taken by a DIFFERENT upstream
-// is a real conflict (ErrTargetExists). Changing an existing target's credential
-// is RotateSecret's job, not this path's.
+// Re-registering an IDENTICAL target — same protocol, address, username,
+// require_mfa, lease TTL and config — returns the existing row with
+// created=false, so a bootstrapper can safely re-run without erroring or
+// duplicating. Re-registering the same name with ANY of those fields different
+// is a typed conflict (ErrTargetExists → 409), not a silent mutation: a create
+// must never update — and possibly downgrade — an existing privileged target
+// (e.g. a plain re-POST that omits require_mfa must not flip its MFA gate off).
+// Settings and credential changes go through the explicit update / RotateSecret
+// paths instead.
 func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, bool, error) {
 	if v == nil || v.db == nil {
 		return nil, false, fmt.Errorf("pam: Vault not initialised")
@@ -161,7 +162,7 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 
 	switch existing, err := v.FindTargetByName(ctx, in.WorkspaceID, name); {
 	case err == nil:
-		return v.reuseOrReconcile(ctx, existing, in, name, address)
+		return reuseOrConflict(existing, in, name, address)
 	case !errors.Is(err, ErrTargetNotFound):
 		return nil, false, err
 	}
@@ -197,10 +198,11 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 			"address":  row.Address,
 		})
 	}); err != nil {
-		// Lost a create race against a concurrent identical registration: the
-		// unique index fired between our existence check and the insert. Re-resolve
-		// so the winning row is returned (idempotent, reconciling any drift) — or a
-		// genuine upstream conflict surfaces as ErrTargetExists — instead of a 500.
+		// Lost a create race against a concurrent registration for the same name:
+		// the unique index fired between our existence check and the insert.
+		// Re-resolve and apply the same strict-idempotency decision — return the
+		// winning row if it is identical, else surface ErrTargetExists — instead
+		// of leaking a raw 500.
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			winner, ferr := v.FindTargetByName(ctx, in.WorkspaceID, name)
 			if ferr != nil {
@@ -209,89 +211,54 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 				}
 				return nil, false, ferr
 			}
-			return v.reuseOrReconcile(ctx, winner, in, name, address)
+			return reuseOrConflict(winner, in, name, address)
 		}
 		return nil, false, err
 	}
 	return row, true, nil
 }
 
-// reuseOrReconcile handles a create whose workspace-scoped name already exists.
-// When the existing row describes the SAME upstream (protocol + address) the
-// registration is idempotent: any drift in the mutable, non-secret attributes
-// (username, require_mfa, lease TTL, config) is reconciled to the requested
-// desired state and the change is audited, then the row is returned with
-// created=false — so a bootstrapper that re-runs with an adjusted spec converges
-// instead of either erroring or silently keeping stale settings. A name already
-// bound to a DIFFERENT upstream is a real conflict (ErrTargetExists);
-// re-pointing a target at a new host/protocol is deliberately not an implicit
-// side effect of create. The sealed credential is never touched here — rotating
-// it is RotateSecret's job.
-func (v *Vault) reuseOrReconcile(ctx context.Context, existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
-	if existing.Protocol != in.Protocol || existing.Address != address {
-		return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
+// reuseOrConflict applies the strict-idempotency decision when a create's
+// workspace-scoped name already exists. It returns the existing row (200,
+// created=false) only when that row is IDENTICAL to the request across every
+// non-secret field (protocol, address, username, require_mfa, lease TTL and
+// config); any difference is a typed conflict (ErrTargetExists → 409). A create
+// deliberately never mutates an existing target — re-pointing it at a new
+// upstream or flipping its require_mfa gate must be an explicit update, never an
+// implicit side effect of a re-POST (which, for value-typed bools, could not
+// tell an omitted require_mfa from an intentional false and would silently
+// downgrade the gate). The sealed credential is never compared or touched here.
+func reuseOrConflict(existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
+	if existing.Protocol == in.Protocol &&
+		existing.Address == address &&
+		existing.Username == strings.TrimSpace(in.Username) &&
+		existing.RequireMFA == in.RequireMFA &&
+		existing.LeaseTTLSeconds == int(in.LeaseTTL.Seconds()) &&
+		jsonEqual(existing.Config, in.Config) {
+		return existing, false, nil
 	}
-
-	desiredUser := strings.TrimSpace(in.Username)
-	desiredTTL := int(in.LeaseTTL.Seconds())
-	changes := map[string]any{}
-	if existing.Username != desiredUser {
-		changes["username"] = desiredUser
-	}
-	if existing.RequireMFA != in.RequireMFA {
-		changes["require_mfa"] = in.RequireMFA
-	}
-	if existing.LeaseTTLSeconds != desiredTTL {
-		changes["lease_ttl_seconds"] = desiredTTL
-	}
-	if !jsonEqual(existing.Config, in.Config) {
-		changes["config"] = in.Config
-	}
-	if len(changes) == 0 {
-		return existing, false, nil // already in the desired state — pure reuse
-	}
-
-	// Apply the reconcile and its audit entry in one transaction so the
-	// tamper-evident chain never diverges from the row. The credential envelope
-	// and key version are intentionally untouched.
-	if err := v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.PAMTarget{}).
-			Where("workspace_id = ? AND id = ?", existing.WorkspaceID, existing.ID).
-			Updates(changes).Error; err != nil {
-			return fmt.Errorf("pam: reconcile target: %w", err)
-		}
-		return v.auditTx(ctx, tx, existing.WorkspaceID, in.Actor, "pam.target.updated", existing.ID.String(), map[string]any{
-			"fields": changedColumns(changes),
-		})
-	}); err != nil {
-		return nil, false, err
-	}
-
-	updated, err := v.GetTarget(ctx, existing.WorkspaceID, existing.ID)
-	if err != nil {
-		return nil, false, err
-	}
-	return updated, false, nil
-}
-
-// changedColumns returns the sorted column names touched by a reconcile so the
-// audit metadata records WHICH fields converged without leaking config payloads.
-func changedColumns(changes map[string]any) []string {
-	cols := make([]string, 0, len(changes))
-	for c := range changes {
-		cols = append(cols, c)
-	}
-	sort.Strings(cols)
-	return cols
+	return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
 }
 
 // jsonEqual compares two JSON columns treating nil and empty as equal so an
-// omitted config never looks like a change against a stored empty one.
+// omitted config never looks like a change against a stored empty one. When both
+// are non-empty it first tries a byte compare, then falls back to a semantic
+// compare so equivalent JSON with different key ordering or whitespace doesn't
+// read as a spurious conflict on a faithful re-register.
 func jsonEqual(a, b datatypes.JSON) bool {
-	if len(a) == 0 && len(b) == 0 {
+	switch {
+	case len(a) == 0 && len(b) == 0:
+		return true
+	case len(a) == 0 || len(b) == 0:
+		return false
+	case bytes.Equal(a, b):
 		return true
 	}
-	return bytes.Equal(a, b)
+	var ax, bx any
+	if json.Unmarshal(a, &ax) != nil || json.Unmarshal(b, &bx) != nil {
+		return false
+	}
+	return reflect.DeepEqual(ax, bx)
 }
 
 // GetTarget loads a target scoped to its workspace.

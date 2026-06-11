@@ -199,33 +199,29 @@ func TestCreateTargetIdempotent(t *testing.T) {
 		t.Fatalf("expected exactly 1 target after re-register, got %d", len(rows))
 	}
 
-	// Re-register the SAME upstream with drifted mutable, non-secret fields: the
-	// registration converges the target to the requested desired state (no
-	// duplicate, same row) rather than silently keeping the stale settings. This
-	// matters most for require_mfa — a security-relevant flag that must not be
-	// silently dropped.
-	converge := in
-	converge.RequireMFA = true
-	converge.LeaseTTL = 30 * time.Minute
-	converge.Username = "app-rotated"
-	reconciled, created, err := v.CreateOrGetTarget(ctx, converge)
-	if err != nil {
-		t.Fatalf("converge re-register: %v", err)
+	// Re-register the SAME upstream but with a drifted security-relevant field
+	// (require_mfa) is NOT silently converged: a create must never mutate — and
+	// here would *downgrade* — an existing privileged target, since a value-typed
+	// re-POST can't tell an omitted require_mfa from an intentional false. It's a
+	// typed conflict the caller must resolve via an explicit update, and the
+	// stored target must stay untouched.
+	drift := in
+	drift.RequireMFA = true
+	drift.LeaseTTL = 30 * time.Minute
+	drift.Username = "app-rotated"
+	if _, _, err := v.CreateOrGetTarget(ctx, drift); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("want ErrTargetExists for a drifted re-register, got %v", err)
 	}
-	if created {
-		t.Fatal("converge re-register should reuse the row, got created=true")
-	}
-	if reconciled.ID != first.ID {
-		t.Fatalf("converge returned a different row: %s != %s", reconciled.ID, first.ID)
-	}
-	if !reconciled.RequireMFA || reconciled.LeaseTTLSeconds != 1800 || reconciled.Username != "app-rotated" {
-		t.Fatalf("converge did not apply desired state: require_mfa=%v ttl=%d user=%q",
-			reconciled.RequireMFA, reconciled.LeaseTTLSeconds, reconciled.Username)
+	// The original target is unchanged: re-registering the IDENTICAL spec still
+	// reuses the row and the security flag is still its original value.
+	if cur, created, err := v.CreateOrGetTarget(ctx, in); err != nil || created || cur.ID != first.ID || cur.RequireMFA {
+		t.Fatalf("drifted re-register mutated the target: id=%s created=%v require_mfa=%v err=%v",
+			cur.ID, created, cur.RequireMFA, err)
 	}
 	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
 		t.Fatalf("ListTargets: %v", err)
 	} else if len(rows) != 1 {
-		t.Fatalf("converge must not duplicate the target, got %d", len(rows))
+		t.Fatalf("drifted re-register must not duplicate the target, got %d", len(rows))
 	}
 
 	// Same name pointed at a different upstream → conflict, not a silent shadow.

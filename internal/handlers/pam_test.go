@@ -269,25 +269,19 @@ func TestCreateTargetIdempotentHTTP(t *testing.T) {
 		t.Fatalf("re-register returned a different id: %s != %s", reused.ID, first.ID)
 	}
 
-	// Same upstream, drifted require_mfa → 200 OK, same row, converged to the
-	// requested desired state (the security-relevant flag is applied, not
-	// silently dropped).
-	converge := map[string]any{
+	// Same upstream but drifted require_mfa → 409 Conflict, NOT a silent
+	// converge: a create must never mutate (and here would downgrade) an existing
+	// privileged target, and a value-typed re-POST can't distinguish an omitted
+	// require_mfa from an intentional false. Settings changes go through an
+	// explicit update path.
+	drift := map[string]any{
 		"name": "db-prod", "protocol": "postgres", "address": "db:5432",
-		"require_mfa": true, "lease_ttl_seconds": 1800,
-		"secret": map[string]any{"password": "pw"},
+		"require_mfa": true,
+		"secret":      map[string]any{"password": "pw"},
 	}
-	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", converge)
-	if w.Code != http.StatusOK {
-		t.Fatalf("converge re-register: want 200, got %d (%s)", w.Code, w.Body.String())
-	}
-	var reconciled models.PAMTarget
-	if err := json.Unmarshal(w.Body.Bytes(), &reconciled); err != nil {
-		t.Fatalf("decode reconciled target: %v", err)
-	}
-	if reconciled.ID != first.ID || !reconciled.RequireMFA || reconciled.LeaseTTLSeconds != 1800 {
-		t.Fatalf("converge did not apply desired state: id=%s require_mfa=%v ttl=%d",
-			reconciled.ID, reconciled.RequireMFA, reconciled.LeaseTTLSeconds)
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", drift)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("drifted re-register: want 409, got %d (%s)", w.Code, w.Body.String())
 	}
 
 	// Same name, different upstream → 409 Conflict (not a 500).
