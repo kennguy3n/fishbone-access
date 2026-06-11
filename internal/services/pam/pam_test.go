@@ -199,6 +199,35 @@ func TestCreateTargetIdempotent(t *testing.T) {
 		t.Fatalf("expected exactly 1 target after re-register, got %d", len(rows))
 	}
 
+	// Re-register the SAME upstream with drifted mutable, non-secret fields: the
+	// registration converges the target to the requested desired state (no
+	// duplicate, same row) rather than silently keeping the stale settings. This
+	// matters most for require_mfa — a security-relevant flag that must not be
+	// silently dropped.
+	converge := in
+	converge.RequireMFA = true
+	converge.LeaseTTL = 30 * time.Minute
+	converge.Username = "app-rotated"
+	reconciled, created, err := v.CreateOrGetTarget(ctx, converge)
+	if err != nil {
+		t.Fatalf("converge re-register: %v", err)
+	}
+	if created {
+		t.Fatal("converge re-register should reuse the row, got created=true")
+	}
+	if reconciled.ID != first.ID {
+		t.Fatalf("converge returned a different row: %s != %s", reconciled.ID, first.ID)
+	}
+	if !reconciled.RequireMFA || reconciled.LeaseTTLSeconds != 1800 || reconciled.Username != "app-rotated" {
+		t.Fatalf("converge did not apply desired state: require_mfa=%v ttl=%d user=%q",
+			reconciled.RequireMFA, reconciled.LeaseTTLSeconds, reconciled.Username)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("converge must not duplicate the target, got %d", len(rows))
+	}
+
 	// Same name pointed at a different upstream → conflict, not a silent shadow.
 	conflict := in
 	conflict.Protocol = models.PAMProtocolSSH
