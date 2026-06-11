@@ -162,7 +162,7 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 
 	switch existing, err := v.FindTargetByName(ctx, in.WorkspaceID, name); {
 	case err == nil:
-		return reuseOrConflict(existing, in, name, address)
+		return v.reuseOrConflict(ctx, existing, in, name, address)
 	case !errors.Is(err, ErrTargetNotFound):
 		return nil, false, err
 	}
@@ -211,7 +211,7 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 				}
 				return nil, false, ferr
 			}
-			return reuseOrConflict(winner, in, name, address)
+			return v.reuseOrConflict(ctx, winner, in, name, address)
 		}
 		return nil, false, err
 	}
@@ -228,7 +228,14 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 // implicit side effect of a re-POST (which, for value-typed bools, could not
 // tell an omitted require_mfa from an intentional false and would silently
 // downgrade the gate). The sealed credential is never compared or touched here.
-func reuseOrConflict(existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
+//
+// A pure idempotent reuse is intentionally NOT audited — it is a no-op whose
+// state was already recorded at create time, and auditing every bootstrapper
+// re-run would flood the chain. A denied conflict, however, IS audited: an
+// attempt to re-register a privileged target's name against a different upstream
+// or with a changed security setting is a security-relevant rejected event that
+// must leave a trail.
+func (v *Vault) reuseOrConflict(ctx context.Context, existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
 	if existing.Protocol == in.Protocol &&
 		existing.Address == address &&
 		existing.Username == strings.TrimSpace(in.Username) &&
@@ -237,7 +244,45 @@ func reuseOrConflict(existing *models.PAMTarget, in CreateTargetInput, name, add
 		jsonEqual(existing.Config, in.Config) {
 		return existing, false, nil
 	}
+	// Standalone audit: the registration is rejected, so there is no row to
+	// commit alongside (same shape as the secret-reveal event). Record only the
+	// non-secret field names that differ — never values or secret material — and
+	// fail closed if the chain append fails, so a denial is never silently
+	// unrecorded.
+	if err := v.audit(ctx, in.WorkspaceID, in.Actor, "pam.target.register_denied", existing.ID.String(), map[string]any{
+		"name":           name,
+		"reason":         "name already registered with different settings",
+		"changed_fields": conflictFields(existing, in, address),
+	}); err != nil {
+		return nil, false, err
+	}
 	return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
+}
+
+// conflictFields lists the non-secret field names whose requested value differs
+// from the stored target, so a register_denied audit records WHAT was being
+// changed without leaking any values (e.g. config payloads or addresses).
+func conflictFields(existing *models.PAMTarget, in CreateTargetInput, address string) []string {
+	var f []string
+	if existing.Protocol != in.Protocol {
+		f = append(f, "protocol")
+	}
+	if existing.Address != address {
+		f = append(f, "address")
+	}
+	if existing.Username != strings.TrimSpace(in.Username) {
+		f = append(f, "username")
+	}
+	if existing.RequireMFA != in.RequireMFA {
+		f = append(f, "require_mfa")
+	}
+	if existing.LeaseTTLSeconds != int(in.LeaseTTL.Seconds()) {
+		f = append(f, "lease_ttl_seconds")
+	}
+	if !jsonEqual(existing.Config, in.Config) {
+		f = append(f, "config")
+	}
+	return f
 }
 
 // jsonEqual compares two JSON columns treating nil and empty as equal so an

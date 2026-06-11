@@ -223,6 +223,16 @@ func TestCreateTargetIdempotent(t *testing.T) {
 	} else if len(rows) != 1 {
 		t.Fatalf("drifted re-register must not duplicate the target, got %d", len(rows))
 	}
+	// The denied conflict leaves a security audit trail (the pure reuse above
+	// deliberately does not), recording the existing target and which fields the
+	// re-register tried to change.
+	var denied int64
+	db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ? AND target_ref = ?", ws, "pam.target.register_denied", first.ID.String()).
+		Count(&denied)
+	if denied != 1 {
+		t.Fatalf("want exactly 1 pam.target.register_denied audit row, got %d", denied)
+	}
 
 	// Same name pointed at a different upstream → conflict, not a silent shadow.
 	conflict := in
