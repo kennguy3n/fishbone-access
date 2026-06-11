@@ -72,4 +72,23 @@ var (
 	// still has unresolved grant-vs-deny conflicts with live policies. The
 	// caller can override with an audited reason once the conflict is reviewed.
 	ErrPolicyHasConflicts = errors.New("lifecycle: policy has unresolved conflicts")
+
+	// ErrPolicyHasSodViolations is returned when Promote is blocked because the
+	// candidate policy would introduce a high/critical Separation-of-Duties
+	// toxic combination ("catastrophic change"). Overridable with an audited
+	// reason once the violation is reviewed, exactly like a grant-vs-deny block.
+	ErrPolicyHasSodViolations = errors.New("lifecycle: policy introduces separation-of-duties violations")
+
+	// ErrSodRuleNotFound is returned when a SoD rule id matches no row in the
+	// caller's workspace.
+	ErrSodRuleNotFound = errors.New("lifecycle: sod rule not found")
+
+	// ErrContractorGrantNotFound is returned when a contractor-grant id matches
+	// no row in the caller's workspace.
+	ErrContractorGrantNotFound = errors.New("lifecycle: contractor grant not found")
+
+	// ErrContractorState is returned when a contractor-grant operation is
+	// invalid for the grant's current state (e.g. approving an already-active
+	// grant, or extending a revoked one).
+	ErrContractorState = errors.New("lifecycle: invalid contractor grant state for this operation")
 )

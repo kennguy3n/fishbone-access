@@ -248,6 +248,29 @@ func (s *AccessProvisioningService) reconcileToActive(ctx context.Context, tx *g
 	return nil
 }
 
+// ProvisionAtProvider resolves the connector and calls ProvisionAccess (with
+// the same retry policy as Provision) WITHOUT writing any row. A caller that
+// owns its own aggregate — e.g. the contractor lifecycle materializing a grant
+// bound to a contractor_grants row — uses this so it can insert the resulting
+// access_grant inside its own transaction and keep the two writes atomic. It
+// returns the resolver's classified error on failure (sentinel → 422, raw → 500)
+// and the connector error (wrapped) when the provider call itself fails.
+func (s *AccessProvisioningService) ProvisionAtProvider(ctx context.Context, workspaceID, connectorID uuid.UUID, grant access.AccessGrant) error {
+	if connectorID == uuid.Nil {
+		return fmt.Errorf("%w: connector is required to provision", ErrValidation)
+	}
+	resolved, err := s.resolver.Resolve(ctx, workspaceID, connectorID)
+	if err != nil {
+		return err
+	}
+	if err := s.withRetry(ctx, func() error {
+		return resolved.Impl.ProvisionAccess(ctx, resolved.Config, resolved.Secrets, grant)
+	}); err != nil {
+		return fmt.Errorf("lifecycle: provision access at provider: %w", err)
+	}
+	return nil
+}
+
 // RevokeGrant revokes a live grant on the provider and flips the grant (and its
 // originating request, if any) to revoked. It is idempotent: a grant that is
 // already revoked returns nil so the leaver kill switch can re-run cleanly.

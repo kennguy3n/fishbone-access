@@ -261,13 +261,21 @@ func run() error {
 	if deps.DB != nil {
 		resolver := lifecycle.NewDBConnectorResolver(deps.DB, deps.ConnectorEncryptor)
 		reqSvc := lifecycle.NewAccessRequestService(deps.DB)
+		workflow := lifecycle.NewWorkflowService(reqSvc)
 		prov := lifecycle.NewAccessProvisioningService(deps.DB, reqSvc, resolver)
+		jml := lifecycle.NewJMLService(deps.DB, reqSvc, workflow, prov, resolver, deps.Disabler)
+		contractorSvc := lifecycle.NewContractorService(deps.DB, prov)
 		sched := lifecycle.NewScheduler(
 			deps.DB,
 			lifecycle.NewExpiryEnforcer(deps.DB, prov),
 			lifecycle.NewOrphanReconciler(deps.DB, resolver),
 			lifecycle.SchedulerConfig{},
 		)
+		// Attach the SoD anomaly→evidence detector and the contractor-grant
+		// expiry/offboard enforcer so their periodic sweeps run alongside the
+		// expiry and orphan sweeps. Both are idempotent and workspace-scoped.
+		sched.SetAnomalyDetector(lifecycle.NewAnomalyDetector(deps.DB))
+		sched.SetContractorEnforcer(lifecycle.NewContractorExpiryEnforcer(deps.DB, contractorSvc, prov, jml))
 		// Give the scheduler its own cancellable context and join it on the way
 		// out so it is guaranteed to have stopped before the deferred DB-pool
 		// close runs. The pool's close defer was registered earlier (right after
@@ -287,7 +295,7 @@ func run() error {
 			schedCancel()
 			schedWG.Wait()
 		}()
-		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation)")
+		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation + sod anomaly evidence + contractor expiry)")
 	}
 
 	// Tenant hibernation (WS1 scale/NoOps): track per-tenant activity, classify
