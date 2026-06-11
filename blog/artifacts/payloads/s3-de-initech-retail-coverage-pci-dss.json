@@ -2,12 +2,12 @@
   "controls": [
     {
       "by_kind": {
-        "access_granted": 3,
+        "access_granted": 4,
         "policy_created": 8,
         "policy_promoted": 8
       },
       "covered": true,
-      "evidence_count": 19,
+      "evidence_count": 20,
       "id": "7.2",
       "kinds": [
         "policy_promoted",
@@ -52,12 +52,12 @@
     },
     {
       "by_kind": {
-        "access_granted": 3,
+        "access_granted": 4,
         "access_requested": 4,
         "joiner_provisioned": 1
       },
       "covered": true,
-      "evidence_count": 8,
+      "evidence_count": 9,
       "id": "8.2",
       "kinds": [
         "access_requested",
@@ -71,7 +71,9 @@
       "evidence_count": 0,
       "id": "10.2",
       "kinds": [
+        "privileged_session",
         "privileged_command",
+        "privileged_recording",
         "evidence_exported"
       ],
       "title": "Audit trail of access to system components"
@@ -79,6 +81,6 @@
   ],
   "controls_covered": 4,
   "controls_total": 5,
-  "evidence_total": 39,
+  "evidence_total": 40,
   "framework": "PCI-DSS"
 }

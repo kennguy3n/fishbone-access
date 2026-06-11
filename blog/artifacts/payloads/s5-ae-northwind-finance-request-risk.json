@@ -1,0 +1,44 @@
+{
+  "request": {
+    "connector_id": "9425214b-baa5-4304-b6ef-0420798ff1f2",
+    "created_at": "2026-06-11T05:17:01.523915Z",
+    "deleted_at": null,
+    "id": "9d8171f9-07d3-48bf-a10d-5b25f2e112c8",
+    "justification": "UAE PDPL data-subject request fulfilment.",
+    "requester_id": "ae-northwind-finance-owner",
+    "resource_ref": "pdpl:dsr",
+    "risk_factors": [
+      "ai_unavailable"
+    ],
+    "risk_level": "medium",
+    "role": "auditor",
+    "state": "approved",
+    "target_user_id": "ae-northwind-finance-owner",
+    "updated_at": "2026-06-11T05:17:01.534766Z",
+    "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+  },
+  "risk": {
+    "created_at": "2026-06-11T05:17:01.527302Z",
+    "degraded": true,
+    "deleted_at": null,
+    "factors": [
+      "ai_unavailable"
+    ],
+    "id": "40aa9738-6417-4b9f-ace4-6639402b3e82",
+    "inputs": {
+      "ai_tier": "deterministic",
+      "duration_hours": 24,
+      "justification": "UAE PDPL data-subject request fulfilment.",
+      "resource_ref": "pdpl:dsr",
+      "resource_tags": null,
+      "role": "auditor"
+    },
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "9d8171f9-07d3-48bf-a10d-5b25f2e112c8",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-11T05:17:01.527302Z",
+    "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+  }
+}

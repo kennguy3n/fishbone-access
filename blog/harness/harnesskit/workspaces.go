@@ -43,6 +43,59 @@ type AccessRequestSpec struct {
 	Provision bool
 }
 
+// PAMTargetSpec is one privileged target (a cloud VM over SSH, a managed
+// database over its native wire protocol, or a Kubernetes API) the harness
+// registers in the PAM vault. Address is a demo endpoint that is never dialed
+// in the self-contained run (the control-plane lease lifecycle is exercised
+// over HTTP; an actual recorded session needs the pam-gateway and a reachable
+// upstream — see the PAM post's "where we fall short"). Kind is a human label
+// for the narrative ("cloud VM", "database", "Kubernetes"). When Lease is set
+// the harness drives the full just-in-time lifecycle against the target:
+// request lease → sponsor approval (step-up MFA) → mint connect-token (step-up
+// MFA when RequireMFA) → expire.
+type PAMTargetSpec struct {
+	Name       string
+	Protocol   string // ssh, postgres, mysql, k8s-exec, …
+	Address    string
+	Username   string
+	Kind       string
+	RequireMFA bool
+	LeaseTTL   int // seconds; the short JIT window the target allows
+	Lease      bool
+}
+
+// ContractorSpec is one time-boxed, sponsor-approved external/contractor grant.
+// Every contractor grant carries a mandatory expiry and a named internal
+// sponsor; the harness drives create → sponsor approval, then either a
+// sponsor-approved extension (Extend) or an early revoke (Revoke) so the
+// time-box history is non-trivial. Grants are issued against the workspace's
+// manual (offline-safe) connector so provisioning succeeds without an upstream.
+type ContractorSpec struct {
+	ContractorUserID string
+	DisplayName      string
+	ResourceRef      string
+	Role             string
+	SponsorID        string
+	Justification    string
+	Days             int // expiry = now + Days
+	Extend           bool
+	Revoke           bool
+}
+
+// SodRuleSpec is one separation-of-duties toxic-combination rule: holding both
+// (ResourceA/RoleA) and (ResourceB/RoleB) is a conflict the engine flags during
+// access simulation and surfaces as an anomaly when a real grant set violates
+// it.
+type SodRuleSpec struct {
+	Name        string
+	Description string
+	Severity    string
+	ResourceA   string
+	RoleA       string
+	ResourceB   string
+	RoleB       string
+}
+
 // Workspace is one demo tenant: a country/industry scenario with its
 // jurisdiction packs, connector fabric, and a realistic access-request set.
 type Workspace struct {
@@ -54,11 +107,14 @@ type Workspace struct {
 	TenantID string // iam_core_tenant_id claim → workspace resolution
 	Locale   string // default UI locale, for the multi-locale screenshot story
 
-	Packs      []string
-	Connectors []ConnectorSpec
-	Requests   []AccessRequestSpec
-	ReviewName string
-	Campaign   CampaignSpec
+	Packs       []string
+	Connectors  []ConnectorSpec
+	Requests    []AccessRequestSpec
+	ReviewName  string
+	Campaign    CampaignSpec
+	PAMTargets  []PAMTargetSpec
+	Contractors []ContractorSpec
+	SodRules    []SodRuleSpec
 }
 
 // CampaignSpec parameterises the certification campaign started for a workspace.
@@ -98,6 +154,17 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 MAS TRM privileged-access review",
 		Campaign:   CampaignSpec{Name: "Q2 2026 PCI-DSS v4 cardholder-data certification", Framework: "PCI-DSS"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "Ledger DB host (prod-sg-1)", Protocol: "ssh", Address: "ledger-db-1.acme-pay.internal:22", Username: "ops", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 1800, Lease: true},
+			{Name: "Core ledger (PostgreSQL)", Protocol: "postgres", Address: "ledger-db-1.acme-pay.internal:5432", Username: "ledger_admin", Kind: "database", RequireMFA: true, LeaseTTL: 1800},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-paytech-integrator@vendor.example", DisplayName: "PayTech integration contractor", ResourceRef: "ledger:reconcile", Role: "operator", SponsorID: "sg-admin", Justification: "6-week payment-rails integration; sponsor: Head of Platform.", Days: 42, Extend: true},
+			{ContractorUserID: "ext-pentest@security.example", DisplayName: "External penetration tester", ResourceRef: "cde:pci-scope", Role: "auditor", SponsorID: "sg-security_admin", Justification: "PCI-DSS 11.3 annual penetration test, read-only CDE.", Days: 10, Revoke: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Ledger admin must not also approve reconciliation", Description: "MAS TRM segregation: the same identity cannot both administer the ledger and sign off reconciliation.", Severity: "critical", ResourceA: "ledger:admin", RoleA: "operator", ResourceB: "ledger:reconcile", RoleB: "operator"},
+		},
 	},
 	{
 		Index: 2, Slug: "us-globex-health", Name: "Globex Health", Region: "us",
@@ -115,6 +182,16 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 HIPAA ePHI access review",
 		Campaign:   CampaignSpec{Name: "Q2 2026 HIPAA Security Rule certification", Framework: "SOC 2"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "EHR app server (clinical-app-1)", Protocol: "ssh", Address: "clinical-app-1.globex.internal:22", Username: "ehr-ops", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 900, Lease: true},
+			{Name: "ePHI datastore (PostgreSQL)", Protocol: "postgres", Address: "ehr-db-1.globex.internal:5432", Username: "phi_reader", Kind: "database", RequireMFA: true, LeaseTTL: 900},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-coding-vendor@billing.example", DisplayName: "Medical-coding vendor", ResourceRef: "ehr:billing", Role: "operator", SponsorID: "us-admin", Justification: "Revenue-cycle coding backlog; minimum-necessary billing module only.", Days: 30, Extend: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Clinician role must not hold billing export", Description: "HIPAA minimum-necessary: clinical access and billing/claims export are mutually exclusive.", Severity: "high", ResourceA: "ehr:clinician", RoleA: "operator", ResourceB: "ehr:billing", RoleB: "operator"},
+		},
 	},
 	{
 		Index: 3, Slug: "de-initech-retail", Name: "Initech Retail", Region: "de",
@@ -133,6 +210,16 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 BSI C5 + GDPR access review",
 		Campaign:   CampaignSpec{Name: "Q2 2026 BSI C5 logical-access certification", Framework: "ISO 27001"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "Azure POS jump host (de-pos-1)", Protocol: "ssh", Address: "pos-jump-1.initech.internal:22", Username: "pos-ops", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 1800, Lease: true},
+			{Name: "SAP POS database (MySQL)", Protocol: "mysql", Address: "sap-pos-db-1.initech.internal:3306", Username: "pos_admin", Kind: "database", RequireMFA: true, LeaseTTL: 1800},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-pos-integrator@vendor.example", DisplayName: "Seasonal POS integrator", ResourceRef: "pos:store-manager", Role: "operator", SponsorID: "de-admin", Justification: "Holiday-season POS rollout; works-council-approved fixed term.", Days: 60, Extend: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Store-manager must not hold cardholder-data access", Description: "PCI-DSS 7.x: POS store-manager duties and direct cardholder-data access must be separated.", Severity: "critical", ResourceA: "pos:store-manager", RoleA: "operator", ResourceB: "pos:cardholder-data", RoleB: "operator"},
+		},
 	},
 	{
 		Index: 4, Slug: "vn-umbrella-logistics", Name: "Umbrella Logistics", Region: "vn",
@@ -150,6 +237,15 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 PDPD Decree 13 access review",
 		Campaign:   CampaignSpec{Name: "Q2 2026 PDPD Decree 13 certification", Framework: "ISO 27001"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "WMS application server (wms-1)", Protocol: "ssh", Address: "wms-1.umbrella.internal:22", Username: "wms-ops", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 1800, Lease: true},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-3pl-partner@logistics.example", DisplayName: "3PL partner operator", ResourceRef: "wms:dispatcher", Role: "operator", SponsorID: "vn-admin", Justification: "Peak-season third-party logistics dispatch support.", Days: 45, Revoke: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Dispatcher must not also adjust inventory", Description: "PDPD operational integrity: dispatch and inventory-adjustment duties are separated to prevent shrinkage fraud.", Severity: "medium", ResourceA: "wms:dispatcher", RoleA: "operator", ResourceB: "wms:inventory", RoleB: "operator"},
+		},
 	},
 	{
 		Index: 5, Slug: "ae-northwind-finance", Name: "Northwind Finance", Region: "ae",
@@ -167,6 +263,16 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 DESC privileged-access review",
 		Campaign:   CampaignSpec{Name: "Q2 2026 ISO 27001 Annex A access certification", Framework: "ISO 27001"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "Temenos T24 core-banking host (t24-prod-1)", Protocol: "ssh", Address: "t24-prod-1.northwind.internal:22", Username: "t24-admin", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 900, Lease: true},
+			{Name: "Treasury ledger (PostgreSQL)", Protocol: "postgres", Address: "treasury-db-1.northwind.internal:5432", Username: "treasury_ro", Kind: "database", RequireMFA: true, LeaseTTL: 900, Lease: true},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-desc-auditor@regulator.example", DisplayName: "DESC external auditor", ResourceRef: "pdpl:dsr", Role: "auditor", SponsorID: "ae-security_admin", Justification: "DESC annual assessment, read-only audit window.", Days: 14, Extend: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Core-banking admin must not run treasury settlement", Description: "DESC + ISO 27001 A.5.3: privileged core-banking administration and treasury settlement are a catastrophic toxic combination.", Severity: "critical", ResourceA: "t24:privileged-admin", RoleA: "operator", ResourceB: "t24:treasury", RoleB: "operator"},
+		},
 	},
 	{
 		Index: 6, Slug: "au-contoso-saas", Name: "Contoso SaaS", Region: "au",
@@ -185,5 +291,15 @@ var Workspaces = []Workspace{
 		},
 		ReviewName: "Q2 2026 SOC 2 Type II recertification",
 		Campaign:   CampaignSpec{Name: "Q2 2026 SOC 2 logical-access certification", Framework: "SOC 2"},
+		PAMTargets: []PAMTargetSpec{
+			{Name: "GCP production VM (prod-au-1)", Protocol: "ssh", Address: "prod-au-1.contoso-saas.internal:22", Username: "sre", Kind: "cloud VM", RequireMFA: true, LeaseTTL: 1800, Lease: true},
+			{Name: "Production datastore (PostgreSQL)", Protocol: "postgres", Address: "prod-db-1.contoso-saas.internal:5432", Username: "app_ro", Kind: "database", RequireMFA: true, LeaseTTL: 1800, Lease: true},
+		},
+		Contractors: []ContractorSpec{
+			{ContractorUserID: "ext-sre-oncall@vendor.example", DisplayName: "On-call SRE vendor", ResourceRef: "prod:deploy", Role: "operator", SponsorID: "au-admin", Justification: "Follow-the-sun production on-call cover; Essential Eight time-boxed admin.", Days: 21, Extend: true},
+		},
+		SodRules: []SodRuleSpec{
+			{Name: "Production deploy must not also hold billing admin", Description: "SOC 2 CC6.3 / Essential Eight: production-change and billing-administration duties are separated.", Severity: "high", ResourceA: "prod:deploy", RoleA: "operator", ResourceB: "billing:admin", RoleB: "operator"},
+		},
 	},
 }

@@ -1,0 +1,30 @@
+{
+  "targets": [
+    {
+      "address": "sap-pos-db-1.initech.internal:3306",
+      "created_at": "2026-06-11T05:15:31.411167Z",
+      "deleted_at": null,
+      "id": "4c1fad72-42b5-45f0-b3e2-6a81deb4223e",
+      "lease_ttl_seconds": 1800,
+      "name": "SAP POS database (MySQL)",
+      "protocol": "mysql",
+      "require_mfa": true,
+      "updated_at": "2026-06-11T05:15:31.411167Z",
+      "username": "pos_admin",
+      "workspace_id": "f6b5113b-9d3a-4810-8717-2e37c581ba15"
+    },
+    {
+      "address": "pos-jump-1.initech.internal:22",
+      "created_at": "2026-06-11T05:15:03.289757Z",
+      "deleted_at": null,
+      "id": "b73613e6-d1cc-4b64-93ab-6d233c635490",
+      "lease_ttl_seconds": 1800,
+      "name": "Azure POS jump host (de-pos-1)",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-11T05:15:03.289757Z",
+      "username": "pos-ops",
+      "workspace_id": "f6b5113b-9d3a-4810-8717-2e37c581ba15"
+    }
+  ]
+}

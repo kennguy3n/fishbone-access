@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-10T21:32:01.357439Z",
-      "created_at": "2026-06-10T21:32:01.34487Z",
+      "closed_at": "2026-06-11T05:19:31.804745Z",
+      "created_at": "2026-06-11T05:19:31.793316Z",
       "deleted_at": null,
       "framework": "SOC 2",
-      "id": "b51b4e6c-b350-423a-aa2e-491b59fcaf36",
+      "id": "f70c2d23-da79-4255-8ff4-918b455de239",
       "name": "Q2 2026 SOC 2 logical-access certification",
-      "scope_connector_id": "2d529abb-bb5f-491e-ae96-d764a47be837",
-      "started_at": "2026-06-10T21:32:01.34487Z",
+      "scope_connector_id": "91d18b9a-6f09-46e5-b730-69a72dd9dc12",
+      "started_at": "2026-06-11T05:19:31.793316Z",
       "state": "closed",
-      "updated_at": "2026-06-10T21:32:01.357439Z",
-      "workspace_id": "f2c5897b-0c85-4434-a953-955ef5c322c9"
+      "updated_at": "2026-06-11T05:19:31.804745Z",
+      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
     }
   ]
 }

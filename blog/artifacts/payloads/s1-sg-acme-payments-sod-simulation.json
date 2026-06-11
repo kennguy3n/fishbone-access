@@ -1,0 +1,43 @@
+{
+  "simulation": {
+    "conflicts": null,
+    "impact": {
+      "action": "grant",
+      "affected_grants": 0,
+      "affected_resources": [
+        "ledger:admin",
+        "ledger:reconcile"
+      ],
+      "affected_subjects": [
+        "sg-acme-payments-owner"
+      ],
+      "catastrophic": true,
+      "catastrophic_reasons": [
+        "introduces high/critical separation-of-duties toxic combination(s)"
+      ],
+      "new_grant_pairs": 2,
+      "pair_count": 2,
+      "redundant_pairs": 0,
+      "resource_count": 2,
+      "sod_violations": [
+        {
+          "conflicting": {
+            "resource": "ledger:reconcile",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "ledger:admin",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "c81061ea-4126-4920-9017-4d321cc08a94",
+          "rule_name": "Ledger admin must not also approve reconciliation",
+          "severity": "critical",
+          "subject": "sg-acme-payments-owner"
+        }
+      ],
+      "subject_count": 1,
+      "wildcard_resource": false
+    }
+  }
+}

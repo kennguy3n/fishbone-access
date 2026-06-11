@@ -128,6 +128,67 @@ func main() {
 		} else {
 			cap.skipf(prefix + "sso-status (no connector id in summary)")
 		}
+
+		// New-journey captures: PAM (privileged targets + JIT leases +
+		// sessions), contractor/external access, and the separation-of-duties
+		// rule set + detected anomalies.
+		cap.get(c, prefix+"pam-targets", "/api/v1/pam/targets")
+		cap.get(c, prefix+"pam-leases", "/api/v1/pam/leases")
+		cap.get(c, prefix+"pam-sessions", "/api/v1/pam/sessions")
+		cap.get(c, prefix+"contractor-grants", "/api/v1/contractor-grants")
+		cap.get(c, prefix+"sod-rules", "/api/v1/sod-rules")
+		cap.get(c, prefix+"sod-anomalies", "/api/v1/sod-anomalies")
+
+		// SoD access simulation: replay the dry-run that would hand ONE subject
+		// both halves of the workspace's first toxic-combination rule, capturing
+		// the verdict the engine returns (the conflict/violation it blocks
+		// *before* any grant is made). The verdict lives only in the response.
+		var sod struct {
+			Rules []struct {
+				ResourceA string `json:"resource_a"`
+				RoleA     string `json:"role_a"`
+				ResourceB string `json:"resource_b"`
+			} `json:"rules"`
+		}
+		if c.JSON("GET", "/api/v1/sod-rules", nil, &sod) && len(sod.Rules) > 0 {
+			r := sod.Rules[0]
+			def := map[string]any{
+				"action":    "grant",
+				"subjects":  []string{ownerSub(ws.Slug)},
+				"resources": []string{r.ResourceA, r.ResourceB},
+				"role":      r.RoleA,
+			}
+			cap.post(c, prefix+"sod-simulation", "/api/v1/policies/simulate-definition", map[string]any{"definition": def})
+		} else {
+			cap.skipf(prefix + "sod-simulation (no sod rules in workspace)")
+		}
+
+		// AI-assisted risk assessment: the access-request detail endpoint
+		// returns the request alongside the control plane's risk verdict and
+		// advisory anomaly flags. Walk the requests and capture the first detail
+		// that actually carries a "risk" verdict (the SCIM-driven JML requests
+		// have none), so the blog shows a real verdict payload.
+		var reqs struct {
+			Requests []struct {
+				ID string `json:"id"`
+			} `json:"requests"`
+		}
+		captured := false
+		if c.JSON("GET", "/api/v1/access-requests", nil, &reqs) {
+			for _, r := range reqs.Requests {
+				var detail map[string]json.RawMessage
+				if c.JSON("GET", "/api/v1/access-requests/"+r.ID, nil, &detail) {
+					if _, hasRisk := detail["risk"]; hasRisk {
+						cap.get(c, prefix+"request-risk", "/api/v1/access-requests/"+r.ID)
+						captured = true
+						break
+					}
+				}
+			}
+		}
+		if !captured {
+			cap.skipf(prefix + "request-risk (no request carries a risk verdict)")
+		}
 	}
 
 	// Global captures (once): the catalogue surface and the full pack catalog by
@@ -178,6 +239,37 @@ type capturer struct {
 // listed endpoint); an empty collection is still valid JSON and captured as-is.
 func (cp *capturer) get(c *harnesskit.Client, name, path string) {
 	status, raw, err := c.Request("GET", path, nil, nil)
+	if err != nil {
+		harnesskit.Logf("FAIL %-44s %v", name, err)
+		cp.fail++
+		return
+	}
+	if status < 200 || status >= 300 {
+		harnesskit.Logf("FAIL %-44s HTTP %d: %s", name, status, truncate(raw, 200))
+		cp.fail++
+		return
+	}
+	pretty, perr := prettyJSON(raw)
+	if perr != nil {
+		harnesskit.Logf("FAIL %-44s non-JSON response: %v", name, perr)
+		cp.fail++
+		return
+	}
+	dst := filepath.Join(cp.out, name+".json")
+	if err := os.WriteFile(dst, pretty, 0o600); err != nil {
+		harnesskit.Logf("FAIL %-44s write: %v", name, err)
+		cp.fail++
+		return
+	}
+	harnesskit.Logf("OK   %-44s HTTP %d  %d bytes -> %s", name, status, len(pretty), dst)
+	cp.ok++
+}
+
+// post issues a POST with a JSON body and captures the (pretty-printed)
+// response. Used for read-only, idempotent dry-runs whose verdict only lives in
+// the response body (e.g. the SoD access simulation), never for state changes.
+func (cp *capturer) post(c *harnesskit.Client, name, path string, body any) {
+	status, raw, err := c.Request("POST", path, body, nil)
 	if err != nil {
 		harnesskit.Logf("FAIL %-44s %v", name, err)
 		cp.fail++

@@ -32,7 +32,7 @@
     },
     {
       "by_kind": {
-        "access_granted": 3,
+        "access_granted": 4,
         "access_requested": 4,
         "access_revoked": 3,
         "certification_closed": 1,
@@ -40,7 +40,7 @@
         "review_decision": 2
       },
       "covered": true,
-      "evidence_count": 14,
+      "evidence_count": 15,
       "id": "A.5.18",
       "kinds": [
         "access_requested",
@@ -59,7 +59,9 @@
       "evidence_count": 0,
       "id": "A.8.2",
       "kinds": [
-        "privileged_command"
+        "privileged_session",
+        "privileged_command",
+        "privileged_recording"
       ],
       "title": "Privileged access rights monitored"
     },
@@ -75,6 +77,6 @@
   ],
   "controls_covered": 3,
   "controls_total": 5,
-  "evidence_total": 39,
+  "evidence_total": 40,
   "framework": "ISO 27001"
 }

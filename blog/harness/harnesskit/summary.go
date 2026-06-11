@@ -40,6 +40,13 @@ type WorkspaceCounts struct {
 	CampaignItems   int `json:"campaign_items"`
 	OrphanAccounts  int `json:"orphan_accounts"`
 	EvidenceRecords int `json:"evidence_records"`
+
+	PAMTargets       int `json:"pam_targets"`
+	PAMLeases        int `json:"pam_leases"`
+	PAMSessions      int `json:"pam_sessions"`
+	ContractorGrants int `json:"contractor_grants"`
+	SodRules         int `json:"sod_rules"`
+	SodAnomalies     int `json:"sod_anomalies"`
 }
 
 // WorkspaceIDs are the identifiers the capture harness needs to address
@@ -50,4 +57,10 @@ type WorkspaceIDs struct {
 	ManualConnector string   `json:"manual_connector_id"`
 	ConnectorIDs    []string `json:"connector_ids"`
 	PolicyIDs       []string `json:"policy_ids"`
+
+	PAMTargetIDs       []string `json:"pam_target_ids,omitempty"`
+	PAMLeaseID         string   `json:"pam_lease_id,omitempty"`
+	PAMSessionID       string   `json:"pam_session_id,omitempty"`
+	ContractorGrantIDs []string `json:"contractor_grant_ids,omitempty"`
+	SodRuleIDs         []string `json:"sod_rule_ids,omitempty"`
 }

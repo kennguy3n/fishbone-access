@@ -1,0 +1,24 @@
+{
+  "contractor_grants": [
+    {
+      "approved_at": "2026-06-11T05:17:02.324245Z",
+      "approved_by": "ae-northwind-finance-owner",
+      "connector_id": "9425214b-baa5-4304-b6ef-0420798ff1f2",
+      "contractor_user_id": "ext-desc-auditor@regulator.example",
+      "created_at": "2026-06-11T05:17:02.319929Z",
+      "deleted_at": null,
+      "display_name": "DESC external auditor",
+      "expires_at": "2026-07-09T05:17:02Z",
+      "grant_id": "58517899-876d-4695-b5d4-5f64c76e4ded",
+      "id": "6fb13c0d-7e63-4fc5-a4ac-ec661e286ac1",
+      "justification": "DESC annual assessment, read-only audit window.",
+      "requested_by": "ae-northwind-finance-owner",
+      "resource_ref": "pdpl:dsr",
+      "role": "auditor",
+      "sponsor_id": "ae-security_admin",
+      "state": "active",
+      "updated_at": "2026-06-11T05:17:02.330518Z",
+      "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+    }
+  ]
+}
