@@ -29,12 +29,12 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 			}
 			member.Store(false)
 			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/teams/20/members/10"):
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/teams/20/members"):
 			if member.Load() {
-				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":10}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
 				return
 			}
-			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"_embedded":{"users":[]},"page":{"size":50,"totalElements":0,"totalPages":1,"number":1}}`))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/teams"):
 			_, _ = w.Write([]byte(`{"_embedded":{"teams":[{"id":20,"name":"T"}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
 		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/users"):
