@@ -395,6 +395,108 @@ func (s *EvidenceService) Coverage(ctx context.Context, workspaceID uuid.UUID, f
 	return cov, nil
 }
 
+// privilegedKinds are the evidence kinds that demonstrate privileged-access
+// monitoring (the CC6.7 / A.8.2 control family): the session lifecycle, the
+// per-command policy decisions, and the tamper-evident recording references.
+var privilegedKinds = []EvidenceKind{KindPrivilegedSession, KindPrivilegedCommand, KindPrivilegedRecording}
+
+var privilegedKindSet = func() map[EvidenceKind]struct{} {
+	set := make(map[EvidenceKind]struct{}, len(privilegedKinds))
+	for _, k := range privilegedKinds {
+		set[k] = struct{}{}
+	}
+	return set
+}()
+
+// controlIsPrivileged reports whether a control is demonstrated by any
+// privileged-access evidence kind, so PrivilegedAccessCoverage can gather the
+// CC6.7 / A.8.2 / PCI-10.2 family across frameworks without hard-coding ids.
+func controlIsPrivileged(c Control) bool {
+	for _, k := range c.Kinds {
+		if _, ok := privilegedKindSet[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// PrivilegedControlCoverage is a privileged-access control's coverage tagged
+// with the framework it belongs to, so the console can render the cross-
+// framework privileged-monitoring panel (CC6.7 / A.8.2 / PCI-10.2) in one view.
+type PrivilegedControlCoverage struct {
+	Framework Framework `json:"framework"`
+	ControlCoverage
+}
+
+// PrivilegedAccessCoverage is the focused, cross-framework view of privileged-
+// access monitoring over a period: the headline session/command/recording
+// counts plus every control that privileged-access evidence demonstrates. It is
+// the data behind the console's "privileged access is monitored" panel, which
+// previously read zero because no PAM activity was projected into the chain as
+// controlled evidence.
+type PrivilegedAccessCoverage struct {
+	From          *time.Time                  `json:"from,omitempty"`
+	To            *time.Time                  `json:"to,omitempty"`
+	Monitored     bool                        `json:"monitored"`
+	Sessions      int                         `json:"sessions"`
+	Commands      int                         `json:"commands"`
+	Recordings    int                         `json:"recordings"`
+	EvidenceTotal int                         `json:"evidence_total"`
+	Controls      []PrivilegedControlCoverage `json:"controls"`
+}
+
+// PrivilegedAccessCoverage tallies privileged-access evidence over the period in
+// one streamed pass and projects it onto the privileged-access control family
+// across every framework. Monitored is true exactly when at least one
+// privileged-access evidence record exists in the period, so a caller can show
+// non-zero monitoring the moment a single PAM session is recorded.
+func (s *EvidenceService) PrivilegedAccessCoverage(ctx context.Context, workspaceID uuid.UUID, from, to *time.Time) (PrivilegedAccessCoverage, error) {
+	if workspaceID == uuid.Nil {
+		return PrivilegedAccessCoverage{}, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+	}
+
+	byKind := map[EvidenceKind]int{}
+	if err := s.streamPeriod(ctx, workspaceID, from, to, func(rec EvidenceRecord) error {
+		if _, ok := privilegedKindSet[rec.Kind]; ok {
+			byKind[rec.Kind]++
+		}
+		return nil
+	}); err != nil {
+		return PrivilegedAccessCoverage{}, err
+	}
+
+	out := PrivilegedAccessCoverage{
+		From:       from,
+		To:         to,
+		Sessions:   byKind[KindPrivilegedSession],
+		Commands:   byKind[KindPrivilegedCommand],
+		Recordings: byKind[KindPrivilegedRecording],
+	}
+	out.EvidenceTotal = out.Sessions + out.Commands + out.Recordings
+	out.Monitored = out.EvidenceTotal > 0
+
+	for _, fw := range Frameworks() {
+		for _, c := range Controls(fw) {
+			if !controlIsPrivileged(c) {
+				continue
+			}
+			cc := ControlCoverage{ID: c.ID, Title: c.Title, KindLabels: c.Kinds, ByKind: map[string]int{}}
+			for _, k := range c.Kinds {
+				if n := byKind[k]; n > 0 {
+					cc.ByKind[string(k)] = n
+					cc.EvidenceN += n
+				}
+			}
+			cc.Covered = cc.EvidenceN > 0
+			if len(cc.ByKind) == 0 {
+				cc.ByKind = nil
+			}
+			out.Controls = append(out.Controls, PrivilegedControlCoverage{Framework: fw, ControlCoverage: cc})
+		}
+	}
+	return out, nil
+}
+
 func kindSet(kinds []EvidenceKind) map[EvidenceKind]struct{} {
 	if len(kinds) == 0 {
 		return nil

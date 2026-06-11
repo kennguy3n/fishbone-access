@@ -152,6 +152,13 @@ func (p *MSSQLProxy) Handle(ctx context.Context, conn net.Conn) {
 		if err := rec.Flush(flushCtx, p.store); err != nil {
 			logger.Warnf(ctx, "mssql-proxy: flush replay %s: %v", session.ID, err)
 		}
+		if recording := rec.Recording(); recording.Stored {
+			if err := p.sessions.RecordRecording(flushCtx, session, pam.RecordingRef{
+				Key: recording.Key, SHA256: recording.SHA256, Bytes: recording.Bytes, Truncated: recording.Truncated,
+			}); err != nil {
+				logger.Warnf(ctx, "mssql-proxy: record recording evidence %s: %v", session.ID, err)
+			}
+		}
 		if err := p.sessions.CloseSession(flushCtx, session.WorkspaceID, session.ID); err != nil {
 			logger.Warnf(ctx, "mssql-proxy: close session %s: %v", session.ID, err)
 		}

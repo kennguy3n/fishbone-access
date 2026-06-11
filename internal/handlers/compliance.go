@@ -97,6 +97,7 @@ func (h *complianceHandlers) register(g *gin.RouterGroup) {
 	// Compliance evidence dashboard read surface.
 	g.GET("/compliance/evidence", read, h.listEvidence)
 	g.GET("/compliance/coverage", read, h.coverage)
+	g.GET("/compliance/privileged-access", read, h.privilegedAccess)
 	g.GET("/compliance/chain/verify", read, h.verifyChain)
 
 	// Certification campaigns.
@@ -204,6 +205,35 @@ func (h *complianceHandlers) coverage(c *gin.Context) {
 		return
 	}
 	cov, err := h.evidence.Coverage(c.Request.Context(), ws, framework, from, to)
+	if err != nil {
+		failCompliance(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, cov)
+}
+
+// privilegedAccess serves the focused privileged-access monitoring panel
+// (CC6.7 / A.8.2 / PCI-10.2): the session / command / recording counts and the
+// per-control coverage over an optional period. It is the read API the console
+// uses to show that privileged access is monitored with non-zero evidence, so
+// it is gated by the same compliance.read permission as the other read surface.
+func (h *complianceHandlers) privilegedAccess(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	var from, to *time.Time
+	if t, ok := parseTimeQuery(c, "from"); ok {
+		from = t
+	} else if c.Query("from") != "" {
+		return
+	}
+	if t, ok := parseTimeQuery(c, "to"); ok {
+		to = t
+	} else if c.Query("to") != "" {
+		return
+	}
+	cov, err := h.evidence.PrivilegedAccessCoverage(c.Request.Context(), ws, from, to)
 	if err != nil {
 		failCompliance(c, err)
 		return
