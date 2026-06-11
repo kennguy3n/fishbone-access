@@ -2,7 +2,6 @@ package pam
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -156,10 +155,11 @@ func (s *Seeder) SeedPrivilegedSession(ctx context.Context, in SeedPrivilegedSes
 }
 
 // ensureTarget resolves the scenario's target, creating one by name on first
-// use. Resolution by id is exact; resolution by name is an exact, workspace-
-// scoped lookup so repeated seed runs converge on a single target rather than
-// accumulating duplicates — even for workspaces whose target catalog exceeds a
-// single ListTargets page.
+// use. Resolution by id is exact. Resolution by name defers to CreateTarget,
+// which is itself idempotent (see CreateOrGetTarget): re-seeding the same
+// scenario reuses the existing workspace-scoped row rather than duplicating it,
+// and a name already taken by a DIFFERENT upstream surfaces as a typed conflict
+// instead of silently seeding against a mismatched target.
 func (s *Seeder) ensureTarget(ctx context.Context, in SeedPrivilegedSessionInput) (*models.PAMTarget, error) {
 	if in.TargetID != uuid.Nil {
 		return s.vault.GetTarget(ctx, in.WorkspaceID, in.TargetID)
@@ -167,16 +167,6 @@ func (s *Seeder) ensureTarget(ctx context.Context, in SeedPrivilegedSessionInput
 	name := strings.TrimSpace(in.TargetName)
 	if name == "" {
 		return nil, fmt.Errorf("%w: target_id or target_name is required", ErrValidation)
-	}
-
-	// Reuse an existing target with the same name so the seeder is idempotent.
-	// An exact name lookup (rather than scanning a capped ListTargets) keeps this
-	// correct regardless of how many targets the workspace already holds.
-	switch existing, err := s.vault.FindTargetByName(ctx, in.WorkspaceID, name); {
-	case err == nil:
-		return existing, nil
-	case !errors.Is(err, ErrTargetNotFound):
-		return nil, err
 	}
 
 	protocol := in.Protocol
