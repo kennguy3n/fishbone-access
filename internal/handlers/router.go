@@ -22,6 +22,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/webui"
 )
 
@@ -74,6 +75,15 @@ type Deps struct {
 	// are fail-OPEN, so risk review degrades to the deterministic fallback and
 	// the wizard returns a degraded manual plan instead of panicking.
 	AI *aiclient.AIClient
+	// ActivityRecorder records tenant activity on the authenticated request
+	// path — the LAZY WAKE side of tenant hibernation (WS1 scale/NoOps). When
+	// set, ActivityMiddleware is mounted on the tenant-scoped group so a dormant
+	// tenant's first API call wakes it. It is wired whenever a DB is present,
+	// INDEPENDENT of whether hibernation is enabled: activity is always recorded
+	// so the feature can be turned on later with accurate history (see
+	// cmd/ztna-api/main.go). It is nil only in a degraded (no-DB) boot, in which
+	// case no activity middleware is mounted (no-op).
+	ActivityRecorder tenancy.ActivityRecorder
 }
 
 // NewRouter builds the Gin engine.
@@ -118,6 +128,14 @@ func NewRouter(deps Deps) *gin.Engine {
 	if deps.Validator != nil && resolver != nil && deps.DB != nil {
 		scoped := api.Group("")
 		scoped.Use(middleware.RequireTenant(resolver))
+		// Record tenant activity right after the workspace is resolved (and
+		// before the handlers run) so any authenticated, tenant-scoped call
+		// counts as activity and lazily wakes a dormant tenant. Recording is
+		// fire-and-forget, so it adds no latency or failure mode; the middleware
+		// is a no-op pass-through when the recorder is nil.
+		if deps.ActivityRecorder != nil {
+			scoped.Use(tenancy.ActivityMiddleware(deps.ActivityRecorder))
+		}
 		// Install the RBAC tier when an RBAC store is wired. It runs after
 		// RequireTenant (it needs the resolved workspace + verified subject) and
 		// resolves the caller's role into a permission set for the per-route

@@ -43,6 +43,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -66,6 +67,18 @@ func run() error {
 	}
 	logger.Infof(ctx, "ztna-api: starting; %s", cfg.String())
 	logger.Infof(ctx, "ztna-api: registered connectors: %d", access.RegisteredCount())
+	// Surface tenancy knobs whose value will be silently overridden by a safe
+	// fallback. These are deliberately non-fatal (the dormant-trial fleet must
+	// boot even with a fat-fingered knob; see config.Config.Warnings), but
+	// logging them loudly here means a misconfiguration is caught at startup
+	// rather than only inferred from later behaviour. The tier-name check lives
+	// here because config is a leaf package that does not know the tier ladder.
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "ztna-api: tenancy config: %s", warning)
+	}
+	if t := cfg.Tenancy.DefaultTier; !tenancy.IsKnownTier(t) {
+		logger.Warnf(ctx, "ztna-api: tenancy config: ACCESS_TENANCY_DEFAULT_TIER=%q is not a recognised tier; un-tiered tenants will fall back to the most-constrained (trial) budget", t)
+	}
 
 	ready := &atomic.Bool{}
 
@@ -297,6 +310,58 @@ func run() error {
 		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation + sod anomaly evidence + contractor expiry)")
 	}
 
+	// Tenant hibernation (WS1 scale/NoOps): track per-tenant activity, classify
+	// the dormant-trial fraction, and let periodic workers skip them so the
+	// dormant majority costs ~nothing. Background loops are tied to the signal
+	// context and joined on the way out (LIFO, after the scheduler, before the
+	// DB-pool close) so none can touch an already-closed pool.
+	//
+	// Activity recording is wired whenever a DB is present, INDEPENDENT of
+	// HibernationEnabled: Service.RecordActivity ignores the gate, and the
+	// documented contract is that activity is always captured so the feature can
+	// be toggled on later with accurate history (otherwise a later enable would
+	// classify every tenant from workspaces.created_at and wrongly hibernate
+	// long-lived active tenants until their next request). The reconcile sweep,
+	// by contrast, only earns its keep when hibernation is enabled — when it is
+	// off the gate short-circuits to "run" for everyone, so classifying is
+	// pointless work — so only that loop is conditional.
+	if deps.DB != nil {
+		tenancySvc := tenancy.NewService(deps.DB, tenancy.Config{
+			Enabled:       cfg.Tenancy.HibernationEnabled,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			DefaultTier:   cfg.Tenancy.DefaultTier,
+		})
+
+		// Always: drain request-path activity and lazily wake dormant tenants.
+		// Fed by the router's activity middleware (deps.ActivityRecorder).
+		recorder := tenancy.NewAsyncRecorder(tenancySvc, tenancy.AsyncRecorderConfig{
+			Throttle:      cfg.Tenancy.ActivityFlushInterval,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			QueueSize:     cfg.Tenancy.ActivityQueueSize,
+		})
+		recCtx, recCancel := context.WithCancel(ctx)
+		joinRecorder := recorder.Run(recCtx)
+		defer func() {
+			recCancel()
+			joinRecorder()
+		}()
+		deps.ActivityRecorder = recorder
+
+		if cfg.Tenancy.HibernationEnabled {
+			// Only when enabled: periodically (re)classify tenants set-based.
+			reconcileCtx, reconcileCancel := context.WithCancel(ctx)
+			joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).Run(reconcileCtx)
+			defer func() {
+				reconcileCancel()
+				joinReconcile()
+			}()
+			logger.Infof(ctx, "ztna-api: tenant hibernation enabled (idle threshold %s, reconcile every %s); dormant tenants skip periodic work and wake on activity",
+				cfg.Tenancy.DormantIdleThreshold, cfg.Tenancy.ReconcileInterval)
+		} else {
+			logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active, but activity is still recorded so the feature can be enabled later with accurate history")
+		}
+	}
+
 	srv := &http.Server{
 		Handler:           handlers.NewRouter(deps),
 		ReadHeaderTimeout: 10 * time.Second,
@@ -361,8 +426,11 @@ func setupDatabase(ctx context.Context, cfg config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 	// Bound the pool before doing any work on it (migrations included) so this
-	// process can never open more Postgres connections than configured.
-	if err := database.ApplyPoolLimits(gdb, cfg.DBMaxOpenConns, cfg.DBMaxIdleConns, cfg.DBConnMaxLifetime); err != nil {
+	// process can never open more Postgres connections than configured. The API
+	// is the most-replicated tier serving the 5,000-tenant fleet, so it also
+	// caps idle-connection time: a replica that goes quiet releases connections
+	// back to Postgres instead of reserving max_connections headroom (NoOps).
+	if err := database.ApplyPoolLimitsWithIdle(gdb, cfg.DBMaxOpenConns, cfg.DBMaxIdleConns, cfg.DBConnMaxLifetime, cfg.DBConnMaxIdleTime); err != nil {
 		_ = sqlDB.Close()
 		return nil, err
 	}

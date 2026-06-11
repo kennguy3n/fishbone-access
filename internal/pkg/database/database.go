@@ -45,6 +45,18 @@ func Open(dsn string) (*gorm.DB, error) {
 // maxOpen/maxIdle leaves the database/sql default in place; a non-positive
 // maxLifetime leaves connections un-aged.
 func ApplyPoolLimits(db *gorm.DB, maxOpen, maxIdle int, maxLifetime time.Duration) error {
+	return ApplyPoolLimitsWithIdle(db, maxOpen, maxIdle, maxLifetime, 0)
+}
+
+// ApplyPoolLimitsWithIdle is ApplyPoolLimits plus a connection idle-time cap.
+// maxIdleTime closes a connection that has sat idle that long, letting the pool
+// shrink BELOW maxIdle during quiet periods rather than holding warm
+// connections open — the NoOps lever for a many-tenant fleet whose traffic is
+// bursty and diurnal, so a quiet control-plane replica returns its connections
+// to Postgres instead of reserving max_connections headroom it is not using. A
+// non-positive maxIdleTime leaves idle connections un-aged (identical to
+// ApplyPoolLimits), so existing callers are unaffected.
+func ApplyPoolLimitsWithIdle(db *gorm.DB, maxOpen, maxIdle int, maxLifetime, maxIdleTime time.Duration) error {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("database: resolve pool: %w", err)
@@ -57,6 +69,9 @@ func ApplyPoolLimits(db *gorm.DB, maxOpen, maxIdle int, maxLifetime time.Duratio
 	}
 	if maxLifetime > 0 {
 		sqlDB.SetConnMaxLifetime(maxLifetime)
+	}
+	if maxIdleTime > 0 {
+		sqlDB.SetConnMaxIdleTime(maxIdleTime)
 	}
 	return nil
 }
