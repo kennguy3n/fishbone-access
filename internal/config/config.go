@@ -327,6 +327,56 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// Warnings returns non-fatal misconfiguration notes the binary should log
+// loudly at boot. Unlike Validate (which rejects values Load cannot safely
+// normalise, failing the boot fast), these are knobs that DO have correct
+// runtime fallbacks — the recorder clamps the coalescing window via
+// SafeThrottle, NewAsyncRecorder substitutes a default for a non-positive queue
+// size, and normalizeTier maps an unknown tier to the most-constrained one — so
+// a bad value must never crash a 5,000-tenant NoOps fleet at startup. But a
+// silent fallback hides operator intent, so we surface it here (mirroring the
+// "AUTH_JWT_SECRET set but ignored" warning) to catch typos early without
+// sacrificing the never-crash-on-config contract. Tier-name validation lives at
+// the wiring site, which knows the recognised tiers, rather than here.
+func (c Config) Warnings() []string {
+	return c.Tenancy.Warnings()
+}
+
+// Warnings reports tenancy knobs whose value will be silently overridden by a
+// safe fallback, so the operator learns at boot that their setting did not take
+// effect. It deliberately returns notes rather than errors: every case below is
+// recoverable at runtime, and a dormant-trial fleet must boot even when a knob
+// is fat-fingered. Tier-name checking is omitted here (config is a leaf package
+// that does not know the tier ladder); the wiring site logs that separately.
+func (c TenancyConfig) Warnings() []string {
+	var w []string
+	if c.ActivityQueueSize <= 0 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE=%d is non-positive; the recorder will use its built-in default queue size",
+			c.ActivityQueueSize))
+	}
+	if c.DormantIdleThreshold <= 0 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_TENANCY_DORMANT_IDLE=%s is non-positive; dormancy classification needs a positive idle window to be meaningful",
+			c.DormantIdleThreshold))
+	}
+	if c.ReconcileInterval <= 0 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_TENANCY_RECONCILE_INTERVAL=%s is non-positive; the reconcile sweep needs a positive interval to schedule",
+			c.ReconcileInterval))
+	}
+	// The recorder clamps the coalescing window to at most one-tenth of the idle
+	// threshold (SafeThrottle) so a wide flush window can never coalesce away a
+	// wake-from-dormant. Warn when the configured value would be clamped so the
+	// operator knows the effective window differs from what they set.
+	if c.DormantIdleThreshold > 0 && c.ActivityFlushInterval > c.DormantIdleThreshold/10 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_TENANCY_ACTIVITY_FLUSH=%s exceeds one-tenth of ACCESS_TENANCY_DORMANT_IDLE=%s; the recorder will clamp the coalescing window so it can never mask a wake-from-dormant",
+			c.ActivityFlushInterval, c.DormantIdleThreshold))
+	}
+	return w
+}
+
 // parseDatabaseDriver normalises the ACCESS_DATABASE_DRIVER env var (trimmed,
 // lower-cased) and maps an empty value to the default. An unrecognised value is
 // returned as-typed so Validate can name it in the error rather than silently
