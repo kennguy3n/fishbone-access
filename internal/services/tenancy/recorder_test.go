@@ -172,6 +172,46 @@ func TestAsyncRecorderPersistsWithLiveContextAfterCancel(t *testing.T) {
 	}
 }
 
+// blockingSink blocks every RecordActivity until its context is cancelled,
+// simulating a stuck/slow DB so the drain's overall deadline can be observed.
+type blockingSink struct{}
+
+func (blockingSink) RecordActivity(ctx context.Context, _ uuid.UUID, _ string) (bool, error) {
+	<-ctx.Done()
+	return false, ctx.Err()
+}
+
+// TestAsyncRecorderShutdownDrainIsBounded asserts the shutdown flush is bounded
+// by DrainTimeout even when the sink never completes a write — so joinRecorder
+// (and thus process shutdown / a rolling deploy) cannot wedge for
+// queue_size×per-write-timeout.
+func TestAsyncRecorderShutdownDrainIsBounded(t *testing.T) {
+	r := NewAsyncRecorder(blockingSink{}, AsyncRecorderConfig{
+		QueueSize:    256,
+		DrainTimeout: 150 * time.Millisecond,
+	})
+	for i := 0; i < 200; i++ {
+		r.Record(uuid.New(), KindAPI)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // shutdown with a backed-up queue and a sink that never returns
+	join := r.Run(ctx)
+
+	doneCh := make(chan struct{})
+	go func() { join(); close(doneCh) }()
+	start := time.Now()
+	select {
+	case <-doneCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("drain did not respect DrainTimeout; join blocked > 5s")
+	}
+	// Unbounded behaviour would be 200×5s; bounded behaviour returns shortly
+	// after the 150ms deadline.
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("drain took %s, want ~DrainTimeout (150ms)", elapsed)
+	}
+}
+
 func TestAsyncRecorderQueueFullDrops(t *testing.T) {
 	r := NewAsyncRecorder(newFakeSink(), AsyncRecorderConfig{QueueSize: 2})
 	// No drain running; third enqueue must drop without blocking.
