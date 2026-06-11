@@ -155,6 +155,14 @@ func SharedTransport() *http.Transport {
 // caller can detect a wiring-order mistake rather than silently no-op. It is
 // intended for tests and for a deployment that resolves tuning from a source
 // other than the environment; the common path needs no call at all.
+//
+// Note the asymmetry with SharedTransport: when ConfigureSharedTransport wins
+// the once it builds the transport from cfg VERBATIM, deliberately bypassing
+// the ACCESS_HTTP_* env layering that resolveTransportConfig applies on the
+// SharedTransport path. That is intentional — a caller passing an explicit
+// config wants exactly that config, with no env bleed (which would make tests
+// non-deterministic). A caller that does want env overrides on top should not
+// use this function and instead let SharedTransport resolve them.
 func ConfigureSharedTransport(cfg TransportConfig) (applied bool) {
 	sharedTransportMu.Lock()
 	sharedTransportOverride = &cfg
