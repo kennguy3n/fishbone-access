@@ -182,6 +182,36 @@ func (v *Vault) GetTarget(ctx context.Context, workspaceID, targetID uuid.UUID) 
 	}
 }
 
+// FindTargetByName loads a target by its workspace-scoped name, returning
+// ErrTargetNotFound when none exists. Unlike scanning ListTargets — whose
+// result set is capped — this is an exact, indexed lookup, so a caller that
+// must decide "reuse or create" (e.g. the idempotent scenario seeder) stays
+// correct no matter how many targets the workspace already holds. When more
+// than one target shares the name, the newest is returned, matching the
+// newest-first ordering ListTargets exposes.
+func (v *Vault) FindTargetByName(ctx context.Context, workspaceID uuid.UUID, name string) (*models.PAMTarget, error) {
+	if workspaceID == uuid.Nil {
+		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("%w: target name is required", ErrValidation)
+	}
+	var row models.PAMTarget
+	err := v.db.WithContext(ctx).
+		Where("workspace_id = ? AND name = ?", workspaceID, name).
+		Order("created_at DESC").
+		Take(&row).Error
+	switch {
+	case err == nil:
+		return &row, nil
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return nil, ErrTargetNotFound
+	default:
+		return nil, fmt.Errorf("pam: find target by name: %w", err)
+	}
+}
+
 // ListTargets returns a workspace's privileged targets newest-first. The
 // sealed credential envelope and key version are never returned to a list
 // caller (only the broker's OpenSecret path decrypts), so the catalog the

@@ -3,12 +3,32 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"sync"
 	"time"
 )
+
+// Recording is the integrity descriptor of a flushed session recording: the
+// canonical replay key, a SHA-256 over the exact framed bytes that were
+// persisted to the ReplayStore, the byte length, and whether the size cap
+// truncated the capture. It lets the control plane anchor a tamper-evident
+// reference to the recording in the per-workspace audit hash chain (the
+// privileged-access evidence for CC6.7 / A.8.2) without duplicating the
+// payload: an auditor re-hashes replay.bin and compares it to the chain-pinned
+// SHA-256. Stored reports whether the bytes were actually persisted (a
+// recording-disabled deployment flushes with a nil store and produces no
+// durable artifact to reference).
+type Recording struct {
+	Key       string
+	SHA256    string
+	Bytes     int64
+	Truncated bool
+	Stored    bool
+}
 
 // Direction labels one side of a recorded privileged session. A replay tool
 // reconstructs the terminal/wire transcript by ordering frames on their
@@ -95,6 +115,13 @@ type IORecorder struct {
 	pauseCond *sync.Cond
 	paused    bool
 	aborted   bool
+
+	// recording is the integrity descriptor computed by Flush and read back by
+	// Recording() after teardown. It is written exactly once (under mu) by the
+	// single Flush call at session end and read once by the same teardown path,
+	// so the lock guards it against the (already drained) recording goroutines
+	// rather than against concurrent finalizers.
+	recording Recording
 
 	now func() time.Time
 }
@@ -403,15 +430,49 @@ func (r *IORecorder) Flush(ctx context.Context, store ReplayStore) error {
 	r.pauseCond.Broadcast()
 	snapshot := make([]byte, r.buf.Len())
 	copy(snapshot, r.buf.Bytes())
+	truncated := r.truncated
 	r.mu.Unlock()
 
+	// Hash the exact framed bytes once, before handing the snapshot to the
+	// store, so the integrity digest covers precisely what is persisted.
+	sum := sha256.Sum256(snapshot)
+	recording := Recording{
+		Key:       ReplayKey(r.sessionID),
+		SHA256:    hex.EncodeToString(sum[:]),
+		Bytes:     int64(len(snapshot)),
+		Truncated: truncated,
+	}
+
 	if store == nil {
+		r.setRecording(recording)
 		return nil
 	}
 	if err := store.PutReplay(ctx, r.sessionID, bytes.NewReader(snapshot)); err != nil {
+		// Leave Stored=false: the durable artifact does not exist, so the
+		// caller must not anchor a recording reference that cannot be replayed.
+		r.setRecording(recording)
 		return fmt.Errorf("gateway: flush replay %s: %w", r.sessionID, err)
 	}
+	recording.Stored = true
+	r.setRecording(recording)
 	return nil
+}
+
+// setRecording stores the post-flush integrity descriptor under the lock.
+func (r *IORecorder) setRecording(rec Recording) {
+	r.mu.Lock()
+	r.recording = rec
+	r.mu.Unlock()
+}
+
+// Recording returns the integrity descriptor computed by Flush. It is only
+// meaningful after Flush has returned; before that it is the zero value
+// (Stored=false). Callers use it at teardown to anchor a tamper-evident
+// recording reference in the audit chain.
+func (r *IORecorder) Recording() Recording {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.recording
 }
 
 // teeRecorder records every byte it passes through in one direction.
