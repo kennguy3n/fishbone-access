@@ -232,3 +232,105 @@ func TestLeaseEndpointsHappyPath(t *testing.T) {
 		t.Fatalf("want revoked, got %q", lease.State)
 	}
 }
+
+// TestCreateTargetIdempotentHTTP proves the register-target endpoint is safely
+// re-runnable: registering the same target twice yields 201 then 200 (reused,
+// no duplicate, same id), while re-using the name for a different upstream is a
+// 409 conflict rather than a 500 leaking the unique-index violation.
+func TestCreateTargetIdempotentHTTP(t *testing.T) {
+	deps := pamTestDeps(t)
+	r := NewRouter(deps)
+
+	body := map[string]any{
+		"name": "db-prod", "protocol": "postgres", "address": "db:5432",
+		"secret": map[string]any{"password": "pw"},
+	}
+
+	// First registration → 201 Created.
+	w := do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", body)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("first create: want 201, got %d (%s)", w.Code, w.Body.String())
+	}
+	var first models.PAMTarget
+	if err := json.Unmarshal(w.Body.Bytes(), &first); err != nil {
+		t.Fatalf("decode target: %v", err)
+	}
+
+	// Identical re-registration → 200 OK, same row, no duplicate.
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("re-register identical: want 200, got %d (%s)", w.Code, w.Body.String())
+	}
+	var reused models.PAMTarget
+	if err := json.Unmarshal(w.Body.Bytes(), &reused); err != nil {
+		t.Fatalf("decode reused target: %v", err)
+	}
+	if reused.ID != first.ID {
+		t.Fatalf("re-register returned a different id: %s != %s", reused.ID, first.ID)
+	}
+
+	// Same upstream but drifted require_mfa → 409 Conflict, NOT a silent
+	// converge: a create must never mutate (and here would downgrade) an existing
+	// privileged target, and a value-typed re-POST can't distinguish an omitted
+	// require_mfa from an intentional false. Settings changes go through an
+	// explicit update path.
+	drift := map[string]any{
+		"name": "db-prod", "protocol": "postgres", "address": "db:5432",
+		"require_mfa": true,
+		"secret":      map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", drift)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("drifted re-register: want 409, got %d (%s)", w.Code, w.Body.String())
+	}
+
+	// Same name, different upstream → 409 Conflict (not a 500).
+	conflict := map[string]any{
+		"name": "db-prod", "protocol": "ssh", "address": "other:22",
+		"secret": map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", conflict)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("name reuse with different upstream: want 409, got %d (%s)", w.Code, w.Body.String())
+	}
+
+	// require_mfa tri-state at the JSON boundary: a gated target re-registered
+	// WITHOUT require_mfa in the body is a clean 200 reuse (the omitted field is
+	// "no opinion", not an implicit false), and the stored gate stays on — so a
+	// re-running bootstrapper that simply doesn't send require_mfa never trips a
+	// spurious 409 or downgrades the gate.
+	gated := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"require_mfa": true,
+		"secret":      map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", gated)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create gated: want 201, got %d (%s)", w.Code, w.Body.String())
+	}
+	omitted := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"secret": map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", omitted)
+	if w.Code != http.StatusOK {
+		t.Fatalf("re-register gated omitting require_mfa: want 200, got %d (%s)", w.Code, w.Body.String())
+	}
+	var keptGate models.PAMTarget
+	if err := json.Unmarshal(w.Body.Bytes(), &keptGate); err != nil {
+		t.Fatalf("decode reused gated target: %v", err)
+	}
+	if !keptGate.RequireMFA {
+		t.Fatal("omitted require_mfa silently downgraded the MFA gate")
+	}
+	// An EXPLICIT require_mfa=false against the gated target is a real conflict.
+	downgrade := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"require_mfa": false,
+		"secret":      map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", downgrade)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("explicit require_mfa=false downgrade: want 409, got %d (%s)", w.Code, w.Body.String())
+	}
+}

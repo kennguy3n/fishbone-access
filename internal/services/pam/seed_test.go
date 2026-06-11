@@ -74,11 +74,12 @@ func TestRecordRecordingAppendsEvidence(t *testing.T) {
 	}
 }
 
-// TestFindTargetByName proves the exact, workspace-scoped name lookup the
-// seeder relies on for idempotency: it resolves an existing target by name and
-// reports ErrTargetNotFound for an absent one. Because it is an indexed lookup
-// rather than a scan of a capped ListTargets page, the seeder converges on a
-// single target regardless of how large the workspace's target catalog grows.
+// TestFindTargetByName proves the exact, workspace-scoped name lookup that the
+// idempotent CreateOrGetTarget (and thus the seeder) relies on: it resolves an
+// existing target by name and reports ErrTargetNotFound for an absent one.
+// Because it is an indexed lookup rather than a scan of a capped ListTargets
+// page, registration converges on a single target regardless of how large the
+// workspace's target catalog grows.
 func TestFindTargetByName(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")

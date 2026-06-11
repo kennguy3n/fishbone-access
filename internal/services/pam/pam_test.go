@@ -158,6 +158,135 @@ func TestVaultAADBinding(t *testing.T) {
 	}
 }
 
+// TestCreateTargetIdempotent proves target registration is safely re-runnable.
+// Re-registering the identical target (same name + protocol + address) returns
+// the existing row with created=false and never duplicates, so a bootstrapper
+// can re-run without hitting the uq_pam_targets_name unique index. Re-using the
+// name for a *different* upstream is a typed ErrTargetExists conflict (a clean
+// 409 at the handler) rather than a raw unique-violation 500, and must not
+// shadow or mutate the existing target.
+func TestCreateTargetIdempotent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	ctx := context.Background()
+
+	in := CreateTargetInput{
+		WorkspaceID: ws, Name: "db-prod", Protocol: models.PAMProtocolPostgres,
+		Address: "db.internal:5432", Username: "app",
+		Secret: Secret{Username: "app", Password: "s3cr3t"}, Actor: "admin",
+	}
+
+	first, created, err := v.CreateOrGetTarget(ctx, in)
+	if err != nil || !created {
+		t.Fatalf("first create: created=%v err=%v", created, err)
+	}
+
+	// Re-register the identical target: no error, no duplicate, same row, reused.
+	second, created, err := v.CreateOrGetTarget(ctx, in)
+	if err != nil {
+		t.Fatalf("re-register identical: %v", err)
+	}
+	if created {
+		t.Fatal("re-register of an identical target should reuse, got created=true")
+	}
+	if second.ID != first.ID {
+		t.Fatalf("re-register returned a different row: %s != %s", second.ID, first.ID)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("expected exactly 1 target after re-register, got %d", len(rows))
+	}
+
+	// Re-register the SAME upstream but with a drifted security-relevant field
+	// (require_mfa) is NOT silently converged: a create must never mutate — and
+	// here would *downgrade* — an existing privileged target, since a value-typed
+	// re-POST can't tell an omitted require_mfa from an intentional false. It's a
+	// typed conflict the caller must resolve via an explicit update, and the
+	// stored target must stay untouched.
+	drift := in
+	drift.RequireMFA = boolPtr(true)
+	drift.LeaseTTL = 30 * time.Minute
+	drift.Username = "app-rotated"
+	if _, _, err := v.CreateOrGetTarget(ctx, drift); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("want ErrTargetExists for a drifted re-register, got %v", err)
+	}
+	// The original target is unchanged: re-registering the IDENTICAL spec still
+	// reuses the row and the security flag is still its original value.
+	if cur, created, err := v.CreateOrGetTarget(ctx, in); err != nil || created || cur.ID != first.ID || cur.RequireMFA {
+		t.Fatalf("drifted re-register mutated the target: id=%s created=%v require_mfa=%v err=%v",
+			cur.ID, created, cur.RequireMFA, err)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("drifted re-register must not duplicate the target, got %d", len(rows))
+	}
+	// The denied conflict leaves a security audit trail (the pure reuse above
+	// deliberately does not), recording the existing target and which fields the
+	// re-register tried to change.
+	var denied int64
+	db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND action = ? AND target_ref = ?", ws, "pam.target.register_denied", first.ID.String()).
+		Count(&denied)
+	if denied != 1 {
+		t.Fatalf("want exactly 1 pam.target.register_denied audit row, got %d", denied)
+	}
+
+	// Same name pointed at a different upstream → conflict, not a silent shadow.
+	conflict := in
+	conflict.Protocol = models.PAMProtocolSSH
+	conflict.Address = "other.internal:22"
+	if _, _, err := v.CreateOrGetTarget(ctx, conflict); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("want ErrTargetExists for name reuse with a different upstream, got %v", err)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("conflict attempt mutated the target set: got %d", len(rows))
+	}
+
+	// CreateTarget (the bool-discarding wrapper) stays idempotent too.
+	if w, err := v.CreateTarget(ctx, in); err != nil || w.ID != first.ID {
+		t.Fatalf("CreateTarget wrapper not idempotent: id=%v err=%v", w, err)
+	}
+
+	// require_mfa tri-state: create an MFA-gated target, then prove an OMITTED
+	// require_mfa is "no opinion" (clean reuse, no 409, no downgrade) while an
+	// EXPLICIT false is a conflict the caller must resolve via an update — a
+	// create can never silently drop the gate.
+	gated := CreateTargetInput{
+		WorkspaceID: ws, Name: "db-gated", Protocol: models.PAMProtocolPostgres,
+		Address: "db.internal:5432", Username: "app", RequireMFA: boolPtr(true),
+		Secret: Secret{Username: "app", Password: "s3cr3t"}, Actor: "admin",
+	}
+	g, created, err := v.CreateOrGetTarget(ctx, gated)
+	if err != nil || !created || !g.RequireMFA {
+		t.Fatalf("create gated target: created=%v require_mfa=%v err=%v", created, g.RequireMFA, err)
+	}
+	// Re-register omitting require_mfa, otherwise identical → reuse, gate intact.
+	omitted := gated
+	omitted.RequireMFA = nil
+	if reuse, created, err := v.CreateOrGetTarget(ctx, omitted); err != nil || created || reuse.ID != g.ID || !reuse.RequireMFA {
+		t.Fatalf("omitted require_mfa should reuse without downgrade: id=%s created=%v require_mfa=%v err=%v",
+			reuse.ID, created, reuse.RequireMFA, err)
+	}
+	// Re-register with an EXPLICIT require_mfa=false → conflict, gate still on.
+	downgrade := gated
+	downgrade.RequireMFA = boolPtr(false)
+	if _, _, err := v.CreateOrGetTarget(ctx, downgrade); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("explicit require_mfa=false must 409, never silently downgrade, got %v", err)
+	}
+	if cur, err := v.GetTarget(ctx, ws, g.ID); err != nil || !cur.RequireMFA {
+		t.Fatalf("gate was downgraded: require_mfa=%v err=%v", cur.RequireMFA, err)
+	}
+}
+
+// boolPtr returns a pointer to b, for setting the tri-state CreateTargetInput
+// RequireMFA in tests (nil = omitted/no-opinion, non-nil = explicit).
+func boolPtr(b bool) *bool { return &b }
+
 func TestVaultRevealRequiresStepUpWhenMFAGated(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
@@ -171,7 +300,7 @@ func TestVaultRevealRequiresStepUpWhenMFAGated(t *testing.T) {
 	v := NewVault(db, newTestEncryptor(t), gate)
 	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
 		WorkspaceID: ws, Name: "vault-box", Protocol: models.PAMProtocolSSH,
-		Address: "host:22", RequireMFA: true, Secret: Secret{Password: "pw"}, Actor: "admin",
+		Address: "host:22", RequireMFA: boolPtr(true), Secret: Secret{Password: "pw"}, Actor: "admin",
 	})
 	if err != nil {
 		t.Fatalf("CreateTarget: %v", err)
@@ -200,7 +329,7 @@ func TestVaultRevealFailsClosedWithoutGate(t *testing.T) {
 
 	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
 		WorkspaceID: ws, Name: "vault-box", Protocol: models.PAMProtocolSSH,
-		Address: "host:22", RequireMFA: true, Secret: Secret{Password: "pw"}, Actor: "admin",
+		Address: "host:22", RequireMFA: boolPtr(true), Secret: Secret{Password: "pw"}, Actor: "admin",
 	})
 	if err != nil {
 		t.Fatalf("CreateTarget: %v", err)

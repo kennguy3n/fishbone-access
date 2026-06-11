@@ -1,10 +1,12 @@
 package pam
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -40,6 +42,14 @@ var ErrTargetNotFound = errors.New("pam: target not found")
 // ErrValidation marks a bad caller input (missing workspace, unknown protocol).
 var ErrValidation = errors.New("pam: validation error")
 
+// ErrTargetExists is returned when a target with the same workspace-scoped name
+// already exists but describes a *different* upstream (protocol or address), so
+// the create cannot be treated as an idempotent retry. Re-registering an
+// identical target (same name, protocol and address) is instead a no-op that
+// returns the existing row, which keeps target registration safely re-runnable
+// for bootstrappers. To change an existing target's credential use RotateSecret.
+var ErrTargetExists = errors.New("pam: target name already exists")
+
 // Secret is the upstream credential sealed per target. Exactly which fields are
 // populated depends on the protocol: SSH uses PrivateKey (preferred) or
 // Password; Postgres/MySQL use Password; k8s-exec uses Token. It is delivered
@@ -60,11 +70,17 @@ type CreateTargetInput struct {
 	Protocol    string
 	Address     string
 	Username    string
-	RequireMFA  bool
-	LeaseTTL    time.Duration
-	Config      datatypes.JSON
-	Secret      Secret
-	Actor       string
+	// RequireMFA is a tri-state: nil means the caller expressed no opinion (a
+	// fresh create defaults the gate off; an idempotent re-register keeps the
+	// existing target's value), while a non-nil value is an explicit requirement.
+	// It is a pointer because the handler body uses a plain JSON bool, where an
+	// omitted require_mfa is otherwise indistinguishable from an explicit false —
+	// which must never silently flip an existing privileged target's MFA gate.
+	RequireMFA *bool
+	LeaseTTL   time.Duration
+	Config     datatypes.JSON
+	Secret     Secret
+	Actor      string
 }
 
 // Vault is the per-target credential store. It seals each target's upstream
@@ -107,43 +123,76 @@ func (v *Vault) SetAuditor(a standaloneAuditor) {
 	}
 }
 
-// CreateTarget seals the supplied credential and persists a new target. The row
-// id is generated up front and bound as the AES-GCM AAD so the sealed envelope
-// is cryptographically tied to this exact row and cannot be copied to another.
+// CreateTarget seals the supplied credential and registers a privileged target,
+// idempotently: see CreateOrGetTarget. It discards the created flag for the many
+// callers that do not need to distinguish a fresh insert from a reuse.
 func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, error) {
+	row, _, err := v.CreateOrGetTarget(ctx, in)
+	return row, err
+}
+
+// CreateOrGetTarget seals the supplied credential and persists a new target,
+// returning created=true. The row id is generated up front and bound as the
+// AES-GCM AAD so the sealed envelope is cryptographically tied to this exact row
+// and cannot be copied to another.
+//
+// Registration is strictly idempotent: a target is identified by its
+// workspace-scoped name (the uq_pam_targets_name partial unique index).
+// Re-registering an IDENTICAL target — same protocol, address, username,
+// require_mfa, lease TTL and config — returns the existing row with
+// created=false, so a bootstrapper can safely re-run without erroring or
+// duplicating. Re-registering the same name with ANY of those fields different
+// is a typed conflict (ErrTargetExists → 409), not a silent mutation: a create
+// must never update — and possibly downgrade — an existing privileged target.
+// require_mfa is tri-state (see CreateTargetInput): an OMITTED require_mfa is
+// treated as "no opinion" and matches whatever the existing target holds (so a
+// re-POST that simply doesn't mention it is a clean reuse, never a 409 and never
+// a downgrade), whereas an EXPLICIT require_mfa that differs is a real conflict.
+// Settings and credential changes go through the explicit update / RotateSecret
+// paths instead.
+func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, bool, error) {
 	if v == nil || v.db == nil {
-		return nil, fmt.Errorf("pam: Vault not initialised")
+		return nil, false, fmt.Errorf("pam: Vault not initialised")
 	}
 	if in.WorkspaceID == uuid.Nil {
-		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+		return nil, false, fmt.Errorf("%w: workspace_id is required", ErrValidation)
 	}
 	if strings.TrimSpace(in.Name) == "" {
-		return nil, fmt.Errorf("%w: target name is required", ErrValidation)
+		return nil, false, fmt.Errorf("%w: target name is required", ErrValidation)
 	}
 	if !validProtocol(in.Protocol) {
-		return nil, fmt.Errorf("%w: unknown protocol %q", ErrValidation, in.Protocol)
+		return nil, false, fmt.Errorf("%w: unknown protocol %q", ErrValidation, in.Protocol)
 	}
-	if strings.TrimSpace(in.Address) == "" {
-		return nil, fmt.Errorf("%w: target address is required", ErrValidation)
+	name := strings.TrimSpace(in.Name)
+	address := strings.TrimSpace(in.Address)
+	if address == "" {
+		return nil, false, fmt.Errorf("%w: target address is required", ErrValidation)
+	}
+
+	switch existing, err := v.FindTargetByName(ctx, in.WorkspaceID, name); {
+	case err == nil:
+		return v.reuseOrConflict(ctx, existing, in, name, address)
+	case !errors.Is(err, ErrTargetNotFound):
+		return nil, false, err
 	}
 
 	id := uuid.New()
 	envelope, keyVersion, err := v.seal(ctx, in.WorkspaceID, id, in.Secret)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	row := &models.PAMTarget{
 		Base:             models.Base{ID: id},
 		WorkspaceID:      in.WorkspaceID,
-		Name:             strings.TrimSpace(in.Name),
+		Name:             name,
 		Protocol:         in.Protocol,
-		Address:          strings.TrimSpace(in.Address),
+		Address:          address,
 		Username:         strings.TrimSpace(in.Username),
 		Config:           in.Config,
 		SecretEnvelope:   envelope,
 		SecretKeyVersion: keyVersion,
-		RequireMFA:       in.RequireMFA,
+		RequireMFA:       in.RequireMFA != nil && *in.RequireMFA,
 		LeaseTTLSeconds:  int(in.LeaseTTL.Seconds()),
 	}
 	// Create the target row and its audit record in one transaction so a sealed
@@ -158,9 +207,115 @@ func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models
 			"address":  row.Address,
 		})
 	}); err != nil {
-		return nil, err
+		// Lost a create race against a concurrent registration for the same name:
+		// the unique index fired between our existence check and the insert.
+		// Re-resolve and apply the same strict-idempotency decision — return the
+		// winning row if it is identical, else surface ErrTargetExists — instead
+		// of leaking a raw 500.
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			winner, ferr := v.FindTargetByName(ctx, in.WorkspaceID, name)
+			if ferr != nil {
+				if errors.Is(ferr, ErrTargetNotFound) {
+					return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
+				}
+				return nil, false, ferr
+			}
+			return v.reuseOrConflict(ctx, winner, in, name, address)
+		}
+		return nil, false, err
 	}
-	return row, nil
+	return row, true, nil
+}
+
+// reuseOrConflict applies the strict-idempotency decision when a create's
+// workspace-scoped name already exists. It returns the existing row (200,
+// created=false) only when that row is IDENTICAL to the request across every
+// non-secret field (protocol, address, username, require_mfa, lease TTL and
+// config); any difference is a typed conflict (ErrTargetExists → 409). A create
+// deliberately never mutates an existing target — re-pointing it at a new
+// upstream or flipping its require_mfa gate must be an explicit update, never an
+// implicit side effect of a re-POST (which, for value-typed bools, could not
+// tell an omitted require_mfa from an intentional false and would silently
+// downgrade the gate). The sealed credential is never compared or touched here.
+//
+// A pure idempotent reuse is intentionally NOT audited — it is a no-op whose
+// state was already recorded at create time, and auditing every bootstrapper
+// re-run would flood the chain. A denied conflict, however, IS audited: an
+// attempt to re-register a privileged target's name against a different upstream
+// or with a changed security setting is a security-relevant rejected event that
+// must leave a trail.
+func (v *Vault) reuseOrConflict(ctx context.Context, existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
+	// An omitted require_mfa (nil) is "no opinion" and matches the stored value;
+	// only an explicit, differing require_mfa counts as drift.
+	mfaMatches := in.RequireMFA == nil || *in.RequireMFA == existing.RequireMFA
+	if existing.Protocol == in.Protocol &&
+		existing.Address == address &&
+		existing.Username == strings.TrimSpace(in.Username) &&
+		mfaMatches &&
+		existing.LeaseTTLSeconds == int(in.LeaseTTL.Seconds()) &&
+		jsonEqual(existing.Config, in.Config) {
+		return existing, false, nil
+	}
+	// Standalone audit: the registration is rejected, so there is no row to
+	// commit alongside (same shape as the secret-reveal event). Record only the
+	// non-secret field names that differ — never values or secret material — and
+	// fail closed if the chain append fails, so a denial is never silently
+	// unrecorded.
+	if err := v.audit(ctx, in.WorkspaceID, in.Actor, "pam.target.register_denied", existing.ID.String(), map[string]any{
+		"name":           name,
+		"reason":         "name already registered with different settings",
+		"changed_fields": conflictFields(existing, in, address),
+	}); err != nil {
+		return nil, false, err
+	}
+	return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
+}
+
+// conflictFields lists the non-secret field names whose requested value differs
+// from the stored target, so a register_denied audit records WHAT was being
+// changed without leaking any values (e.g. config payloads or addresses).
+func conflictFields(existing *models.PAMTarget, in CreateTargetInput, address string) []string {
+	var f []string
+	if existing.Protocol != in.Protocol {
+		f = append(f, "protocol")
+	}
+	if existing.Address != address {
+		f = append(f, "address")
+	}
+	if existing.Username != strings.TrimSpace(in.Username) {
+		f = append(f, "username")
+	}
+	if in.RequireMFA != nil && *in.RequireMFA != existing.RequireMFA {
+		f = append(f, "require_mfa")
+	}
+	if existing.LeaseTTLSeconds != int(in.LeaseTTL.Seconds()) {
+		f = append(f, "lease_ttl_seconds")
+	}
+	if !jsonEqual(existing.Config, in.Config) {
+		f = append(f, "config")
+	}
+	return f
+}
+
+// jsonEqual compares two JSON columns treating nil and empty as equal so an
+// omitted config never looks like a change against a stored empty one. When both
+// are non-empty it first tries a byte compare, then falls back to a semantic
+// compare so equivalent JSON with different key ordering or whitespace doesn't
+// read as a spurious conflict on a faithful re-register.
+func jsonEqual(a, b datatypes.JSON) bool {
+	switch {
+	case len(a) == 0 && len(b) == 0:
+		return true
+	case len(a) == 0 || len(b) == 0:
+		return false
+	case bytes.Equal(a, b):
+		return true
+	}
+	var ax, bx any
+	if json.Unmarshal(a, &ax) != nil || json.Unmarshal(b, &bx) != nil {
+		return false
+	}
+	return reflect.DeepEqual(ax, bx)
 }
 
 // GetTarget loads a target scoped to its workspace.

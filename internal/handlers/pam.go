@@ -208,12 +208,16 @@ func (h *pamHandlers) getTarget(c *gin.Context) {
 }
 
 type createTargetBody struct {
-	Name       string `json:"name" binding:"required"`
-	Protocol   string `json:"protocol" binding:"required"`
-	Address    string `json:"address" binding:"required"`
-	Username   string `json:"username"`
-	RequireMFA bool   `json:"require_mfa"`
-	LeaseTTL   int    `json:"lease_ttl_seconds"`
+	Name     string `json:"name" binding:"required"`
+	Protocol string `json:"protocol" binding:"required"`
+	Address  string `json:"address" binding:"required"`
+	Username string `json:"username"`
+	// Pointer so an omitted require_mfa is distinguishable from an explicit
+	// false: the vault treats nil as "no opinion" (default off on create, keep
+	// existing on an idempotent re-register) so a re-POST never silently flips
+	// an existing target's MFA gate.
+	RequireMFA *bool `json:"require_mfa"`
+	LeaseTTL   int   `json:"lease_ttl_seconds"`
 	Secret     struct {
 		Username   string `json:"username,omitempty"`
 		Password   string `json:"password,omitempty"`
@@ -231,7 +235,7 @@ func (h *pamHandlers) createTarget(c *gin.Context) {
 	if !bind(c, &body) {
 		return
 	}
-	t, err := h.vault.CreateTarget(c.Request.Context(), pam.CreateTargetInput{
+	t, created, err := h.vault.CreateOrGetTarget(c.Request.Context(), pam.CreateTargetInput{
 		WorkspaceID: ws,
 		Name:        body.Name,
 		Protocol:    body.Protocol,
@@ -251,7 +255,14 @@ func (h *pamHandlers) createTarget(c *gin.Context) {
 		h.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, t)
+	// Idempotent registration: a re-register of an identical target returns the
+	// existing row (created=false) as 200 OK rather than 201 Created, so a
+	// re-running bootstrapper sees success without a duplicate.
+	status := http.StatusCreated
+	if !created {
+		status = http.StatusOK
+	}
+	c.JSON(status, t)
 }
 
 // --- leases ---
@@ -606,7 +617,8 @@ func (h *pamHandlers) fail(c *gin.Context, err error) {
 		errors.Is(err, pam.ErrLeaseNotFound),
 		errors.Is(err, pam.ErrSessionNotFound):
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-	case errors.Is(err, pam.ErrLeaseTerminal),
+	case errors.Is(err, pam.ErrTargetExists),
+		errors.Is(err, pam.ErrLeaseTerminal),
 		errors.Is(err, pam.ErrSessionNotActive):
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, pam.ErrLeaseNotApproved):
