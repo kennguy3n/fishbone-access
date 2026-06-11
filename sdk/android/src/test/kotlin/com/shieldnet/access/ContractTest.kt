@@ -168,6 +168,10 @@ class ContractTest {
     fun `enum wire values match the server contract`() {
         assertEquals("provision_failed", AccessRequestState.PROVISION_FAILED.wireValue)
         assertEquals(AccessRequestState.ACTIVE, AccessRequestState.fromWire("active"))
+        // ai_reviewed is a real intermediate state (requested -> ai_reviewed ->
+        // approved/denied) that getRequestDetail can surface; it must decode.
+        assertEquals("ai_reviewed", AccessRequestState.AI_REVIEWED.wireValue)
+        assertEquals(AccessRequestState.AI_REVIEWED, AccessRequestState.fromWire("ai_reviewed"))
         assertEquals(RiskLevel.HIGH, RiskLevel.fromWire("high"))
         assertEquals(WorkflowStep.SECURITY_REVIEW, WorkflowStep.fromWire("security_review"))
         assertEquals(GrantState.REVOKED, GrantState.fromWire("revoked"))

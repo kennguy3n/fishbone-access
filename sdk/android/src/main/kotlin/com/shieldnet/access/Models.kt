@@ -35,6 +35,7 @@ import java.time.Instant
  */
 enum class AccessRequestState(val wireValue: String) {
     REQUESTED("requested"),
+    AI_REVIEWED("ai_reviewed"),
     APPROVED("approved"),
     DENIED("denied"),
     CANCELLED("cancelled"),
