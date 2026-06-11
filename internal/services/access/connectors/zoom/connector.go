@@ -362,7 +362,14 @@ func (c *ZoomAccessConnector) ProvisionAccess(ctx context.Context, configRaw, se
 	if err != nil {
 		return err
 	}
-	body, _ := json.Marshal(map[string]string{"id": grant.UserExternalID})
+	// Zoom's "Add group members" endpoint expects the user wrapped in a
+	// `members` array (POST /groups/{groupId}/members →
+	// {"members":[{"id":"..."}]}), mirroring the `members` key the read path
+	// already decodes in zoomGroupMembersResponse. A flat {"id":"..."} body is
+	// rejected by the live API with a validation error.
+	body, _ := json.Marshal(map[string][]map[string]string{
+		"members": {{"id": grant.UserExternalID}},
+	})
 	urlStr := fmt.Sprintf("%s/groups/%s/members", c.baseURL(), url.PathEscape(grant.ResourceExternalID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, bytes.NewReader(body))
 	if err != nil {
