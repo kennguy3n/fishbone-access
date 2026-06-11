@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -188,17 +187,13 @@ func (s *Seeder) ensureTarget(ctx context.Context, in SeedPrivilegedSessionInput
 	if address == "" {
 		address = "seed.invalid:22"
 	}
-	leaseTTL := defaultLeaseTTL
-	if leaseTTL < time.Minute {
-		leaseTTL = time.Minute
-	}
 	return s.vault.CreateTarget(ctx, CreateTargetInput{
 		WorkspaceID: in.WorkspaceID,
 		Name:        name,
 		Protocol:    protocol,
 		Address:     address,
 		Username:    in.Username,
-		LeaseTTL:    leaseTTL,
+		LeaseTTL:    defaultLeaseTTL,
 		Secret:      in.Secret,
 		Actor:       in.Actor,
 	})
