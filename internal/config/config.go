@@ -79,6 +79,14 @@ type Config struct {
 	// being recycled, so a long-lived process picks up Postgres failovers and
 	// avoids accumulating server-side state on stale backends.
 	DBConnMaxLifetime time.Duration
+	// DBConnMaxIdleTime closes a connection that has sat idle for this long,
+	// dropping the pool BELOW DBMaxIdleConns during quiet periods instead of
+	// holding warm connections open. This is a NoOps lever for the 5,000-tenant
+	// fleet: SME traffic is bursty and diurnal, so a control-plane replica that
+	// goes quiet (nights/weekends) returns its connections to Postgres rather
+	// than reserving max_connections headroom it is not using. Non-positive
+	// leaves idle connections un-aged (only DBConnMaxLifetime recycles them).
+	DBConnMaxIdleTime time.Duration
 	// DatabaseDriver selects the backend (pgx or gorm) for the repositories that
 	// have both implementations. Read from ACCESS_DATABASE_DRIVER; defaults to pgx.
 	// Validate rejects an unrecognised value so a typo fails the boot loudly
@@ -88,6 +96,11 @@ type Config struct {
 	// connector secrets at rest. When empty the binary refuses to persist
 	// secrets (fails closed) rather than storing plaintext.
 	CredentialDEK string
+
+	// Tenancy holds the multi-tenant scale/dormancy knobs that let the control
+	// plane serve thousands of SME tenants under NoOps, hibernating the large
+	// dormant-trial fraction so they consume near-zero periodic compute.
+	Tenancy TenancyConfig
 
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
@@ -102,6 +115,52 @@ type Config struct {
 
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
+}
+
+// TenancyConfig tunes tenant dormancy detection and hibernation. The defaults
+// target a 5,000-SME NoOps deployment where a large fraction of tenants are
+// dormant trials: those are detected by idle time and excluded from periodic
+// work until they show real activity again, so steady-state cost tracks the
+// active-tenant count rather than the provisioned-tenant count.
+type TenancyConfig struct {
+	// HibernationEnabled gates the whole subsystem. When false the gate always
+	// reports "run" (no tenant is ever hibernated) so an operator can disable
+	// the optimisation without code changes. Read from
+	// ACCESS_TENANCY_HIBERNATION_ENABLED; defaults to true.
+	HibernationEnabled bool
+	// DormantIdleThreshold is how long a tenant must go without recorded
+	// activity before it is classified dormant. The default (14 days) matches a
+	// typical trial window: a trial that nobody has touched in two weeks should
+	// stop costing periodic compute. Read from ACCESS_TENANCY_DORMANT_IDLE.
+	DormantIdleThreshold time.Duration
+	// ReconcileInterval is how often the dormancy sweep runs to (re)classify
+	// tenants as a set-based UPDATE. It need not be frequent — dormancy is a
+	// slow signal — so the default is 15m to keep the sweep cost negligible.
+	// Read from ACCESS_TENANCY_RECONCILE_INTERVAL.
+	ReconcileInterval time.Duration
+	// ActivityFlushInterval is the write-coalescing window for activity
+	// recording: at most one DB write per tenant per window, so a tenant under
+	// sustained API load does not amplify into one write per request. It MUST be
+	// far smaller than DormantIdleThreshold (the recorder enforces this) so a
+	// coalesced burst can never hide a wake-from-dormant. Read from
+	// ACCESS_TENANCY_ACTIVITY_FLUSH; defaults to 60s.
+	ActivityFlushInterval time.Duration
+	// ActivityQueueSize bounds the recorder's buffered enqueue channel. It is
+	// sized above the tenant target so a synchronised cold-start burst (every
+	// tenant's first request landing in one drain cycle, before per-tenant
+	// coalescing has populated) is absorbed without dropping events; steady
+	// state sits far below this because coalescing caps enqueues at one per
+	// tenant per ActivityFlushInterval. Read from
+	// ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE; defaults to 8192 (> the 5,000-tenant
+	// target with headroom). Dropped events are best-effort and re-enqueued by
+	// the next request, so this is a tuning lever, not a correctness bound.
+	ActivityQueueSize int
+	// DefaultTier is the resource-budget tier applied to a tenant with no
+	// explicit per-workspace budget row (see internal/services/tenancy). Read
+	// from ACCESS_TENANCY_DEFAULT_TIER; defaults to "trial" (the most
+	// constrained tier) so an un-tiered tenant cannot consume an active
+	// tenant's share.
+	DefaultTier string
 }
 
 // DevAuthConfig configures the non-production shared-secret token validator.
@@ -204,8 +263,17 @@ func Load() Config {
 		DBPgxMaxConns:     getInt("ACCESS_DB_PGX_MAX_CONNS", 8),
 		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime: getDuration("ACCESS_DB_CONN_MAX_LIFETIME", 30*time.Minute),
+		DBConnMaxIdleTime: getDuration("ACCESS_DB_CONN_MAX_IDLE_TIME", 5*time.Minute),
 		DatabaseDriver:    parseDatabaseDriver(os.Getenv("ACCESS_DATABASE_DRIVER")),
 		ShutdownTimeout:   getDuration("ACCESS_SHUTDOWN_TIMEOUT", 10*time.Second),
+		Tenancy: TenancyConfig{
+			HibernationEnabled:    getBool("ACCESS_TENANCY_HIBERNATION_ENABLED", true),
+			DormantIdleThreshold:  getDuration("ACCESS_TENANCY_DORMANT_IDLE", 14*24*time.Hour),
+			ReconcileInterval:     getDuration("ACCESS_TENANCY_RECONCILE_INTERVAL", 15*time.Minute),
+			ActivityFlushInterval: getDuration("ACCESS_TENANCY_ACTIVITY_FLUSH", 60*time.Second),
+			ActivityQueueSize:     getInt("ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE", 8192),
+			DefaultTier:           getEnv("ACCESS_TENANCY_DEFAULT_TIER", "trial"),
+		},
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
 			JWKSURL:           os.Getenv("IAM_CORE_JWKS_URL"),
@@ -288,6 +356,19 @@ func getInt(key string, def int) int {
 	}
 	if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 		return n
+	}
+	return def
+}
+
+// getBool reads a boolean env var, returning def when unset, empty, or
+// unparseable. Accepts the strconv.ParseBool set ("1","t","true","0","f",…).
+func getBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if b, err := strconv.ParseBool(v); err == nil {
+		return b
 	}
 	return def
 }

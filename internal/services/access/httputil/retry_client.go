@@ -89,15 +89,22 @@ type RetryClient struct {
 // defaults. timeout controls the per-attempt deadline on the
 // underlying *http.Client; pass 0 to use DefaultRequestTimeout.
 //
-// The returned *http.Client honours the standard Go connection
-// pool; callers that need a custom transport should construct the
-// RetryClient struct literal directly.
+// The returned *http.Client uses the process-wide tuned transport
+// (SharedTransport) rather than http.DefaultTransport, so every
+// connector that constructs its client this way shares one
+// connection pool sized for high-cardinality many-tenant fan-out
+// (see transport.go). Callers that need a custom transport (e.g.
+// pinned mTLS to a private VPC connector) should construct the
+// RetryClient struct literal with their own *http.Client.
 func NewRetryClient(timeout time.Duration) *RetryClient {
 	if timeout <= 0 {
 		timeout = DefaultRequestTimeout
 	}
 	return &RetryClient{
-		HTTP:           &http.Client{Timeout: timeout},
+		HTTP: &http.Client{
+			Timeout:   timeout,
+			Transport: SharedTransport(),
+		},
 		MaxAttempts:    DefaultMaxAttempts,
 		InitialBackoff: DefaultInitialBackoff,
 		MaxBackoff:     DefaultMaxBackoff,
