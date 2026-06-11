@@ -78,6 +78,20 @@ final class RiskAssessmentTests: XCTestCase {
         XCTAssertFalse(unscored.isElevated)
     }
 
+    func testMediumVerdictBelowRequestBandIsElevatedWithReason() {
+        // Request band low + medium verdict + auto-approve rec + no anomalies:
+        // isElevated must still carry a justification (regression: it used to be
+        // elevated with empty reasons -> "Risky active access — .").
+        let advisory = RiskAssessment.evaluate(
+            request: request(.low),
+            verdict: verdict(.medium, .autoApproveEligible)
+        )
+        XCTAssertTrue(advisory.isElevated)
+        XCTAssertFalse(advisory.isHighRisk)
+        XCTAssertFalse(advisory.reasons.isEmpty)
+        XCTAssertTrue(advisory.reasons.contains { $0.lowercased().contains("medium") })
+    }
+
     func testDegradedVerdictIsCalledOut() {
         let advisory = RiskAssessment.evaluate(request: request(.medium), verdict: verdict(.medium, .needsReview, degraded: true))
         XCTAssertTrue(advisory.reasons.contains { $0.lowercased().contains("degraded") })

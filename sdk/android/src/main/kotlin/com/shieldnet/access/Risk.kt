@@ -151,6 +151,11 @@ object RiskAssessment {
         verdict?.let { v ->
             if (v.score == RiskLevel.HIGH && request.riskLevel != RiskLevel.HIGH) {
                 reasons += "AI verdict score: high"
+            } else if (v.score == RiskLevel.MEDIUM && request.riskLevel != RiskLevel.MEDIUM) {
+                // A medium verdict score is an `isElevated` trigger, so it must
+                // contribute a reason — otherwise an elevated advisory could
+                // render with an empty justification ("Risky active access — .").
+                reasons += "AI verdict score: medium"
             }
             when (v.recommendation) {
                 RiskRecommendation.HIGH_RISK -> reasons += "Recommendation: high risk"
