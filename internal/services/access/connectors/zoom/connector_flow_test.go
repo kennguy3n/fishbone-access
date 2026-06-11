@@ -41,17 +41,20 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 			// First add → 201. A repeat add for an existing member returns
 			// 409, the same way Zoom does, so the loop below also exercises
 			// ProvisionAccess's idempotent 409/"already exists" no-op path.
+			// Mirror Zoom's real application/json error envelope rather than
+			// http.Error's text/plain so the mock stays faithful if a future
+			// assertion inspects the body or content type.
 			if member.Swap(true) {
-				http.Error(w, `{"code":409,"message":"Member already exists"}`, http.StatusConflict)
+				writeJSONStatus(w, http.StatusConflict, `{"code":409,"message":"Member already exists"}`)
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/groups/g-1/members/u-1"):
 			// First delete → 204. A repeat delete of an absent member returns
 			// 404, like Zoom, so the loop below also exercises RevokeAccess's
-			// idempotent not-found no-op path.
+			// idempotent not-found no-op path (same faithful JSON envelope).
 			if !member.Swap(false) {
-				http.Error(w, `{"code":404,"message":"Member not found"}`, http.StatusNotFound)
+				writeJSONStatus(w, http.StatusNotFound, `{"code":404,"message":"Member not found"}`)
 				return
 			}
 			w.WriteHeader(http.StatusNoContent)
@@ -96,6 +99,15 @@ func TestConnectorFlow_FullLifecycle(t *testing.T) {
 	if len(ents) != 0 {
 		t.Fatalf("ListEntitlements after revoke: got %d, want 0", len(ents))
 	}
+}
+
+// writeJSONStatus writes a Zoom-style JSON error body with the given status,
+// setting Content-Type: application/json (unlike http.Error, which forces
+// text/plain and appends a trailing newline).
+func writeJSONStatus(w http.ResponseWriter, status int, body string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(body))
 }
 
 func TestConnectorFlow_ProvisionFailsOn403(t *testing.T) {
