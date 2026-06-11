@@ -3,9 +3,11 @@ package helpscout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -200,12 +202,14 @@ func TestRevokeAccess_404Idempotent(t *testing.T) {
 func TestListEntitlements_FiltersByUser(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/teams/1/members"):
+			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":10},{"id":11}]},"page":{"size":50,"totalElements":2,"totalPages":1,"number":1}}`))
+		case strings.HasSuffix(r.URL.Path, "/teams/2/members"):
+			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":12}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
 		case strings.HasSuffix(r.URL.Path, "/teams"):
 			_, _ = w.Write([]byte(`{"_embedded":{"teams":[{"id":1,"name":"A"},{"id":2,"name":"B"}]},"page":{"size":50,"totalElements":2,"totalPages":1,"number":1}}`))
-		case strings.HasSuffix(r.URL.Path, "/teams/1/members"):
-			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":10}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
-		case strings.HasSuffix(r.URL.Path, "/teams/2/members"):
-			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":99}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -216,6 +220,87 @@ func TestListEntitlements_FiltersByUser(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].ResourceExternalID != "1" {
 		t.Fatalf("got = %+v", got)
+	}
+}
+
+// Regression: membership resolution must use the documented members LISTING
+// endpoint (GET /teams/{id}/members), never a direct GET on an individual
+// member resource — the live Help Scout API exposes membership only via the
+// listing. Each team is listed exactly once, and the scan returns as soon as
+// the user is found.
+func TestListEntitlements_UsesMemberListing(t *testing.T) {
+	const teams = 5
+	teamList := make([]string, 0, teams)
+	for i := 1; i <= teams; i++ {
+		teamList = append(teamList, fmt.Sprintf(`{"id":%d,"name":"T%d"}`, i, i))
+	}
+	var mu sync.Mutex
+	listCalls := map[string]int{}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		switch {
+		case strings.Contains(path, "/members/"):
+			t.Errorf("individual member resource probed; must use the listing endpoint: %s", path)
+			w.WriteHeader(http.StatusNotFound)
+		case strings.HasSuffix(path, "/members"):
+			mu.Lock()
+			listCalls[path]++
+			mu.Unlock()
+			// User 7 belongs only to team 3.
+			if strings.HasSuffix(path, "/teams/3/members") {
+				_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":99},{"id":7}]},"page":{"size":50,"totalElements":2,"totalPages":1,"number":1}}`))
+			} else {
+				_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":99}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
+			}
+		case strings.HasSuffix(path, "/teams"):
+			fmt.Fprintf(w, `{"_embedded":{"teams":[%s]},"page":{"size":50,"totalElements":%d,"totalPages":1,"number":1}}`,
+				strings.Join(teamList, ","), teams)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := newAdvancedTestConnector(srv)
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "7")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(got) != 1 || got[0].ResourceExternalID != "3" {
+		t.Fatalf("got = %+v; want single entitlement for team 3", got)
+	}
+	if len(listCalls) != teams {
+		t.Fatalf("listed %d distinct member endpoints; want %d (one per team)", len(listCalls), teams)
+	}
+	for path, n := range listCalls {
+		if n != 1 {
+			t.Fatalf("endpoint %s listed %d times; want exactly 1", path, n)
+		}
+	}
+}
+
+// Regression: a transport failure while scanning a team's members must
+// propagate, never silently yielding zero entitlements — under-reporting a
+// user's access in an access-control system is a security concern.
+func TestListEntitlements_MemberListErrorPropagates(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/teams/1/members"):
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"boom"}`))
+		case strings.HasSuffix(r.URL.Path, "/teams"):
+			_, _ = w.Write([]byte(`{"_embedded":{"teams":[{"id":1,"name":"A"}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := newAdvancedTestConnector(srv)
+	if _, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "10"); err == nil {
+		t.Fatal("expected error from 500 on members listing, got nil")
+	} else if !strings.Contains(err.Error(), "status 500") {
+		t.Fatalf("err = %v; want a status 500 error", err)
 	}
 }
 

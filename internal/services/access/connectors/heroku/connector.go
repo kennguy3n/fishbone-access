@@ -199,19 +199,30 @@ func (c *HerokuAccessConnector) CountIdentities(ctx context.Context, configRaw, 
 	if cfg.TeamName == "" {
 		return 1, nil
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, teamPath(cfg.TeamName)+"/members")
+	members, err := c.listTeamMembers(ctx, secrets, cfg.TeamName)
 	if err != nil {
 		return 0, err
-	}
-	body, err := c.do(req)
-	if err != nil {
-		return 0, err
-	}
-	var members []herokuTeamMember
-	if err := json.Unmarshal(body, &members); err != nil {
-		return 0, fmt.Errorf("heroku: decode members: %w", err)
 	}
 	return len(members), nil
+}
+
+// listTeamMembers returns every member of a Heroku team, following
+// Range/Next-Range pagination so teams larger than a single page are counted
+// and synced in full. Reading only the first page (the previous behaviour)
+// silently dropped every member beyond Heroku's default page size.
+func (c *HerokuAccessConnector) listTeamMembers(ctx context.Context, secrets Secrets, team string) ([]herokuTeamMember, error) {
+	var members []herokuTeamMember
+	if _, err := c.doPaged(ctx, secrets, "", teamPath(team)+"/members", func(body []byte) error {
+		var page []herokuTeamMember
+		if err := json.Unmarshal(body, &page); err != nil {
+			return fmt.Errorf("heroku: decode members: %w", err)
+		}
+		members = append(members, page...)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return members, nil
 }
 
 func (c *HerokuAccessConnector) SyncIdentities(
@@ -249,17 +260,9 @@ func (c *HerokuAccessConnector) SyncIdentities(
 			Status:      "active",
 		}}, "")
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, teamPath(cfg.TeamName)+"/members")
+	members, err := c.listTeamMembers(ctx, secrets, cfg.TeamName)
 	if err != nil {
 		return err
-	}
-	body, err := c.do(req)
-	if err != nil {
-		return err
-	}
-	var members []herokuTeamMember
-	if err := json.Unmarshal(body, &members); err != nil {
-		return fmt.Errorf("heroku: decode members: %w", err)
 	}
 	identities := make([]*access.Identity, 0, len(members))
 	for _, m := range members {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // FetchAccessAuditLogs streams Zoho CRM audit-log records into the
@@ -164,22 +165,7 @@ func readZohoBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("zoho_crm: empty response")
 	}
 	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*ZohoCRMAccessConnector)(nil)

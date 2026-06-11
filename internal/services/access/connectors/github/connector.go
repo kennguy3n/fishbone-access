@@ -423,19 +423,28 @@ func (c *GitHubAccessConnector) ListEntitlements(
 	if err != nil {
 		return nil, err
 	}
+	// A 404 means the user is not an org member — a legitimate empty result.
+	// Any other failure (auth, transport, 5xx, or a malformed 2xx body) must
+	// propagate rather than silently drop the org entitlement.
 	respOrg, err := c.doRaw(req)
-	if err == nil {
+	switch {
+	case err == nil:
 		var m struct {
 			Role  string `json:"role"`
 			State string `json:"state"`
 		}
-		if json.Unmarshal(respOrg.Body, &m) == nil {
-			out = append(out, access.Entitlement{
-				ResourceExternalID: cfg.Organization,
-				Role:               m.Role,
-				Source:             "direct",
-			})
+		if err := json.Unmarshal(respOrg.Body, &m); err != nil {
+			return nil, fmt.Errorf("github: decode org membership: %w", err)
 		}
+		out = append(out, access.Entitlement{
+			ResourceExternalID: cfg.Organization,
+			Role:               m.Role,
+			Source:             "direct",
+		})
+	case respOrg != nil && respOrg.StatusCode == http.StatusNotFound:
+		// not an org member; no entitlement
+	default:
+		return nil, err
 	}
 
 	// Team memberships
@@ -450,13 +459,19 @@ func (c *GitHubAccessConnector) ListEntitlements(
 		}
 		resp, err := c.doRaw(req)
 		if err != nil {
-			break
+			// 404 ⇒ no teams visible for this org/token: a legitimate empty
+			// result. Any other error must propagate so a transient failure
+			// is never mistaken for "user has no team entitlements".
+			if resp != nil && resp.StatusCode == http.StatusNotFound {
+				break
+			}
+			return nil, err
 		}
 		var teams []struct {
 			Slug string `json:"slug"`
 		}
-		if json.Unmarshal(resp.Body, &teams) != nil {
-			break
+		if err := json.Unmarshal(resp.Body, &teams); err != nil {
+			return nil, fmt.Errorf("github: decode teams page: %w", err)
 		}
 		for _, team := range teams {
 			mURL := fmt.Sprintf("%s/orgs/%s/teams/%s/memberships/%s",
@@ -464,22 +479,27 @@ func (c *GitHubAccessConnector) ListEntitlements(
 				url.PathEscape(team.Slug), url.PathEscape(userExternalID))
 			mReq, err := c.newRequest(ctx, secrets, http.MethodGet, mURL)
 			if err != nil {
-				continue
+				return nil, err
 			}
 			mResp, err := c.doRaw(mReq)
 			if err != nil {
-				continue
+				// 404 ⇒ not a member of this team; skip. Other errors propagate.
+				if mResp != nil && mResp.StatusCode == http.StatusNotFound {
+					continue
+				}
+				return nil, err
 			}
 			var mem struct {
 				Role string `json:"role"`
 			}
-			if json.Unmarshal(mResp.Body, &mem) == nil {
-				out = append(out, access.Entitlement{
-					ResourceExternalID: team.Slug,
-					Role:               mem.Role,
-					Source:             "direct",
-				})
+			if err := json.Unmarshal(mResp.Body, &mem); err != nil {
+				return nil, fmt.Errorf("github: decode team membership: %w", err)
 			}
+			out = append(out, access.Entitlement{
+				ResourceExternalID: team.Slug,
+				Role:               mem.Role,
+				Source:             "direct",
+			})
 		}
 		nextURL = parseNextLink(resp.Header.Get("Link"))
 		if nextURL != "" && c.urlOverride != "" {

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 const (
@@ -379,8 +380,12 @@ func (c *HelpScoutAccessConnector) RevokeAccess(
 	}
 }
 
-// ListEntitlements pages /teams and inspects /teams/{teamId}/members
-// for the user. Each team containing the user produces one Entitlement.
+// ListEntitlements pages /teams and, for each team, resolves membership by
+// paging that team's /teams/{teamId}/members list. Each team containing the
+// user produces one Entitlement. A transport or decode failure encountered
+// while enumerating teams or members is propagated rather than returning a
+// partial list, so a transient error can never silently under-report a user's
+// access.
 func (c *HelpScoutAccessConnector) ListEntitlements(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -429,6 +434,19 @@ func (c *HelpScoutAccessConnector) ListEntitlements(
 	}
 }
 
+// userInTeam reports whether userExternalID belongs to teamID by paging the
+// team's member list (GET /teams/{teamId}/members) and matching on the numeric
+// Help Scout user id. It returns as soon as the user is found, so a hit costs at
+// most one page rather than the whole roster.
+//
+// Help Scout's Mailbox API exposes team membership only through this listing
+// endpoint — there is no documented GET on an individual member resource — so
+// resolving membership is inherently a scan of the team's members. The match is
+// kept strictly on the numeric id that ProvisionAccess / RevokeAccess use as a
+// path segment and that SyncIdentities emits, so any reported entitlement is
+// revocable with the same UserExternalID. A 404 means the team (or its member
+// collection) is absent ⇒ not a member; any other non-2xx, a read failure, or a
+// malformed body is propagated rather than being treated as "no membership".
 func (c *HelpScoutAccessConnector) userInTeam(ctx context.Context, secrets Secrets, teamID int64, userExternalID string) (bool, error) {
 	page := 1
 	for {
@@ -441,12 +459,14 @@ func (c *HelpScoutAccessConnector) userInTeam(ctx context.Context, secrets Secre
 		if err != nil {
 			return false, err
 		}
+		body, readErr := connutil.ReadBody(resp.Body)
+		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound {
-			_ = resp.Body.Close()
 			return false, nil
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		_ = resp.Body.Close()
+		if readErr != nil {
+			return false, fmt.Errorf("helpscout: read team members: %w", readErr)
+		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return false, fmt.Errorf("helpscout: team members GET status %d: %s", resp.StatusCode, string(body))
 		}
@@ -454,11 +474,6 @@ func (c *HelpScoutAccessConnector) userInTeam(ctx context.Context, secrets Secre
 		if err := json.Unmarshal(body, &members); err != nil {
 			return false, fmt.Errorf("helpscout: decode team members: %w", err)
 		}
-		// Match strictly on the numeric Help Scout user ID. The same
-		// identifier is required by ProvisionAccess / RevokeAccess (used as
-		// a URL path segment) and is what SyncIdentities emits, so keeping
-		// the comparison narrow avoids surfacing entitlements that the
-		// caller cannot then revoke with the same UserExternalID.
 		for _, u := range members.Embedded.Users {
 			if strconv.FormatInt(u.ID, 10) == userExternalID {
 				return true, nil

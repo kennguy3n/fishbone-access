@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 const (
@@ -305,16 +306,30 @@ func (c *NotionAccessConnector) ListEntitlements(ctx context.Context, configRaw,
 	if err != nil {
 		return nil, err
 	}
-	body, err := c.do(req)
+	httpResp, err := c.client().Do(req)
 	if err != nil {
+		return nil, fmt.Errorf("notion: %s %s: %w", req.Method, req.URL.Path, err)
+	}
+	defer httpResp.Body.Close()
+	body, readErr := connutil.ReadBodyLimit(httpResp.Body, 1<<20)
+	// A 404 means the user no longer exists in the workspace, which is a
+	// legitimate "no entitlements" answer rather than an error. Any other
+	// non-2xx status is a genuine failure and must propagate.
+	if httpResp.StatusCode == http.StatusNotFound {
 		return nil, nil
+	}
+	if readErr != nil {
+		return nil, fmt.Errorf("notion: read user: %w", readErr)
+	}
+	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
+		return nil, fmt.Errorf("notion: %s %s: status %d: %s", req.Method, req.URL.Path, httpResp.StatusCode, string(body))
 	}
 	var resp struct {
 		Type string `json:"type"`
 		Name string `json:"name"`
 	}
-	if json.Unmarshal(body, &resp) != nil {
-		return nil, nil
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("notion: decode user: %w", err)
 	}
 	if resp.Type == "" {
 		return nil, nil
