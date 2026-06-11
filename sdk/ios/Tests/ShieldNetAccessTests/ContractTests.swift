@@ -117,6 +117,10 @@ final class ContractTests: XCTestCase {
     func testEnumWireValues() {
         XCTAssertEqual(AccessRequestState.provisionFailed.rawValue, "provision_failed")
         XCTAssertEqual(AccessRequestState(rawValue: "active"), .active)
+        // ai_reviewed is a real intermediate state (requested -> ai_reviewed ->
+        // approved/denied) that getRequestDetail can surface; it must decode.
+        XCTAssertEqual(AccessRequestState.aiReviewed.rawValue, "ai_reviewed")
+        XCTAssertEqual(AccessRequestState(rawValue: "ai_reviewed"), .aiReviewed)
         XCTAssertEqual(WorkflowStep.securityReview.rawValue, "security_review")
         XCTAssertEqual(GrantState(rawValue: "revoked"), .revoked)
         XCTAssertNil(AccessRequestState(rawValue: "nope"))

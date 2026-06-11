@@ -182,19 +182,26 @@ function LeaverBreakdown({ result }: { result: LeaverResult }) {
 function EmergencyOffboard({ onClose }: { onClose: () => void }) {
   const intl = useIntl();
   const toast = useToast();
-  const me = useMe();
+  // staleTime: 0 so the MFA advisory below reflects the *current* session each
+  // time the dialog opens (the global default is a 5-min cache with no
+  // refetch-on-focus, which would otherwise show a stale claim after the
+  // operator completes step-up MFA out-of-band).
+  const me = useMe({ staleTime: 0 });
   const [externalId, setExternalId] = useState("");
   const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
   const [result, setResult] = useState<LeaverResult | null>(null);
   const offboard = useEmergencyOffboard();
 
-  // The endpoint requires a session whose token carries the step-up MFA claim
-  // (middleware.RequireMFA). Pre-empt the 403 so the operator re-authenticates
-  // before typing, rather than after arming the confirm field.
+  // middleware.RequireMFA is the authoritative gate: the server rejects a
+  // session whose token lacks the step-up MFA claim with 403 "step-up MFA
+  // required", which `run` catches via isSessionMfaRequired and surfaces as a
+  // toast. We therefore do NOT disable the button on the (cacheable) client
+  // mfa_satisfied claim — doing so could strand the operator with a disabled
+  // button after they satisfy MFA out-of-band. The claim drives an advisory
+  // banner only; the server stays the source of truth.
   const mfaSatisfied = me.data?.mfa_satisfied ?? false;
-  const armed =
-    externalId.trim().length > 0 && confirm.trim() === "OFFBOARD" && mfaSatisfied;
+  const armed = externalId.trim().length > 0 && confirm.trim() === "OFFBOARD";
 
   const run = async () => {
     try {
@@ -289,8 +296,9 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
           </div>
           {!mfaSatisfied && (
             <div className="notice notice--warn" style={{ marginBottom: 12 }}>
-              Step-up MFA required — re-authenticate with MFA, then reopen this
-              dialog to run the kill switch.
+              Your session has not completed step-up MFA, so the server will
+              reject this offboard. Re-authenticate with MFA, then run the kill
+              switch.
             </div>
           )}
           <label className="field">

@@ -69,7 +69,11 @@ export function RequestDetail() {
   const historyQuery = useRequestHistory(requestId);
   const actionMut = useRequestAction(requestId ?? "");
   const revokeMut = useRevokeGrant();
-  const me = useMe();
+  // staleTime: 0 keeps the MFA-derived UX (the high-risk approve step-up notice
+  // and the revoke step-up advisory) in sync with the current session on each
+  // visit, matching EmergencyOffboard and avoiding a 5-min-stale mfa_satisfied
+  // claim after the operator completes step-up MFA out-of-band.
+  const me = useMe({ staleTime: 0 });
 
   // Deny/cancel collect an optional reason via a small modal.
   const [reasonFor, setReasonFor] = useState<RequestAction | null>(null);

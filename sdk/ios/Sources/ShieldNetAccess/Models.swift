@@ -21,6 +21,7 @@ import Foundation
 /// constants in `internal/services/lifecycle/state_machine.go`.
 public enum AccessRequestState: String, Codable, CaseIterable, Sendable {
     case requested
+    case aiReviewed = "ai_reviewed"
     case approved
     case denied
     case cancelled

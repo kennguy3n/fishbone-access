@@ -88,6 +88,10 @@ fun main() = runBlocking {
         // 8. Emergency offboard (WS5): the "revoke everything for this user"
         //    kill switch. Step-up-gated server-side; a partial failure still
         //    returns the per-layer breakdown so the operator can retry.
+        //    NOTE: emergencyOffboard takes the EXTERNAL identity id (the value
+        //    your IdP/directory knows the leaver by). We reuse me.userId here
+        //    purely to keep the example self-contained — a real host resolves
+        //    the external id from its directory, not the caller's iam-core id.
         val leaver = client.emergencyOffboard(me.userId, reason = "offboarding")
         println("offboard ${leaver.userExternalId}: errored=${leaver.errored}, failed=${leaver.failedLayers.map { it.layer }}")
     } catch (e: AccessSDKException.StepUpRequired) {

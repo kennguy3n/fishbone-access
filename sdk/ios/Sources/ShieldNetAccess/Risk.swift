@@ -227,6 +227,11 @@ public enum RiskAssessment {
         if let verdict {
             if verdict.score == .high && request.riskLevel != .high {
                 reasons.append("AI verdict score: high")
+            } else if verdict.score == .medium && request.riskLevel != .medium {
+                // A medium verdict score is an `isElevated` trigger, so it must
+                // contribute a reason — otherwise an elevated advisory could
+                // render with an empty justification ("Risky active access — .").
+                reasons.append("AI verdict score: medium")
             }
             switch verdict.recommendation {
             case .highRisk: reasons.append("Recommendation: high risk")

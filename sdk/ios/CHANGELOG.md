@@ -28,6 +28,15 @@ The SDK is versioned independently of the backend. Tags follow
   behind step-up MFA so the UX matches the web console and Android SDK.
 - No new dependencies (Foundation-only); identical logic and wire mapping to the
   Android SDK.
+- `RiskAssessment.evaluate` now emits an `"AI verdict score: medium"` reason when
+  a medium verdict score diverges from the request band, so an `isElevated`
+  advisory never renders with an empty justification. Matches the Android/web
+  classifiers byte-for-byte.
+- Adds the missing `AccessRequestState.aiReviewed` (`ai_reviewed`) case so a
+  request observed in that real intermediate state (`requested → ai_reviewed →
+  approved/denied`) decodes instead of throwing `DecodingError`.
+  `getRequestDetail(id:)` makes this state reachable from the SDK, so the enum
+  now matches the server state machine and `docs/openapi.yaml` exactly.
 
 ## 0.1.0 — initial publishable cut
 

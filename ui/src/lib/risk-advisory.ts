@@ -60,6 +60,11 @@ export function evaluateRisk(
   if (risk) {
     if (bandIs(risk.score, "high") && !bandIs(request.risk_level, "high")) {
       reasons.push("AI verdict score: high");
+    } else if (bandIs(risk.score, "medium") && !bandIs(request.risk_level, "medium")) {
+      // A medium verdict score is an `isElevated` trigger, so it must
+      // contribute a reason — otherwise an elevated advisory could render with
+      // an empty justification ("Risky active access — .").
+      reasons.push("AI verdict score: medium");
     }
     if (risk.recommendation === "high_risk")
       reasons.push("Recommendation: high risk");

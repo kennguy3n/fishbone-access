@@ -83,6 +83,10 @@ func runExample() async {
         // 7. Emergency offboard (WS5): the "revoke everything for this user"
         //    kill switch. Step-up-gated server-side; a partial failure still
         //    returns the per-layer breakdown so the operator can retry.
+        //    NOTE: emergencyOffboard takes the EXTERNAL identity id (the value
+        //    your IdP/directory knows the leaver by). We reuse me.userID here
+        //    purely to keep the example self-contained — a real host resolves
+        //    the external id from its directory, not the caller's iam-core id.
         let leaver = try await client.emergencyOffboard(userExternalID: me.userID, reason: "offboarding")
         print("offboard \(leaver.userExternalID): errored=\(leaver.errored), failed layers=\(leaver.failedLayers.map { $0.layer.rawValue })")
     } catch let AccessSDKError.stepUpRequired(body) {

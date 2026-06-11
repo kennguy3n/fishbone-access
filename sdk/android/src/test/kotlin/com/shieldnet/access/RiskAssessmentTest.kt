@@ -99,6 +99,21 @@ class RiskAssessmentTest {
     }
 
     @Test
+    fun `a medium verdict below the request band is elevated with a reason`() {
+        // Request band LOW + medium verdict + auto-approve rec + no anomalies:
+        // isElevated must still carry a justification (regression: it used to be
+        // elevated with empty reasons -> "Risky active access — .").
+        val advisory = RiskAssessment.evaluate(
+            request(RiskLevel.LOW),
+            verdict(RiskLevel.MEDIUM, RiskRecommendation.AUTO_APPROVE_ELIGIBLE),
+        )
+        assertTrue(advisory.isElevated)
+        assertFalse(advisory.isHighRisk)
+        assertTrue(advisory.reasons.isNotEmpty())
+        assertTrue(advisory.reasons.any { it.contains("medium", ignoreCase = true) })
+    }
+
+    @Test
     fun `a degraded verdict is called out for the operator`() {
         val advisory = RiskAssessment.evaluate(
             request(RiskLevel.MEDIUM),
