@@ -12,29 +12,42 @@ short, the post says so.
 
 Most SMEs don't fail audits because they lack controls — they fail because they
 can't *prove* the controls ran. fishbone-access is the system of record for
-"who can reach what, why, since when, and who signed off." It is built from five
-layers that every scenario in this series walks through:
+"who can reach what, why, since when, and who signed off." It is built from
+layers that every scenario in this series walks through — and the access layer
+goes well beyond simple SaaS grants:
 
 1. **A connector fabric.** 200+ providers (Okta, Salesforce, GitHub, Stripe,
    Azure, GCP, Box, Slack, Datadog, …) plus a first-class **manual** connector
    for offline-fulfilled targets (a core-banking console, an EHR role, a POS
    system). The manual connector provisions and revokes locally, so the access
-   lifecycle works even for systems with no API.
+   lifecycle works even for systems with no API. This is how access to **SaaS
+   apps and internal systems** is onboarded and torn down through one fabric.
 2. **Policy packs.** Curated bundles of access-policy templates keyed by
    jurisdiction and compliance framework. Applying a pack materialises **draft**
    policies — it never enforces anything on its own.
 3. **The policy lifecycle.** Every draft must be **simulated** (a real dry-run
    impact analysis) and then **promoted** before it takes effect. Promotion is
    the strongest gate in the API: RBAC permission + session MFA + a **fresh
-   step-up TOTP** code.
+   step-up TOTP** code. The same simulation runs a **separation-of-duties (SoD)
+   toxic-combination check** that flags *catastrophic* grants before they land.
 4. **The access lifecycle.** Request → approve → provision → review → certify →
-   deprovision, with SCIM-driven joiner/mover/leaver automation and a **leaver
-   kill switch** that sweeps every connector supporting session revocation or
-   SCIM deprovisioning.
-5. **A tamper-evident evidence chain.** Every consequential action appends a
-   hash-linked evidence record. You can verify the chain and **export a
-   framework-mapped evidence pack** (a ZIP with a manifest carrying the content
-   digest and chain-verification status) for an auditor.
+   deprovision. Employee-initiated requests are **AI-risk-scored** before a human
+   sees them; SCIM-driven **joiner/mover/leaver (JML)** automation keeps grants
+   in step with identity and role changes; and a **leaver kill switch** sweeps
+   every connector supporting session revocation or SCIM deprovisioning.
+5. **Privileged access (PAM).** Privileged targets — **cloud VMs over SSH** and
+   **managed databases over their native wire protocol** — are registered in a
+   vault and reached through a **just-in-time lease**: request → sponsor approval
+   (step-up MFA) → short-lived connect-token → automatic expiry. Every step is
+   risk-scored and recorded.
+6. **Contractor access.** Time-boxed, sponsor-approved grants for external
+   parties, with a **mandatory expiry**, a named internal sponsor, and a full
+   extend / early-revoke history — a separate lifecycle from employees.
+7. **A tamper-evident evidence chain.** Every consequential action across all of
+   the above appends a hash-linked evidence record. You can verify the chain and
+   **export a framework-mapped evidence pack** (a ZIP with a manifest carrying
+   the content digest and chain-verification status) for an auditor — the
+   **access-certification** artifact regulators ask to see.
 
 ## The honesty contract
 
@@ -58,13 +71,18 @@ This series is a critique, not a brochure. Five rules hold for every post:
    console after seeding. The multi-locale set re-renders the *same* data in
    another language (en, zh-Hans, de, ar, vi, ja) to show i18n coverage, not a
    different dataset.
-5. **The critique is honest.** Each post ends with "where we fall short." A
-   concrete example you'll see in Post 2: in this self-contained demo the leaver
-   kill switch genuinely *fails* on the live SaaS connectors because they carry
-   placeholder credentials and there is no real upstream to reach — so it
-   reports partial failure. We show that real report rather than hiding it; the
+5. **The critique is honest.** Each post ends with "where we fall short." Two
+   concrete examples you'll see: in Post 2 the leaver kill switch genuinely
+   *fails* on the live SaaS connectors because they carry placeholder credentials
+   and there is no real upstream to reach — so it reports partial failure; the
    switch still revokes grants and disables the identity locally and records the
-   full layered result.
+   full layered result. And across **every** workspace the PAM **lease lifecycle**
+   is exercised and recorded, but `pam_sessions = 0` and the control
+   "privileged access *monitored*" (SOC 2 CC6.7 / ISO A.8.2) stays at **0
+   records** — because recording the *session itself* needs the gateway in the
+   connection path with a reachable upstream, which the self-contained demo does
+   not have. We govern the privileged *lease*; we do not yet record the privileged
+   *session*. The coverage map says so on screen.
 
 ## The cast — six workspaces
 
@@ -89,9 +107,9 @@ boundaries.
 | Persona | Role | Cares about |
 | --- | --- | --- |
 | **Priya** | Compliance officer | Framework coverage, defensible evidence, on-time recertification |
-| **Dmitri** | IT admin | One console, safe defaults, JML automation |
-| **Sofia** | Security engineer | Step-up MFA, orphan detection, fast leaver deprovisioning |
-| **Marcus** | CISO / buyer | Tenant isolation, blast radius, board-ready posture |
+| **Dmitri** | IT admin | One console, safe defaults, JML automation, contractor onboarding |
+| **Sofia** | Security engineer | Step-up MFA, JIT privileged leases, orphan detection, fast leaver deprovisioning |
+| **Marcus** | CISO / buyer | Tenant isolation, blast radius, SoD toxic-combinations, board-ready posture |
 | **Aisha** | External auditor | Tamper-evident chain, verifiable export, control-to-evidence mapping |
 
 ## The data points
@@ -103,10 +121,21 @@ boundaries.
   GDPR, BSI C5, Essential Eight, PDPA/PDPL/PDPD).
 - **5 RBAC roles** — owner, admin, security_admin, operator, auditor — seeded
   into every workspace.
+- **PAM** to cloud VMs (SSH) and managed databases (PostgreSQL / MySQL) via the
+  vault + just-in-time lease lifecycle, with **10 supported protocols** (ssh,
+  postgres, mysql, mssql, mongodb, redis, k8s-exec, rdp, vnc, http) on the
+  register screen.
+- **Time-boxed contractor access** — sponsor-approved external grants with a
+  mandatory expiry and an extend / early-revoke history.
+- **AI-assisted risk scoring** on every access request and PAM lease, with a
+  fail-safe `needs_review` default when the AI agent is unavailable (honest, and
+  shown verbatim).
+- **Separation-of-duties simulation** — a toxic-combination engine that marks a
+  grant `catastrophic` *before* it is committed.
 - **12 UI locales**, exercised across the cast (en, zh-Hans, de, ar, vi, ja in
   the screenshot sets).
-- **Step-up MFA** (RFC 6238 TOTP, 30s period, anti-replay) on the two
-  highest-risk actions: policy promotion and evidence-pack export.
+- **Step-up MFA** (RFC 6238 TOTP, 30s period, anti-replay) on the highest-risk
+  actions: policy promotion, evidence-pack export, and privileged-lease approval.
 
 > Exact server-side counts for this seed (members, connectors, policies, active
 > policies, access requests, grants, review items, campaign items, orphan

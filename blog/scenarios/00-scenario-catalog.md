@@ -76,12 +76,16 @@ compliance artifact produced, and the evidence source.
 - **Connectors:** Stripe (payments), Salesforce (CRM), GitHub (engineering),
   manual MAS-TRM privileged-ops target.
 - **Lifecycle:** apply packs → simulate + promote each draft policy (step-up MFA)
-  → privileged ledger-admin and reconciliation requests approved + provisioned →
+  → **AI-risk-scored** ledger access request → **PAM targets** (ledger Postgres +
+  SSH host) with a **JIT lease** (request→approve under step-up→mint→expire) →
+  **SoD simulation** rejecting the ledger-admin↔reconcile toxic combo
+  (`catastrophic`) → **contractor grant** (PayTech integrator, time-boxed) →
   PCI CDE audit request → MAS-TRM privileged-access review with a revoke → PCI-DSS
   certification campaign → orphan scan → JML joiner/mover/leaver.
 - **Compliance artifact:** **PCI-DSS evidence pack** (ZIP + manifest).
-- **Evidence:** `s1-sg-acme-payments-*.json`, `s1-sg-acme-payments-evidence-pack.zip`
-  + `-manifest.json`.
+- **Evidence:** `s1-sg-acme-payments-*.json` (incl. `-request-risk`,
+  `-pam-targets`, `-pam-leases`, `-pam-sessions`, `-sod-rules`, `-sod-simulation`,
+  `-contractor-grants`), `s1-sg-acme-payments-evidence-pack.zip` + `-manifest.json`.
 
 ### S2 — US healthcare: HIPAA + CCPA/CPRA (JML + leaver kill switch)
 - **Workspace:** Globex Health (`us`, healthcare). **Personas:** Sofia, Dmitri.
@@ -140,11 +144,18 @@ compliance artifact produced, and the evidence source.
 - **Packs:** `ae-pdpl-desc`, `iso27001-annexa`.
 - **Connectors:** Salesforce (wealth CRM), Okta (workforce SSO), manual Temenos
   T24 core-banking privileged-account target.
-- **Lifecycle:** short-TTL privileged-admin + treasury grants → PDPL DSR auditor
-  request → DESC privileged-access review with a revoke → ISO 27001 Annex A
-  certification → orphan scan → JML. Locale `ar` exercises RTL.
+- **Lifecycle:** **PAM targets** (Temenos T24 SSH host + Treasury Postgres, 15-min
+  lease ceiling, step-up-gated) with two **JIT leases** → **SoD simulation**
+  rejecting core-banking-admin↔treasury-settlement (`catastrophic`) → **DESC
+  external-auditor contractor grant** → short-TTL privileged-admin + treasury
+  grants → PDPL DSR auditor request → DESC privileged-access review with a revoke
+  → ISO 27001 Annex A certification → orphan scan → JML. Locale `ar` exercises RTL.
 - **Compliance artifact:** privileged-access review + ISO 27001 certification.
-- **Evidence:** `s5-ae-northwind-finance-*.json` (review-report, sso-status).
+  Honest boundary: `A.8.2` "privileged access *monitored*" stays at **0 records** —
+  the JIT lease is governed and chained, but the session is not recorded.
+- **Evidence:** `s5-ae-northwind-finance-*.json` (review-report, sso-status,
+  `-pam-targets`, `-pam-leases`, `-pam-sessions`, `-sod-simulation`,
+  `-contractor-grants`).
 
 ### S6 — Australian SaaS: Essential Eight + SOC 2 (certify + export + critique)
 - **Workspace:** Contoso SaaS (`au`, saas). **Personas:** Marcus, Aisha.
@@ -174,8 +185,14 @@ compliance artifact produced, and the evidence source.
 | Policy packs by jurisdiction | S1 (sg), S3 (de), S4 (vn), S5 (ae), S6 (au) |
 | Policy packs by framework | PCI-DSS (S1, S3), HIPAA (S2), GDPR/BDSG/C5 (S3), ISO 27001 (S5), SOC 2 (S6) |
 | Policy lifecycle: apply → simulate → promote | S1–S6 |
-| Step-up MFA (promote + export) | S1 (promote), S6 (export) |
+| Step-up MFA (promote + export + lease approval) | S1 (promote), S6 (export), S1/S2/S5 (lease) |
 | Access requests → approve → provision | S1–S6 |
+| Access request **AI risk verdict** (degraded fail-safe) | S1–S6 (`-request-risk`) |
+| **PAM targets** (SSH/Postgres/MySQL cloud-VM + DB) | S1, S2, S3, S4, S5, S6 (`-pam-targets`) |
+| **PAM JIT lease** lifecycle (request→approve→expire) | S1, S2, S5 highlighted; `-pam-leases` |
+| **PAM session recording** (honest 0-record gap) | S1–S6 (`-pam-sessions` = 0) |
+| **Contractor access** (time-boxed sponsor grant) | S1–S6 (`-contractor-grants`) |
+| **SoD toxic-combo rule + simulation** (`catastrophic`) | S1, S3, S5 highlighted; `-sod-rules` / `-sod-simulation` |
 | Access-review campaign + decisions | S1–S6 |
 | Certification campaign + decisions + close | S1–S6 (closed in S6) |
 | Orphan scan | S1–S6 |
@@ -193,16 +210,18 @@ compliance artifact produced, and the evidence source.
 0. **Series intro + the honesty contract** — what fishbone-access is, the cast of
    six workspaces, the personas, and the evidence rules above.
 1. **S1 — Singapore fintech** (PDPA + MAS TRM + PCI-DSS): packs → policies →
-   grants → evidence pack.
-2. **S2 — US healthcare** (HIPAA + CCPA): JML lifecycle, the leaver kill switch,
-   access review.
+   AI-risk-scored requests → JIT PAM lease → SoD simulation → contractor access →
+   evidence pack.
+2. **S2 — US healthcare** (HIPAA + CCPA): certification campaigns, JML lifecycle,
+   the leaver kill switch, ePHI PAM lease, access review.
 3. **S3 — German retail** (BDSG + C5 + PCI-DSS + GDPR): multi-framework coverage
-   over one connector fabric.
+   over one connector fabric + the SoD toxic-combination check.
 4. **S4 — Vietnam** (PDPD Decree 13): standing up an emerging-market posture from
-   one pack.
-5. **S5 — UAE finance** (PDPL + DESC): privileged access / PAM, RTL locale.
+   one pack — with the full access primitives (PAM lease, contractor, SoD).
+5. **S5 — UAE finance** (PDPL + DESC): privileged access — the JIT lease now
+   exists, the session recording still doesn't; RTL locale.
 6. **S6 — Australian SaaS** (Essential Eight + SOC 2): certification campaign,
-   evidence export, competitive critique.
+   evidence export, full competitive scorecard.
 
 Each post: business context → the scenario walked in the UI (real screenshots) →
 the real API payloads → how it works under the hood → where we fall short.

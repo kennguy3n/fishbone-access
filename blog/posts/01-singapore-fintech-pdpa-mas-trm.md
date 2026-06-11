@@ -119,6 +119,166 @@ The PCI-DSS certification campaign closed with a revoke too — every item decid
 }
 ```
 
+## Employee-initiated requests are risk-scored before a human looks
+
+Acme's access-request queue is where least-privilege becomes a day-to-day
+workflow rather than a policy document. An employee files a request; the control
+plane scores it **before** an approver ever sees it. Here is the auditor's
+quarterly CDE request, with the verbatim risk verdict the API attaches
+([`s1-sg-acme-payments-request-risk.json`](../artifacts/payloads/s1-sg-acme-payments-request-risk.json)):
+
+```json
+{
+  "request": { "resource_ref": "cde:pci-scope", "role": "auditor", "state": "approved",
+               "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling." },
+  "risk": {
+    "score": "medium", "recommendation": "needs_review",
+    "source": "fallback", "degraded": true,
+    "factors": ["ai_unavailable"],
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "inputs": { "ai_tier": "deterministic", "duration_hours": 48,
+                "resource_ref": "cde:pci-scope", "role": "auditor" }
+  }
+}
+```
+
+![Acme's access-request detail — AI risk verdict Medium / Needs Review, factor ai_unavailable, full state-machine history](../artifacts/screenshots/s1-sg-request-risk.png)
+
+Read that honestly. The risk record is **real**, but `source` is `fallback` and
+`degraded` is `true`: the AI risk agent was *not reachable* in this run, so the
+control plane did **not** invent a confident answer. It applied a **fail-safe
+default** — score `medium`, recommendation `needs_review` — and recorded *why*
+(`ai_unavailable`). That is the correct security behaviour: an unavailable risk
+engine must never silently auto-approve. With the agent online, `source` becomes
+the model verdict and the factors reflect the resource, role, and duration in
+`inputs`. The queue itself shows the per-request tiering at a glance:
+
+![Acme's access requests — four requests, each with a risk tier and state](../artifacts/screenshots/s1-sg-access-requests.png)
+
+## Privileged access to the ledger: a just-in-time lease
+
+Acme's core ledger is not a SaaS app — it's a **PostgreSQL database** and the
+**Linux host** it runs on. Standing admin credentials to either are exactly what
+MAS TRM §11 exists to prevent. So Acme registers them as **PAM targets** rather
+than handing out passwords
+([`s1-sg-acme-payments-pam-targets.json`](../artifacts/payloads/s1-sg-acme-payments-pam-targets.json)):
+
+```json
+[
+  { "name": "Core ledger (PostgreSQL)", "protocol": "postgres",
+    "address": "ledger-db-1.acme-pay.internal:5432", "username": "ledger_admin",
+    "require_mfa": true, "lease_ttl_seconds": 1800 },
+  { "name": "Ledger DB host (prod-sg-1)", "protocol": "ssh",
+    "address": "ledger-db-1.acme-pay.internal:22", "username": "ops",
+    "require_mfa": true, "lease_ttl_seconds": 1800 }
+]
+```
+
+![Acme's PAM targets — PostgreSQL ledger and SSH host, each step-up-MFA-gated with a 30-minute lease ceiling](../artifacts/screenshots/s1-sg-pam-targets.png)
+
+Nobody holds a standing credential. To touch the ledger, an operator requests a
+**just-in-time lease**; a sponsor approves it under **step-up MFA**; the control
+plane mints a short-lived connect-token and the lease **expires automatically**
+30 minutes later. The lease carries its own risk verdict — and note it is
+`degraded` for the same honest reason as the access request above
+([`s1-sg-acme-payments-pam-leases.json`](../artifacts/payloads/s1-sg-acme-payments-pam-leases.json)):
+
+```json
+{
+  "state": "approved", "subject": "sg-acme-payments-owner",
+  "requested_by": "sg-acme-payments-owner", "approved_by": "sg-acme-payments-owner",
+  "granted_at": "2026-06-11T05:11:02Z", "expires_at": "2026-06-11T05:41:02Z",
+  "requested_ttl_seconds": 1800,
+  "risk_level": "medium", "risk_degraded": true, "risk_factors": ["ai_unavailable"],
+  "risk_reason": "ai agent unavailable; applied fail-safe default"
+}
+```
+
+![Acme's JIT leases — an approved lease with its AI risk verdict and a live expiry countdown](../artifacts/screenshots/s1-sg-pam-leases.png)
+
+This is the full *lease* lifecycle — request → approve (step-up) → mint → expire
+— and every step lands on the evidence chain (`pam.target.created`,
+`pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). What it
+is **not** is a recorded session. The PAM **sessions** screen proves that
+honestly — it is empty, because the gateway is not in the connection path here:
+
+![Acme's PAM sessions — empty: the lease is governed and chained, but no session is recorded](../artifacts/screenshots/s1-sg-pam-sessions.png)
+
+That `0 sessions` is the same boundary the coverage map shows as `CC6.7` /
+PCI-DSS 10.2 — see "where we fall short."
+
+## Stopping a catastrophic grant *before* it happens
+
+MAS TRM segregation says the identity that administers the ledger must not also
+sign off reconciliation. Acme encodes that as a **separation-of-duties rule**
+([`s1-sg-acme-payments-sod-rules.json`](../artifacts/payloads/s1-sg-acme-payments-sod-rules.json)):
+
+```json
+{
+  "name": "Ledger admin must not also approve reconciliation",
+  "severity": "critical",
+  "resource_a": "ledger:admin",     "role_a": "operator",
+  "resource_b": "ledger:reconcile", "role_b": "operator",
+  "description": "MAS TRM segregation: the same identity cannot both administer the ledger and sign off reconciliation."
+}
+```
+
+Before any grant that *would* combine those roles, the access **simulation**
+runs the toxic-combination check and marks the change `catastrophic` — with the
+exact violated rule, not a vague warning
+([`s1-sg-acme-payments-sod-simulation.json`](../artifacts/payloads/s1-sg-acme-payments-sod-simulation.json)):
+
+```json
+{
+  "impact": {
+    "action": "grant", "catastrophic": true,
+    "catastrophic_reasons": ["introduces high/critical separation-of-duties toxic combination(s)"],
+    "sod_violations": [
+      { "subject": "sg-acme-payments-owner", "severity": "critical", "introduced": true,
+        "held":        { "resource": "ledger:admin",     "role": "operator" },
+        "conflicting": { "resource": "ledger:reconcile", "role": "operator" },
+        "rule_name": "Ledger admin must not also approve reconciliation" }
+    ]
+  }
+}
+```
+
+The same guardrail runs on **policy** changes. Here the console's simulate step
+catches a grant-vs-deny conflict in the editor before promotion:
+
+![Acme's policy simulate — "1 grant-vs-deny conflict found" before promotion](../artifacts/screenshots/s1-sg-policy-simulate-conflict.png)
+
+And promotion itself is the strongest gate — a fresh step-up TOTP, refused
+otherwise:
+
+![Acme's promotion step-up — "Promoting a policy is a high-risk action and requires a fresh multi-factor confirmation"](../artifacts/screenshots/s1-sg-stepup-mfa.png)
+
+## Contractor access, time-boxed by construction
+
+Acme's PCI-DSS 11.3 penetration test and a 6-week payment-rails integration both
+need *external* people in scope — exactly the access that becomes a standing
+orphan if nobody remembers to remove it. Contractor grants make the expiry
+**mandatory** and the sponsor **named**, and the history is non-trivial: one
+grant is still `active` (expires in September), the other was **revoked early**
+([`s1-sg-acme-payments-contractor-grants.json`](../artifacts/payloads/s1-sg-acme-payments-contractor-grants.json)):
+
+```json
+[
+  { "display_name": "PayTech integration contractor", "contractor_user_id": "ext-paytech-integrator@vendor.example",
+    "resource_ref": "ledger:reconcile", "role": "operator", "sponsor_id": "sg-admin",
+    "state": "active", "expires_at": "2026-09-03T05:10:31Z",
+    "justification": "6-week payment-rails integration; sponsor: Head of Platform." },
+  { "display_name": "External penetration tester", "contractor_user_id": "ext-pentest@security.example",
+    "resource_ref": "cde:pci-scope", "role": "auditor", "sponsor_id": "sg-security_admin",
+    "state": "revoked", "expires_at": "2026-06-21T05:10:31Z",
+    "justification": "PCI-DSS 11.3 annual penetration test, read-only CDE." }
+]
+```
+
+Every transition — `contractor.grant.requested`, `.approved`, `.revoked` — is on
+the same chain as everything else, so "who let the pentester in, and when were
+they cut off?" is a query, not an archaeology project.
+
 ## The compliance view: control coverage you didn't hand-assemble
 
 Open **Compliance evidence** and pick PCI-DSS. The system maps the audit chain
@@ -190,9 +350,23 @@ Be honest about the screenshots above:
   core-banking app. It proves the access was *authorised and reviewed*, not that
   every *read* of a card record was logged. That last mile needs a SIEM or the
   app's own audit trail.
-- **No privileged session recording.** The MAS TRM review proves an admin grant
-  was *certified or revoked*; it does not record the admin's keystrokes inside
-  core-banking. There is no session proxy here.
+- **We govern the privileged *lease*, not the privileged *session*.** Acme's
+  PAM targets, the JIT lease, the step-up approval and the auto-expiry are all
+  real and on the chain — but `pam_sessions = 0`. The control plane is **not** in
+  the connection path recording the operator's SQL or shell keystrokes inside the
+  ledger; that needs the pam-gateway with a reachable upstream, which this
+  self-contained demo does not have. PCI-DSS 10.2 ("audit trail of access to
+  system components") stays uncovered for the same reason — we prove the access
+  was *authorised and time-boxed*, not that every *read* was logged.
+- **The AI risk verdict ran *degraded*.** Every risk record in this seed shows
+  `source: fallback`, `degraded: true`, factor `ai_unavailable` — the AI agent
+  was offline, so the system applied its fail-safe `needs_review` default. That
+  is the *correct* behaviour, but it means this demo does **not** show the model's
+  real scoring; it shows the safety net underneath it.
+- **The SoD violation is shown in *simulation*, not as a live anomaly.**
+  `sod_anomalies = 0`: the seeded grant set deliberately does not hold the toxic
+  combination, so the conflict surfaces in the pre-commit *what-if* (correctly
+  `catastrophic`) rather than as a standing violation to remediate.
 - **Connector depth is shallow in-demo.** Stripe / Salesforce / GitHub register
   but sit `pending` — the catalogue breadth (201 providers) is real, but the
   deep provisioning operations per provider are not all production-grade yet.
@@ -205,15 +379,22 @@ For an SME like Acme, the honest competitive picture:
 | --- | --- | --- | --- | --- |
 | Jurisdiction packs (PDPA/MAS TRM out of the box) | ✅ curated | ⚠️ build your own | ⚠️ build your own | ❌ |
 | Tamper-evident, re-verifiable evidence export | ✅ hash-chain + manifest | ⚠️ reports, not chained | ⚠️ reports | ⚠️ |
-| Step-up MFA on promote **and** export | ✅ | ⚠️ on some admin actions | ⚠️ | ✅ |
-| Privileged **session recording** | ❌ | ❌ (needs Okta PAM) | ❌ | ✅ core strength |
+| Step-up MFA on promote, export **and** lease approval | ✅ | ⚠️ on some admin actions | ⚠️ | ✅ |
+| Privileged JIT **lease** lifecycle (request→approve→expire) | ✅ governed + chained | ⚠️ (needs Okta PAM) | ⚠️ | ✅ |
+| Privileged **session recording** (keystrokes) | ❌ lease only | ❌ (needs Okta PAM) | ❌ | ✅ core strength |
+| SoD toxic-combination check at simulation time | ✅ pre-commit `catastrophic` | ⚠️ | ✅ deepest analytics | ❌ |
+| Time-boxed contractor access (sponsor + auto-expiry) | ✅ first-class | ⚠️ via lifecycle | ✅ | ❌ |
+| AI-assisted risk on requests/leases (fail-safe when offline) | ✅ honest degraded | ⚠️ | ✅ | ❌ |
 | Access certifications / campaigns | ✅ | ✅ | ✅ deepest (SoD analytics) | ⚠️ |
 | SME pricing / time-to-value | ✅ single console, days | ⚠️ per-user, weeks | ❌ enterprise, months | ❌ enterprise |
 
-**The honest read:** SailPoint and Saviynt out-govern us on separation-of-duties
-analytics and deep certifications, and CyberArk owns privileged *session*
-control outright — if Acme's core risk were an admin's live keystrokes in
-core-banking, CyberArk is the right tool. Where fishbone-access wins for an SME
+**The honest read:** we now ship a real SoD toxic-combination check that fires at
+simulation time (the `catastrophic` verdict above), a first-class contractor
+lifecycle, and a governed JIT privileged-lease flow — so the gap to SailPoint and
+Saviynt is narrower than it was. But they still out-analyse us on
+entitlement-mining and deep certifications *at scale*, and CyberArk owns
+privileged *session* control outright — if Acme's core risk were an admin's live
+keystrokes in core-banking, CyberArk is the right tool. Where fishbone-access wins for an SME
 is **time-to-defensible-evidence**: the PDPA + MAS TRM pack, the hash-chained
 chain, and a re-verifiable PCI-DSS export are there on day one, in one console,
 without an integration project. For a 40-person payments shop that needs to pass

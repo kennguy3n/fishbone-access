@@ -93,13 +93,47 @@ screenshots" and "here is a tamper-evident record you can independently verify."
 > chain simply grew by the two exports, and each new export re-verifies the whole
 > chain.
 
+## What the export actually covers — the full access surface
+
+The reason the pack is more than policies is that Contoso runs the *whole* access
+surface through the chain before exporting it:
+
+- **PAM to production** is a JIT lease, not a shared key. The production
+  PostgreSQL datastore and the GCP production VM are registered targets
+  ([`s6-au-contoso-saas-pam-targets.json`](../artifacts/payloads/s6-au-contoso-saas-pam-targets.json)):
+  ```json
+  [
+    { "name": "Production datastore (PostgreSQL)", "protocol": "postgres",
+      "address": "prod-db-1.contoso-saas.internal:5432", "username": "app_ro", "require_mfa": true },
+    { "name": "GCP production VM (prod-au-1)", "protocol": "ssh",
+      "address": "prod-au-1.contoso-saas.internal:22", "username": "sre", "require_mfa": true }
+  ]
+  ```
+- **The Essential-Eight "restrict admin privileges" control becomes a SoD rule**:
+  whoever can deploy to production must not also hold billing-admin. The
+  simulation flags the combination `catastrophic` before it lands
+  ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json)).
+- **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
+  expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):
+  ```json
+  { "display_name": "On-call SRE vendor", "contractor_user_id": "ext-sre-oncall@vendor.example",
+    "resource_ref": "prod:deploy", "role": "operator", "sponsor_id": "au-admin", "state": "active" }
+  ```
+
+All of it — PAM leases, the contractor grant, the SoD-checked policy promotions,
+the certification — is on the *same* hash chain the export re-verifies. That is
+the point: the evidence pack is a single, tamper-evident record of the entire
+access lifecycle, not a folder of disconnected reports.
+
 ## Where we fall short — the same two gaps, named one last time
 
 Contoso's SOC 2 coverage is **4 / 6**, and the two uncovered controls are the
 recurring honest limits of the entire product:
 
-- **`CC6.7` "Privileged access monitored" — 0 records.** No PAM session proxy, no
-  keystroke recording. (Post 5 is the full version of this gap.)
+- **`CC6.7` "Privileged access monitored" — 0 records.** The JIT lease to the
+  prod DB/VM above is governed and chained, but `pam_sessions = 0`: no in-path
+  session proxy, no keystroke recording. We govern the *lease*, not the *session*.
+  (Post 5 is the full version of this gap.)
 - **`CC7.3` "Orphan / anomalous access detected and dispositioned" — 0 records.**
   We *detect* orphans (the scan ran and found 0), but we don't run behavioural
   anomaly analytics, so there's no dispositioned-anomaly event to evidence the
@@ -119,13 +153,17 @@ Across the whole series, here is the honest positioning:
 | Jurisdiction/framework packs out of the box | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
 | One chain → many framework maps | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
 | Tamper-evident, **re-verifiable** evidence export | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Step-up MFA on promote **and** export | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
+| Step-up MFA on promote, export **and** lease approval | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
 | Access certifications / campaigns | ✅ | ✅ | ✅✅ | ✅✅ | ⚠️ | ❌ | ❌ |
-| Separation-of-duties (SoD) analytics | ❌ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
+| AI-assisted risk on requests/leases (fail-safe degraded) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Time-boxed contractor access (sponsor + auto-expiry) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
+| SoD toxic-combo check at simulation (rule-based) | ✅ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
+| SoD entitlement-mining **analytics** at scale | ⚠️ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
 | Orphan/anomaly **analytics** | ❌ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
+| Privileged JIT **lease** lifecycle (request→approve→expire) | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
 | Privileged credential vaulting | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ⚠️ | ⚠️ |
 | Live privileged **session recording** | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅ | ✅ |
-| Infra (DB/SSH/k8s) access brokering | ❌ | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅✅ |
+| Infra (DB/SSH/k8s) access brokering (in-path) | ❌ | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅✅ |
 | Multi-locale incl. RTL | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ |
 | SME fit (one console, days→weeks) | ✅ | ⚠️ | ❌ | ❌ | ❌ | ✅ | ✅ |
 
@@ -133,26 +171,39 @@ Across the whole series, here is the honest positioning:
 
 ### How to read it
 
-- **If your risk is privileged *sessions*** (admin inside core-banking, prod DB,
-  Kubernetes): **CyberArk** (vault + session), or **Teleport / StrongDM** for
-  modern infra access. fishbone-access governs the *grant*, not the *session* —
-  pair us with one of these.
-- **If your risk is *toxic combinations* across thousands of entitlements:**
-  **SailPoint** or **Saviynt**. Their SoD and analytics are the `CC7.3` gap we
-  openly don't fill.
+- **If your risk is recording the privileged *session*** (keystrokes inside
+  core-banking, a prod DB, Kubernetes): **CyberArk** (vault + session), or
+  **Teleport / StrongDM** for modern infra access. We now govern the JIT *lease*
+  to those targets — request, approve, expire, all chained — but we are not in
+  the connection path recording the session, so pair us with one of these for the
+  recording half.
+- **If your risk is *toxic combinations* across thousands of *un-enumerated*
+  entitlements:** **SailPoint** or **Saviynt**. We catch *declared* toxic
+  combinations at simulation time (the `catastrophic` verdict in Posts 1, 3, 5),
+  but their entitlement-*mining* finds the conflicts nobody wrote down — and their
+  orphan/anomaly analytics are the `CC7.3` gap we openly don't fill.
 - **If your risk is *proving framework compliance fast, as an SME*, across
-  jurisdictions, with evidence an auditor can re-verify:** that's our lane —
-  PDPA/HIPAA/BDSG/PDPD/PDPL/Essential-Eight packs, one-chain-many-maps, a
-  step-up-gated re-verifiable export, in 12 locales including RTL, in one console.
+  jurisdictions, with evidence an auditor can re-verify — over the full access
+  surface (SaaS, internal systems, JIT-privileged DB/VM, contractors, JML):**
+  that's our lane — PDPA/HIPAA/BDSG/PDPD/PDPL/Essential-Eight packs,
+  one-chain-many-maps, AI-risk-scored requests, a governed privileged-lease flow,
+  time-boxed contractor access, and a step-up-gated re-verifiable export, in 12
+  locales including RTL, in one console.
 
-**The honest conclusion:** fishbone-access is not trying to out-PAM CyberArk or
-out-analyse SailPoint, and this series has shown — with real 0-record coverage
-cells — exactly where those tools win. Its bet is that most SMEs don't fail
-audits for lack of a session vault; they fail because they **can't prove the
-controls ran**. The whole product is built to make that proof verifiable,
-multi-framework, multilingual, and cheap enough for a 40-person company to stand
-up this quarter. Where it falls short, the coverage map says so on screen — which
-is, in the end, the most honest competitive claim of all.
+**The honest conclusion:** fishbone-access is not trying to out-record CyberArk's
+session vault or out-mine SailPoint's entitlement analytics, and this series has
+shown — with real 0-record coverage cells (`CC6.7`, `CC7.3`) and honestly
+*degraded* AI-risk verdicts — exactly where those tools win. What it now covers is
+broad: SaaS and internal-system access through one connector fabric, JIT
+privileged leases to cloud VMs and databases, time-boxed contractor access,
+AI-assisted risk on every request, SoD simulation that stops catastrophic grants,
+JML with a layered leaver kill switch, and regulation-keyed certification with a
+re-verifiable export. Its bet is that most SMEs don't fail audits for lack of a
+session vault; they fail because they **can't prove the controls ran**. The whole
+product is built to make that proof verifiable, multi-framework, multilingual, and
+cheap enough for a 40-person company to stand up this quarter. Where it falls
+short, the coverage map says so on screen — which is, in the end, the most honest
+competitive claim of all.
 
 ---
 
