@@ -208,12 +208,16 @@ func (h *pamHandlers) getTarget(c *gin.Context) {
 }
 
 type createTargetBody struct {
-	Name       string `json:"name" binding:"required"`
-	Protocol   string `json:"protocol" binding:"required"`
-	Address    string `json:"address" binding:"required"`
-	Username   string `json:"username"`
-	RequireMFA bool   `json:"require_mfa"`
-	LeaseTTL   int    `json:"lease_ttl_seconds"`
+	Name     string `json:"name" binding:"required"`
+	Protocol string `json:"protocol" binding:"required"`
+	Address  string `json:"address" binding:"required"`
+	Username string `json:"username"`
+	// Pointer so an omitted require_mfa is distinguishable from an explicit
+	// false: the vault treats nil as "no opinion" (default off on create, keep
+	// existing on an idempotent re-register) so a re-POST never silently flips
+	// an existing target's MFA gate.
+	RequireMFA *bool `json:"require_mfa"`
+	LeaseTTL   int   `json:"lease_ttl_seconds"`
 	Secret     struct {
 		Username   string `json:"username,omitempty"`
 		Password   string `json:"password,omitempty"`

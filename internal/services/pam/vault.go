@@ -70,11 +70,17 @@ type CreateTargetInput struct {
 	Protocol    string
 	Address     string
 	Username    string
-	RequireMFA  bool
-	LeaseTTL    time.Duration
-	Config      datatypes.JSON
-	Secret      Secret
-	Actor       string
+	// RequireMFA is a tri-state: nil means the caller expressed no opinion (a
+	// fresh create defaults the gate off; an idempotent re-register keeps the
+	// existing target's value), while a non-nil value is an explicit requirement.
+	// It is a pointer because the handler body uses a plain JSON bool, where an
+	// omitted require_mfa is otherwise indistinguishable from an explicit false —
+	// which must never silently flip an existing privileged target's MFA gate.
+	RequireMFA *bool
+	LeaseTTL   time.Duration
+	Config     datatypes.JSON
+	Secret     Secret
+	Actor      string
 }
 
 // Vault is the per-target credential store. It seals each target's upstream
@@ -137,8 +143,11 @@ func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models
 // created=false, so a bootstrapper can safely re-run without erroring or
 // duplicating. Re-registering the same name with ANY of those fields different
 // is a typed conflict (ErrTargetExists → 409), not a silent mutation: a create
-// must never update — and possibly downgrade — an existing privileged target
-// (e.g. a plain re-POST that omits require_mfa must not flip its MFA gate off).
+// must never update — and possibly downgrade — an existing privileged target.
+// require_mfa is tri-state (see CreateTargetInput): an OMITTED require_mfa is
+// treated as "no opinion" and matches whatever the existing target holds (so a
+// re-POST that simply doesn't mention it is a clean reuse, never a 409 and never
+// a downgrade), whereas an EXPLICIT require_mfa that differs is a real conflict.
 // Settings and credential changes go through the explicit update / RotateSecret
 // paths instead.
 func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, bool, error) {
@@ -183,7 +192,7 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 		Config:           in.Config,
 		SecretEnvelope:   envelope,
 		SecretKeyVersion: keyVersion,
-		RequireMFA:       in.RequireMFA,
+		RequireMFA:       in.RequireMFA != nil && *in.RequireMFA,
 		LeaseTTLSeconds:  int(in.LeaseTTL.Seconds()),
 	}
 	// Create the target row and its audit record in one transaction so a sealed
@@ -236,10 +245,13 @@ func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*m
 // or with a changed security setting is a security-relevant rejected event that
 // must leave a trail.
 func (v *Vault) reuseOrConflict(ctx context.Context, existing *models.PAMTarget, in CreateTargetInput, name, address string) (*models.PAMTarget, bool, error) {
+	// An omitted require_mfa (nil) is "no opinion" and matches the stored value;
+	// only an explicit, differing require_mfa counts as drift.
+	mfaMatches := in.RequireMFA == nil || *in.RequireMFA == existing.RequireMFA
 	if existing.Protocol == in.Protocol &&
 		existing.Address == address &&
 		existing.Username == strings.TrimSpace(in.Username) &&
-		existing.RequireMFA == in.RequireMFA &&
+		mfaMatches &&
 		existing.LeaseTTLSeconds == int(in.LeaseTTL.Seconds()) &&
 		jsonEqual(existing.Config, in.Config) {
 		return existing, false, nil
@@ -273,7 +285,7 @@ func conflictFields(existing *models.PAMTarget, in CreateTargetInput, address st
 	if existing.Username != strings.TrimSpace(in.Username) {
 		f = append(f, "username")
 	}
-	if existing.RequireMFA != in.RequireMFA {
+	if in.RequireMFA != nil && *in.RequireMFA != existing.RequireMFA {
 		f = append(f, "require_mfa")
 	}
 	if existing.LeaseTTLSeconds != int(in.LeaseTTL.Seconds()) {

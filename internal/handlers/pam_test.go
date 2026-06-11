@@ -293,4 +293,44 @@ func TestCreateTargetIdempotentHTTP(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("name reuse with different upstream: want 409, got %d (%s)", w.Code, w.Body.String())
 	}
+
+	// require_mfa tri-state at the JSON boundary: a gated target re-registered
+	// WITHOUT require_mfa in the body is a clean 200 reuse (the omitted field is
+	// "no opinion", not an implicit false), and the stored gate stays on — so a
+	// re-running bootstrapper that simply doesn't send require_mfa never trips a
+	// spurious 409 or downgrades the gate.
+	gated := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"require_mfa": true,
+		"secret":      map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", gated)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create gated: want 201, got %d (%s)", w.Code, w.Body.String())
+	}
+	omitted := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"secret": map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", omitted)
+	if w.Code != http.StatusOK {
+		t.Fatalf("re-register gated omitting require_mfa: want 200, got %d (%s)", w.Code, w.Body.String())
+	}
+	var keptGate models.PAMTarget
+	if err := json.Unmarshal(w.Body.Bytes(), &keptGate); err != nil {
+		t.Fatalf("decode reused gated target: %v", err)
+	}
+	if !keptGate.RequireMFA {
+		t.Fatal("omitted require_mfa silently downgraded the MFA gate")
+	}
+	// An EXPLICIT require_mfa=false against the gated target is a real conflict.
+	downgrade := map[string]any{
+		"name": "db-gated", "protocol": "postgres", "address": "db:5432",
+		"require_mfa": false,
+		"secret":      map[string]any{"password": "pw"},
+	}
+	w = do(t, r, http.MethodPost, "/api/v1/pam/targets", "tok-a-perm-mfa", downgrade)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("explicit require_mfa=false downgrade: want 409, got %d (%s)", w.Code, w.Body.String())
+	}
 }

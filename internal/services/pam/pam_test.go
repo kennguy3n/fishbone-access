@@ -206,7 +206,7 @@ func TestCreateTargetIdempotent(t *testing.T) {
 	// typed conflict the caller must resolve via an explicit update, and the
 	// stored target must stay untouched.
 	drift := in
-	drift.RequireMFA = true
+	drift.RequireMFA = boolPtr(true)
 	drift.LeaseTTL = 30 * time.Minute
 	drift.Username = "app-rotated"
 	if _, _, err := v.CreateOrGetTarget(ctx, drift); !errors.Is(err, ErrTargetExists) {
@@ -251,7 +251,41 @@ func TestCreateTargetIdempotent(t *testing.T) {
 	if w, err := v.CreateTarget(ctx, in); err != nil || w.ID != first.ID {
 		t.Fatalf("CreateTarget wrapper not idempotent: id=%v err=%v", w, err)
 	}
+
+	// require_mfa tri-state: create an MFA-gated target, then prove an OMITTED
+	// require_mfa is "no opinion" (clean reuse, no 409, no downgrade) while an
+	// EXPLICIT false is a conflict the caller must resolve via an update — a
+	// create can never silently drop the gate.
+	gated := CreateTargetInput{
+		WorkspaceID: ws, Name: "db-gated", Protocol: models.PAMProtocolPostgres,
+		Address: "db.internal:5432", Username: "app", RequireMFA: boolPtr(true),
+		Secret: Secret{Username: "app", Password: "s3cr3t"}, Actor: "admin",
+	}
+	g, created, err := v.CreateOrGetTarget(ctx, gated)
+	if err != nil || !created || !g.RequireMFA {
+		t.Fatalf("create gated target: created=%v require_mfa=%v err=%v", created, g.RequireMFA, err)
+	}
+	// Re-register omitting require_mfa, otherwise identical → reuse, gate intact.
+	omitted := gated
+	omitted.RequireMFA = nil
+	if reuse, created, err := v.CreateOrGetTarget(ctx, omitted); err != nil || created || reuse.ID != g.ID || !reuse.RequireMFA {
+		t.Fatalf("omitted require_mfa should reuse without downgrade: id=%s created=%v require_mfa=%v err=%v",
+			reuse.ID, created, reuse.RequireMFA, err)
+	}
+	// Re-register with an EXPLICIT require_mfa=false → conflict, gate still on.
+	downgrade := gated
+	downgrade.RequireMFA = boolPtr(false)
+	if _, _, err := v.CreateOrGetTarget(ctx, downgrade); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("explicit require_mfa=false must 409, never silently downgrade, got %v", err)
+	}
+	if cur, err := v.GetTarget(ctx, ws, g.ID); err != nil || !cur.RequireMFA {
+		t.Fatalf("gate was downgraded: require_mfa=%v err=%v", cur.RequireMFA, err)
+	}
 }
+
+// boolPtr returns a pointer to b, for setting the tri-state CreateTargetInput
+// RequireMFA in tests (nil = omitted/no-opinion, non-nil = explicit).
+func boolPtr(b bool) *bool { return &b }
 
 func TestVaultRevealRequiresStepUpWhenMFAGated(t *testing.T) {
 	db := newTestDB(t)
@@ -266,7 +300,7 @@ func TestVaultRevealRequiresStepUpWhenMFAGated(t *testing.T) {
 	v := NewVault(db, newTestEncryptor(t), gate)
 	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
 		WorkspaceID: ws, Name: "vault-box", Protocol: models.PAMProtocolSSH,
-		Address: "host:22", RequireMFA: true, Secret: Secret{Password: "pw"}, Actor: "admin",
+		Address: "host:22", RequireMFA: boolPtr(true), Secret: Secret{Password: "pw"}, Actor: "admin",
 	})
 	if err != nil {
 		t.Fatalf("CreateTarget: %v", err)
@@ -295,7 +329,7 @@ func TestVaultRevealFailsClosedWithoutGate(t *testing.T) {
 
 	target, err := v.CreateTarget(context.Background(), CreateTargetInput{
 		WorkspaceID: ws, Name: "vault-box", Protocol: models.PAMProtocolSSH,
-		Address: "host:22", RequireMFA: true, Secret: Secret{Password: "pw"}, Actor: "admin",
+		Address: "host:22", RequireMFA: boolPtr(true), Secret: Secret{Password: "pw"}, Actor: "admin",
 	})
 	if err != nil {
 		t.Fatalf("CreateTarget: %v", err)
