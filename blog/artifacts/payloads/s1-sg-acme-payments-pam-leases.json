@@ -1,0 +1,26 @@
+{
+  "leases": [
+    {
+      "approved_by": "sg-acme-payments-owner",
+      "created_at": "2026-06-11T05:10:31.98762Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-11T05:41:02.095763Z",
+      "granted_at": "2026-06-11T05:11:02.095763Z",
+      "id": "6316aa21-6c14-4a66-a8ee-deb8a3a58f05",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "sg-acme-payments-owner",
+      "requested_ttl_seconds": 1800,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "sg-acme-payments-owner",
+      "target_id": "b786ffc8-0538-4a3d-921d-c36924b2adcf",
+      "updated_at": "2026-06-11T05:11:02.095763Z",
+      "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+    }
+  ]
+}

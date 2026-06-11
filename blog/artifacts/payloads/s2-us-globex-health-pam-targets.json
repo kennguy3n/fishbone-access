@@ -1,0 +1,30 @@
+{
+  "targets": [
+    {
+      "address": "ehr-db-1.globex.internal:5432",
+      "created_at": "2026-06-11T05:12:31.364361Z",
+      "deleted_at": null,
+      "id": "5b6dc5ee-5a50-4adf-9244-8ae81b5be9ab",
+      "lease_ttl_seconds": 900,
+      "name": "ePHI datastore (PostgreSQL)",
+      "protocol": "postgres",
+      "require_mfa": true,
+      "updated_at": "2026-06-11T05:12:31.364361Z",
+      "username": "phi_reader",
+      "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+    },
+    {
+      "address": "clinical-app-1.globex.internal:22",
+      "created_at": "2026-06-11T05:12:02.238346Z",
+      "deleted_at": null,
+      "id": "834e6948-7b21-4db5-91e2-8c9929cf12d2",
+      "lease_ttl_seconds": 900,
+      "name": "EHR app server (clinical-app-1)",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-11T05:12:02.238346Z",
+      "username": "ehr-ops",
+      "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "request": {
+    "connector_id": "1cbe94f5-52e7-415a-b856-4ca5d61c1575",
+    "created_at": "2026-06-11T05:10:31.583159Z",
+    "deleted_at": null,
+    "id": "fb369b8d-3cde-4905-9d46-f73e53f51675",
+    "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
+    "requester_id": "sg-acme-payments-owner",
+    "resource_ref": "cde:pci-scope",
+    "risk_factors": [
+      "ai_unavailable"
+    ],
+    "risk_level": "medium",
+    "role": "auditor",
+    "state": "approved",
+    "target_user_id": "sg-acme-payments-owner",
+    "updated_at": "2026-06-11T05:10:31.59471Z",
+    "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+  },
+  "risk": {
+    "created_at": "2026-06-11T05:10:31.586637Z",
+    "degraded": true,
+    "deleted_at": null,
+    "factors": [
+      "ai_unavailable"
+    ],
+    "id": "0cadf81a-faa9-4b60-a0b9-87d84774a6ba",
+    "inputs": {
+      "ai_tier": "deterministic",
+      "duration_hours": 48,
+      "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
+      "resource_ref": "cde:pci-scope",
+      "resource_tags": null,
+      "role": "auditor"
+    },
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "fb369b8d-3cde-4905-9d46-f73e53f51675",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-11T05:10:31.586637Z",
+    "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+  }
+}

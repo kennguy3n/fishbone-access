@@ -1,0 +1,40 @@
+{
+  "simulation": {
+    "conflicts": null,
+    "impact": {
+      "action": "grant",
+      "affected_grants": 0,
+      "affected_resources": [
+        "wms:dispatcher",
+        "wms:inventory"
+      ],
+      "affected_subjects": [
+        "vn-umbrella-logistics-owner"
+      ],
+      "catastrophic": false,
+      "new_grant_pairs": 2,
+      "pair_count": 2,
+      "redundant_pairs": 0,
+      "resource_count": 2,
+      "sod_violations": [
+        {
+          "conflicting": {
+            "resource": "wms:inventory",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "wms:dispatcher",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "341bee26-1177-478a-9ec2-dd471bca5c30",
+          "rule_name": "Dispatcher must not also adjust inventory",
+          "severity": "medium",
+          "subject": "vn-umbrella-logistics-owner"
+        }
+      ],
+      "subject_count": 1,
+      "wildcard_resource": false
+    }
+  }
+}

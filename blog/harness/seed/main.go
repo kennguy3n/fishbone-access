@@ -158,17 +158,16 @@ func (s *seeder) seedWorkspace(ws harnesskit.Workspace) harnesskit.WorkspaceSumm
 
 	// (e+f) Simulate then promote every draft policy. Promotion is the
 	// strongest gate in the API (permission + session MFA + fresh step-up TOTP).
-	policyIDs := s.listPolicyIDs(c)
-	sum.IDs.PolicyIDs = policyIDs
-	for _, pid := range policyIDs {
+	allIDs, draftIDs := s.listPolicyIDs(c)
+	sum.IDs.PolicyIDs = allIDs
+	// Only simulate + promote DRAFT policies. On a re-run the packs' policies are
+	// already active, so this skips the step-up-paced promotion entirely (a
+	// re-run is fast) while server counts remain ground truth.
+	for _, pid := range draftIDs {
 		c.JSON("POST", "/api/v1/policies/"+pid+"/simulate", map[string]any{}, nil)
 	}
-	for _, pid := range policyIDs {
-		if !s.promoteWithStepUp(c, disp, pid) {
-			// Already-active policies (a re-run) return non-2xx here; that is
-			// expected and not fatal — server counts remain ground truth.
-			continue
-		}
+	for _, pid := range draftIDs {
+		s.promoteWithStepUp(c, disp, pid)
 	}
 
 	// (g+h) Access requests against the manual target, approved + provisioned
@@ -193,8 +192,175 @@ func (s *seeder) seedWorkspace(ws harnesskit.Workspace) harnesskit.WorkspaceSumm
 		s.seedSCIM(c, manualID)
 	}
 
+	// (o) Separation-of-duties rules + an access simulation that the SoD engine
+	// evaluates for toxic combinations.
+	sum.IDs.SodRuleIDs = s.seedSoD(c, ws)
+
+	// (p) Contractor / external access — time-boxed, sponsor-approved grants on
+	// the offline-safe manual connector, with an extension or early revoke.
+	if manualID != "" {
+		sum.IDs.ContractorGrantIDs = s.seedContractors(c, ws, manualID)
+	}
+
+	// (q) PAM — register privileged targets (cloud VMs, databases) and drive the
+	// just-in-time lease lifecycle (request → step-up approval → connect-token →
+	// expire) against the ones flagged for it.
+	sum.IDs.PAMTargetIDs, sum.IDs.PAMLeaseID = s.seedPAM(c, ws, disp)
+
 	sum.Counts = s.readCounts(c, ws, sum.IDs)
 	return sum
+}
+
+// seedSoD creates the workspace's separation-of-duties rules and runs one
+// access simulation (simulate-definition) so the SoD engine evaluates a
+// candidate policy against the toxic-combination rule set. Returns the created
+// rule ids.
+func (s *seeder) seedSoD(c *harnesskit.Client, ws harnesskit.Workspace) []string {
+	var ids []string
+	for _, r := range ws.SodRules {
+		var created struct {
+			Rule struct {
+				ID string `json:"id"`
+			} `json:"rule"`
+		}
+		body := map[string]any{
+			"name":        r.Name,
+			"description": r.Description,
+			"severity":    r.Severity,
+			"resource_a":  r.ResourceA,
+			"role_a":      r.RoleA,
+			"resource_b":  r.ResourceB,
+			"role_b":      r.RoleB,
+		}
+		if c.JSON("POST", "/api/v1/sod-rules", body, &created) && created.Rule.ID != "" {
+			ids = append(ids, created.Rule.ID)
+		}
+	}
+	// Run an access simulation: a candidate grant that would hand ONE subject
+	// both halves of a toxic combination, so the SoD engine flags the conflict
+	// in its dry-run verdict before anything is promoted.
+	if len(ws.SodRules) > 0 {
+		r := ws.SodRules[0]
+		def := map[string]any{
+			"action": "grant",
+			// Same subject the capture harness replays with (the workspace
+			// owner) so the seeded dry-run and the captured payload describe the
+			// identical what-if.
+			"subjects":  []string{ws.OwnerSub()},
+			"resources": []string{r.ResourceA, r.ResourceB},
+			"role":      r.RoleA,
+		}
+		c.JSON("POST", "/api/v1/policies/simulate-definition", map[string]any{"definition": def}, nil)
+	}
+	return ids
+}
+
+// seedContractors drives the contractor/external access lifecycle for the
+// workspace: create a sponsor-owned, time-boxed grant on the manual connector,
+// approve it, then either extend (sponsor-approved, audited) or revoke early.
+// (Contractor approval is not a step-up-gated action, so no dispenser is taken.)
+func (s *seeder) seedContractors(c *harnesskit.Client, ws harnesskit.Workspace, manualID string) []string {
+	connID, err := uuid.Parse(manualID)
+	if err != nil {
+		return nil
+	}
+	var ids []string
+	for _, ct := range ws.Contractors {
+		expires := time.Now().Add(time.Duration(ct.Days) * 24 * time.Hour).UTC()
+		body := map[string]any{
+			"contractor_user_id": ct.ContractorUserID,
+			"display_name":       ct.DisplayName,
+			"connector_id":       connID,
+			"resource_ref":       ct.ResourceRef,
+			"role":               ct.Role,
+			"sponsor_id":         ct.SponsorID,
+			"justification":      ct.Justification,
+			"expires_at":         expires.Format(time.RFC3339),
+		}
+		var created struct {
+			Grant struct {
+				ID string `json:"id"`
+			} `json:"contractor_grant"`
+		}
+		if !c.JSON("POST", "/api/v1/contractor-grants", body, &created) || created.Grant.ID == "" {
+			continue
+		}
+		id := created.Grant.ID
+		ids = append(ids, id)
+		c.JSON("POST", "/api/v1/contractor-grants/"+id+"/approve", map[string]any{}, nil)
+		switch {
+		case ct.Extend:
+			newExpiry := expires.Add(time.Duration(ct.Days) * 24 * time.Hour)
+			c.JSON("POST", "/api/v1/contractor-grants/"+id+"/extend",
+				map[string]any{"expires_at": newExpiry.Format(time.RFC3339), "reason": "Sponsor-approved extension: engagement prolonged."}, nil)
+		case ct.Revoke:
+			c.JSON("POST", "/api/v1/contractor-grants/"+id+"/revoke",
+				map[string]any{"reason": "Engagement ended early; external access withdrawn."}, nil)
+		}
+	}
+	return ids
+}
+
+// seedPAM registers the workspace's privileged targets and, for those flagged
+// Lease, drives the full just-in-time lifecycle: request → step-up approval →
+// connect-token mint (step-up when the target requires MFA) → expire. Returns
+// the created target ids and the last lease id. The connect-token's raw value
+// is what a client would present to the pam-gateway to open a *recorded*
+// session; the gateway and a reachable upstream are out of scope for the
+// self-contained run, so no live session is opened here.
+func (s *seeder) seedPAM(c *harnesskit.Client, ws harnesskit.Workspace, disp *harnesskit.StepUpDispenser) ([]string, string) {
+	var ids []string
+	var lastLease string
+	for _, t := range ws.PAMTargets {
+		body := map[string]any{
+			"name":              t.Name,
+			"protocol":          t.Protocol,
+			"address":           t.Address,
+			"username":          t.Username,
+			"require_mfa":       t.RequireMFA,
+			"lease_ttl_seconds": t.LeaseTTL,
+			"secret":            map[string]any{"username": t.Username, "password": "demo-not-a-real-credential"},
+		}
+		var created struct {
+			ID string `json:"id"`
+		}
+		if !c.JSON("POST", "/api/v1/pam/targets", body, &created) || created.ID == "" {
+			continue
+		}
+		ids = append(ids, created.ID)
+		if !t.Lease {
+			continue
+		}
+		// request → approve (step-up) → mint connect-token (step-up) → expire
+		var lease struct {
+			ID string `json:"id"`
+		}
+		if !c.JSON("POST", "/api/v1/pam/leases", map[string]any{
+			"target_id":   created.ID,
+			"ttl_seconds": t.LeaseTTL,
+			"reason":      "JIT privileged access for a scoped operational task.",
+		}, &lease) || lease.ID == "" {
+			continue
+		}
+		lastLease = lease.ID
+		c.JSONHdr("POST", "/api/v1/pam/leases/"+lease.ID+"/approve", map[string]any{}, nil,
+			map[string]string{harnesskit.StepUpHeader: disp.Next()})
+		mintBody := map[string]any{"target_id": created.ID, "lease_id": lease.ID}
+		if t.RequireMFA {
+			// The connect-token gate wants a fresh OIDC re-auth access token that
+			// asserts MFA (not a raw TOTP) — model that with a short-lived,
+			// MFA-satisfied owner assertion bound to the same subject + tenant.
+			mintBody["step_up_token"] = harnesskit.MintJWT(s.secret, s.issuer, s.audience,
+				ws.OwnerSub(), ws.TenantID, ws.OwnerRoles(), true, 5*time.Minute)
+		}
+		c.JSON("POST", "/api/v1/pam/connect-tokens", mintBody, nil)
+	}
+	// One TTL sweep after all targets so the JIT windows close deterministically
+	// (the sweep is workspace-scoped, so it need only run once).
+	if lastLease != "" {
+		c.JSON("POST", "/api/v1/pam/leases/expire", map[string]any{}, nil)
+	}
+	return ids, lastLease
 }
 
 // --- identity/tenant bootstrap (the only direct DB writes) -----------------
@@ -306,20 +472,26 @@ func (s *seeder) connectedProviders(c *harnesskit.Client) map[string]string {
 	return out
 }
 
-func (s *seeder) listPolicyIDs(c *harnesskit.Client) []string {
+// listPolicyIDs returns all policy ids and, separately, the ids of policies
+// still in draft (those that still need simulate + promote). On a re-run the
+// pack policies are already active, so draftIDs is empty and the step-up-paced
+// promotion loop is skipped.
+func (s *seeder) listPolicyIDs(c *harnesskit.Client) (allIDs, draftIDs []string) {
 	var resp struct {
 		Policies []struct {
 			ID    string `json:"id"`
 			State string `json:"state"`
 		} `json:"policies"`
 	}
-	var ids []string
 	if c.JSON("GET", "/api/v1/policies", nil, &resp) {
 		for _, p := range resp.Policies {
-			ids = append(ids, p.ID)
+			allIDs = append(allIDs, p.ID)
+			if p.State != "active" {
+				draftIDs = append(draftIDs, p.ID)
+			}
 		}
 	}
-	return ids
+	return allIDs, draftIDs
 }
 
 // promoteWithStepUp promotes a single policy, attaching a fresh step-up TOTP
@@ -494,6 +666,13 @@ func (s *seeder) readCounts(c *harnesskit.Client, ws harnesskit.Workspace, ids h
 		counts.CampaignItems = countField(c, "/api/v1/compliance/campaigns/"+ids.CampaignID+"/items", "items")
 	}
 	counts.Grants = counts.ReviewItems // review enumerates active grants → server-truth grant count
+
+	counts.PAMTargets = countField(c, "/api/v1/pam/targets", "targets")
+	counts.PAMLeases = countField(c, "/api/v1/pam/leases", "leases")
+	counts.PAMSessions = countField(c, "/api/v1/pam/sessions", "sessions")
+	counts.ContractorGrants = countField(c, "/api/v1/contractor-grants", "contractor_grants")
+	counts.SodRules = countField(c, "/api/v1/sod-rules", "rules")
+	counts.SodAnomalies = countField(c, "/api/v1/sod-anomalies", "anomalies")
 	return counts
 }
 

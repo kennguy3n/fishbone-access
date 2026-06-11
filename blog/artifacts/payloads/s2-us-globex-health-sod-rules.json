@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "created_at": "2026-06-11T05:12:02.208502Z",
+      "deleted_at": null,
+      "description": "HIPAA minimum-necessary: clinical access and billing/claims export are mutually exclusive.",
+      "enabled": true,
+      "id": "75adb6e4-19af-4a13-98c6-f4d8e6048c88",
+      "name": "Clinician role must not hold billing export",
+      "resource_a": "ehr:clinician",
+      "resource_b": "ehr:billing",
+      "role_a": "operator",
+      "role_b": "operator",
+      "severity": "high",
+      "updated_at": "2026-06-11T05:12:02.208502Z",
+      "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+    }
+  ]
+}

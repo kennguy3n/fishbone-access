@@ -1,0 +1,17 @@
+{
+  "targets": [
+    {
+      "address": "wms-1.umbrella.internal:22",
+      "created_at": "2026-06-11T05:15:32.085389Z",
+      "deleted_at": null,
+      "id": "0afcc634-eac7-4206-b26d-adfab0fb29e8",
+      "lease_ttl_seconds": 1800,
+      "name": "WMS application server (wms-1)",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-11T05:15:32.085389Z",
+      "username": "wms-ops",
+      "workspace_id": "437dbb70-2c66-4a56-9222-bfbb5b2dd5a3"
+    }
+  ]
+}

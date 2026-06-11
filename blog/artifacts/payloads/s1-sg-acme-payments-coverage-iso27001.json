@@ -32,15 +32,15 @@
     },
     {
       "by_kind": {
-        "access_granted": 3,
+        "access_granted": 5,
         "access_requested": 4,
-        "access_revoked": 3,
+        "access_revoked": 4,
         "certification_closed": 1,
         "certification_decision": 1,
         "review_decision": 2
       },
       "covered": true,
-      "evidence_count": 14,
+      "evidence_count": 17,
       "id": "A.5.18",
       "kinds": [
         "access_requested",
@@ -59,13 +59,18 @@
       "evidence_count": 0,
       "id": "A.8.2",
       "kinds": [
-        "privileged_command"
+        "privileged_session",
+        "privileged_command",
+        "privileged_recording"
       ],
       "title": "Privileged access rights monitored"
     },
     {
-      "covered": false,
-      "evidence_count": 0,
+      "by_kind": {
+        "evidence_exported": 1
+      },
+      "covered": true,
+      "evidence_count": 1,
       "id": "A.8.15",
       "kinds": [
         "evidence_exported"
@@ -73,8 +78,8 @@
       "title": "Tamper-evident logging"
     }
   ],
-  "controls_covered": 3,
+  "controls_covered": 4,
   "controls_total": 5,
-  "evidence_total": 35,
+  "evidence_total": 39,
   "framework": "ISO 27001"
 }

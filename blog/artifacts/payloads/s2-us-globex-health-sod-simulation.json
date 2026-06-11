@@ -1,0 +1,43 @@
+{
+  "simulation": {
+    "conflicts": null,
+    "impact": {
+      "action": "grant",
+      "affected_grants": 0,
+      "affected_resources": [
+        "ehr:billing",
+        "ehr:clinician"
+      ],
+      "affected_subjects": [
+        "us-globex-health-owner"
+      ],
+      "catastrophic": true,
+      "catastrophic_reasons": [
+        "introduces high/critical separation-of-duties toxic combination(s)"
+      ],
+      "new_grant_pairs": 2,
+      "pair_count": 2,
+      "redundant_pairs": 0,
+      "resource_count": 2,
+      "sod_violations": [
+        {
+          "conflicting": {
+            "resource": "ehr:billing",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "ehr:clinician",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "75adb6e4-19af-4a13-98c6-f4d8e6048c88",
+          "rule_name": "Clinician role must not hold billing export",
+          "severity": "high",
+          "subject": "us-globex-health-owner"
+        }
+      ],
+      "subject_count": 1,
+      "wildcard_resource": false
+    }
+  }
+}

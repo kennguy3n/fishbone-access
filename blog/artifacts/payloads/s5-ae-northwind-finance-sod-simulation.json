@@ -1,0 +1,43 @@
+{
+  "simulation": {
+    "conflicts": null,
+    "impact": {
+      "action": "grant",
+      "affected_grants": 0,
+      "affected_resources": [
+        "t24:privileged-admin",
+        "t24:treasury"
+      ],
+      "affected_subjects": [
+        "ae-northwind-finance-owner"
+      ],
+      "catastrophic": true,
+      "catastrophic_reasons": [
+        "introduces high/critical separation-of-duties toxic combination(s)"
+      ],
+      "new_grant_pairs": 2,
+      "pair_count": 2,
+      "redundant_pairs": 0,
+      "resource_count": 2,
+      "sod_violations": [
+        {
+          "conflicting": {
+            "resource": "t24:treasury",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "t24:privileged-admin",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "5c5ad5dc-c187-4526-871d-665722f6943c",
+          "rule_name": "Core-banking admin must not run treasury settlement",
+          "severity": "critical",
+          "subject": "ae-northwind-finance-owner"
+        }
+      ],
+      "subject_count": 1,
+      "wildcard_resource": false
+    }
+  }
+}

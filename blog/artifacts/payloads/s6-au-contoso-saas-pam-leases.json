@@ -1,0 +1,48 @@
+{
+  "leases": [
+    {
+      "approved_by": "au-contoso-saas-owner",
+      "created_at": "2026-06-11T05:20:01.344958Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-11T05:50:31.431585Z",
+      "granted_at": "2026-06-11T05:20:31.431585Z",
+      "id": "0e082569-07d1-45bc-a293-d13f3511ca19",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "au-contoso-saas-owner",
+      "requested_ttl_seconds": 1800,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "au-contoso-saas-owner",
+      "target_id": "5de2d598-0196-46d9-925d-00156cd6f788",
+      "updated_at": "2026-06-11T05:20:31.431585Z",
+      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+    },
+    {
+      "approved_by": "au-contoso-saas-owner",
+      "created_at": "2026-06-11T05:19:32.313159Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-11T05:50:01.329205Z",
+      "granted_at": "2026-06-11T05:20:01.329205Z",
+      "id": "d4bb09ed-5ab5-4297-b141-f32831b4ad9e",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "au-contoso-saas-owner",
+      "requested_ttl_seconds": 1800,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "au-contoso-saas-owner",
+      "target_id": "78eed2f7-db1a-49fd-9f61-67471d822f74",
+      "updated_at": "2026-06-11T05:20:01.329205Z",
+      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+    }
+  ]
+}

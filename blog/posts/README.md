@@ -5,6 +5,18 @@ six jurisdictions, with live console screenshots, verbatim API payloads, and a
 tamper-evident evidence chain you can export and verify. Every figure traces to
 an evidence source; every post ends with an honest "where we fall short."
 
+The series covers the full access surface, not just compliance reporting:
+**SaaS + internal-system** access through one connector fabric, **PAM** to cloud
+VMs (SSH) and managed databases (PostgreSQL/MySQL) via a just-in-time **lease**
+lifecycle, **JML** (joiner/mover/leaver) with a layered leaver kill switch,
+**time-boxed contractor access**, employee-initiated **access requests with
+AI-assisted risk scoring** (honestly *degraded* to a fail-safe default when the
+AI agent is offline), **separation-of-duties simulation** that flags
+catastrophic grants pre-commit, and regulation-keyed **access certification**
+with a re-verifiable evidence export. Each post also carries an honest
+competitor assessment (Okta IGA, SailPoint, Saviynt, CyberArk, Teleport,
+StrongDM).
+
 ## The posts
 
 | # | Post | Scenario | Jurisdiction | Persona |
@@ -26,7 +38,10 @@ Scenario definitions and the evidence map live in
   control-plane responses captured by [`../harness/capture`](../harness/capture/main.go),
   prefixed `s{n}-{slug}-` per scenario, plus the global catalogue/pack captures
   and two evidence-pack exports (PCI-DSS for S1, SOC 2 for S6) with their
-  extracted `manifest.json`.
+  extracted `manifest.json`. Per scenario this now includes the new-feature
+  captures: `-pam-targets`, `-pam-leases`, `-pam-sessions`, `-contractor-grants`,
+  `-sod-rules`, `-sod-simulation`, `-sod-anomalies`, and `-request-risk` (the
+  AI-risk verdict on an access request).
 - **Seed summary:** [`../artifacts/seed-summary.json`](../artifacts/seed-summary.json)
   — server-side counts per workspace (ground truth), written by
   [`../harness/seed`](../harness/seed/main.go).

@@ -81,6 +81,38 @@ That's the day-one win: a Vietnamese SME with *two policies* still produces a
 tamper-evident, hash-linked record of every grant, review, and revocation — the
 exact thing A05 will ask to see.
 
+## Even the minimal posture covers the hard access cases
+
+"Day one" does not mean "SaaS grants only." Even Umbrella's lean setup exercises
+the three access patterns that trip up most SMEs:
+
+- **Privileged access** to the warehouse-management server is a JIT SSH lease,
+  not a shared root password
+  ([`s4-vn-umbrella-logistics-pam-targets.json`](../artifacts/payloads/s4-vn-umbrella-logistics-pam-targets.json)):
+  ```json
+  { "name": "WMS application server (wms-1)", "protocol": "ssh",
+    "address": "wms-1.umbrella.internal:22", "username": "wms-ops",
+    "require_mfa": true, "lease_ttl_seconds": 1800 }
+  ```
+- **Contractor access** for a third-party-logistics partner — and this one tells
+  the *whole* time-box story, because it was **revoked early** rather than left to
+  expire ([`s4-vn-umbrella-logistics-contractor-grants.json`](../artifacts/payloads/s4-vn-umbrella-logistics-contractor-grants.json)):
+  ```json
+  { "display_name": "3PL partner operator", "contractor_user_id": "ext-3pl-partner@logistics.example",
+    "resource_ref": "wms:dispatcher", "role": "operator", "sponsor_id": "vn-admin", "state": "revoked" }
+  ```
+- **Separation of duties**: a dispatcher must not also adjust inventory (the
+  shrinkage-fraud pattern in logistics). The rule is `medium` severity, so the
+  simulation *surfaces* the violation but — honestly — does **not** escalate it to
+  `catastrophic` the way the `critical` rules in Posts 1, 3 and 5 do; only
+  high/critical toxic combinations hard-block. Umbrella can see the medium
+  conflict and decide, rather than being stopped outright
+  ([`s4-vn-umbrella-logistics-sod-rules.json`](../artifacts/payloads/s4-vn-umbrella-logistics-sod-rules.json)).
+
+The point stands: the posture is *small*, but the access *primitives* are the
+full set. A two-policy tenant still gets JIT privileged leases, time-boxed
+contractor grants, and SoD simulation — on the same verifiable chain.
+
 ## Vietnamese, natively
 
 The compliance evidence view in Vietnamese (locale `vi`) — same chain, translated

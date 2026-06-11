@@ -62,6 +62,93 @@ The certification campaign closes with every item decided
 }
 ```
 
+In the console, that campaign is a worklist a reviewer actually works: each
+in-scope grant gets a **certify** or **revoke** decision, and closing the
+campaign applies the staged revocations. Here is the closed HIPAA campaign and
+its single decided item — `ehr:clinician`, **revoked**, decided and timestamped:
+
+![Globex's certification campaign list — Q2 2026 HIPAA Security Rule certification, closed](../artifacts/screenshots/s2-us-certification-campaigns.png)
+
+![Globex's campaign detail — 1 item, 1 revoked, 100% decided, reviewer worklist with the certify/revoke audit](../artifacts/screenshots/s2-us-certification-detail.png)
+
+This is the **access-certification** journey regulators ask about: a scoped
+review, a recorded human decision per item, and the revocation actually applied —
+not a screenshot of a spreadsheet someone signed.
+
+## A risk-scored request for the most sensitive action
+
+Globex's hardest access to govern is a **PHI export** — fulfilling a CCPA/CPRA
+data-subject request means letting someone pull consumer records out. So that
+request is risk-scored before anyone approves it
+([`s2-us-globex-health-request-risk.json`](../artifacts/payloads/s2-us-globex-health-request-risk.json)):
+
+```json
+{
+  "request": { "resource_ref": "phi:export", "role": "auditor", "state": "approved",
+               "justification": "CCPA/CPRA consumer data-subject access request fulfilment." },
+  "risk": { "score": "medium", "recommendation": "needs_review",
+            "source": "fallback", "degraded": true, "factors": ["ai_unavailable"] }
+}
+```
+
+As in Post 1, the verdict is honest: the AI agent was offline, so the engine fell
+back to a **fail-safe `needs_review`** rather than auto-approving a PHI export — a
+fail-open here would be exactly the wrong default.
+
+![Globex's access requests — clinician, billing, and a PHI-export auditor request, each risk-tiered](../artifacts/screenshots/s2-us-access-requests.png)
+
+## Privileged access to the ePHI datastore — without standing credentials
+
+The patient records do not live in a SaaS app; they live in a **PostgreSQL
+database** behind a clinical app server. Globex registers both as PAM targets
+with a **15-minute** lease ceiling — tighter than Acme's, because this is ePHI
+([`s2-us-globex-health-pam-targets.json`](../artifacts/payloads/s2-us-globex-health-pam-targets.json)):
+
+```json
+[
+  { "name": "ePHI datastore (PostgreSQL)", "protocol": "postgres",
+    "address": "ehr-db-1.globex.internal:5432", "username": "phi_reader",
+    "require_mfa": true, "lease_ttl_seconds": 900 },
+  { "name": "EHR app server (clinical-app-1)", "protocol": "ssh",
+    "address": "clinical-app-1.globex.internal:22", "username": "ehr-ops",
+    "require_mfa": true, "lease_ttl_seconds": 900 }
+]
+```
+
+An engineer who needs to touch the ePHI store requests a JIT lease, a sponsor
+approves under step-up MFA, a short-lived token is minted, and it expires in 15
+minutes. Those `pam.target.created` / `pam.lease.approved` /
+`pam.connect_token.minted` events are visible on the compliance evidence timeline
+below — but note `pam_sessions` is still **0** (see "where we fall short").
+
+## Minimum-necessary as a hard rule: separation of duties
+
+HIPAA minimum-necessary is also a *separation* problem: a clinician should not
+also hold the billing-export role. Globex encodes that, and the access simulation
+marks the combination `catastrophic` before it can be granted
+([`s2-us-globex-health-sod-simulation.json`](../artifacts/payloads/s2-us-globex-health-sod-simulation.json)):
+
+```json
+{ "impact": { "catastrophic": true,
+    "sod_violations": [
+      { "rule_name": "Clinician role must not hold billing export", "severity": "high",
+        "held":        { "resource": "ehr:clinician", "role": "operator" },
+        "conflicting": { "resource": "ehr:billing",   "role": "operator" } }
+    ] } }
+```
+
+## A contractor with an expiry built in
+
+Globex outsources medical coding. That vendor needs the billing role — and
+*only* until the engagement ends. A contractor grant makes the sponsor explicit
+and the access self-terminating
+([`s2-us-globex-health-contractor-grants.json`](../artifacts/payloads/s2-us-globex-health-contractor-grants.json)):
+
+```json
+{ "display_name": "Medical-coding vendor", "contractor_user_id": "ext-coding-vendor@billing.example",
+  "resource_ref": "ehr:billing", "role": "operator", "sponsor_id": "us-admin", "state": "active" }
+```
+
 ## The leaver kill switch — and why it *should* report failure here
 
 This is the most honest screen in the whole series. When a leaver is processed,
@@ -93,8 +180,16 @@ surfaces the partial result so Sofia knows exactly which upstream still needs a
 manual cut-off. (Point the same connectors at real Okta/Box tenants with valid
 credentials and those two lines flip to `.done`.)
 
+The JML runs screen shows these joiner/mover/leaver sweeps as discrete,
+identity-driven runs — the bridge between an HR/IdP change and the access fabric:
+
+![Globex's JML runs — SCIM-driven joiner/mover/leaver sweeps across connectors](../artifacts/screenshots/s2-us-jml-runs.png)
+
 You can see the same layered events on the compliance evidence timeline in the
-console (the `Kill Switch Fired` rows), each linked into the hash chain.
+console (the `Kill Switch Fired` rows), each linked into the hash chain — the
+PAM target/lease events from the section above appear on this same timeline:
+
+![Globex's compliance evidence timeline — kill-switch, PAM lease, and certification events on one hash-linked chain](../artifacts/screenshots/s2-us-compliance-evidence.png)
 
 ## The compliance view
 
@@ -117,6 +212,12 @@ honestly empty:
 - **CCPA "delete" is not executed.** We can show *who could reach* a consumer
   record (the access surface) and that grants were certified/revoked; we do not
   run the data-deletion in the downstream app.
+- **The ePHI PAM story is lease-only.** Globex's PostgreSQL/SSH targets, the
+  15-minute JIT lease, and the step-up approval are real and chained — but
+  `pam_sessions = 0`. We do not sit in the connection path recording the SQL a
+  `phi_reader` runs against the patient database. For "monitor *what an engineer
+  did* inside the ePHI store," a session-recording PAM (or the database's own
+  audit) is still required — `CC6.7` stays at 0 records and we show it.
 
 ## How a buyer should compare this
 
@@ -125,7 +226,9 @@ honestly empty:
 | Multi-layer leaver sweep with honest partial-failure report | ✅ records every layer | ⚠️ lifecycle, less explicit on partials | ✅ deep deprovision | ❌ (infra access only) |
 | HIPAA/CCPA packs out of the box | ✅ | ⚠️ build your own | ⚠️ build your own | ❌ |
 | Real-time SaaS deprovision at scale | ⚠️ depends on connector depth | ✅ Okta's home turf | ✅ | ❌ |
-| Infra (DB/SSH/k8s) access brokering for ePHI stores | ❌ | ❌ | ❌ | ✅ core strength |
+| JIT privileged **lease** to ePHI DB/SSH (request→approve→expire) | ✅ governed + chained | ⚠️ (Okta PAM add-on) | ⚠️ | ✅ |
+| Privileged **session recording** inside the ePHI store | ❌ lease only | ❌ | ❌ | ✅ core strength |
+| SoD: clinician-vs-billing toxic combo caught pre-grant | ✅ simulation `catastrophic` | ⚠️ | ✅ deepest | ❌ |
 | ePHI **read** audit trail | ❌ needs SIEM | ❌ | ❌ | ⚠️ session logs |
 
 **The honest read:** if Globex's biggest exposure is the *SaaS* lifecycle — Okta

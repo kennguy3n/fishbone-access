@@ -1,0 +1,43 @@
+{
+  "simulation": {
+    "conflicts": null,
+    "impact": {
+      "action": "grant",
+      "affected_grants": 0,
+      "affected_resources": [
+        "pos:cardholder-data",
+        "pos:store-manager"
+      ],
+      "affected_subjects": [
+        "de-initech-retail-owner"
+      ],
+      "catastrophic": true,
+      "catastrophic_reasons": [
+        "introduces high/critical separation-of-duties toxic combination(s)"
+      ],
+      "new_grant_pairs": 2,
+      "pair_count": 2,
+      "redundant_pairs": 0,
+      "resource_count": 2,
+      "sod_violations": [
+        {
+          "conflicting": {
+            "resource": "pos:cardholder-data",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "pos:store-manager",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "be283513-6218-4c46-a886-ea931b90af3a",
+          "rule_name": "Store-manager must not hold cardholder-data access",
+          "severity": "critical",
+          "subject": "de-initech-retail-owner"
+        }
+      ],
+      "subject_count": 1,
+      "wildcard_resource": false
+    }
+  }
+}
