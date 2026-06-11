@@ -199,7 +199,7 @@ func (s *seeder) seedWorkspace(ws harnesskit.Workspace) harnesskit.WorkspaceSumm
 	// (p) Contractor / external access — time-boxed, sponsor-approved grants on
 	// the offline-safe manual connector, with an extension or early revoke.
 	if manualID != "" {
-		sum.IDs.ContractorGrantIDs = s.seedContractors(c, ws, manualID, disp)
+		sum.IDs.ContractorGrantIDs = s.seedContractors(c, ws, manualID)
 	}
 
 	// (q) PAM — register privileged targets (cloud VMs, databases) and drive the
@@ -242,8 +242,11 @@ func (s *seeder) seedSoD(c *harnesskit.Client, ws harnesskit.Workspace) []string
 	if len(ws.SodRules) > 0 {
 		r := ws.SodRules[0]
 		def := map[string]any{
-			"action":    "grant",
-			"subjects":  []string{ws.MemberSub(harnesskit.RoleOperator)},
+			"action": "grant",
+			// Same subject the capture harness replays with (the workspace
+			// owner) so the seeded dry-run and the captured payload describe the
+			// identical what-if.
+			"subjects":  []string{ws.OwnerSub()},
 			"resources": []string{r.ResourceA, r.ResourceB},
 			"role":      r.RoleA,
 		}
@@ -255,7 +258,8 @@ func (s *seeder) seedSoD(c *harnesskit.Client, ws harnesskit.Workspace) []string
 // seedContractors drives the contractor/external access lifecycle for the
 // workspace: create a sponsor-owned, time-boxed grant on the manual connector,
 // approve it, then either extend (sponsor-approved, audited) or revoke early.
-func (s *seeder) seedContractors(c *harnesskit.Client, ws harnesskit.Workspace, manualID string, disp *harnesskit.StepUpDispenser) []string {
+// (Contractor approval is not a step-up-gated action, so no dispenser is taken.)
+func (s *seeder) seedContractors(c *harnesskit.Client, ws harnesskit.Workspace, manualID string) []string {
 	connID, err := uuid.Parse(manualID)
 	if err != nil {
 		return nil
@@ -350,7 +354,10 @@ func (s *seeder) seedPAM(c *harnesskit.Client, ws harnesskit.Workspace, disp *ha
 				ws.OwnerSub(), ws.TenantID, ws.OwnerRoles(), true, 5*time.Minute)
 		}
 		c.JSON("POST", "/api/v1/pam/connect-tokens", mintBody, nil)
-		// Expire leases (TTL sweep) so the JIT window closes deterministically.
+	}
+	// One TTL sweep after all targets so the JIT windows close deterministically
+	// (the sweep is workspace-scoped, so it need only run once).
+	if lastLease != "" {
 		c.JSON("POST", "/api/v1/pam/leases/expire", map[string]any{}, nil)
 	}
 	return ids, lastLease
