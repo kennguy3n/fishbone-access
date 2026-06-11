@@ -42,6 +42,8 @@ func TestClassifyPrivilegedActions(t *testing.T) {
 		"pam.session.opened":     KindPrivilegedSession,
 		"pam.session.closed":     KindPrivilegedSession,
 		"pam.session.terminated": KindPrivilegedSession,
+		"pam.session.paused":     KindPrivilegedSession,
+		"pam.session.resumed":    KindPrivilegedSession,
 		"pam.command":            KindPrivilegedCommand,
 		"pam.session.recording":  KindPrivilegedRecording,
 	}
@@ -49,6 +51,59 @@ func TestClassifyPrivilegedActions(t *testing.T) {
 		if got := classify(action); got != want {
 			t.Errorf("classify(%q) = %q, want %q", action, got, want)
 		}
+	}
+}
+
+// TestProjectRecordingRowParseError proves that a recording event whose metadata
+// is undecodable OR absent still produces an indexed row (so it is never silently
+// dropped) and is flagged with parse_error=true, while a well-formed row leaves
+// the flag unset and omitted from JSON.
+func TestProjectRecordingRowParseError(t *testing.T) {
+	bad := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  7,
+		ChainHash: "abc123",
+		Metadata:  datatypes.JSON([]byte("{not valid json")),
+	})
+	if !bad.ParseError {
+		t.Fatalf("malformed recording metadata should set parse_error")
+	}
+	if bad.SessionID != "" || bad.ReplayKey != "" || bad.SHA256 != "" {
+		t.Errorf("malformed metadata should leave reference fields empty: %+v", bad)
+	}
+	if bad.ChainSeq != 7 || bad.ChainHash != "abc123" {
+		t.Errorf("chain anchor must survive a metadata decode failure: %+v", bad)
+	}
+	if out, err := json.Marshal(bad); err != nil {
+		t.Fatalf("marshal: %v", err)
+	} else if !bytes.Contains(out, []byte(`"parse_error":true`)) {
+		t.Errorf("parse_error=true must serialise: %s", out)
+	}
+
+	// Absent metadata on a recording row is equally anomalous (a recording must
+	// carry reference metadata), so it is flagged the same as undecodable.
+	empty := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  9,
+		ChainHash: "ghi789",
+	})
+	if !empty.ParseError {
+		t.Fatalf("absent recording metadata should set parse_error")
+	}
+	if empty.ChainSeq != 9 || empty.ChainHash != "ghi789" {
+		t.Errorf("chain anchor must survive absent metadata: %+v", empty)
+	}
+
+	good := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  8,
+		ChainHash: "def456",
+		Metadata:  datatypes.JSON([]byte(`{"session_id":"s1","replay_key":"k","sha256":"h"}`)),
+	})
+	if good.ParseError {
+		t.Fatalf("well-formed metadata must not set parse_error")
+	}
+	if out, err := json.Marshal(good); err != nil {
+		t.Fatalf("marshal: %v", err)
+	} else if bytes.Contains(out, []byte("parse_error")) {
+		t.Errorf("parse_error must be omitted on the normal path: %s", out)
 	}
 }
 
@@ -176,6 +231,9 @@ func TestPackIncludesRecordingReferences(t *testing.T) {
 	}
 	if row.Bytes != 128 {
 		t.Errorf("recording row bytes = %d, want 128", row.Bytes)
+	}
+	if row.ParseError {
+		t.Errorf("well-formed recording metadata should not set parse_error")
 	}
 	if row.ChainHash == "" {
 		t.Errorf("recording row should carry its anchoring chain hash")

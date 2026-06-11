@@ -21,7 +21,14 @@ import (
 // packSchemaVersion is the stable contract version of the evidence-pack layout.
 // External compliance tooling keys off it; bump it only on a breaking change to
 // the file set or record shapes.
-const packSchemaVersion = "1.0"
+//
+//	1.0 — initial layout.
+//	1.1 — adds pam-recordings.jsonl (privileged-session recording references).
+//
+// Adding a file is additive, but tooling that validates the pack against a
+// closed file allowlist treats an unknown file as breaking, so the addition is
+// versioned here.
+const packSchemaVersion = "1.1"
 
 // PackFileInfo describes one file in the archive: its name, a human comment, the
 // number of JSONL rows (0 for non-JSONL files), and the SHA-256 of its bytes.
@@ -260,6 +267,11 @@ type recordingIndexRow struct {
 	Bytes      int64     `json:"bytes"`
 	Truncated  bool      `json:"truncated"`
 	ChainHash  string    `json:"chain_hash"`
+	// ParseError flags a row whose recording metadata could not be decoded, so
+	// an auditor seeing empty reference fields (SessionID/ReplayKey/SHA256) knows
+	// the blanks are a decode failure rather than a genuinely empty recording.
+	// Omitted on the normal path so well-formed rows stay clean.
+	ParseError bool `json:"parse_error,omitempty"`
 }
 
 // recordingMeta is the shape of a pam.session.recording event's metadata as
@@ -274,12 +286,18 @@ type recordingMeta struct {
 
 // projectRecordingRow flattens a KindPrivilegedRecording evidence record into a
 // pam-recordings.jsonl row, decoding the recording metadata best-effort: a
-// malformed metadata blob still yields a row (with whatever decoded) so the
-// recording stays indexed rather than silently dropped.
+// recording row whose metadata is absent or undecodable still yields a row (with
+// whatever decoded) so the recording stays indexed rather than silently dropped,
+// flagged with ParseError so the empty reference fields are self-explaining.
+// A KindPrivilegedRecording row must always carry reference metadata, so either
+// condition implies chain corruption rather than a legitimately empty recording.
 func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
 	var md recordingMeta
-	if len(rec.Metadata) > 0 {
-		_ = json.Unmarshal(rec.Metadata, &md)
+	parseErr := false
+	if len(rec.Metadata) == 0 {
+		parseErr = true
+	} else if err := json.Unmarshal(rec.Metadata, &md); err != nil {
+		parseErr = true
 	}
 	return recordingIndexRow{
 		ChainSeq:   rec.ChainSeq,
@@ -292,6 +310,7 @@ func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
 		Bytes:      md.Bytes,
 		Truncated:  md.Truncated,
 		ChainHash:  rec.ChainHash,
+		ParseError: parseErr,
 	}
 }
 

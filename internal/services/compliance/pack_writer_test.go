@@ -74,7 +74,7 @@ func TestWritePackContentsAndMapping(t *testing.T) {
 	}
 
 	files := readZip(t, buf.Bytes())
-	for _, want := range []string{"README.md", "evidence.jsonl", "access-grants.jsonl", "certification-campaigns.jsonl", "certification-items.jsonl", "policies.jsonl", "control-coverage.json", "chain-verification.json", "manifest.json"} {
+	for _, want := range []string{"README.md", "evidence.jsonl", "pam-recordings.jsonl", "access-grants.jsonl", "certification-campaigns.jsonl", "certification-items.jsonl", "policies.jsonl", "control-coverage.json", "chain-verification.json", "manifest.json"} {
 		if _, ok := files[want]; !ok {
 			t.Fatalf("pack missing %s (have %v)", want, keys(files))
 		}
