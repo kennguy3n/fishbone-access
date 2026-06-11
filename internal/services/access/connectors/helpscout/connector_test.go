@@ -3,9 +3,11 @@ package helpscout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
@@ -202,10 +204,12 @@ func TestListEntitlements_FiltersByUser(t *testing.T) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/teams"):
 			_, _ = w.Write([]byte(`{"_embedded":{"teams":[{"id":1,"name":"A"},{"id":2,"name":"B"}]},"page":{"size":50,"totalElements":2,"totalPages":1,"number":1}}`))
-		case strings.HasSuffix(r.URL.Path, "/teams/1/members"):
-			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":10}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
-		case strings.HasSuffix(r.URL.Path, "/teams/2/members"):
-			_, _ = w.Write([]byte(`{"_embedded":{"users":[{"id":99}]},"page":{"size":50,"totalElements":1,"totalPages":1,"number":1}}`))
+		case strings.HasSuffix(r.URL.Path, "/teams/1/members/10"):
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/teams/2/members/10"):
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -216,6 +220,63 @@ func TestListEntitlements_FiltersByUser(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].ResourceExternalID != "1" {
 		t.Fatalf("got = %+v", got)
+	}
+}
+
+// Regression: membership resolution must be a direct O(1)-per-team lookup, not
+// an O(teams × members) scan of every member of every team. The server records
+// the exact requests; the test fails if ListEntitlements ever falls back to
+// paging team member lists or issues more than one probe per team.
+func TestListEntitlements_DirectLookupComplexity(t *testing.T) {
+	const teams = 50
+	teamList := make([]string, 0, teams)
+	for i := 1; i <= teams; i++ {
+		teamList = append(teamList, fmt.Sprintf(`{"id":%d,"name":"T%d"}`, i, i))
+	}
+	var mu sync.Mutex
+	probes := map[string]int{}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		switch {
+		case strings.HasSuffix(path, "/teams"):
+			fmt.Fprintf(w, `{"_embedded":{"teams":[%s]},"page":{"size":50,"totalElements":%d,"totalPages":1,"number":1}}`,
+				strings.Join(teamList, ","), teams)
+		case strings.Contains(path, "/members/"):
+			mu.Lock()
+			probes[path]++
+			mu.Unlock()
+			// User 7 belongs only to team 42.
+			if strings.HasSuffix(path, "/teams/42/members/7") {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		case strings.HasSuffix(path, "/members"):
+			t.Errorf("member-list pagination used; lookup is not direct: %s", path)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"_embedded":{"users":[]},"page":{"size":50,"totalElements":0,"totalPages":1,"number":1}}`))
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, path)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := newAdvancedTestConnector(srv)
+	got, err := c.ListEntitlements(context.Background(), validConfig(), validSecrets(), "7")
+	if err != nil {
+		t.Fatalf("ListEntitlements: %v", err)
+	}
+	if len(got) != 1 || got[0].ResourceExternalID != "42" {
+		t.Fatalf("got = %+v; want single entitlement for team 42", got)
+	}
+	if len(probes) != teams {
+		t.Fatalf("probed %d distinct member endpoints; want %d (one per team)", len(probes), teams)
+	}
+	for path, n := range probes {
+		if n != 1 {
+			t.Fatalf("endpoint %s probed %d times; want exactly 1", path, n)
+		}
 	}
 }
 

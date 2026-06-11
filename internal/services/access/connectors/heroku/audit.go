@@ -3,7 +3,6 @@ package heroku
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -25,10 +24,12 @@ import (
 // return 401 / 403 / 404 / 422 which the connector soft-skips via
 // access.ErrAuditNotAvailable.
 //
-// Heroku returns the full filtered window in a single JSON array; the
-// connector therefore needs no cursor handling but still buffers the
-// response before advancing `nextSince` so a request failure leaves
-// the persisted cursor untouched.
+// Heroku paginates list endpoints with the Range/Next-Range header
+// mechanism, so a busy enterprise's audit window spans many pages. The
+// connector follows every page (via doPaged) and buffers the full window
+// before advancing `nextSince`, so neither a mid-stream request failure nor
+// a window larger than a single page can drop audit events or corrupt the
+// persisted cursor.
 func (c *HerokuAccessConnector) FetchAccessAuditLogs(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -48,29 +49,23 @@ func (c *HerokuAccessConnector) FetchAccessAuditLogs(
 	if !since.IsZero() {
 		path = path + "?since=" + since.UTC().Format(time.RFC3339)
 	}
-	req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Accept", "application/vnd.heroku+json; version=3.audit-trail")
-	resp, err := c.client().Do(req)
-	if err != nil {
-		return fmt.Errorf("heroku: audit trail: %w", err)
-	}
-	body, readErr := readHerokuBody(resp)
-	if readErr != nil {
-		return readErr
-	}
-	switch resp.StatusCode {
+	var events []herokuAuditEvent
+	status, err := c.doPaged(ctx, secrets, auditTrailAccept, path, func(body []byte) error {
+		var page []herokuAuditEvent
+		if err := json.Unmarshal(body, &page); err != nil {
+			return fmt.Errorf("heroku: decode audit trail: %w", err)
+		}
+		events = append(events, page...)
+		return nil
+	})
+	// Permission/tier gating is reported on the first page; map it to a
+	// soft skip before surfacing any generic transport error.
+	switch status {
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusUnprocessableEntity:
 		return access.ErrAuditNotAvailable
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("heroku: audit trail: status %d: %s", resp.StatusCode, string(body))
-	}
-	var events []herokuAuditEvent
-	if err := json.Unmarshal(body, &events); err != nil {
-		return fmt.Errorf("heroku: decode audit trail: %w", err)
+	if err != nil {
+		return err
 	}
 	if len(events) == 0 {
 		return nil
@@ -161,29 +156,6 @@ func parseHerokuAuditTime(s string) time.Time {
 		return ts.UTC()
 	}
 	return time.Time{}
-}
-
-func readHerokuBody(resp *http.Response) ([]byte, error) {
-	if resp == nil || resp.Body == nil {
-		return nil, errors.New("heroku: empty response")
-	}
-	defer resp.Body.Close()
-	const max = 1 << 20
-	buf := make([]byte, 0, 1024)
-	tmp := make([]byte, 4096)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) >= max {
-				break
-			}
-		}
-		if err != nil {
-			break
-		}
-	}
-	return buf, nil
 }
 
 var _ access.AccessAuditor = (*HerokuAccessConnector)(nil)

@@ -288,17 +288,6 @@ type helpscoutTeamsResponse struct {
 	} `json:"page"`
 }
 
-type helpscoutTeamMembersResponse struct {
-	Embedded struct {
-		Users []helpscoutUser `json:"users"`
-	} `json:"_embedded"`
-	Page struct {
-		Size          int `json:"size"`
-		TotalElements int `json:"totalElements"`
-		TotalPages    int `json:"totalPages"`
-		Number        int `json:"number"`
-	} `json:"page"`
-}
 
 // ProvisionAccess assigns a user to a Help Scout Team via
 // PUT /teams/{teamId}/members/{userId}. 409 (already member) maps to
@@ -379,8 +368,9 @@ func (c *HelpScoutAccessConnector) RevokeAccess(
 	}
 }
 
-// ListEntitlements pages /teams and inspects /teams/{teamId}/members
-// for the user. Each team containing the user produces one Entitlement.
+// ListEntitlements pages /teams and probes membership directly via
+// /teams/{teamId}/members/{userId}. Each team containing the user produces one
+// Entitlement.
 func (c *HelpScoutAccessConnector) ListEntitlements(
 	ctx context.Context,
 	configRaw, secretsRaw map[string]interface{},
@@ -429,45 +419,34 @@ func (c *HelpScoutAccessConnector) ListEntitlements(
 	}
 }
 
+// userInTeam reports whether userExternalID belongs to teamID via a single
+// direct lookup against the member resource — the same /teams/{teamId}/
+// members/{userId} path that ProvisionAccess and RevokeAccess address. A 2xx
+// means the membership exists, a 404 means it does not.
+//
+// This replaces the previous approach of paging the team's entire member list
+// and scanning it linearly: combined with ListEntitlements' loop over every
+// team, that was O(teams × members) requests for a single user. The direct
+// probe is O(1) per team, so ListEntitlements is now O(teams).
 func (c *HelpScoutAccessConnector) userInTeam(ctx context.Context, secrets Secrets, teamID int64, userExternalID string) (bool, error) {
-	page := 1
-	for {
-		path := fmt.Sprintf("/teams/%d/members?page=%d&size=%d", teamID, page, pageSize)
-		req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
-		if err != nil {
-			return false, err
-		}
-		resp, err := c.doRaw(req)
-		if err != nil {
-			return false, err
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			_ = resp.Body.Close()
-			return false, nil
-		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		_ = resp.Body.Close()
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return false, fmt.Errorf("helpscout: team members GET status %d: %s", resp.StatusCode, string(body))
-		}
-		var members helpscoutTeamMembersResponse
-		if err := json.Unmarshal(body, &members); err != nil {
-			return false, fmt.Errorf("helpscout: decode team members: %w", err)
-		}
-		// Match strictly on the numeric Help Scout user ID. The same
-		// identifier is required by ProvisionAccess / RevokeAccess (used as
-		// a URL path segment) and is what SyncIdentities emits, so keeping
-		// the comparison narrow avoids surfacing entitlements that the
-		// caller cannot then revoke with the same UserExternalID.
-		for _, u := range members.Embedded.Users {
-			if strconv.FormatInt(u.ID, 10) == userExternalID {
-				return true, nil
-			}
-		}
-		if members.Page.TotalPages == 0 || members.Page.Number >= members.Page.TotalPages {
-			return false, nil
-		}
-		page = members.Page.Number + 1
+	path := "/teams/" + strconv.FormatInt(teamID, 10) + "/members/" + url.PathEscape(userExternalID)
+	req, err := c.newRequest(ctx, secrets, http.MethodGet, path)
+	if err != nil {
+		return false, err
+	}
+	resp, err := c.doRaw(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return true, nil
+	case resp.StatusCode == http.StatusNotFound:
+		return false, nil
+	default:
+		return false, fmt.Errorf("helpscout: team member GET status %d: %s", resp.StatusCode, string(body))
 	}
 }
 
