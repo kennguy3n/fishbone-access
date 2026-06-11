@@ -267,6 +267,11 @@ type recordingIndexRow struct {
 	Bytes      int64     `json:"bytes"`
 	Truncated  bool      `json:"truncated"`
 	ChainHash  string    `json:"chain_hash"`
+	// ParseError flags a row whose recording metadata could not be decoded, so
+	// an auditor seeing empty reference fields (SessionID/ReplayKey/SHA256) knows
+	// the blanks are a decode failure rather than a genuinely empty recording.
+	// Omitted on the normal path so well-formed rows stay clean.
+	ParseError bool `json:"parse_error,omitempty"`
 }
 
 // recordingMeta is the shape of a pam.session.recording event's metadata as
@@ -282,11 +287,15 @@ type recordingMeta struct {
 // projectRecordingRow flattens a KindPrivilegedRecording evidence record into a
 // pam-recordings.jsonl row, decoding the recording metadata best-effort: a
 // malformed metadata blob still yields a row (with whatever decoded) so the
-// recording stays indexed rather than silently dropped.
+// recording stays indexed rather than silently dropped, flagged with
+// ParseError so the empty reference fields are self-explaining.
 func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
 	var md recordingMeta
+	parseErr := false
 	if len(rec.Metadata) > 0 {
-		_ = json.Unmarshal(rec.Metadata, &md)
+		if err := json.Unmarshal(rec.Metadata, &md); err != nil {
+			parseErr = true
+		}
 	}
 	return recordingIndexRow{
 		ChainSeq:   rec.ChainSeq,
@@ -299,6 +308,7 @@ func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
 		Bytes:      md.Bytes,
 		Truncated:  md.Truncated,
 		ChainHash:  rec.ChainHash,
+		ParseError: parseErr,
 	}
 }
 

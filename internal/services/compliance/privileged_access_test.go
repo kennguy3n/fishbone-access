@@ -54,6 +54,46 @@ func TestClassifyPrivilegedActions(t *testing.T) {
 	}
 }
 
+// TestProjectRecordingRowParseError proves that a recording event whose metadata
+// blob is unparseable still produces an indexed row (so it is never silently
+// dropped) and is flagged with parse_error=true, while a well-formed row leaves
+// the flag unset and omitted from JSON.
+func TestProjectRecordingRowParseError(t *testing.T) {
+	bad := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  7,
+		ChainHash: "abc123",
+		Metadata:  datatypes.JSON([]byte("{not valid json")),
+	})
+	if !bad.ParseError {
+		t.Fatalf("malformed recording metadata should set parse_error")
+	}
+	if bad.SessionID != "" || bad.ReplayKey != "" || bad.SHA256 != "" {
+		t.Errorf("malformed metadata should leave reference fields empty: %+v", bad)
+	}
+	if bad.ChainSeq != 7 || bad.ChainHash != "abc123" {
+		t.Errorf("chain anchor must survive a metadata decode failure: %+v", bad)
+	}
+	if out, err := json.Marshal(bad); err != nil {
+		t.Fatalf("marshal: %v", err)
+	} else if !bytes.Contains(out, []byte(`"parse_error":true`)) {
+		t.Errorf("parse_error=true must serialise: %s", out)
+	}
+
+	good := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  8,
+		ChainHash: "def456",
+		Metadata:  datatypes.JSON([]byte(`{"session_id":"s1","replay_key":"k","sha256":"h"}`)),
+	})
+	if good.ParseError {
+		t.Fatalf("well-formed metadata must not set parse_error")
+	}
+	if out, err := json.Marshal(good); err != nil {
+		t.Fatalf("marshal: %v", err)
+	} else if bytes.Contains(out, []byte("parse_error")) {
+		t.Errorf("parse_error must be omitted on the normal path: %s", out)
+	}
+}
+
 // TestPrivilegedAccessCoverageCountsAndControls drives a full seeded-session
 // shape of events through the projection and asserts the headline counts and
 // that the privileged-access controls (CC6.7 / A.8.2 / PCI-10.2) are credited
@@ -178,6 +218,9 @@ func TestPackIncludesRecordingReferences(t *testing.T) {
 	}
 	if row.Bytes != 128 {
 		t.Errorf("recording row bytes = %d, want 128", row.Bytes)
+	}
+	if row.ParseError {
+		t.Errorf("well-formed recording metadata should not set parse_error")
 	}
 	if row.ChainHash == "" {
 		t.Errorf("recording row should carry its anchoring chain hash")
