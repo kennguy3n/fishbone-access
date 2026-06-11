@@ -166,7 +166,12 @@ func classify(action string) EvidenceKind {
 		return KindOrphanDisposition
 	case action == "pam.command":
 		return KindPrivilegedCommand
-	case action == "pam.session.opened" || action == "pam.session.closed" || action == "pam.session.terminated":
+	case action == "pam.session.opened" || action == "pam.session.closed" || action == "pam.session.terminated" ||
+		action == "pam.session.paused" || action == "pam.session.resumed":
+		// The full privileged-session lifecycle, including operator-initiated
+		// soft-pause/resume — an admin actively supervising a live session is
+		// itself CC6.7 / A.8.2 monitoring evidence, so it must not fall to
+		// KindOther and drop out of coverage.
 		return KindPrivilegedSession
 	case action == "pam.session.recording":
 		return KindPrivilegedRecording

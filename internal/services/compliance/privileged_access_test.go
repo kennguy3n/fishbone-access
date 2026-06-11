@@ -42,6 +42,8 @@ func TestClassifyPrivilegedActions(t *testing.T) {
 		"pam.session.opened":     KindPrivilegedSession,
 		"pam.session.closed":     KindPrivilegedSession,
 		"pam.session.terminated": KindPrivilegedSession,
+		"pam.session.paused":     KindPrivilegedSession,
+		"pam.session.resumed":    KindPrivilegedSession,
 		"pam.command":            KindPrivilegedCommand,
 		"pam.session.recording":  KindPrivilegedRecording,
 	}
