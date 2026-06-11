@@ -40,6 +40,14 @@ var ErrTargetNotFound = errors.New("pam: target not found")
 // ErrValidation marks a bad caller input (missing workspace, unknown protocol).
 var ErrValidation = errors.New("pam: validation error")
 
+// ErrTargetExists is returned when a target with the same workspace-scoped name
+// already exists but describes a *different* upstream (protocol or address), so
+// the create cannot be treated as an idempotent retry. Re-registering an
+// identical target (same name, protocol and address) is instead a no-op that
+// returns the existing row, which keeps target registration safely re-runnable
+// for bootstrappers. To change an existing target's credential use RotateSecret.
+var ErrTargetExists = errors.New("pam: target name already exists")
+
 // Secret is the upstream credential sealed per target. Exactly which fields are
 // populated depends on the protocol: SSH uses PrivateKey (preferred) or
 // Password; Postgres/MySQL use Password; k8s-exec uses Token. It is delivered
@@ -107,38 +115,63 @@ func (v *Vault) SetAuditor(a standaloneAuditor) {
 	}
 }
 
-// CreateTarget seals the supplied credential and persists a new target. The row
-// id is generated up front and bound as the AES-GCM AAD so the sealed envelope
-// is cryptographically tied to this exact row and cannot be copied to another.
+// CreateTarget seals the supplied credential and registers a privileged target,
+// idempotently: see CreateOrGetTarget. It discards the created flag for the many
+// callers that do not need to distinguish a fresh insert from a reuse.
 func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, error) {
+	row, _, err := v.CreateOrGetTarget(ctx, in)
+	return row, err
+}
+
+// CreateOrGetTarget seals the supplied credential and persists a new target,
+// returning created=true. The row id is generated up front and bound as the
+// AES-GCM AAD so the sealed envelope is cryptographically tied to this exact row
+// and cannot be copied to another.
+//
+// Registration is idempotent: a target is identified by its workspace-scoped
+// name (the uq_pam_targets_name partial unique index). Re-registering the SAME
+// target (same protocol + address) is a no-op that returns the existing row with
+// created=false — so a bootstrapper can re-run without erroring or duplicating —
+// while a name already taken by a DIFFERENT upstream is a real conflict
+// (ErrTargetExists). Changing an existing target's credential is RotateSecret's
+// job, not this path's.
+func (v *Vault) CreateOrGetTarget(ctx context.Context, in CreateTargetInput) (*models.PAMTarget, bool, error) {
 	if v == nil || v.db == nil {
-		return nil, fmt.Errorf("pam: Vault not initialised")
+		return nil, false, fmt.Errorf("pam: Vault not initialised")
 	}
 	if in.WorkspaceID == uuid.Nil {
-		return nil, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+		return nil, false, fmt.Errorf("%w: workspace_id is required", ErrValidation)
 	}
 	if strings.TrimSpace(in.Name) == "" {
-		return nil, fmt.Errorf("%w: target name is required", ErrValidation)
+		return nil, false, fmt.Errorf("%w: target name is required", ErrValidation)
 	}
 	if !validProtocol(in.Protocol) {
-		return nil, fmt.Errorf("%w: unknown protocol %q", ErrValidation, in.Protocol)
+		return nil, false, fmt.Errorf("%w: unknown protocol %q", ErrValidation, in.Protocol)
 	}
-	if strings.TrimSpace(in.Address) == "" {
-		return nil, fmt.Errorf("%w: target address is required", ErrValidation)
+	name := strings.TrimSpace(in.Name)
+	address := strings.TrimSpace(in.Address)
+	if address == "" {
+		return nil, false, fmt.Errorf("%w: target address is required", ErrValidation)
+	}
+
+	if existing, err := v.resolveExistingTarget(ctx, in.WorkspaceID, name, in.Protocol, address); err != nil {
+		return nil, false, err
+	} else if existing != nil {
+		return existing, false, nil
 	}
 
 	id := uuid.New()
 	envelope, keyVersion, err := v.seal(ctx, in.WorkspaceID, id, in.Secret)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	row := &models.PAMTarget{
 		Base:             models.Base{ID: id},
 		WorkspaceID:      in.WorkspaceID,
-		Name:             strings.TrimSpace(in.Name),
+		Name:             name,
 		Protocol:         in.Protocol,
-		Address:          strings.TrimSpace(in.Address),
+		Address:          address,
 		Username:         strings.TrimSpace(in.Username),
 		Config:           in.Config,
 		SecretEnvelope:   envelope,
@@ -158,9 +191,41 @@ func (v *Vault) CreateTarget(ctx context.Context, in CreateTargetInput) (*models
 			"address":  row.Address,
 		})
 	}); err != nil {
+		// Lost a create race against a concurrent identical registration: the
+		// unique index fired between our resolve check and the insert. Re-resolve
+		// so the winning row is returned (idempotent) — or a genuine name/identity
+		// conflict surfaces as ErrTargetExists — instead of a raw 500.
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			if existing, rerr := v.resolveExistingTarget(ctx, in.WorkspaceID, name, in.Protocol, address); rerr != nil {
+				return nil, false, rerr
+			} else if existing != nil {
+				return existing, false, nil
+			}
+			return nil, false, fmt.Errorf("%w: %q", ErrTargetExists, name)
+		}
+		return nil, false, err
+	}
+	return row, true, nil
+}
+
+// resolveExistingTarget decides how a create should treat a pre-existing
+// same-name target: it returns the existing row when that row describes the
+// identical upstream (idempotent reuse), (nil, nil) when no such name exists
+// (the caller should insert a fresh target), or ErrTargetExists when the name
+// is already taken by a target with a different protocol/address (a real
+// conflict that must not silently shadow the existing row).
+func (v *Vault) resolveExistingTarget(ctx context.Context, workspaceID uuid.UUID, name, protocol, address string) (*models.PAMTarget, error) {
+	existing, err := v.FindTargetByName(ctx, workspaceID, name)
+	switch {
+	case errors.Is(err, ErrTargetNotFound):
+		return nil, nil
+	case err != nil:
 		return nil, err
 	}
-	return row, nil
+	if existing.Protocol == protocol && existing.Address == address {
+		return existing, nil
+	}
+	return nil, fmt.Errorf("%w: %q", ErrTargetExists, name)
 }
 
 // GetTarget loads a target scoped to its workspace.

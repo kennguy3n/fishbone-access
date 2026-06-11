@@ -158,6 +158,66 @@ func TestVaultAADBinding(t *testing.T) {
 	}
 }
 
+// TestCreateTargetIdempotent proves target registration is safely re-runnable.
+// Re-registering the identical target (same name + protocol + address) returns
+// the existing row with created=false and never duplicates, so a bootstrapper
+// can re-run without hitting the uq_pam_targets_name unique index. Re-using the
+// name for a *different* upstream is a typed ErrTargetExists conflict (a clean
+// 409 at the handler) rather than a raw unique-violation 500, and must not
+// shadow or mutate the existing target.
+func TestCreateTargetIdempotent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	ctx := context.Background()
+
+	in := CreateTargetInput{
+		WorkspaceID: ws, Name: "db-prod", Protocol: models.PAMProtocolPostgres,
+		Address: "db.internal:5432", Username: "app",
+		Secret: Secret{Username: "app", Password: "s3cr3t"}, Actor: "admin",
+	}
+
+	first, created, err := v.CreateOrGetTarget(ctx, in)
+	if err != nil || !created {
+		t.Fatalf("first create: created=%v err=%v", created, err)
+	}
+
+	// Re-register the identical target: no error, no duplicate, same row, reused.
+	second, created, err := v.CreateOrGetTarget(ctx, in)
+	if err != nil {
+		t.Fatalf("re-register identical: %v", err)
+	}
+	if created {
+		t.Fatal("re-register of an identical target should reuse, got created=true")
+	}
+	if second.ID != first.ID {
+		t.Fatalf("re-register returned a different row: %s != %s", second.ID, first.ID)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("expected exactly 1 target after re-register, got %d", len(rows))
+	}
+
+	// Same name pointed at a different upstream → conflict, not a silent shadow.
+	conflict := in
+	conflict.Protocol = models.PAMProtocolSSH
+	conflict.Address = "other.internal:22"
+	if _, _, err := v.CreateOrGetTarget(ctx, conflict); !errors.Is(err, ErrTargetExists) {
+		t.Fatalf("want ErrTargetExists for name reuse with a different upstream, got %v", err)
+	}
+	if rows, err := v.ListTargets(ctx, ws, 200); err != nil {
+		t.Fatalf("ListTargets: %v", err)
+	} else if len(rows) != 1 {
+		t.Fatalf("conflict attempt mutated the target set: got %d", len(rows))
+	}
+
+	// CreateTarget (the bool-discarding wrapper) stays idempotent too.
+	if w, err := v.CreateTarget(ctx, in); err != nil || w.ID != first.ID {
+		t.Fatalf("CreateTarget wrapper not idempotent: id=%v err=%v", w, err)
+	}
+}
+
 func TestVaultRevealRequiresStepUpWhenMFAGated(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
