@@ -55,7 +55,7 @@ func TestClassifyPrivilegedActions(t *testing.T) {
 }
 
 // TestProjectRecordingRowParseError proves that a recording event whose metadata
-// blob is unparseable still produces an indexed row (so it is never silently
+// is undecodable OR absent still produces an indexed row (so it is never silently
 // dropped) and is flagged with parse_error=true, while a well-formed row leaves
 // the flag unset and omitted from JSON.
 func TestProjectRecordingRowParseError(t *testing.T) {
@@ -77,6 +77,19 @@ func TestProjectRecordingRowParseError(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	} else if !bytes.Contains(out, []byte(`"parse_error":true`)) {
 		t.Errorf("parse_error=true must serialise: %s", out)
+	}
+
+	// Absent metadata on a recording row is equally anomalous (a recording must
+	// carry reference metadata), so it is flagged the same as undecodable.
+	empty := projectRecordingRow(EvidenceRecord{
+		ChainSeq:  9,
+		ChainHash: "ghi789",
+	})
+	if !empty.ParseError {
+		t.Fatalf("absent recording metadata should set parse_error")
+	}
+	if empty.ChainSeq != 9 || empty.ChainHash != "ghi789" {
+		t.Errorf("chain anchor must survive absent metadata: %+v", empty)
 	}
 
 	good := projectRecordingRow(EvidenceRecord{

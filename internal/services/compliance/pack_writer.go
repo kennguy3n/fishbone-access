@@ -286,16 +286,18 @@ type recordingMeta struct {
 
 // projectRecordingRow flattens a KindPrivilegedRecording evidence record into a
 // pam-recordings.jsonl row, decoding the recording metadata best-effort: a
-// malformed metadata blob still yields a row (with whatever decoded) so the
-// recording stays indexed rather than silently dropped, flagged with
-// ParseError so the empty reference fields are self-explaining.
+// recording row whose metadata is absent or undecodable still yields a row (with
+// whatever decoded) so the recording stays indexed rather than silently dropped,
+// flagged with ParseError so the empty reference fields are self-explaining.
+// A KindPrivilegedRecording row must always carry reference metadata, so either
+// condition implies chain corruption rather than a legitimately empty recording.
 func projectRecordingRow(rec EvidenceRecord) recordingIndexRow {
 	var md recordingMeta
 	parseErr := false
-	if len(rec.Metadata) > 0 {
-		if err := json.Unmarshal(rec.Metadata, &md); err != nil {
-			parseErr = true
-		}
+	if len(rec.Metadata) == 0 {
+		parseErr = true
+	} else if err := json.Unmarshal(rec.Metadata, &md); err != nil {
+		parseErr = true
 	}
 	return recordingIndexRow{
 		ChainSeq:   rec.ChainSeq,
