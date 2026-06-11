@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
-	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 const (
@@ -210,7 +210,7 @@ func readDockerHubBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("docker_hub: empty response")
 	}
 	defer resp.Body.Close()
-	return httputil.ReadAllLimited(resp.Body, 0)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*DockerHubAccessConnector)(nil)

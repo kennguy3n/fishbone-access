@@ -29,7 +29,7 @@ func TestNetlifyFetchAccessAuditLogs_LargePageNotTruncated(t *testing.T) {
 			"actor_id":   "u-1",
 			"actor_name": padding,
 			"log_type":   "user",
-			"created_at":  "2024-09-01T10:00:00Z",
+			"created_at": "2024-09-01T10:00:00Z",
 		})
 	}
 	body, _ := json.Marshal(events)

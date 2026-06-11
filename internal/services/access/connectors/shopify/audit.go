@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
-	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // FetchAccessAuditLogs streams Shopify Admin `/events.json` records
@@ -171,7 +171,7 @@ func readShopifyBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("shopify: empty response")
 	}
 	defer resp.Body.Close()
-	return httputil.ReadAllLimited(resp.Body, 0)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*ShopifyAccessConnector)(nil)

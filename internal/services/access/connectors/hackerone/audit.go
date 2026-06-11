@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
-	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // FetchAccessAuditLogs streams HackerOne organization audit log entries
@@ -176,7 +176,7 @@ func readHackerOneBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("hackerone: empty response")
 	}
 	defer resp.Body.Close()
-	return httputil.ReadAllLimited(resp.Body, 0)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*HackerOneAccessConnector)(nil)

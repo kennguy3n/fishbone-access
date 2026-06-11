@@ -8,6 +8,31 @@ import (
 	"testing"
 )
 
+// Regression: an over-cap user body must fail closed (error) rather than being
+// silently truncated and then mis-decoded — the read now goes through
+// connutil.ReadBodyLimit, which propagates the cap-exceeded error.
+func TestListEntitlements_OverCapBodyFailsClosed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/users/u-1" {
+			w.WriteHeader(http.StatusOK)
+			big := strings.Repeat("a", (1<<20)+1024)
+			_, _ = w.Write([]byte(`{"type":"person","name":"` + big + `"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	c := New()
+	c.urlOverride = srv.URL
+	c.httpClient = func() httpDoer { return srv.Client() }
+
+	if _, err := c.ListEntitlements(context.Background(), map[string]interface{}{}, validSecrets(), "u-1"); err == nil {
+		t.Fatal("expected fail-closed error for over-cap body, got nil")
+	} else if !strings.Contains(err.Error(), "read user") {
+		t.Fatalf("err = %v; want a read error", err)
+	}
+}
+
 // Regression: ListEntitlements previously returned (nil, nil) both when the
 // HTTP request failed and when the user response failed to decode, silently
 // hiding real errors. Both must now propagate.

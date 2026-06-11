@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
@@ -562,7 +563,7 @@ func (c *OktaAccessConnector) do(req *http.Request) ([]byte, error) {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return nil, fmt.Errorf("okta: %s status %d: %s", req.URL.Path, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return connutil.ReadBody(resp.Body)
 }
 
 func (c *OktaAccessConnector) doRaw(req *http.Request) (*http.Response, error) {

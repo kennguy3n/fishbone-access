@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
-	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
 // auditPageSize is the per-page count requested from the Grafana audit
@@ -172,7 +172,7 @@ func readGrafanaBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("grafana: empty response")
 	}
 	defer resp.Body.Close()
-	return httputil.ReadAllLimited(resp.Body, 0)
+	return connutil.ReadBody(resp.Body)
 }
 
 var _ access.AccessAuditor = (*GrafanaAccessConnector)(nil)
