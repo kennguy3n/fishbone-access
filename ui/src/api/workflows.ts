@@ -289,7 +289,10 @@ export const getRun = (id: string) =>
 // Identity is trimmed and required up-front, matching the Android/iOS SDK
 // contract (both trim and throw InvalidInput on a blank id) so a direct caller
 // can't send an empty user_external_id and we skip a guaranteed-400 round-trip.
-// Reason is trimmed and omitted when blank, also mirroring the SDKs.
+// `reason` is forwarded verbatim — exactly as the SDKs do (Android
+// `reason?.let { put(...) }`, iOS `encodeIfPresent`) — for byte-for-byte
+// parity; an undefined reason is dropped from the JSON, and the UI already
+// trims/omits a blank reason at the call site.
 export const emergencyOffboard = (userExternalID: string, reason?: string) => {
   const externalID = userExternalID.trim();
   if (!externalID) {
@@ -298,7 +301,7 @@ export const emergencyOffboard = (userExternalID: string, reason?: string) => {
   return call<{ leaver: LeaverResult }>({
     url: "/emergency-offboard",
     method: "POST",
-    data: { user_external_id: externalID, reason: reason?.trim() || undefined },
+    data: { user_external_id: externalID, reason },
   }).then((r) => normalizeLeaver(r.leaver));
 };
 
