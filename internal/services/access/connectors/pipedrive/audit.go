@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -181,7 +181,7 @@ func readPipedriveAuditBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("pipedrive: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 var _ access.AccessAuditor = (*PipedriveAccessConnector)(nil)

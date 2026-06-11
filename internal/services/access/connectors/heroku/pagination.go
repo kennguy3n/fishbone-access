@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
+
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // herokuMaxPages bounds Range-based pagination so a misbehaving upstream
@@ -28,13 +29,16 @@ const auditTrailAccept = "application/vnd.heroku+json; version=3.audit-trail"
 // also yielded malformed JSON that failed to decode. Bounding is instead the
 // responsibility of Range pagination (see doPaged), which keeps each page
 // small while readBodyFull guarantees no individual page is partially
-// consumed.
+// consumed. The shared httputil.ReadAllLimited backstop still caps a single
+// page at a generous ceiling, but it ERRORS rather than truncates, so the
+// data-loss defect cannot recur while a misbehaving upstream still can't OOM
+// the worker.
 func readBodyFull(resp *http.Response) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("heroku: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 // doPaged issues GET requests for path, transparently following Heroku's

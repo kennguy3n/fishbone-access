@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -189,7 +189,7 @@ func readDOAuditBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("digitalocean: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 var _ access.AccessAuditor = (*DigitalOceanAccessConnector)(nil)

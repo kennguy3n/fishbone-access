@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // MS Teams audit partition key. The MS Teams connector reuses Microsoft
@@ -189,7 +189,7 @@ func parseTeamsTime(s string) time.Time {
 
 func readResponse(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 var _ access.AccessAuditor = (*MSTeamsAccessConnector)(nil)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 const (
@@ -227,7 +227,7 @@ func readDiscordBody(resp *http.Response) ([]byte, error) {
 		return nil, errors.New("discord: empty response")
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 var _ access.AccessAuditor = (*DiscordAccessConnector)(nil)

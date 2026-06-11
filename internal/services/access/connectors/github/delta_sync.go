@@ -6,13 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/access/httputil"
 )
 
 // auditPhraseActions is the GitHub audit-log `phrase` filter that
@@ -196,7 +196,7 @@ func (c *GitHubAccessConnector) InitialDeltaCursor(
 
 func readAllAndClose(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httputil.ReadAllLimited(resp.Body, 0)
 }
 
 // matches the subset of audit-log fields we need.
