@@ -21,7 +21,14 @@ import (
 // packSchemaVersion is the stable contract version of the evidence-pack layout.
 // External compliance tooling keys off it; bump it only on a breaking change to
 // the file set or record shapes.
-const packSchemaVersion = "1.0"
+//
+//	1.0 — initial layout.
+//	1.1 — adds pam-recordings.jsonl (privileged-session recording references).
+//
+// Adding a file is additive, but tooling that validates the pack against a
+// closed file allowlist treats an unknown file as breaking, so the addition is
+// versioned here.
+const packSchemaVersion = "1.1"
 
 // PackFileInfo describes one file in the archive: its name, a human comment, the
 // number of JSONL rows (0 for non-JSONL files), and the SHA-256 of its bytes.
