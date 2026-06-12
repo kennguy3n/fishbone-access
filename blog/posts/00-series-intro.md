@@ -136,23 +136,34 @@ Short answer: **no — fishbone-access is an identity-aware access *control plan
 target broker*, not an L3 data-plane that makes an entire subnet invisible.** It
 adheres to the NIST SP 800-207 tenets that live in the *authorization decision*,
 and it explicitly delegates the network-darkening tenets to the data-plane gateway
-(the SNG / visible-fishbone side of the house):
+(the SNG / visible-fishbone side of the house).
 
-| ZTNA tenet (NIST 800-207) | fishbone-access | Where it lives |
+> **A terminology note before the table.** "ZTNA" (Zero Trust Network Access) is a
+> Gartner *market category*; the normative standard is NIST SP 800-207, **Zero Trust
+> Architecture (ZTA)**, whose 7 tenets we cite below. In 800-207 terms, fishbone-access
+> is the **Policy Decision Point (PDP)** — the policy engine that resolves
+> `grant`/`deny` — and the **Policy Enforcement Point (PEP) at the broker** (the
+> connect-token redemption that opens or refuses a session). The *in-path* PEP that
+> drops packets for an unauthorized identity (the "dark network" property) is the
+> data-plane gateway, not this control plane. So we adhere to the **decision-side**
+> tenets and delegate the **packet-side** ones. We use "ZTNA" loosely in prose but
+> map every claim to a numbered 800-207 tenet so an auditor can trace it.
+
+| ZTNA tenet (NIST 800-207 tenet #) | fishbone-access | Where it lives |
 | --- | --- | --- |
-| **No standing access / per-session grant** | **Enforced.** JIT leases and connect-tokens with mandatory expiry; nothing is durable. | access + PAM lifecycle |
-| **Identity-aware, per-request decision** | **Enforced.** Every request resolves to a `grant`/`deny` route; **deny wins on conflict**. | policy engine |
-| **Least privilege, dynamic** | **Enforced.** Per-target, per-role grants + command-level gating on privileged sessions. | PAM + policy |
-| **Continuous / step-up re-evaluation** | **Enforced.** Fresh step-up TOTP on the highest-risk actions; AI risk re-scores each request. | step-up MFA + risk |
-| **Per-resource segmentation** | **Enforced at the broker.** One-shot connect-token scopes to a single target; no lateral catalogue. | PAM broker |
-| **Resource invisible until authorized (L3 "dark" network)** | **Delegated.** We don't darken a subnet or sink unauthenticated packets; that is the in-path gateway's job. | pam-gateway / SNG |
-| **In-path session inspection / kill** | **Partial.** We record a brokered session and can revoke the lease; killing a *live third-party* session needs real upstream creds. | gateway + connectors |
+| **No standing access / per-session grant** (Tenet 3 — *per-session access*) | **Enforced.** JIT leases and connect-tokens with mandatory expiry; nothing is durable. | access + PAM lifecycle |
+| **Identity-aware, per-request decision** (Tenets 4 & 6 — *dynamic policy*; *auth strictly enforced before access*) | **Enforced.** Every request resolves through the PDP to a `grant`/`deny` route; **deny wins on conflict**. | policy engine (PDP) |
+| **Least privilege, dynamic** (Tenet 4 — *dynamic policy*) | **Enforced.** Per-target, per-role grants + command-level gating on privileged sessions. | PAM + policy |
+| **Continuous / step-up re-evaluation** (Tenets 5 & 7 — *measure posture*; *collect state to improve decisions*) | **Enforced.** Fresh step-up TOTP on the highest-risk actions; AI risk re-scores each request. | step-up MFA + risk |
+| **Per-resource segmentation** (Tenets 1 & 3 — *resources*; *per-session, per-resource*) | **Enforced at the broker (PEP).** One-shot connect-token scopes to a single target; no lateral catalogue. | PAM broker (PEP) |
+| **Resource invisible until authorized (L3 "dark" network)** (Tenets 2 & 6 — *all communication secured*; *enforced before access*, at the in-path PEP) | **Delegated.** We don't darken a subnet or sink unauthenticated packets; that is the in-path gateway's job. | pam-gateway / SNG |
+| **In-path session inspection / kill** (Tenets 5 & 7 — *monitor and measure live sessions*) | **Partial.** We record a brokered session and can revoke the lease; killing a *live third-party* session needs real upstream creds. | gateway + connectors |
 
 So the precise framing the series uses: fishbone-access makes resources
 **default-deny and unreachable-without-an-authorized-lease at the control plane**,
 and brokers a recorded, least-privilege, time-boxed session to a single target —
 but the "the port doesn't even answer for an unauthorized identity" L3 darkening is
-a property of the data-plane gateway, not of this control plane.
+a property of the data-plane gateway (the in-path PEP), not of this control plane.
 
 ## The cast — six workspaces
 
