@@ -45,7 +45,7 @@ The harness records the box it ran on
 | Memory | ~32 GB |
 | OS / arch | linux / amd64 |
 | Go | go1.25.0 |
-| Config | `n = 500` requests/endpoint, `c = 16` concurrent workers |
+| Config | `n = 400` requests/endpoint, `c = 16` concurrent workers |
 
 One API process, one Postgres, no connection-pool tuning, no caching tier, no
 horizontal scale — a single dev VM talking to itself over loopback.
@@ -53,7 +53,7 @@ horizontal scale — a single dev VM talking to itself over loopback.
 ## The numbers
 
 Latency in milliseconds; throughput in requests/second at concurrency 16. Every
-endpoint returned **0 errors** across all 500 requests.
+endpoint returned **0 errors** across all 400 requests.
 
 | Group | Endpoint | p50 | p90 | p99 | mean | req/s |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
