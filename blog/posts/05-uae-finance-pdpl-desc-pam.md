@@ -73,9 +73,9 @@ And the ISO 27001 Annex A coverage from the chain
 [
   { "id": "A.5.15", "covered": true,  "evidence_count": 12, "title": "Access control policy" },
   { "id": "A.5.16", "covered": true,  "evidence_count": 7,  "title": "Identity lifecycle management" },
-  { "id": "A.5.18", "covered": true,  "evidence_count": 15, "title": "Access rights provisioned, reviewed and removed" },
-  { "id": "A.8.2",  "covered": false, "evidence_count": 0,  "title": "Privileged access rights monitored" },
-  { "id": "A.8.15", "covered": false, "evidence_count": 0,  "title": "Tamper-evident logging" }
+  { "id": "A.5.18", "covered": true, "evidence_count": 17, "title": "Access rights provisioned, reviewed and removed" },
+  { "id": "A.8.2",  "covered": true, "evidence_count": 7,  "title": "Privileged access rights monitored" },
+  { "id": "A.8.15", "covered": true, "evidence_count": 1,  "title": "Tamper-evident logging" }
 ]
 ```
 
@@ -108,14 +108,14 @@ firm's whole privileged estate fits one model:
 
 Reaching T24 is now a **just-in-time lease**, not a standing credential: request
 → sponsor approval under step-up MFA → short-lived connect-token → automatic
-expiry in 15 minutes. Both leases are recorded, each carrying its (honestly
-degraded) AI-risk verdict
+expiry in 15 minutes. Both leases are recorded, each carrying its real
+agent risk verdict (`degraded: false` now the agent is online)
 ([`s5-ae-northwind-finance-pam-leases.json`](../artifacts/payloads/s5-ae-northwind-finance-pam-leases.json)):
 
 ```json
 [
-  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": true },
-  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": true }
+  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "low",    "risk_degraded": false },
+  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": false }
 ]
 ```
 
@@ -124,6 +124,13 @@ Every transition lands on the chain (`pam.target.created`,
 Northwind governs *who may obtain* privileged access to T24, *for how long*, and
 *under what approval* — the JIT half of a PAM story that used to be entirely
 absent here.
+
+And the *other* half is now present too: Northwind opens a **recorded** session
+through the leased connect-token. The operator's commands run through the
+production `IORecorder`, the session is closed, and its recording digest is
+anchored on the chain — `pam_sessions = 1`, replayable over
+`GET /pam/sessions/7fbec5b7-0ceb-4461-8b0b-30801fb00376/replay`. That is what
+flips ISO `A.8.2` ("privileged access rights *monitored*") to covered.
 
 ## The toxic combination DESC cares about most
 
@@ -150,32 +157,34 @@ data-subject-request handling — external party, named sponsor, built-in expiry
   "resource_ref": "pdpl:dsr", "role": "auditor", "sponsor_id": "ae-security_admin", "state": "active" }
 ```
 
-## Where we fall short — the lease is governed, the session is not
+## Where we fall short — the session is recorded, but the credential is not vaulted
 
-Now look at `A.8.2`: **"Privileged access rights *monitored*" — still 0
-records**, even though the targets and leases above are real. That is the precise,
-honest boundary of our PAM story, and on the highest-risk workspace in the series
-it matters most:
+The first cut of this post admitted `A.8.2` ("privileged access rights
+*monitored*") sat at **0 records**. It is now covered — and on the highest-risk
+workspace in the series, the *precise* remaining boundary matters most:
 
-- **We govern the lease; we do not record the session.** The control plane mints
-  and expires the JIT lease and chains every transition — but it does **not** sit
-  in the connection path, vault the live credential, broker the TCP/SSH stream, or
-  record the admin's keystrokes *inside* T24. `pam_sessions = 0`. The coverage
-  control is "monitored," and monitoring the *session* is exactly the half we
-  don't do — so `A.8.2` honestly stays empty rather than claiming the lease events
-  satisfy it.
-- **SSO is not enforced for this connector** either
+- **The session is recorded; the credential is not vaulted, the stream is not
+  brokered in-path, and the upstream is a bastion.** `pam_sessions = 1`: the
+  recorded session is real, replayable and chained, which is what `A.8.2`
+  requires. But the demo recorder drives **representative commands against a
+  bastion target** — it does not vault T24's live credential, sit in the TCP
+  stream, or capture an admin's real keystrokes *inside* Temenos. It proves the
+  monitoring pipeline end-to-end, not in-path interception of a live mainframe
+  session.
+- **SSO is not enforced for this connector**
   ([`s5-ae-northwind-finance-sso-status.json`](../artifacts/payloads/s5-ae-northwind-finance-sso-status.json)
   reports `"enforced": false, "supported": false`). We surface that honestly
   rather than implying an SSO guarantee we don't provide on that path.
-- **`A.8.15` "tamper-evident logging" reads uncovered** despite the hash chain —
-  same ISO-mapping gap as Post 3.
+- **The standing SoD anomaly is covered, but it is declared-rule, not mined.**
+  `sod_anomalies = 1` records the subject holding both `t24:privileged-admin` and
+  `t24:treasury`; it does not discover unknown conflicts the way SailPoint mines
+  them.
 
 For a wealth-management firm whose top risk is *what an admin does inside core
-banking once connected*, fishbone-access now governs the **grant and the lease**
-but still not the **session**. That last half — credential vaulting, in-path
-brokering, keystroke recording — is precisely where a dedicated PAM tool is not
-optional.
+banking once connected*, fishbone-access now governs the **grant**, the
+**lease**, **and** a recorded session — but the live-mainframe half (credential
+vaulting, in-path brokering, keystroke capture off the real T24 stream) is still
+where a dedicated PAM tool is not optional.
 
 ## How a buyer should compare this
 
@@ -184,29 +193,32 @@ optional.
 | Privileged JIT **lease** lifecycle (request→approve→expire, chained) | ✅ | ✅ | ✅ | ✅ | ⚠️ add-on |
 | Privileged credential vaulting | ❌ | ✅ core | ⚠️ brokered | ⚠️ cert-based | ❌ |
 | Session isolation / in-path brokering | ❌ | ✅ | ✅ core | ✅ core | ❌ |
-| Live privileged **session recording** (keystrokes) | ❌ | ✅ core | ✅ | ✅ | ❌ |
+| Privileged **session recording** (replayable, chained) | ⚠️ recorded; demo upstream is a bastion, not live T24 | ✅ core (live keystrokes) | ✅ | ✅ | ❌ |
 | Govern the privileged **grant** (request→review→revoke) | ✅ | ⚠️ add-on | ❌ | ❌ | ✅ |
 | SoD: core-banking-vs-treasury caught pre-grant | ✅ `critical` | ❌ | ❌ | ❌ | ⚠️ |
 | PDPL/DESC packs + framework evidence | ✅ | ❌ | ❌ | ❌ | ⚠️ |
 | Arabic RTL console | ✅ | ⚠️ | ❌ | ❌ | ⚠️ |
 
-**The honest read:** we have closed *half* of the PAM gap this post used to
-admit outright. The JIT lease lifecycle — request, sponsor approval under step-up
-MFA, short-lived token, auto-expiry, every step chained — is now real on
-Northwind, and for many SMEs "no standing privileged credentials, time-boxed
-access, fully audited" is the 80% that actually moves their risk. But for
-Northwind's *core* risk — what an admin does inside Temenos T24 once connected —
-**CyberArk** is still the correct purchase. Credential vaulting, session
-isolation, and keystroke recording are its reason to exist, and they fill the
-exact `A.8.2` "monitored" hole our coverage map still shows as empty.
+**The honest read:** we have closed *most* of the PAM gap this post used to admit
+outright. The JIT lease lifecycle — request, sponsor approval under step-up MFA,
+short-lived token, auto-expiry, every step chained — is real on Northwind, **and**
+the session is now recorded, replayable and chained, so `A.8.2` reads covered. For
+many SMEs "no standing privileged credentials, time-boxed access, fully audited,
+recorded" is the 80% that actually moves their risk. But for Northwind's *core*
+risk — capturing what an admin does inside a *live* Temenos T24 once connected —
+**CyberArk** is still the correct purchase. Credential vaulting, in-path session
+isolation, and live keystroke recording off the real stream are its reason to
+exist; our recording proves the monitoring pipeline against a bastion, not
+in-path interception of the mainframe.
 **StrongDM** and **Teleport** are the modern, engineer-friendly alternatives if
 the privileged targets are databases, SSH, and Kubernetes rather than a banking
 mainframe. Where fishbone-access fits is the **governance + JIT-lease** wrapper
 around those tools: the PDPL/DESC packs, the request→approve→expire lease, the
 SoD check, the certified evidence chain, and an Arabic RTL console. The mature
-architecture for Northwind is **fishbone-access for governance and the lease +
-CyberArk for the session recording** — and we'd tell a buyer exactly that rather
-than pretend our 0-record `A.8.2` is a win.
+architecture for Northwind is **fishbone-access for governance, the lease and the
+audit chain + CyberArk for in-path vaulting and live-session control** — and we'd
+tell a buyer exactly that rather than oversell our bastion recording as full
+mainframe session interception.
 
 ---
 

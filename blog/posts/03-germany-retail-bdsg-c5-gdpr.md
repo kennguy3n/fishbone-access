@@ -38,38 +38,39 @@ the live facets include `Cloud Infra`, `DevOps`, `Observability`, `ERP`,
 
 This is the headline. Initech ran *one* lifecycle — provision a store manager and
 a CDE-maintenance engineer, file a GDPR Article 15 export request, run a BSI C5 +
-GDPR review, close an ISO 27001 certification campaign. The **same 40 evidence
-records** then project onto every framework's control set. Here is the console's
+GDPR review, close an ISO 27001 certification campaign, open a recorded
+privileged session, and detect a standing SoD conflict. The **same evidence
+chain (93 records)** then projects onto every framework's control set. Here is the console's
 compliance view, in **German** (locale `de`) — the same data, translated chrome:
 
 ![Initech's compliance evidence in German — control coverage from one chain](../artifacts/screenshots/s3-de-compliance-de.png)
 
 And the verbatim coverage maps, all from that one chain:
 
-**SOC 2** ([`coverage-soc2`](../artifacts/payloads/s3-de-initech-retail-coverage-soc2.json)) — 4 / 6:
+**SOC 2** ([`coverage-soc2`](../artifacts/payloads/s3-de-initech-retail-coverage-soc2.json)) — 6 / 6:
 ```json
 [
-  { "id": "CC6.1", "covered": true,  "evidence_count": 20, "title": "Logical access security — least-privilege policy enforced" },
-  { "id": "CC6.2", "covered": true,  "evidence_count": 9,  "title": "Access provisioned on authorization" },
-  { "id": "CC6.3", "covered": true,  "evidence_count": 9,  "title": "Access modified/removed when no longer required" },
-  { "id": "CC6.7", "covered": false, "evidence_count": 0,  "title": "Privileged access monitored" },
-  { "id": "CC7.2", "covered": true,  "evidence_count": 6,  "title": "Access reviewed/certified periodically" },
-  { "id": "CC7.3", "covered": false, "evidence_count": 0,  "title": "Orphan / anomalous access detected and dispositioned" }
+  { "id": "CC6.1", "covered": true, "evidence_count": 22, "title": "Logical access security — least-privilege policy enforced" },
+  { "id": "CC6.2", "covered": true, "evidence_count": 11, "title": "Access provisioned on authorization" },
+  { "id": "CC6.3", "covered": true, "evidence_count": 9,  "title": "Access modified/removed when no longer required" },
+  { "id": "CC6.7", "covered": true, "evidence_count": 7,  "title": "Privileged access monitored" },
+  { "id": "CC7.2", "covered": true, "evidence_count": 6,  "title": "Access reviewed/certified periodically" },
+  { "id": "CC7.3", "covered": true, "evidence_count": 2,  "title": "Orphan / anomalous access detected and dispositioned" }
 ]
 ```
 
-**ISO 27001 Annex A** ([`coverage-iso27001`](../artifacts/payloads/s3-de-initech-retail-coverage-iso27001.json)) — 3 / 5:
+**ISO 27001 Annex A** ([`coverage-iso27001`](../artifacts/payloads/s3-de-initech-retail-coverage-iso27001.json)) — 5 / 5:
 ```json
 [
-  { "id": "A.5.15", "covered": true,  "evidence_count": 16, "title": "Access control policy" },
-  { "id": "A.5.16", "covered": true,  "evidence_count": 7,  "title": "Identity lifecycle management" },
-  { "id": "A.5.18", "covered": true,  "evidence_count": 15, "title": "Access rights provisioned, reviewed and removed" },
-  { "id": "A.8.2",  "covered": false, "evidence_count": 0,  "title": "Privileged access rights monitored" },
-  { "id": "A.8.15", "covered": false, "evidence_count": 0,  "title": "Tamper-evident logging" }
+  { "id": "A.5.15", "covered": true, "evidence_count": 16, "title": "Access control policy" },
+  { "id": "A.5.16", "covered": true, "evidence_count": 7,  "title": "Identity lifecycle management" },
+  { "id": "A.5.18", "covered": true, "evidence_count": 17, "title": "Access rights provisioned, reviewed and removed" },
+  { "id": "A.8.2",  "covered": true, "evidence_count": 7,  "title": "Privileged access rights monitored" },
+  { "id": "A.8.15", "covered": true, "evidence_count": 1,  "title": "Tamper-evident logging" }
 ]
 ```
 
-**PCI-DSS** ([`coverage-pci-dss`](../artifacts/payloads/s3-de-initech-retail-coverage-pci-dss.json)) — 4 / 5, same shape as Post 1.
+**PCI-DSS** ([`coverage-pci-dss`](../artifacts/payloads/s3-de-initech-retail-coverage-pci-dss.json)) — 5 / 5, same shape as Post 1.
 
 The point is not the absolute numbers — it's that **one operation feeds three
 maps**. Promoting the least-privilege policy lit `CC6.1` *and* `A.5.15` *and*
@@ -111,6 +112,26 @@ is rule-based toxic-combination detection wired into the same simulate-then-prom
 gate the policy lifecycle already uses. For a mid-size retailer with a handful of
 known-dangerous combinations, that is exactly the right shape.
 
+And the *standing* sweep now records the violation when a subject actually holds
+both halves — `sod_anomalies = 1`, the `CC7.3` evidence
+([`s3-de-initech-retail-sod-anomalies.json`](../artifacts/payloads/s3-de-initech-retail-sod-anomalies.json)):
+
+```json
+{ "detail": { "anomaly_kind": "sod_violation",
+    "held":        { "resource": "pos:store-manager",   "role": "operator" },
+    "conflicting": { "resource": "pos:cardholder-data", "role": "operator" } } }
+```
+
+## The privileged session is now recorded
+
+Initech also opens a JIT-leased session to the POS bastion and records it through
+the production `IORecorder` — `pam_sessions = 1`, replayable over
+`GET /pam/sessions/3c4b927a-400f-4eef-8caf-956c99bdef0e/replay`, digest on the
+chain. That is what flips `CC6.7` / `A.8.2` ("privileged access monitored") to
+covered. The honest residual: the captured commands are representative I/O against
+a bastion target (no live SSH daemon in the demo), proving the record-and-replay
+pipeline rather than `pos_admin`'s real keystrokes in the SAP MySQL box.
+
 ## Privileged access to the POS estate
 
 The SAP POS database (MySQL) and its Azure jump host are privileged targets, not
@@ -140,29 +161,30 @@ permanent account someone forgets to remove
 
 ## Where we fall short
 
-The German view is brutally honest, and two gaps repeat across all four
-frameworks:
+The German view was the most brutal in the first cut — all four of its recurring
+gaps are now closed, and we are precise about how:
 
-- **`CC6.7` / `A.8.2` "privileged access monitored" — 0 records, every
-  framework.** We now register PAM targets and govern the *JIT lease* to them
-  (request → approve → expire, all chained) — but `pam_sessions = 0`. We do not
-  sit in the connection path recording what `pos_admin` types into the SAP MySQL
-  database. We govern the privileged *lease*; we do not *record the session*.
-  This is the single most consistent gap in the series.
-- **SoD is rule-based, not analytics.** The toxic-combination check above is real
-  and pre-commit, but it evaluates *declared rules*; it does not *mine* the
-  entitlement graph to discover unknown conflicts the way SailPoint/Saviynt do.
-  And `sod_anomalies = 0` here because the seeded grants don't actually hold the
-  conflict — the violation shows in *simulation*, not as a standing anomaly.
-- **`CC7.3` "orphan / anomalous access detected" — 0 records.** Initech's orphan
-  scan ran and found **0 orphans** — which is real, but it means there is no
-  *dispositioned* orphan event to evidence the control. We detect orphans; we
-  don't yet run behavioural anomaly analytics.
-- **`A.8.15` "tamper-evident logging" reads uncovered — even though we *have* a
-  hash chain.** The ISO mapping wants a specific evidence *kind* we don't emit
-  for the chain-verification itself. That's a mapping gap on our side, and we
-  show it as uncovered rather than quietly claiming the control. Honest, if
-  slightly embarrassing.
+- **`CC6.7` / `A.8.2` "privileged access monitored" — now covered.**
+  `pam_sessions = 1`: a real JIT-leased session is recorded through the production
+  `IORecorder`, anchored on the chain and replayable over the API. Residual: the
+  recorded I/O is representative commands against a bastion target — the demo has
+  no live SSH daemon — so it proves the recording pipeline, not `pos_admin`'s real
+  keystrokes inside the SAP MySQL box. In-path against a reachable upstream the
+  same recorder captures the real wire.
+- **`CC7.3` "anomalous access detected and dispositioned" — now covered via the
+  standing SoD anomaly.** `sod_anomalies = 1`: a subject really holds both halves
+  of the toxic combination and the sweep detects + dispositions it. Note the
+  **orphan** scan still ran and found **0 orphans** (honest — no orphan to
+  disposition); the `CC7.3` evidence comes from the standing SoD anomaly, not
+  behavioural analytics.
+- **`A.8.15` "tamper-evident logging" — now covered.** It was an ordering bug: the
+  evidence-pack export ran *after* the chain was snapshotted. Exporting before
+  capture anchors `evidence_exported` in the verified chain.
+- **SoD is still rule-based, not analytics.** The check is real, pre-commit *and*
+  standing — but it evaluates *declared rules*; it does not *mine* the entitlement
+  graph to discover unknown conflicts the way SailPoint/Saviynt do. For a *large*
+  retailer with conflicts nobody has enumerated, that mining is the gap that
+  matters — see the comparison below.
 
 ## How a buyer should compare this
 
@@ -171,10 +193,10 @@ frameworks:
 | One chain → many framework maps (BDSG/C5/GDPR/PCI at once) | ✅ built-in | ⚠️ via config + add-ons | ⚠️ via config | ⚠️ limited |
 | German + EU jurisdiction packs out of the box | ✅ `de-bdsg-c5`, GDPR | ⚠️ build your own | ⚠️ | ⚠️ |
 | SoD toxic-combo check at simulation (rule-based) | ✅ pre-commit `catastrophic` | ✅ deepest analytics | ✅ strong | ⚠️ |
-| SoD entitlement-mining **analytics** at scale | ⚠️ rules only | ✅ deepest | ✅ strong | ⚠️ |
-| Orphan/anomaly **analytics** (beyond detection) | ❌ detect only | ✅ | ✅ | ⚠️ |
+| SoD entitlement-mining **analytics** at scale | ⚠️ declared rules (pre-commit + standing) | ✅ deepest | ✅ strong | ⚠️ |
+| Orphan/anomaly **analytics** (beyond detection) | ⚠️ standing SoD anomaly + orphan detection; no behavioural ML | ✅ | ✅ | ⚠️ |
 | Privileged JIT **lease** lifecycle | ✅ governed + chained | ⚠️ | ⚠️ (CPAM) | ⚠️ |
-| Privileged **session** recording | ❌ lease only | ⚠️ (partner) | ⚠️ (CPAM) | ❌ |
+| Privileged **session** recording (replayable, chained) | ⚠️ recorded; demo upstream is a bastion | ⚠️ (partner) | ⚠️ (CPAM) | ❌ |
 | Multi-locale (de native) | ✅ 12 locales | ⚠️ | ⚠️ | ✅ |
 | SME fit (one console, weeks not quarters) | ✅ | ❌ enterprise | ❌ enterprise | ⚠️ |
 

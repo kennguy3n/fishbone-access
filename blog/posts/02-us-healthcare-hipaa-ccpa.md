@@ -86,14 +86,16 @@ request is risk-scored before anyone approves it
 {
   "request": { "resource_ref": "phi:export", "role": "auditor", "state": "approved",
                "justification": "CCPA/CPRA consumer data-subject access request fulfilment." },
-  "risk": { "score": "medium", "recommendation": "needs_review",
-            "source": "fallback", "degraded": true, "factors": ["ai_unavailable"] }
+  "risk": { "score": "low", "recommendation": "auto_approve_eligible",
+            "source": "ai_agent", "degraded": false, "factors": ["baseline_low_risk"] }
 }
 ```
 
-As in Post 1, the verdict is honest: the AI agent was offline, so the engine fell
-back to a **fail-safe `needs_review`** rather than auto-approving a PHI export — a
-fail-open here would be exactly the wrong default.
+As in Post 1, the verdict is a **real agent verdict** (`source: ai_agent`,
+`degraded: false`) now that the risk agent is online. The fail-safe `needs_review`
+default is still what fires *if* the agent is unreachable — a fail-open on a PHI
+export would be exactly the wrong default — but it is the floor, not this seed's
+state.
 
 ![Globex's access requests — clinician, billing, and a PHI-export auditor request, each risk-tiered](../artifacts/screenshots/s2-us-access-requests.png)
 
@@ -119,7 +121,15 @@ An engineer who needs to touch the ePHI store requests a JIT lease, a sponsor
 approves under step-up MFA, a short-lived token is minted, and it expires in 15
 minutes. Those `pam.target.created` / `pam.lease.approved` /
 `pam.connect_token.minted` events are visible on the compliance evidence timeline
-below — but note `pam_sessions` is still **0** (see "where we fall short").
+below. And this time the lease is followed by a **recorded session**: Globex opens
+a JIT-leased session against the EHR bastion, the operator's commands run through
+the production `IORecorder`, and the recording is closed and anchored —
+`pam_sessions = 1`, retrievable over
+`GET /pam/sessions/52616c51-2a26-495f-ab2d-a284c8ad704b/replay`. That flips HIPAA
+privileged-access monitoring (`CC6.7` / ISO `A.8.2`) to **covered**. The honest
+residual is unchanged from Post 1: the recorded I/O is representative commands
+against a bastion target, proving the recording-and-replay pipeline, not
+keystrokes captured off a live ePHI box (see "where we fall short").
 
 ## Minimum-necessary as a hard rule: separation of duties
 
@@ -136,6 +146,12 @@ marks the combination `catastrophic` before it can be granted
         "conflicting": { "resource": "ehr:billing",   "role": "operator" } }
     ] } }
 ```
+
+And because conflicts also accrete after the fact, a standing sweep records the
+*live* violation when a subject already holds both halves — `sod_anomalies = 1`,
+which is what flips `CC7.3` to covered
+([`s2-us-globex-health-sod-anomalies.json`](../artifacts/payloads/s2-us-globex-health-sod-anomalies.json)).
+It is still a declared-rule check, not graph-mined discovery.
 
 ## A contractor with an expiry built in
 
@@ -194,30 +210,38 @@ PAM target/lease events from the section above appear on this same timeline:
 ## The compliance view
 
 Globex's SOC 2 logical-access coverage from the same chain — provisioning,
-review, and revocation controls covered; the privileged-monitoring control
-honestly empty:
+review, revocation **and** the privileged-monitoring control now backed by the
+recorded session:
 
 ![Globex SOC 2 logical-access coverage](../artifacts/screenshots/s2-us-compliance-soc2.png)
 
 ## Where we fall short
 
+Closed in this cut: **privileged-access monitoring** (`CC6.7` / `A.8.2`) is now
+covered by a real recorded, replayable, chain-anchored session (`pam_sessions =
+1`), and the **standing SoD anomaly** (`CC7.3`) fires for a subject that holds
+both `ehr:clinician` and `ehr:billing` (`sod_anomalies = 1`). Risk verdicts are
+real (`source: ai_agent`). What genuinely stays uncovered here — and matters most
+for a healthcare buyer:
+
 - **The two failed kill-switch layers are real gaps in the demo**, not cosmetic.
   Without real upstream credentials, fishbone-access cannot *prove* the Okta
   session and Box account were killed — it can only prove it tried and that the
   local grant is gone.
-- **No ePHI-read logging.** Like Post 1's PCI 10.2 gap, we prove access was
-  *authorised and reviewed*, not that every read of a patient record was logged.
-  HIPAA audit-control (§164.312(b)) over the EHR itself still needs the EHR's
-  audit log or a SIEM.
+- **No ePHI *read* logging inside the app.** Our recorded session captures what an
+  operator does **through a brokered lease**; it does not see a read a clinician
+  performs *directly inside* the EHR over their own login. HIPAA audit-control
+  (§164.312(b)) over the EHR itself still needs the EHR's audit log or a SIEM. We
+  prove brokered access was authorised, reviewed and recorded — not every
+  app-native read.
 - **CCPA "delete" is not executed.** We can show *who could reach* a consumer
   record (the access surface) and that grants were certified/revoked; we do not
   run the data-deletion in the downstream app.
-- **The ePHI PAM story is lease-only.** Globex's PostgreSQL/SSH targets, the
-  15-minute JIT lease, and the step-up approval are real and chained — but
-  `pam_sessions = 0`. We do not sit in the connection path recording the SQL a
-  `phi_reader` runs against the patient database. For "monitor *what an engineer
-  did* inside the ePHI store," a session-recording PAM (or the database's own
-  audit) is still required — `CC6.7` stays at 0 records and we show it.
+- **The recorded session is against a bastion, not a live ePHI box.** The session
+  recording proves the pipeline end-to-end (lease → record → close → chain →
+  replay); the demo has no live PostgreSQL upstream, so the captured commands are
+  representative, not a `phi_reader`'s real SQL. In-path against a reachable
+  database the same recorder captures the real wire.
 
 ## How a buyer should compare this
 
@@ -227,15 +251,16 @@ honestly empty:
 | HIPAA/CCPA packs out of the box | ✅ | ⚠️ build your own | ⚠️ build your own | ❌ |
 | Real-time SaaS deprovision at scale | ⚠️ depends on connector depth | ✅ Okta's home turf | ✅ | ❌ |
 | JIT privileged **lease** to ePHI DB/SSH (request→approve→expire) | ✅ governed + chained | ⚠️ (Okta PAM add-on) | ⚠️ | ✅ |
-| Privileged **session recording** inside the ePHI store | ❌ lease only | ❌ | ❌ | ✅ core strength |
-| SoD: clinician-vs-billing toxic combo caught pre-grant | ✅ simulation `catastrophic` | ⚠️ | ✅ deepest | ❌ |
-| ePHI **read** audit trail | ❌ needs SIEM | ❌ | ❌ | ⚠️ session logs |
+| Privileged **session recording** (replayable, chained) | ⚠️ recorded + replayable; demo upstream is a bastion, not the live ePHI DB | ❌ | ❌ | ✅ core strength (live wire) |
+| SoD: clinician-vs-billing toxic combo (pre-commit + standing) | ✅ `catastrophic` + standing anomaly | ⚠️ | ✅ deepest | ❌ |
+| ePHI **app-native read** audit trail | ❌ needs SIEM/EHR log | ❌ | ❌ | ⚠️ session logs |
 
 **The honest read:** if Globex's biggest exposure is the *SaaS* lifecycle — Okta
 + Box + an EHR — Okta IGA is the incumbent with the deepest native deprovision on
 its own platform, and SailPoint goes deeper still on certification analytics. If
 the exposure is engineers reaching the *database* that stores ePHI, Teleport or
-StrongDM broker and record that far better than we do. Where fishbone-access wins
+StrongDM broker and record real wire traffic against live upstreams at a depth we
+don't — our recording proves the pipeline against a bastion, not the live DB. Where fishbone-access wins
 is the **honest, layered offboarding record** plus HIPAA/CCPA packs in one SME
 console: the partial-failure report is exactly the artifact an auditor wants when
 they ask "show me a termination." We'd rather show a true ❌ than a fake ✅ — and

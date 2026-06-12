@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
-    "created_at": "2026-06-12T02:23:01.576539Z",
+    "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059",
+    "created_at": "2026-06-12T08:57:01.268062Z",
     "deleted_at": null,
-    "id": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
+    "id": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
     "justification": "SOC 2 Type II auditor evidence sampling.",
     "requester_id": "au-contoso-saas-owner",
     "resource_ref": "soc2:evidence",
     "risk_factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "risk_level": "medium",
+    "risk_level": "low",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "au-contoso-saas-owner",
-    "updated_at": "2026-06-12T02:23:01.59813Z",
-    "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+    "updated_at": "2026-06-12T08:57:01.278093Z",
+    "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
   },
   "risk": {
-    "created_at": "2026-06-12T02:23:01.584396Z",
-    "degraded": true,
+    "created_at": "2026-06-12T08:57:01.272436Z",
+    "degraded": false,
     "deleted_at": null,
     "factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "id": "15580e47-5d72-4cdf-a64d-e84fd3774d50",
+    "id": "7b288642-97e1-457f-bd98-436cff026b5e",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 72,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "ai agent unavailable; applied fail-safe default",
-    "recommendation": "needs_review",
-    "request_id": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
-    "score": "medium",
-    "source": "fallback",
-    "updated_at": "2026-06-12T02:23:01.584396Z",
-    "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+    "rationale": "rule-based risk=low from 1 factor(s)",
+    "recommendation": "auto_approve_eligible",
+    "request_id": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
+    "score": "low",
+    "source": "ai_agent",
+    "updated_at": "2026-06-12T08:57:01.272436Z",
+    "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
   }
 }

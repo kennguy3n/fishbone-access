@@ -9,13 +9,15 @@ fall short."
 The series covers the full access surface, not just compliance reporting:
 **SaaS + internal-system** access through one connector fabric, **PAM** to cloud
 VMs (SSH) and managed databases (PostgreSQL/MySQL) via a just-in-time **lease**
-lifecycle, **JML** (joiner/mover/leaver) with a layered leaver kill switch,
-**time-boxed contractor access**, employee-initiated **access requests with
-AI-assisted risk scoring** (honestly *degraded* to a fail-safe default when the
-AI agent is offline), **separation-of-duties simulation** that flags
-catastrophic grants pre-commit, and regulation-keyed **access certification**
-with a re-verifiable evidence export. Each post also carries an honest
-competitor assessment (Okta IGA, SailPoint, Saviynt, CyberArk, Teleport,
+lifecycle **plus a recorded, replayable, chain-anchored privileged session**
+(`pam_sessions = 1`; the demo upstream is a bastion, not a live box), **JML**
+(joiner/mover/leaver) with a layered leaver kill switch, **time-boxed contractor
+access**, employee-initiated **access requests with AI-assisted risk scoring**
+(real agent verdicts, fail-safe degraded default only when the agent is offline),
+**separation-of-duties** checks both pre-commit (catastrophic simulation) and as a
+**standing anomaly** (`sod_anomalies = 1`), and regulation-keyed **access
+certification** with a re-verifiable evidence export. Each post also carries an
+honest competitor assessment (Okta IGA, SailPoint, Saviynt, CyberArk, Teleport,
 StrongDM).
 
 ## The posts

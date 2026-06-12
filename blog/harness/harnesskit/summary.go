@@ -60,9 +60,12 @@ type WorkspaceIDs struct {
 
 	PAMTargetIDs []string `json:"pam_target_ids,omitempty"`
 	PAMLeaseID   string   `json:"pam_lease_id,omitempty"`
-	// No PAMSessionID: privileged sessions are intentionally never opened in this
-	// demo (pam_sessions = 0 — the lease is governed and chained, the session is
-	// not recorded), so there is no session id to carry.
+	// PAMSessionID is the recorded privileged session the seed opens, drives and
+	// closes against a recorded target (pam_sessions > 0). Its replay is
+	// retrievable over GET /pam/sessions/:id/replay and its digest is anchored in
+	// the workspace hash chain, so the series can deep-link to a real monitored
+	// session rather than only the lease that authorised it.
+	PAMSessionID       string   `json:"pam_session_id,omitempty"`
 	ContractorGrantIDs []string `json:"contractor_grant_ids,omitempty"`
 	SodRuleIDs         []string `json:"sod_rule_ids,omitempty"`
 }

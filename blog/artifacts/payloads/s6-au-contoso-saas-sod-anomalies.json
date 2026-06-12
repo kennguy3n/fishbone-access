@@ -1,3 +1,33 @@
 {
-  "anomalies": []
+  "anomalies": [
+    {
+      "created_at": "2026-06-12T08:58:01.164695Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "billing:admin",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "prod:deploy",
+          "role": "operator"
+        },
+        "rule_id": "de5e7d69-7b4b-4418-be94-048930ae750c",
+        "rule_name": "Production deploy must not also hold billing admin",
+        "severity": "high",
+        "subject": "ext-dual-role@au-contoso-saas.example"
+      },
+      "detected_at": "2026-06-12T08:58:01.164695Z",
+      "disposition": "flagged",
+      "fingerprint": "e9d130e31268d70db758bfa95781a32ad9a2889f4e92d31436ddf0800f79050a",
+      "id": "fa64b53e-28c3-49f8-99ed-568f7eb2ab92",
+      "kind": "sod_violation",
+      "rule_id": "de5e7d69-7b4b-4418-be94-048930ae750c",
+      "severity": "high",
+      "subject": "ext-dual-role@au-contoso-saas.example",
+      "updated_at": "2026-06-12T08:58:01.164695Z",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    }
+  ]
 }

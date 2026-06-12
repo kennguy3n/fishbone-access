@@ -1,3 +1,33 @@
 {
-  "anomalies": []
+  "anomalies": [
+    {
+      "created_at": "2026-06-12T08:52:02.383053Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "wms:inventory",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "wms:dispatcher",
+          "role": "operator"
+        },
+        "rule_id": "f19bef07-0870-4840-83a8-a9bd2cdbf6c9",
+        "rule_name": "Dispatcher must not also adjust inventory",
+        "severity": "medium",
+        "subject": "ext-dual-role@vn-umbrella-logistics.example"
+      },
+      "detected_at": "2026-06-12T08:52:02.383053Z",
+      "disposition": "flagged",
+      "fingerprint": "5275c8261a135205b5a3f98a77806b7a08565955eebeb6263842cbe637f2135b",
+      "id": "e436b236-cf93-490c-9a6e-ccc06f777f4c",
+      "kind": "sod_violation",
+      "rule_id": "f19bef07-0870-4840-83a8-a9bd2cdbf6c9",
+      "severity": "medium",
+      "subject": "ext-dual-role@vn-umbrella-logistics.example",
+      "updated_at": "2026-06-12T08:52:02.383053Z",
+      "workspace_id": "1f1a9a2a-3e99-409a-b4e0-ee04044164e7"
+    }
+  ]
 }

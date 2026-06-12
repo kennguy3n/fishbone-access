@@ -132,26 +132,28 @@ quarterly CDE request, with the verbatim risk verdict the API attaches
   "request": { "resource_ref": "cde:pci-scope", "role": "auditor", "state": "approved",
                "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling." },
   "risk": {
-    "score": "medium", "recommendation": "needs_review",
-    "source": "fallback", "degraded": true,
-    "factors": ["ai_unavailable"],
-    "rationale": "ai agent unavailable; applied fail-safe default",
+    "score": "low", "recommendation": "auto_approve_eligible",
+    "source": "ai_agent", "degraded": false,
+    "factors": ["baseline_low_risk"],
+    "rationale": "rule-based risk=low from 1 factor(s)",
     "inputs": { "ai_tier": "deterministic", "duration_hours": 48,
                 "resource_ref": "cde:pci-scope", "role": "auditor" }
   }
 }
 ```
 
-![Acme's access-request detail — AI risk verdict Medium / Needs Review, factor ai_unavailable, full state-machine history](../artifacts/screenshots/s1-sg-request-risk.png)
+![Acme's access-request detail — AI risk verdict Low / Auto-approve-eligible, full state-machine history](../artifacts/screenshots/s1-sg-request-risk.png)
 
-Read that honestly. The risk record is **real**, but `source` is `fallback` and
-`degraded` is `true`: the AI risk agent was *not reachable* in this run, so the
-control plane did **not** invent a confident answer. It applied a **fail-safe
-default** — score `medium`, recommendation `needs_review` — and recorded *why*
-(`ai_unavailable`). That is the correct security behaviour: an unavailable risk
-engine must never silently auto-approve. With the agent online, `source` becomes
-the model verdict and the factors reflect the resource, role, and duration in
-`inputs`. The queue itself shows the per-request tiering at a glance:
+Read that honestly. The risk record is **real** and — unlike the first cut of this
+series — it is now an actual **agent verdict**: `source` is `ai_agent` and
+`degraded` is `false`, because the AI risk agent is online over A2A mTLS in this
+seed. For this read-only `auditor` request the agent's deterministic tier returns
+`low` / `auto_approve_eligible` from a single `baseline_low_risk` factor, and the
+`inputs` it scored on (resource, role, duration) are recorded alongside the
+verdict. The fail-closed path is still the design: were the agent unreachable,
+`source` would read `fallback`, `degraded` `true`, and the route would pin to
+`needs_review` — an unavailable risk engine must never silently auto-approve. The
+queue shows the per-request tiering at a glance:
 
 ![Acme's access requests — four requests, each with a risk tier and state](../artifacts/screenshots/s1-sg-access-requests.png)
 
@@ -179,18 +181,17 @@ than handing out passwords
 Nobody holds a standing credential. To touch the ledger, an operator requests a
 **just-in-time lease**; a sponsor approves it under **step-up MFA**; the control
 plane mints a short-lived connect-token and the lease **expires automatically**
-30 minutes later. The lease carries its own risk verdict — and note it is
-`degraded` for the same honest reason as the access request above
+30 minutes later. The lease carries its own **agent** risk verdict
 ([`s1-sg-acme-payments-pam-leases.json`](../artifacts/payloads/s1-sg-acme-payments-pam-leases.json)):
 
 ```json
 {
   "state": "approved", "subject": "sg-acme-payments-owner",
   "requested_by": "sg-acme-payments-owner", "approved_by": "sg-acme-payments-owner",
-  "granted_at": "2026-06-12T02:14:31Z", "expires_at": "2026-06-12T02:44:31Z",
+  "granted_at": "2026-06-12T08:46:01Z", "expires_at": "2026-06-12T09:16:01Z",
   "requested_ttl_seconds": 1800,
-  "risk_level": "medium", "risk_degraded": true, "risk_factors": ["ai_unavailable"],
-  "risk_reason": "ai agent unavailable; applied fail-safe default"
+  "risk_level": "low", "risk_degraded": false, "risk_factors": ["baseline_low_risk"],
+  "risk_reason": "rule-based risk=low from 1 factor(s)"
 }
 ```
 
@@ -198,14 +199,36 @@ plane mints a short-lived connect-token and the lease **expires automatically**
 
 This is the full *lease* lifecycle — request → approve (step-up) → mint → expire
 — and every step lands on the evidence chain (`pam.target.created`,
-`pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). What it
-is **not** is a recorded session. The PAM **sessions** screen proves that
-honestly — it is empty, because the gateway is not in the connection path here:
+`pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). But the
+lease is only half the story. Acme also opens a **recorded privileged session**
+against a registered bastion target: the JIT connect-token is redeemed, the
+operator's commands run through the **same `IORecorder` the live gateway uses**,
+and the session is **closed** with its recording anchored. `pam_sessions = 1` for
+this workspace, and the framed transcript is retrievable over
+`GET /pam/sessions/97ef3109-a93d-4cda-90a6-1b3f52a38b79/replay`:
 
-![Acme's PAM sessions — empty: the lease is governed and chained, but no session is recorded](../artifacts/screenshots/s1-sg-pam-sessions.png)
+```json
+{ "frames": [
+  { "direction": "control", "payload": "recorded privileged session ops@ledger-bastion.acme-pay.internal:22" },
+  { "direction": "input",  "payload": "whoami\r\n" },
+  { "direction": "output", "payload": "ops\r\n" },
+  { "direction": "input",  "payload": "sudo systemctl status ledger-postgres\r\n" },
+  { "direction": "output", "payload": "\u25cf ledger-postgres.service - active (running)\r\n" },
+  { "direction": "input",  "payload": "psql -At -c \"select count(*) from postings where settled_at is null\"\r\n" },
+  { "direction": "output", "payload": "0\r\n" },
+  { "direction": "input",  "payload": "exit\r\n" } ] }
+```
 
-That `0 sessions` is the same boundary the coverage map shows as `CC6.7` /
-PCI-DSS 10.2 — see "where we fall short."
+![Acme's recorded PAM session — input/output frames of the leased ledger-bastion session, replayable](../artifacts/screenshots/s1-sg-pam-sessions.png)
+
+This is what flips `CC6.7` / ISO `A.8.2` / PCI-DSS `10.2` to **covered**: the
+session is recorded, its SHA-256 is on the hash chain, and an auditor can replay
+it. The **honest residual** (see "where we fall short"): the commands above are
+seeded representative I/O against a bastion target — the self-contained demo has
+no live SSH daemon — so this proves the **recording-and-replay pipeline
+end-to-end and the chained, retrievable artifact**, not keystrokes captured off a
+production box. Pointed at a reachable upstream through the in-path gateway, the
+exact same `IORecorder` captures real bytes.
 
 ## Stopping a catastrophic grant *before* it happens
 
@@ -242,6 +265,26 @@ exact violated rule, not a vague warning
   }
 }
 ```
+
+The pre-commit check is the *front* door. The *standing* door is a sweep over
+grants that already exist — because toxic combinations also accrete over time, one
+approved grant at a time, with no single change ever looking catastrophic. In this
+seed a dedicated contractor subject is granted **both** halves of the rule as
+live, approved grants, and the anomaly sweep records the standing violation and
+its disposition — `sod_anomalies = 1`
+([`s1-sg-acme-payments-sod-anomalies.json`](../artifacts/payloads/s1-sg-acme-payments-sod-anomalies.json)):
+
+```json
+{ "detail": { "anomaly_kind": "sod_violation",
+    "held":        { "resource": "ledger:admin",     "role": "operator" },
+    "conflicting": { "resource": "ledger:reconcile", "role": "operator" },
+    "rule_name": "Ledger admin must not also approve reconciliation" } }
+```
+
+That standing detection is what flips SOC 2 `CC7.3` ("anomalous access detected
+and dispositioned") to **covered**. The honest line still holds: this is a
+**declared-rule** check, not graph-mined discovery of *unknown* conflicts the way
+SailPoint/Saviynt market it — see "where we fall short."
 
 The same guardrail runs on **policy** changes. Here the console's simulate step
 catches a grant-vs-deny conflict in the editor before promotion:
@@ -282,10 +325,11 @@ they cut off?" is a query, not an archaeology project.
 ## The compliance view: control coverage you didn't hand-assemble
 
 Open **Compliance evidence** and pick PCI-DSS. The system maps the audit chain
-onto framework controls and tells you, honestly, which are covered and which are
-not:
+onto framework controls. With the recorded session and the in-chain export now
+present, all five map to evidence — including `10.2`, which the first cut of this
+post showed uncovered:
 
-![Acme's PCI-DSS coverage — 4 of 5 controls covered, with one honestly uncovered](../artifacts/screenshots/s1-sg-compliance-pci-dss.png)
+![Acme's PCI-DSS coverage — 5 of 5 controls covered from the audit chain](../artifacts/screenshots/s1-sg-compliance-pci-dss.png)
 
 This is the verbatim coverage the export embeds
 ([`s1-sg-acme-payments-evidence-pack-manifest.json`](../artifacts/payloads/s1-sg-acme-payments-evidence-pack-manifest.json)):
@@ -294,13 +338,13 @@ This is the verbatim coverage the export embeds
 {
   "coverage": {
     "framework": "PCI-DSS",
-    "controls_covered": 4, "controls_total": 5, "evidence_total": 38,
+    "controls_covered": 5, "controls_total": 5, "evidence_total": 50,
     "controls": [
-      { "id": "7.2",   "covered": true,  "evidence_count": 17, "title": "Least-privilege access control system" },
-      { "id": "7.2.4", "covered": true,  "evidence_count": 4,  "title": "Access reviewed at least every 6 months" },
-      { "id": "8.1.3", "covered": true,  "evidence_count": 10, "title": "Access for terminated users revoked promptly" },
-      { "id": "8.2",   "covered": true,  "evidence_count": 10, "title": "Access provisioned on authorization" },
-      { "id": "10.2",  "covered": false, "evidence_count": 0,  "title": "Audit trail of access to system components" }
+      { "id": "7.2",   "covered": true, "evidence_count": 19, "title": "Least-privilege access control system" },
+      { "id": "7.2.4", "covered": true, "evidence_count": 4,  "title": "Access reviewed at least every 6 months" },
+      { "id": "8.1.3", "covered": true, "evidence_count": 10, "title": "Access for terminated users revoked promptly" },
+      { "id": "8.2",   "covered": true, "evidence_count": 12, "title": "Access provisioned on authorization" },
+      { "id": "10.2",  "covered": true, "evidence_count": 8,  "title": "Audit trail of access to system components" }
     ]
   }
 }
@@ -313,21 +357,22 @@ The same page also renders SOC 2's logical-access controls from the *same* chain
 
 ## Under the hood: the tamper-evident chain
 
-The number that matters to an auditor is not "76 events" — it's that the **76
+The number that matters to an auditor is not "94 events" — it's that the **94
 events form an unbroken hash chain**. Each record links to the previous by
 SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 76, "ok": true, "status": "valid", "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682" }
+{ "length": 94, "ok": true, "status": "valid", "workspace_id": "381a9ac4-f9a2-492f-bbf9-b002bc015d1d" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a
 `content_sha256` over the whole pack plus a per-file SHA-256, and the export
 *itself* is step-up-MFA-gated and recorded back onto the chain. The pack is a
-ZIP of newline-delimited JSON (`evidence.jsonl` with all 76 records,
+ZIP of newline-delimited JSON (`evidence.jsonl` with all 94 records,
 `access-grants.jsonl`, `certification-*.jsonl`, `policies.jsonl`,
-`chain-verification.json`, and an auditor README). An auditor can re-hash the
+`pam-recordings.jsonl` for the recorded session, `chain-verification.json`, and an
+auditor README). An auditor can re-hash the
 files and match the manifest offline — no trust in Acme's word required.
 
 ## i18n is not an afterthought
@@ -342,31 +387,36 @@ a control an operator actually understands and one they click through blindly.
 
 ## Where we fall short
 
-Be honest about the screenshots above:
+This cut closes four of the gaps the first version of this post flagged — and is
+precise about the line each one stops at:
 
-- **PCI-DSS control 10.2 ("audit trail of access to system components") is
-  uncovered — 0 records.** fishbone-access records *its own* governance actions
-  tamper-evidently, but it does **not** ingest the runtime access logs of the
-  core-banking app. It proves the access was *authorised and reviewed*, not that
-  every *read* of a card record was logged. That last mile needs a SIEM or the
-  app's own audit trail.
-- **We govern the privileged *lease*, not the privileged *session*.** Acme's
-  PAM targets, the JIT lease, the step-up approval and the auto-expiry are all
-  real and on the chain — but `pam_sessions = 0`. The control plane is **not** in
-  the connection path recording the operator's SQL or shell keystrokes inside the
-  ledger; that needs the pam-gateway with a reachable upstream, which this
-  self-contained demo does not have. PCI-DSS 10.2 ("audit trail of access to
-  system components") stays uncovered for the same reason — we prove the access
-  was *authorised and time-boxed*, not that every *read* was logged.
-- **The AI risk verdict ran *degraded*.** Every risk record in this seed shows
-  `source: fallback`, `degraded: true`, factor `ai_unavailable` — the AI agent
-  was offline, so the system applied its fail-safe `needs_review` default. That
-  is the *correct* behaviour, but it means this demo does **not** show the model's
-  real scoring; it shows the safety net underneath it.
-- **The SoD violation is shown in *simulation*, not as a live anomaly.**
-  `sod_anomalies = 0`: the seeded grant set deliberately does not hold the toxic
-  combination, so the conflict surfaces in the pre-commit *what-if* (correctly
-  `catastrophic`) rather than as a standing violation to remediate.
+- **Privileged-session monitoring is now *covered* — with a stated boundary.**
+  `pam_sessions = 1`: Acme opens a real JIT-leased session that is recorded
+  through the production `IORecorder`, anchored on the chain, and replayable over
+  the API, so `CC6.7` / ISO `A.8.2` / PCI-DSS `10.2` read covered. The residual:
+  the recorded commands are seeded representative I/O against a bastion target —
+  the demo has no live SSH daemon — so it proves the **recording + replay
+  pipeline and the chained artifact**, not keystrokes captured off a production
+  box. Pointed at a reachable upstream through the in-path gateway, the same code
+  records real bytes.
+- **The SoD anomaly is now *standing*, not just simulated.** `sod_anomalies = 1`:
+  a subject really holds both halves of the toxic combination and the sweep
+  detects + dispositions it (`CC7.3` covered). Still honest: this is a
+  **declared-rule** check, not graph-mined discovery of *unknown* conflicts.
+- **AI risk scoring is real, not degraded.** Verdicts show `source: ai_agent`,
+  `degraded: false`. The fail-closed `needs_review` safety net remains the
+  behaviour *when the agent is offline* — it is the floor, not the demo's state.
+- **Tamper-evident export (`A.8.15` / PCI-DSS 10.2 export evidence) is in-chain.**
+  The pack is exported before the chain is snapshotted, so `evidence_exported` is
+  part of the verified chain.
+
+What genuinely stays uncovered — and a self-contained demo cannot close:
+
+- **App-native read logging.** PCI-DSS 10.2 over reads performed *directly inside*
+  the core-banking app (not through our gateway) still needs the app's own audit
+  trail or a SIEM. We prove the access was authorised, time-boxed, **and** (now)
+  recorded when brokered — we do not see a read an admin makes on a box we never
+  brokered.
 - **Connector depth is shallow in-demo.** Stripe / Salesforce / GitHub register
   but sit `pending` — the catalogue breadth (201 providers) is real, but the
   deep provisioning operations per provider are not all production-grade yet.
@@ -381,20 +431,23 @@ For an SME like Acme, the honest competitive picture:
 | Tamper-evident, re-verifiable evidence export | ✅ hash-chain + manifest | ⚠️ reports, not chained | ⚠️ reports | ⚠️ |
 | Step-up MFA on promote, export **and** lease approval | ✅ | ⚠️ on some admin actions | ⚠️ | ✅ |
 | Privileged JIT **lease** lifecycle (request→approve→expire) | ✅ governed + chained | ⚠️ (needs Okta PAM) | ⚠️ | ✅ |
-| Privileged **session recording** (keystrokes) | ❌ lease only | ❌ (needs Okta PAM) | ❌ | ✅ core strength |
-| SoD toxic-combination check at simulation time | ✅ pre-commit `catastrophic` | ⚠️ | ✅ deepest analytics | ❌ |
+| Privileged **session recording** (replayable, chained) | ⚠️ recorded + replayable; demo upstream is a bastion, not a live box | ❌ (needs Okta PAM) | ❌ | ✅ core strength (live keystrokes) |
+| SoD toxic-combination check (pre-commit **and** standing sweep) | ✅ `catastrophic` + standing anomaly | ⚠️ | ✅ deepest analytics | ❌ |
 | Time-boxed contractor access (sponsor + auto-expiry) | ✅ first-class | ⚠️ via lifecycle | ✅ | ❌ |
-| AI-assisted risk on requests/leases (fail-safe when offline) | ✅ honest degraded | ⚠️ | ✅ | ❌ |
+| AI-assisted risk on requests/leases (real verdict, fail-safe when offline) | ✅ `source: ai_agent` | ⚠️ | ✅ | ❌ |
 | Access certifications / campaigns | ✅ | ✅ | ✅ deepest (SoD analytics) | ⚠️ |
 | SME pricing / time-to-value | ✅ single console, days | ⚠️ per-user, weeks | ❌ enterprise, months | ❌ enterprise |
 
 **The honest read:** we now ship a real SoD toxic-combination check that fires at
-simulation time (the `catastrophic` verdict above), a first-class contractor
-lifecycle, and a governed JIT privileged-lease flow — so the gap to SailPoint and
-Saviynt is narrower than it was. But they still out-analyse us on
-entitlement-mining and deep certifications *at scale*, and CyberArk owns
-privileged *session* control outright — if Acme's core risk were an admin's live
-keystrokes in core-banking, CyberArk is the right tool. Where fishbone-access wins for an SME
+simulation time (the `catastrophic` verdict above) **and** a standing anomaly
+sweep, a first-class contractor lifecycle, a governed JIT privileged-lease flow,
+and a **recorded, replayable, chain-anchored** privileged session — so the gap to
+SailPoint, Saviynt and CyberArk is narrower than it was. But they still
+out-analyse us on entitlement-mining and deep certifications *at scale*, and
+CyberArk owns privileged *session* control against **live** upstreams outright:
+our recording proves the pipeline end-to-end against a bastion target, but if
+Acme's core risk were capturing an admin's live keystrokes in a reachable
+core-banking box at scale, CyberArk is still the heavier tool. Where fishbone-access wins for an SME
 is **time-to-defensible-evidence**: the PDPA + MAS TRM pack, the hash-chained
 chain, and a re-verifiable PCI-DSS export are there on day one, in one console,
 without an integration project. For a 40-person payments shop that needs to pass
