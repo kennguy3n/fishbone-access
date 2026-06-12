@@ -27,3 +27,6 @@ coverage.txt
 # Blog evidence: export ZIPs are non-deterministic binary blobs (embedded
 # generation timestamps); the verifiable manifest.json is committed instead.
 blog/artifacts/payloads/*.zip
+
+# Blog screenshot harness deps (Playwright); the committed package-lock pins them.
+/blog/harness/screenshots/node_modules/

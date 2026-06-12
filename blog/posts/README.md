@@ -55,8 +55,12 @@ Scenario definitions and the evidence map live in
   — API latency percentiles + throughput plus the `system` block describing the
   VM, produced by [`../harness/bench`](../harness/bench/main.go) (`make blog-bench`).
 - **Screenshots:** `../artifacts/screenshots/` — live console captures taken
-  after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi, ja)
-  over the same seeded data.
+  after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi) over
+  the same seeded data, produced by the Playwright harness
+  [`../harness/screenshots`](../harness/screenshots/shoot.mjs) (`make blog-screenshots`).
+  Identities come from `minttokens` and the deep-link IDs are read from the
+  committed capture payloads, so the set regenerates against whatever was last
+  seeded — no hand-navigation, no hard-coded UUIDs.
 
 ## Reproducing the artifacts
 
@@ -82,9 +86,13 @@ make blog-capture
 #   equivalently: (cd blog/harness/capture && go run . -base http://localhost:8080 \
 #                    -out ../../artifacts/payloads -summary ../../artifacts/seed-summary.json)
 
-# 4. Take screenshots from the live console at localhost:5173.
-#    - Switch locale for each screenshot set (en, zh-Hans, de, ar, vi, ja).
-#    - Navigate each scenario path (S1–S6) and capture.
+# 4. Take screenshots from the live console at localhost:5173 (needs `npm run dev`
+#    in ui/). Drives headless Chromium across S1–S6 and every locale, including
+#    the interactive policy-conflict + step-up-MFA flow. First run installs
+#    Playwright + Chromium automatically.
+make blog-screenshots
+#   equivalently: go run ./blog/harness/minttokens > tokens.tsv && \
+#     BLOG_TOKENS=tokens.tsv node blog/harness/screenshots/shoot.mjs
 
 # 5. Run the connector / compliance / handler test matrices.
 make blog-test
@@ -95,12 +103,15 @@ make blog-bench
 #                    -out ../../artifacts/benchmark-results.json)
 ```
 
-`make blog-all` runs seed → capture → bench → test in order.
+`make blog-all` runs seed → capture → bench → test in order. (`blog-screenshots`
+is kept separate because it additionally needs the UI dev server running.)
 
 The seed and capture harnesses are deterministic against the same seeded data: a
 re-run reproduces the same payload files (modulo live timestamps and the export
-ZIP's embedded generation time). Screenshots are taken from the live console
-after the seed step.
+ZIP's embedded generation time). Screenshots are regenerated the same way — the
+[`screenshots`](../harness/screenshots/shoot.mjs) harness drives the live console
+headlessly after the seed step, deriving identities and deep-link IDs from
+`minttokens` and the committed payloads rather than any hand-navigation.
 
 > **First-run timing.** Promoting a policy and exporting an evidence pack are
 > step-up-MFA-gated: each consumes a fresh 6-digit TOTP code, and the server

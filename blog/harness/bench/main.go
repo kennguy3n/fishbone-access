@@ -8,9 +8,11 @@
 // the FULL request path a console user hits — TLS-less HTTP, dev JWT validation
 // (HS256), tenant resolution, RBAC, the handler, GORM, and Postgres — over
 // loopback on a single dev VM. It is NOT a tuned production benchmark: one API
-// process, one Postgres, no connection-pool tuning, no warm CDN, no horizontal
-// scale. The numbers are a floor ("even an untuned dev box does X"), not a
-// ceiling, and the blog says so.
+// process, one Postgres, no server/DB connection-pool tuning, no warm CDN, no
+// horizontal scale. The numbers are a floor ("even an untuned dev box does X"),
+// not a ceiling, and the blog says so. (The HTTP *client* is given an idle pool
+// sized to the concurrency so the figures reflect server latency, not avoidable
+// client-side reconnection churn.)
 //
 // Every endpoint here is a real, RBAC-gated route exercised by the seeded
 // Acme Payments (sg/finance) workspace plus the global catalogue reads every
@@ -28,6 +30,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -111,6 +114,15 @@ func main() {
 	token := harnesskit.MintJWT(secret, harnesskit.DefaultIssuer, harnesskit.DefaultAudience,
 		ws.OwnerSub(), ws.TenantID, ws.OwnerRoles(), true, time.Hour)
 	c := harnesskit.NewClient(*apiBase, token, false)
+	// Give the benchmark a connection pool sized to its concurrency so we measure
+	// server-side latency, not avoidable client-side connection churn. The stock
+	// transport caps MaxIdleConnsPerHost at 2, which would force most of the c
+	// workers to re-dial on every request and inflate the numbers.
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.MaxIdleConns = *conc
+	tr.MaxIdleConnsPerHost = *conc
+	tr.MaxConnsPerHost = *conc
+	c.HTTP.Transport = tr
 
 	simDef := map[string]any{"definition": map[string]any{
 		"action": "grant", "subjects": []string{"user:bench@demo.test"}, "resources": []string{"app:bench"},
