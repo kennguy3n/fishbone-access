@@ -55,7 +55,7 @@ goes well beyond simple SaaS grants:
    the above appends a hash-linked evidence record. You can verify the chain and
    **export a framework-mapped evidence pack** (a ZIP with a manifest carrying
    the content digest and chain-verification status, plus a `pam-recordings.jsonl`
-   slot the pack now ships even when it is empty) for an auditor — the
+   line for each recorded privileged session in the pack) for an auditor — the
    **access-certification** artifact regulators ask to see.
 
 ## The honesty contract
@@ -80,18 +80,79 @@ This series is a critique, not a brochure. Five rules hold for every post:
    console after seeding. The multi-locale set re-renders the *same* data in
    another language (en, zh-Hans, de, ar, vi, ja) to show i18n coverage, not a
    different dataset.
-5. **The critique is honest.** Each post ends with "where we fall short." Two
-   concrete examples you'll see: in Post 2 the leaver kill switch genuinely
+5. **The critique is honest.** Each post ends with "where we fall short." The
+   clearest example you'll see: in Post 2 the leaver kill switch genuinely
    *fails* on the live SaaS connectors because they carry placeholder credentials
    and there is no real upstream to reach — so it reports partial failure; the
    switch still revokes grants and disables the identity locally and records the
-   full layered result. And across **every** workspace the PAM **lease lifecycle**
-   is exercised and recorded, but `pam_sessions = 0` and the control
-   "privileged access *monitored*" (SOC 2 CC6.7 / ISO A.8.2) stays at **0
-   records** — because recording the *session itself* needs the gateway in the
-   connection path with a reachable upstream, which the self-contained demo does
-   not have. We govern the privileged *lease*; we do not yet record the privileged
-   *session*. The coverage map says so on screen.
+   full layered result. The honest boundary is drawn at the *line* the demo can
+   reach, not hidden.
+
+### What changed since the first cut of this series
+
+An earlier version of these posts flagged a recurring set of controls as
+**uncovered (0 records)** — privileged-session monitoring (SOC 2 **CC6.7** / ISO
+**A.8.2** / PCI-DSS **10.2**), the standing separation-of-duties anomaly (**CC7.3**),
+the tamper-evident-export evidence kind (**A.8.15**), and AI risk scoring that
+ran **degraded** because the agent was offline. Re-reading the code made one thing
+clear: **most of those were seed-harness gaps, not product gaps** — the
+control→evidence mapping already existed; the old seed simply never emitted the
+evidence. This cut closes them with capabilities the product already ships, and
+nothing is faked:
+
+- **CC6.7 / A.8.2 / PCI-DSS 10.2** — every workspace now opens a **real recorded
+  privileged session**: a JIT lease is redeemed, the operator's commands are
+  driven through the same `IORecorder` the live gateway uses, the framed
+  transcript is persisted to the replay store, its SHA-256 is **anchored in the
+  hash chain**, and it is **retrievable over `GET /pam/sessions/:id/replay`**.
+  `pam_sessions = 1` per workspace, and the coverage map flips these controls to
+  *covered*. The honest residual: the recorded commands are seeded representative
+  I/O against a registered bastion target — the demo has no live SSH daemon — so
+  this proves the **recording pipeline and the chained, replayable session
+  artifact end-to-end**, not keystrokes captured off a production box.
+- **CC7.3** — one dedicated subject is granted **both halves of the workspace's
+  toxic-combination rule** as live, approved grants, and the production anomaly
+  sweep records the standing violation + disposition. `sod_anomalies = 1`,
+  detected against live state — not a what-if.
+- **A.8.15 / PCI-DSS 10.2** — the evidence-pack export now runs **before** the
+  capture snapshots the chain (it was an ordering bug), so `evidence_exported` is
+  in-chain and the tamper-evident-logging control reads covered.
+- **AI risk scoring** — the agent is online over A2A mTLS, so risk verdicts now
+  show `source: ai_agent`, `degraded: false`, with a real recommendation — not the
+  fail-closed `needs_review` safety net.
+
+What stays honest (real hard limits a self-contained demo cannot close): killing
+a *real* Okta/Box session (no upstream credentials — Post 2); logging every read
+performed **directly inside** the downstream app rather than through our gateway
+(PCI-DSS 10.2 / HIPAA §164.312(b) for app-native reads still needs the app's audit
+log or a SIEM); executing a CCPA *deletion* downstream; deep per-provider
+connector provisioning; and the methodology line that **SoD here is declared
+rules, not graph-mined discovery**, and **orphan handling is detection, not
+behavioural analytics**. Every post draws that line on screen.
+
+### Q0 — Does our ZTNA "darken the whole network"? Which ZTNA attributes do we adhere to?
+
+Short answer: **no — fishbone-access is an identity-aware access *control plane and
+target broker*, not an L3 data-plane that makes an entire subnet invisible.** It
+adheres to the NIST SP 800-207 tenets that live in the *authorization decision*,
+and it explicitly delegates the network-darkening tenets to the data-plane gateway
+(the SNG / visible-fishbone side of the house):
+
+| ZTNA tenet (NIST 800-207) | fishbone-access | Where it lives |
+| --- | --- | --- |
+| **No standing access / per-session grant** | **Enforced.** JIT leases and connect-tokens with mandatory expiry; nothing is durable. | access + PAM lifecycle |
+| **Identity-aware, per-request decision** | **Enforced.** Every request resolves to a `grant`/`deny` route; **deny wins on conflict**. | policy engine |
+| **Least privilege, dynamic** | **Enforced.** Per-target, per-role grants + command-level gating on privileged sessions. | PAM + policy |
+| **Continuous / step-up re-evaluation** | **Enforced.** Fresh step-up TOTP on the highest-risk actions; AI risk re-scores each request. | step-up MFA + risk |
+| **Per-resource segmentation** | **Enforced at the broker.** One-shot connect-token scopes to a single target; no lateral catalogue. | PAM broker |
+| **Resource invisible until authorized (L3 "dark" network)** | **Delegated.** We don't darken a subnet or sink unauthenticated packets; that is the in-path gateway's job. | pam-gateway / SNG |
+| **In-path session inspection / kill** | **Partial.** We record a brokered session and can revoke the lease; killing a *live third-party* session needs real upstream creds. | gateway + connectors |
+
+So the precise framing the series uses: fishbone-access makes resources
+**default-deny and unreachable-without-an-authorized-lease at the control plane**,
+and brokers a recorded, least-privilege, time-boxed session to a single target —
+but the "the port doesn't even answer for an unauthorized identity" L3 darkening is
+a property of the data-plane gateway, not of this control plane.
 
 ## The cast — six workspaces
 
@@ -137,18 +198,25 @@ boundaries.
 - **Time-boxed contractor access** — sponsor-approved external grants with a
   mandatory expiry and an extend / early-revoke history.
 - **AI-assisted risk scoring** on every access request and PAM lease, routing
-  each to `auto_approve_eligible` / `needs_review` / `high_risk`, with a
-  fail-closed `needs_review` default when the AI agent is unavailable (honest,
-  and shown verbatim — never an auto-approve on failure).
+  each to `auto_approve_eligible` / `needs_review` / `high_risk`. In this seed the
+  agent is **online** (A2A mTLS), so verdicts are real (`source: ai_agent`,
+  `degraded: false`); the fail-closed `needs_review` default still applies when the
+  agent is unavailable (shown verbatim — never an auto-approve on failure).
 - **On-VM benchmarks** of the live API (latency percentiles + throughput),
   captured by [`blog/harness/bench`](../harness/bench/main.go) on this dev box
   and written to [`../artifacts/benchmark-results.json`](../artifacts/benchmark-results.json).
   See [Post 7](07-benchmarks-on-this-vm.md) for the methodology and honest
   caveats.
-- **Separation-of-duties simulation** — a toxic-combination engine that marks a
-  grant `catastrophic` *before* it is committed.
+- **Separation-of-duties — pre-commit *and* standing.** The toxic-combination
+  engine marks a grant `catastrophic` *before* it is committed, and a standing
+  anomaly sweep records `sod_violation` for any subject already holding both halves
+  of a rule (`sod_anomalies = 1` per workspace this seed). Declared rules, not
+  graph-mined discovery — the honest line every country post repeats.
 - **12 UI locales**, exercised across the cast (en, zh-Hans, de, ar, vi, ja in
   the screenshot sets).
+- **Recorded privileged sessions** — every workspace opens one real JIT-leased,
+  gateway-recorded session (`pam_sessions = 1`); the framed transcript is
+  retrievable over `GET /pam/sessions/:id/replay` and its digest is chained.
 - **Step-up MFA** (RFC 6238 TOTP, 30s period, anti-replay) on the highest-risk
   actions: policy promotion, evidence-pack export, and privileged-lease approval.
 

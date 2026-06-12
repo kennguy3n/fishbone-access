@@ -110,8 +110,10 @@ the three access patterns that trip up most SMEs:
   ([`s4-vn-umbrella-logistics-sod-rules.json`](../artifacts/payloads/s4-vn-umbrella-logistics-sod-rules.json)).
 
 The point stands: the posture is *small*, but the access *primitives* are the
-full set. A two-policy tenant still gets JIT privileged leases, time-boxed
-contractor grants, and SoD simulation — on the same verifiable chain.
+full set. A two-policy tenant still gets JIT privileged leases, a **recorded**
+privileged session (`pam_sessions = 1`), a **standing SoD anomaly**
+(`sod_anomalies = 1`), time-boxed contractor grants, and SoD simulation — on the
+same verifiable chain.
 
 ## Vietnamese, natively
 
@@ -125,8 +127,9 @@ The same page in English, for reference:
 
 ![Umbrella's compliance evidence in English](../artifacts/screenshots/s4-vn-compliance.png)
 
-Even from one pack, the framework projection still runs — SOC 2 reads 4 / 6, with
-the now-familiar honest gaps at `CC6.7` and `CC7.3`.
+Even from one pack, the framework projection still runs — SOC 2 now reads 6 / 6,
+including `CC6.7` (the recorded session) and `CC7.3` (the standing SoD anomaly)
+that the first cut showed empty.
 
 ## Where we fall short
 
@@ -134,8 +137,11 @@ the now-familiar honest gaps at `CC6.7` and `CC7.3`.
   core processing principles, but a mature posture needs role-specific grants per
   warehouse, per route, per data category. fishbone-access makes the start
   credible; it does not pretend two policies are a finished control set.
-- **`CC6.7` and `CC7.3` are empty again** — no privileged-session monitoring, no
-  orphan/anomaly analytics. Same gap as every other workspace.
+- **`CC6.7` and `CC7.3` are now covered — with the series-wide caveats.** The
+  recorded session is real, replayable and chained but runs against a bastion
+  target (representative commands, not a live `wms-ops` box); the `CC7.3` evidence
+  is a *standing declared-rule* SoD anomaly, not behavioural orphan analytics (the
+  orphan scan ran and found 0).
 - **PDPD is young; the pack is our interpretation.** The templates cite Decree 13
   articles, but Vietnam's enforcement guidance is still settling. A local DPO
   should review the mapping — we give a defensible starting point, not legal
@@ -159,7 +165,7 @@ For an emerging-market SME, most of the "leaders" simply aren't realistic:
 deployment, expertise) exceeds the whole problem. Okta IGA is closer but still
 expects you to author the jurisdiction logic yourself. fishbone-access's edge
 here is precisely that it makes a *small* start *credible*: one PDPD pack, a full
-lifecycle, a valid 63-record chain, in Vietnamese, this week. The right tool is
+lifecycle, a valid 81-record chain, in Vietnamese, this week. The right tool is
 the one that meets the company where it actually is.
 
 ---

@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
-      "created_at": "2026-06-12T02:23:01.675571Z",
+      "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059",
+      "created_at": "2026-06-12T08:57:01.338871Z",
       "deleted_at": null,
-      "id": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
+      "id": "23d73474-7841-43f8-838d-d988d0136e24",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-12T02:23:01.712876Z",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "updated_at": "2026-06-12T08:57:01.366863Z",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
-      "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
-      "created_at": "2026-06-12T02:23:01.576539Z",
+      "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059",
+      "created_at": "2026-06-12T08:57:01.268062Z",
       "deleted_at": null,
-      "id": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
+      "id": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
       "justification": "SOC 2 Type II auditor evidence sampling.",
       "requester_id": "au-contoso-saas-owner",
       "resource_ref": "soc2:evidence",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "au-contoso-saas-owner",
-      "updated_at": "2026-06-12T02:23:01.59813Z",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "updated_at": "2026-06-12T08:57:01.278093Z",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
-      "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
-      "created_at": "2026-06-12T02:23:01.522988Z",
+      "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059",
+      "created_at": "2026-06-12T08:57:01.2372Z",
       "deleted_at": null,
-      "id": "6685e8e1-eed6-4349-8fdd-b269351e2378",
+      "id": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
       "justification": "Essential Eight admin-privilege restriction: time-boxed deploy access.",
       "requester_id": "au-contoso-saas-owner",
       "resource_ref": "prod:deploy",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "au-contoso-saas-owner",
-      "updated_at": "2026-06-12T02:23:01.624888Z",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "updated_at": "2026-06-12T08:57:01.328889Z",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
-      "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
-      "created_at": "2026-06-12T02:23:01.477702Z",
+      "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059",
+      "created_at": "2026-06-12T08:57:01.199043Z",
       "deleted_at": null,
-      "id": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
+      "id": "464fcf88-41c0-4953-829c-87e37c13d36c",
       "justification": "SOC 2 CC6 privileged-access onboarding for revenue operations.",
       "requester_id": "au-contoso-saas-owner",
       "resource_ref": "billing:admin",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "au-contoso-saas-owner",
-      "updated_at": "2026-06-12T02:23:01.663201Z",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "updated_at": "2026-06-12T08:57:01.2982Z",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     }
   ]
 }

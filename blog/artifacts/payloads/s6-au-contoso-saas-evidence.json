@@ -1,806 +1,806 @@
 {
-  "count": 74,
+  "count": 92,
   "records": [
     {
       "action": "rbac.member.added",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "be9b7531031bc37fa11a1b831fb6eadae64702a30e6180f0e79eb307f60d30df",
+      "chain_hash": "8760d94e2c4dd5946aa64ac459853e45c2c33f80a4dc1d4b10f96924f332bc73",
       "chain_seq": 1,
-      "id": "a525d843-c003-4185-80ae-99bbbc3cd44d",
+      "id": "96d45fb9-c887-4ce6-a971-9273630baf5a",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "au-contoso-saas-admin"
       },
-      "occurred_at": "2026-06-12T02:21:31.265997Z",
+      "occurred_at": "2026-06-12T08:55:31.929853Z",
       "target_ref": "au-contoso-saas-admin",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "rbac.member.added",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5695594304fcd87e08112f2b35355e27bc6ba7aef6354dee17907fedbe20dced",
+      "chain_hash": "c62b25226750143ff370704af434c1c7d198af5c4bac6b3a6ba4e894e45297e6",
       "chain_seq": 2,
-      "id": "44a44e3f-18bc-4bdd-84be-53c4cd5961a1",
+      "id": "d7d3ae49-5089-478a-851c-16a1d554dd5c",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "au-contoso-saas-security_admin"
       },
-      "occurred_at": "2026-06-12T02:21:31.271174Z",
-      "prev_hash": "be9b7531031bc37fa11a1b831fb6eadae64702a30e6180f0e79eb307f60d30df",
+      "occurred_at": "2026-06-12T08:55:31.934674Z",
+      "prev_hash": "8760d94e2c4dd5946aa64ac459853e45c2c33f80a4dc1d4b10f96924f332bc73",
       "target_ref": "au-contoso-saas-security_admin",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "rbac.member.added",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "c2059d393fb2469d957580daf242fb38c3f973f54ddd183a5c064f1ca2f717b5",
+      "chain_hash": "0fbf08ae7bd34efe897b92393c950afedfa4e16d7c06531424f823e0dabed3ff",
       "chain_seq": 3,
-      "id": "e8cba175-55e4-4ed5-b82c-597851690557",
+      "id": "aaafb8f8-0b06-4a84-9b52-1eef73a294a6",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "au-contoso-saas-operator"
       },
-      "occurred_at": "2026-06-12T02:21:31.275631Z",
-      "prev_hash": "5695594304fcd87e08112f2b35355e27bc6ba7aef6354dee17907fedbe20dced",
+      "occurred_at": "2026-06-12T08:55:31.939418Z",
+      "prev_hash": "c62b25226750143ff370704af434c1c7d198af5c4bac6b3a6ba4e894e45297e6",
       "target_ref": "au-contoso-saas-operator",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "rbac.member.added",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "cd6a6bac84b2b52a749c0981d0388c7e7810a1f317d040f3668dca7ab16f97c6",
+      "chain_hash": "058046a60e16c65a12fb6fdc5b60947f5253a3138940ef4c8a9d83215ae46b4e",
       "chain_seq": 4,
-      "id": "d45ab222-fc0e-495c-9fb9-e87489c00fa7",
+      "id": "e40386d7-45cd-4a38-bf8a-ef8948888b16",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "au-contoso-saas-auditor"
       },
-      "occurred_at": "2026-06-12T02:21:31.279989Z",
-      "prev_hash": "c2059d393fb2469d957580daf242fb38c3f973f54ddd183a5c064f1ca2f717b5",
+      "occurred_at": "2026-06-12T08:55:31.943986Z",
+      "prev_hash": "0fbf08ae7bd34efe897b92393c950afedfa4e16d7c06531424f823e0dabed3ff",
       "target_ref": "au-contoso-saas-auditor",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "4fa7505ce194ea1a65e1f634d15a6ed7dd272d578a697322b04e7a48f0bf3781",
+      "chain_hash": "b6ad618d8bc6645fd516d2841d3399fb652c164479bf5fe7622e3f25c52693b8",
       "chain_seq": 5,
-      "id": "84e64d90-965e-451c-8721-c2ea1fb3398b",
+      "id": "a2814f7a-c7c4-4d20-ac78-55a8cc2e0701",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.297914Z",
-      "prev_hash": "cd6a6bac84b2b52a749c0981d0388c7e7810a1f317d040f3668dca7ab16f97c6",
-      "target_ref": "3942978d-9ee5-47a4-a1c6-509829cb4edf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.962215Z",
+      "prev_hash": "058046a60e16c65a12fb6fdc5b60947f5253a3138940ef4c8a9d83215ae46b4e",
+      "target_ref": "ee6a56b2-f8cb-421a-9f42-7e457646b03f",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "d819e49f2700ea93011cc3bd6f50d6a6a707cce2e65c7c5e6a78bbaf760b3263",
+      "chain_hash": "4b053c719f2133c0afe2af2153767181d66ab4a9a9494285bc3a8bdb39784401",
       "chain_seq": 6,
-      "id": "d02c9854-de66-4f03-b26a-8cdd0d441e44",
+      "id": "f9a9df4e-3d8e-4981-add2-64092b412c3f",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.299869Z",
-      "prev_hash": "4fa7505ce194ea1a65e1f634d15a6ed7dd272d578a697322b04e7a48f0bf3781",
-      "target_ref": "d396e172-9c50-4d90-a228-6296242b3033",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.963854Z",
+      "prev_hash": "b6ad618d8bc6645fd516d2841d3399fb652c164479bf5fe7622e3f25c52693b8",
+      "target_ref": "89483a15-0d95-45f3-aa18-040773ca2d84",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "99e157e73969d9d48ea74d31fbf9d76f502a33ab0fe8f3e30b3e8aa213903ee9",
+      "chain_hash": "05ba79f0e5b2f6c20948d30737c1f25bf5cc88a422c57044fed29a8cd1077f98",
       "chain_seq": 7,
-      "id": "d600a29b-199f-4660-9f69-86be6610409d",
+      "id": "5d5bfd92-b713-4385-9ede-2363bd3383f8",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.302219Z",
-      "prev_hash": "d819e49f2700ea93011cc3bd6f50d6a6a707cce2e65c7c5e6a78bbaf760b3263",
-      "target_ref": "182cc101-482c-4a8e-a0f9-61579531c4a0",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.96543Z",
+      "prev_hash": "4b053c719f2133c0afe2af2153767181d66ab4a9a9494285bc3a8bdb39784401",
+      "target_ref": "e6caf066-ab37-4af7-a373-0e04c907cf9b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "ef3f31052653d6656bb989714f50e861a4558bf71201c7aba907a26c81f9cd93",
+      "chain_hash": "51a261f806aa12b81680edcf821b85f420bc9ca73ca3fba0e81ef87c92d4d9b5",
       "chain_seq": 8,
-      "id": "9e03dc0f-9269-4bf0-8192-3a1384e8f041",
+      "id": "c9ed88c4-4c46-4d6c-a853-f0db01f43a5a",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.306159Z",
-      "prev_hash": "99e157e73969d9d48ea74d31fbf9d76f502a33ab0fe8f3e30b3e8aa213903ee9",
-      "target_ref": "90b938d7-ef32-49da-bd0f-76988fb043e2",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.969313Z",
+      "prev_hash": "05ba79f0e5b2f6c20948d30737c1f25bf5cc88a422c57044fed29a8cd1077f98",
+      "target_ref": "7c56118c-2e29-4eb7-9d25-0e534f3e8699",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "8b64064198ca0dff6f44e50fc9b47489c276c1324cb94a083637b98939dc3a9b",
+      "chain_hash": "126ec5d4a48f803a13eff6a2136549fae6f2cbe6a53baca8caa3ddce1cb2a3d6",
       "chain_seq": 9,
-      "id": "7f9dde33-faf7-4cc9-9e18-825502078a21",
+      "id": "ab415cf5-a048-4b5d-b809-b5710b523aaf",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.307699Z",
-      "prev_hash": "ef3f31052653d6656bb989714f50e861a4558bf71201c7aba907a26c81f9cd93",
-      "target_ref": "9763eeac-5004-461a-a4b6-44e009a1c2e5",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.970818Z",
+      "prev_hash": "51a261f806aa12b81680edcf821b85f420bc9ca73ca3fba0e81ef87c92d4d9b5",
+      "target_ref": "31a0f3a7-d7fe-4d55-8f47-f2e9a40bef34",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "d66df1050a19bd85deddc12adb8ea5b40b7b5708e2a6f1199670b724004505ee",
+      "chain_hash": "5754a89b6604133d2ce61a660fda55408af0f00aa4c4b18a1db2503dc5397cd7",
       "chain_seq": 10,
-      "id": "637d49cd-6423-44d8-8ced-17ba454b2daf",
+      "id": "1aa131d6-aa86-43e1-8119-a1c6b59d2e51",
       "kind": "policy_created",
-      "occurred_at": "2026-06-12T02:21:31.309085Z",
-      "prev_hash": "8b64064198ca0dff6f44e50fc9b47489c276c1324cb94a083637b98939dc3a9b",
-      "target_ref": "78ba98f6-cbca-4d66-9962-0c679836b55d",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:31.972283Z",
+      "prev_hash": "126ec5d4a48f803a13eff6a2136549fae6f2cbe6a53baca8caa3ddce1cb2a3d6",
+      "target_ref": "27c4566a-eba7-4b24-b4d0-df844f8ae00b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "c5978ca9633f26fd560b3293772a81c1303eb24407c90a42f53da610392cb05b",
+      "chain_hash": "d8ca19493682c9bc4fff152da85a4288f6287e4ac821c8b8d9ee580dcdf2ee06",
       "chain_seq": 11,
-      "id": "01c51127-9780-4ab7-a4cd-e0f7407ce0d8",
+      "id": "b6a7eeb7-6263-410b-91ad-725c386750a3",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:21:31.341868Z",
-      "prev_hash": "d66df1050a19bd85deddc12adb8ea5b40b7b5708e2a6f1199670b724004505ee",
-      "target_ref": "78ba98f6-cbca-4d66-9962-0c679836b55d",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:32.003153Z",
+      "prev_hash": "5754a89b6604133d2ce61a660fda55408af0f00aa4c4b18a1db2503dc5397cd7",
+      "target_ref": "27c4566a-eba7-4b24-b4d0-df844f8ae00b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "0ae5f5c5e75dab6fce0cff1d8ac09cecc9c11349fd356fa648545112f1997911",
+      "chain_hash": "9cc5ff1dbb460fed2736ca6a6bacff47293ce5fb38446ece9364cb36b7cd7eb9",
       "chain_seq": 12,
-      "id": "ff5428e4-b2ef-4958-abd8-14f331eaa578",
+      "id": "b7c06cd4-6b37-4d79-84b9-d9102f79084b",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:21:31.348464Z",
-      "prev_hash": "c5978ca9633f26fd560b3293772a81c1303eb24407c90a42f53da610392cb05b",
-      "target_ref": "9763eeac-5004-461a-a4b6-44e009a1c2e5",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:32.009229Z",
+      "prev_hash": "d8ca19493682c9bc4fff152da85a4288f6287e4ac821c8b8d9ee580dcdf2ee06",
+      "target_ref": "31a0f3a7-d7fe-4d55-8f47-f2e9a40bef34",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5651b2274e9738cc467119e628824b6f50c0f54a395f77bcf7591736e16771a9",
+      "chain_hash": "83a5e5fac18d2b4279a4229d1e168d3883dba96e2d6bf651de5e523441214fee",
       "chain_seq": 13,
-      "id": "40d1745c-aaf3-4f0e-b197-90b5a838cb2b",
+      "id": "66abd242-ce64-436e-93ec-bb9ef43be217",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:21:31.354742Z",
-      "prev_hash": "0ae5f5c5e75dab6fce0cff1d8ac09cecc9c11349fd356fa648545112f1997911",
-      "target_ref": "90b938d7-ef32-49da-bd0f-76988fb043e2",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:55:32.016283Z",
+      "prev_hash": "9cc5ff1dbb460fed2736ca6a6bacff47293ce5fb38446ece9364cb36b7cd7eb9",
+      "target_ref": "7c56118c-2e29-4eb7-9d25-0e534f3e8699",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "b1b40271376a249749e8ef25fa99749230c707a3256a6fa48a5b91a241b74735",
+      "chain_hash": "ed2a5d1fa9006404e7379ef40acae77507da827a4d98b1e7973ae839511a6fc2",
       "chain_seq": 14,
-      "id": "40f571c1-4847-4761-a350-0a7b4d41f0e2",
+      "id": "d341bfc9-7718-457f-9741-792798ef46f3",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:22:01.364338Z",
-      "prev_hash": "5651b2274e9738cc467119e628824b6f50c0f54a395f77bcf7591736e16771a9",
-      "target_ref": "182cc101-482c-4a8e-a0f9-61579531c4a0",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:56:01.04514Z",
+      "prev_hash": "83a5e5fac18d2b4279a4229d1e168d3883dba96e2d6bf651de5e523441214fee",
+      "target_ref": "e6caf066-ab37-4af7-a373-0e04c907cf9b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "20744b4c9b8a61f41b0ffe633efbc28640960d7a2de3ae63d5107602ab4d9eb9",
+      "chain_hash": "66d6c96eeff3ea46da302798852a510bb802b17dbbfe03d64826f6c9e6492af7",
       "chain_seq": 15,
-      "id": "f4b73ada-24be-4a3d-af7d-6458611e7d95",
+      "id": "d157aaef-0bc5-4e08-8004-a8dd901601f1",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:22:31.45678Z",
-      "prev_hash": "b1b40271376a249749e8ef25fa99749230c707a3256a6fa48a5b91a241b74735",
-      "target_ref": "d396e172-9c50-4d90-a228-6296242b3033",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:56:31.157473Z",
+      "prev_hash": "ed2a5d1fa9006404e7379ef40acae77507da827a4d98b1e7973ae839511a6fc2",
+      "target_ref": "89483a15-0d95-45f3-aa18-040773ca2d84",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "policy.promoted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "2105878fb1f2e028bc1aa45dd9135d0e17d209bb3ab5a0cdddd2a3c9add8ad76",
+      "chain_hash": "acd352fdae3a715cf1b1f75027f7fd7b94e1ba008a822f9f6b1af296ec012f11",
       "chain_seq": 16,
-      "id": "1cbd1bdb-c8ba-4f65-b57f-ea81fee07a83",
+      "id": "d80b85fc-1ae7-499e-b882-1ec4998c50e2",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-12T02:23:01.469543Z",
-      "prev_hash": "20744b4c9b8a61f41b0ffe633efbc28640960d7a2de3ae63d5107602ab4d9eb9",
-      "target_ref": "3942978d-9ee5-47a4-a1c6-509829cb4edf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.193056Z",
+      "prev_hash": "66d6c96eeff3ea46da302798852a510bb802b17dbbfe03d64826f6c9e6492af7",
+      "target_ref": "ee6a56b2-f8cb-421a-9f42-7e457646b03f",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "91ea95567321121a26eb3f620ebe3d86c6aadd961b4694371a99b0c972064715",
+      "chain_hash": "2edbf974274a8f0ff54227e24dbeb9c21a4cfedd6ef6c51da43941517f68af9e",
       "chain_seq": 17,
-      "id": "52460f01-c4ea-4fa7-9977-2279bb42f31f",
+      "id": "9a5cae38-c8a1-4d75-9742-fae3140f9c13",
       "kind": "access_requested",
-      "occurred_at": "2026-06-12T02:23:01.477702Z",
-      "prev_hash": "2105878fb1f2e028bc1aa45dd9135d0e17d209bb3ab5a0cdddd2a3c9add8ad76",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.199043Z",
+      "prev_hash": "acd352fdae3a715cf1b1f75027f7fd7b94e1ba008a822f9f6b1af296ec012f11",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5772cfa7cee0b3525f22e4abc1d96aa3c9f2fbd2e39c4e225e7843828920d535",
+      "chain_hash": "f6ce5f8ee0e527c9a622fa19e87f813a4b8dc38aced20ff19e43c7038dbc21dd",
       "chain_seq": 18,
-      "id": "ef46690b-0a89-4524-a3c6-a996e35fa5c4",
+      "id": "0ef323f1-65b5-4c90-a3e9-ad6958dda0e9",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "baseline_low_risk"
         ],
-        "recommendation": "needs_review",
-        "score": "medium",
-        "source": "fallback"
+        "recommendation": "auto_approve_eligible",
+        "score": "low",
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-12T02:23:01.484742Z",
-      "prev_hash": "91ea95567321121a26eb3f620ebe3d86c6aadd961b4694371a99b0c972064715",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.20895Z",
+      "prev_hash": "2edbf974274a8f0ff54227e24dbeb9c21a4cfedd6ef6c51da43941517f68af9e",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "155a1924009494fde66e177e2eab27de551cedabff1a862731aca0649d6cd0f1",
+      "chain_hash": "8e70dd73b294e100165306c88fa9e78a44288a2c9c558e10d79d0a7ee9b39b7f",
       "chain_seq": 19,
-      "id": "5f67f2f3-0c4e-4b47-9077-b46654bc9f9d",
+      "id": "456cb065-ecb6-438f-83f5-3385c4b8a20c",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.489478Z",
-      "prev_hash": "5772cfa7cee0b3525f22e4abc1d96aa3c9f2fbd2e39c4e225e7843828920d535",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.212266Z",
+      "prev_hash": "f6ce5f8ee0e527c9a622fa19e87f813a4b8dc38aced20ff19e43c7038dbc21dd",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "730d316b957679a3ed07a5dde5715c9574ace84d020358d43ffd571f9b8425d9",
+      "chain_hash": "dfc901260350ba954e7f36cbef9d80fe2b7e63690e078c49117d9a7edfde700b",
       "chain_seq": 20,
-      "id": "6279bd66-50c3-4696-96ae-e520d2bf937c",
+      "id": "d446458e-548a-43dc-bed7-12c835472882",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.498737Z",
-      "prev_hash": "155a1924009494fde66e177e2eab27de551cedabff1a862731aca0649d6cd0f1",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.216089Z",
+      "prev_hash": "8e70dd73b294e100165306c88fa9e78a44288a2c9c558e10d79d0a7ee9b39b7f",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioning",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "e4b6c25f79f20edd114452bcfb954317d3a905efa31ccf2499739bc1c7e764fc",
+      "chain_hash": "9ef1a7b3a5dc98b6af165766530a54ec2c527bcbd4c08b1d19455d704e78b0a9",
       "chain_seq": 21,
-      "id": "b3691d22-ceb1-4d14-85f5-c6d12cdb3342",
+      "id": "1856b427-f26c-49bd-ab73-b374ac36216b",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.504839Z",
-      "prev_hash": "730d316b957679a3ed07a5dde5715c9574ace84d020358d43ffd571f9b8425d9",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.224039Z",
+      "prev_hash": "dfc901260350ba954e7f36cbef9d80fe2b7e63690e078c49117d9a7edfde700b",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioned",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5274f21a687c7fc225e3ab8b8d937c1a24bc5bf072d4edd5da19e08603dbf1d2",
+      "chain_hash": "ed249abcbc7aa72fef65e87b9450c3b833ea92965b8f02ec11962ed261729df7",
       "chain_seq": 22,
-      "id": "068b421b-38f6-4406-8726-3cc6222d7a47",
+      "id": "fa5d9eab-b11f-45b3-8450-64acda84b6d9",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.511125Z",
-      "prev_hash": "e4b6c25f79f20edd114452bcfb954317d3a905efa31ccf2499739bc1c7e764fc",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.229434Z",
+      "prev_hash": "9ef1a7b3a5dc98b6af165766530a54ec2c527bcbd4c08b1d19455d704e78b0a9",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.active",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "d6fb14d210fbe6cafdf39acc30d89ff1d6357d329afd4c0ab903758969b49e72",
+      "chain_hash": "a0bbb0fe8f8a5ada78e5120cd3eafb4e012614c39b9e3da568377465be366f8a",
       "chain_seq": 23,
-      "id": "ca274c75-1622-46fd-8c0e-4600e75b3932",
+      "id": "f10f9385-af00-4b1f-a98e-ff65bb7d5fe9",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.516192Z",
-      "prev_hash": "5274f21a687c7fc225e3ab8b8d937c1a24bc5bf072d4edd5da19e08603dbf1d2",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.232514Z",
+      "prev_hash": "ed249abcbc7aa72fef65e87b9450c3b833ea92965b8f02ec11962ed261729df7",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "a222c392b8fa5807795663429dd94e06633ac907b767948b7c45994bd8f2c250",
+      "chain_hash": "19d9a1b935377e20612474afc7175ed3e141531ec9bfeb6e1dca5b3652b804ee",
       "chain_seq": 24,
-      "id": "6642ee0f-3e02-4aab-a9df-4d54542c53d6",
+      "id": "abb68c9c-2943-40dd-b905-abb1f1732984",
       "kind": "access_granted",
-      "occurred_at": "2026-06-12T02:23:01.509414Z",
-      "prev_hash": "d6fb14d210fbe6cafdf39acc30d89ff1d6357d329afd4c0ab903758969b49e72",
-      "target_ref": "a3fe3740-726c-40f6-ac93-b10366d5b853",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.227452Z",
+      "prev_hash": "a0bbb0fe8f8a5ada78e5120cd3eafb4e012614c39b9e3da568377465be366f8a",
+      "target_ref": "3671e03f-5032-4a53-89b2-130e9b55e310",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "a1dd478f41ee6ce04d225f173c1158bf1258b6a9781310efc16dd5cb29234eff",
+      "chain_hash": "b99daa44eb4466b1914603b05315d0793005f7337710a73d96b9c9aa6d85e0c9",
       "chain_seq": 25,
-      "id": "5082372f-1546-4fda-856a-466b81ccaf67",
+      "id": "40c4989d-1ad2-49b6-96a8-21e7b3dab48a",
       "kind": "access_requested",
-      "occurred_at": "2026-06-12T02:23:01.522988Z",
-      "prev_hash": "a222c392b8fa5807795663429dd94e06633ac907b767948b7c45994bd8f2c250",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.2372Z",
+      "prev_hash": "19d9a1b935377e20612474afc7175ed3e141531ec9bfeb6e1dca5b3652b804ee",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "b077674b6b053fff34b675292bdb53f8d4aa33a5c152663dcd80b5f10d6986ae",
+      "chain_hash": "14932010d969d4ce4df38c1b58cf4bd0b762993f28fc9ad105ddd2b2c6eca323",
       "chain_seq": 26,
-      "id": "e1125d13-d78b-46ad-a688-fe4bf890e842",
+      "id": "e20583dc-3e65-4aa8-ba43-cb29fb1db5df",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "baseline_low_risk"
         ],
-        "recommendation": "needs_review",
-        "score": "medium",
-        "source": "fallback"
+        "recommendation": "auto_approve_eligible",
+        "score": "low",
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-12T02:23:01.528892Z",
-      "prev_hash": "a1dd478f41ee6ce04d225f173c1158bf1258b6a9781310efc16dd5cb29234eff",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.241639Z",
+      "prev_hash": "b99daa44eb4466b1914603b05315d0793005f7337710a73d96b9c9aa6d85e0c9",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "dc59a51825f11b05df06204f465e560191f1d8270d497d0dc3608cd5595ab6ed",
+      "chain_hash": "181bc4b677e43af8d142439c952e0016a55a25ad5b7580c63790b9ca25fb9d60",
       "chain_seq": 27,
-      "id": "d49f13a6-8328-43da-b130-34c6421a2bbf",
+      "id": "0f7a5f64-bb40-4134-bdde-952092f7d76a",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.532964Z",
-      "prev_hash": "b077674b6b053fff34b675292bdb53f8d4aa33a5c152663dcd80b5f10d6986ae",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.244455Z",
+      "prev_hash": "14932010d969d4ce4df38c1b58cf4bd0b762993f28fc9ad105ddd2b2c6eca323",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "1ae445a15932f8013a114ba1c45fab4607e8496ca51069f0eee3df487da2d750",
+      "chain_hash": "d06ddb79e7f845ff4c53d19e3a2829c8251363c6c2a896b4097c7df9d467e471",
       "chain_seq": 28,
-      "id": "47541859-78a2-410b-ae88-84539d3d9b8c",
+      "id": "534dfdaa-3266-48a1-998c-b5ff15a6fba9",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.540973Z",
-      "prev_hash": "dc59a51825f11b05df06204f465e560191f1d8270d497d0dc3608cd5595ab6ed",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.248188Z",
+      "prev_hash": "181bc4b677e43af8d142439c952e0016a55a25ad5b7580c63790b9ca25fb9d60",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioning",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "c216193ab990f78451f9f71601b89851ee3c84709505c19af278090a629de070",
+      "chain_hash": "6dc4956e87e1f6be1ab1be2a47da0d4bbdc161d247e2df652fca1e1538fe0cbb",
       "chain_seq": 29,
-      "id": "4fa52e34-3938-4b35-8fcd-7f4121d1ff02",
+      "id": "801a5843-4d58-4e70-b71a-e4c821a3c686",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.550272Z",
-      "prev_hash": "1ae445a15932f8013a114ba1c45fab4607e8496ca51069f0eee3df487da2d750",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.255423Z",
+      "prev_hash": "d06ddb79e7f845ff4c53d19e3a2829c8251363c6c2a896b4097c7df9d467e471",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioned",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "eaaa0b5a0ca8792b8d929418e9b17d61b5cd7ba0b7512f4ec2be2277b0bac706",
+      "chain_hash": "f7c7def64935b8e87b81fe5e86d6dfde33fff30e2b00e4c4a7e491b73967b957",
       "chain_seq": 30,
-      "id": "55968799-3898-4b20-bcb6-77460fdf9b2c",
+      "id": "c39d4893-8c77-4b3e-ad3a-f017c3c796af",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.558201Z",
-      "prev_hash": "c216193ab990f78451f9f71601b89851ee3c84709505c19af278090a629de070",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.260132Z",
+      "prev_hash": "6dc4956e87e1f6be1ab1be2a47da0d4bbdc161d247e2df652fca1e1538fe0cbb",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.active",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "f686e6b520094b204d2bc3b4f2fd35b2539caf08568d01437590a4dc48915bc0",
+      "chain_hash": "94e4c6fc305070372c22b05fd0bcde9a9e10a96b60be4b300c5a3ae0a19677d9",
       "chain_seq": 31,
-      "id": "9baac96c-47ae-424d-af52-2649fa820404",
+      "id": "53914c52-99c3-4c8d-8b9f-c32effc97e08",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.56616Z",
-      "prev_hash": "eaaa0b5a0ca8792b8d929418e9b17d61b5cd7ba0b7512f4ec2be2277b0bac706",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.263143Z",
+      "prev_hash": "f7c7def64935b8e87b81fe5e86d6dfde33fff30e2b00e4c4a7e491b73967b957",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5d3042f26ad291bf930a3ca39e3220d34e2b2dcd43c2f802292d9aaddaddd827",
+      "chain_hash": "eff4d0f66b0a6fc68b8f2a732a17d47dfee1ce8601b1d4f70b68f1b549f9ff76",
       "chain_seq": 32,
-      "id": "b41e705d-47ad-4d04-aad6-19997e28e43f",
+      "id": "3572c412-aa2f-4e7f-a250-e88476459754",
       "kind": "access_granted",
-      "occurred_at": "2026-06-12T02:23:01.55564Z",
-      "prev_hash": "f686e6b520094b204d2bc3b4f2fd35b2539caf08568d01437590a4dc48915bc0",
-      "target_ref": "c84f0bbf-322c-4c22-86b7-a0eb3c6a7a8e",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.258892Z",
+      "prev_hash": "94e4c6fc305070372c22b05fd0bcde9a9e10a96b60be4b300c5a3ae0a19677d9",
+      "target_ref": "d1135b22-c5f2-4c2d-9f8d-71ce73fa6b5e",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "9be7f7f4d5bdccd53c051e94ce113a0a25e5e27cfbb18a88d703d4fefe26eafa",
+      "chain_hash": "21dea77aaf84550dbca36a19a78aef6ae985e8fb4ace7c0e2ed9b67d6ac085d8",
       "chain_seq": 33,
-      "id": "8f1c693b-e943-464b-aa5f-31b520ba6e9b",
+      "id": "81a3e511-e9ce-4664-aa0c-d882e4117b06",
       "kind": "access_requested",
-      "occurred_at": "2026-06-12T02:23:01.576539Z",
-      "prev_hash": "5d3042f26ad291bf930a3ca39e3220d34e2b2dcd43c2f802292d9aaddaddd827",
-      "target_ref": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.268062Z",
+      "prev_hash": "eff4d0f66b0a6fc68b8f2a732a17d47dfee1ce8601b1d4f70b68f1b549f9ff76",
+      "target_ref": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "3e03be1d104acdeee02b1899328146c352b9c17b6844126281d90718287103ea",
+      "chain_hash": "b93b3322359e811e9f20fc3bffe3f51f853e33fa551641ac26638ff272d66694",
       "chain_seq": 34,
-      "id": "521d292d-535b-4a66-a261-bb2e9074f3e5",
+      "id": "1ba742cc-c613-4e93-a830-6a70df3f02fa",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "baseline_low_risk"
         ],
-        "recommendation": "needs_review",
-        "score": "medium",
-        "source": "fallback"
+        "recommendation": "auto_approve_eligible",
+        "score": "low",
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-12T02:23:01.584396Z",
-      "prev_hash": "9be7f7f4d5bdccd53c051e94ce113a0a25e5e27cfbb18a88d703d4fefe26eafa",
-      "target_ref": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.272436Z",
+      "prev_hash": "21dea77aaf84550dbca36a19a78aef6ae985e8fb4ace7c0e2ed9b67d6ac085d8",
+      "target_ref": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "8d8a04e1eeace91b25f82c61f250fc1124b4688ae1e5b850f44753accf84bd28",
+      "chain_hash": "930bb6d859118bea82199b2ae025719fb3635bcaa20ed80e792962663a69c8f6",
       "chain_seq": 35,
-      "id": "e052de1f-9a7f-4a9f-a8df-77a264f0178f",
+      "id": "6c218c92-c8b8-4910-8443-ffaadb59227f",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.589035Z",
-      "prev_hash": "3e03be1d104acdeee02b1899328146c352b9c17b6844126281d90718287103ea",
-      "target_ref": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.274818Z",
+      "prev_hash": "b93b3322359e811e9f20fc3bffe3f51f853e33fa551641ac26638ff272d66694",
+      "target_ref": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "1b9f0fc28411eb1c6b8e154432e6cdeca7f9124565d306b273e2031b32efdd2a",
+      "chain_hash": "555390ac6d51e0608e55229658794028e8fb8bc574545ef6d63e42e4a74d40c5",
       "chain_seq": 36,
-      "id": "a01d140d-c4f2-4379-aec6-6b1db5aaf00a",
+      "id": "39832439-e3c8-4b58-8669-e83a1fbc3538",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.59813Z",
-      "prev_hash": "8d8a04e1eeace91b25f82c61f250fc1124b4688ae1e5b850f44753accf84bd28",
-      "target_ref": "e6ac71be-cbe9-400a-b915-56bc7f309aaf",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.278093Z",
+      "prev_hash": "930bb6d859118bea82199b2ae025719fb3635bcaa20ed80e792962663a69c8f6",
+      "target_ref": "ec0b8f3c-78a2-4307-af89-d242c18b6074",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_review.started",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "f058e03f770604607551cc317f142cf4f6d3e7c2f0f658eab0b315bf8be800cd",
+      "chain_hash": "b2a399de73fa77eb2393b350608d573a8058f2211c6e278985bd4960413dae5d",
       "chain_seq": 37,
-      "id": "600eb2ce-4a70-42b0-8bb4-113406a49fcb",
+      "id": "20343812-e237-4316-a80d-69c71570ebad",
       "kind": "review_started",
-      "occurred_at": "2026-06-12T02:23:01.604734Z",
-      "prev_hash": "1b9f0fc28411eb1c6b8e154432e6cdeca7f9124565d306b273e2031b32efdd2a",
-      "target_ref": "8c7474a0-7fbc-4b6a-9976-f476169ad731",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.284293Z",
+      "prev_hash": "555390ac6d51e0608e55229658794028e8fb8bc574545ef6d63e42e4a74d40c5",
+      "target_ref": "05fd5637-1351-4894-8589-e24eaed355dd",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "595226372f6f6ab64847121c51cc0d7fe7ba3e97c9fa77762742220988ae3658",
+      "chain_hash": "9339079281a1d611a63d36fa1c89e3ff5d9ce31b0872913ef7bc7374c8883267",
       "chain_seq": 38,
-      "id": "2cb6025e-9a2b-42ad-9a83-ccc7556abb36",
+      "id": "09c60975-ffdb-48a6-980e-6eeeb2eb2f6d",
       "kind": "review_decision",
-      "occurred_at": "2026-06-12T02:23:01.616275Z",
-      "prev_hash": "f058e03f770604607551cc317f142cf4f6d3e7c2f0f658eab0b315bf8be800cd",
-      "target_ref": "434923ac-ee6f-4b27-83e8-4af90d49c664",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.2915Z",
+      "prev_hash": "b2a399de73fa77eb2393b350608d573a8058f2211c6e278985bd4960413dae5d",
+      "target_ref": "15b0fa0f-117d-4d78-b5c1-c8e9466ba2a3",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.revoked",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "31285cbe210daf7328c0f3e7a215e003916b3d09786e481113ba519f7c0e9eaf",
+      "chain_hash": "94cb6cd54072dca8322b57b13e8282e24b7831ca8efec2065ed56bdffa487a2a",
       "chain_seq": 39,
-      "id": "f8e303fd-a0f2-454b-ae98-3ea4d17a6447",
+      "id": "e45aa6b7-d675-4447-bdcf-08c69f9c7323",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.624888Z",
-      "prev_hash": "595226372f6f6ab64847121c51cc0d7fe7ba3e97c9fa77762742220988ae3658",
-      "target_ref": "6685e8e1-eed6-4349-8fdd-b269351e2378",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.2982Z",
+      "prev_hash": "9339079281a1d611a63d36fa1c89e3ff5d9ce31b0872913ef7bc7374c8883267",
+      "target_ref": "464fcf88-41c0-4953-829c-87e37c13d36c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.revoked",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "3e545401fd0c6193e9076ec63cba45c92d580f1bc199f79992a6c56155207853",
+      "chain_hash": "59b4bcc9efbf774e2eed2c538c91abef17921219c9f402045206622d830fdd5f",
       "chain_seq": 40,
-      "id": "127de5be-806d-46ce-9d77-7590f23c8854",
+      "id": "a6a4ff3c-3309-4db9-bba7-2d45d493d13e",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-12T02:23:01.622673Z",
-      "prev_hash": "31285cbe210daf7328c0f3e7a215e003916b3d09786e481113ba519f7c0e9eaf",
-      "target_ref": "c84f0bbf-322c-4c22-86b7-a0eb3c6a7a8e",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.296346Z",
+      "prev_hash": "94cb6cd54072dca8322b57b13e8282e24b7831ca8efec2065ed56bdffa487a2a",
+      "target_ref": "3671e03f-5032-4a53-89b2-130e9b55e310",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "e0298a98fb02ca842d5b69110d2a3e1a4bc51a6580c0a9d202390b8902610d58",
+      "chain_hash": "19d31578060a0af643891633915806a472f6bb441a6a899acf5cebca4c9094c6",
       "chain_seq": 41,
-      "id": "c046a30e-5c5b-4d95-97eb-f12f166aedce",
+      "id": "4f713dd8-e1cd-4c5b-af27-2e3ea374a5b8",
       "kind": "review_decision",
-      "occurred_at": "2026-06-12T02:23:01.632126Z",
-      "prev_hash": "3e545401fd0c6193e9076ec63cba45c92d580f1bc199f79992a6c56155207853",
-      "target_ref": "a4322695-fcf0-491b-b29f-6c9880b73afe",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.303413Z",
+      "prev_hash": "59b4bcc9efbf774e2eed2c538c91abef17921219c9f402045206622d830fdd5f",
+      "target_ref": "4839c2d2-ce41-44fc-87a4-fa05c74724dd",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "certification.campaign.started",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "647f12c52804760960e0f0678245f5bb7fa5b03ed29b41f536ae896ea9343a1a",
+      "chain_hash": "07bc1a9c1bd8e4636664d19022bb24f018da746f0dac1174b687480d61555824",
       "chain_seq": 42,
-      "id": "ea580fee-35c3-44e3-a4d7-4797971ffba4",
+      "id": "f5467a89-6a47-40a4-a500-ee353bfdd4c1",
       "kind": "certification_started",
       "metadata": {
         "framework": "SOC 2",
         "item_count": 1,
         "name": "Q2 2026 SOC 2 logical-access certification",
         "scope": {
-          "connector_id": "dfcb332e-d389-45aa-a885-52a383749767"
+          "connector_id": "ebb26bda-1dc1-48ba-af03-29f0be688059"
         }
       },
-      "occurred_at": "2026-06-12T02:23:01.638222Z",
-      "prev_hash": "e0298a98fb02ca842d5b69110d2a3e1a4bc51a6580c0a9d202390b8902610d58",
-      "target_ref": "4cdd0d25-a449-4517-9eb1-094361461a9a",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.307855Z",
+      "prev_hash": "19d31578060a0af643891633915806a472f6bb441a6a899acf5cebca4c9094c6",
+      "target_ref": "5d15d174-23e4-4c92-8120-486bf4c2713f",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "b841df7ea60cb0d595cff6838945a3e1363dc8d3c465eed3bfd17f0657da8bf9",
+      "chain_hash": "7eb575fcbbcf0941bacd35f10d02e732e6a822cd6c5e5364131540be4da2afe9",
       "chain_seq": 43,
-      "id": "56ed1352-06f6-4b2a-87ac-afeb148cdb9b",
+      "id": "0325e1fe-81a9-4b14-b433-3dd9657dc374",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "4cdd0d25-a449-4517-9eb1-094361461a9a",
-        "grant_id": "a3fe3740-726c-40f6-ac93-b10366d5b853",
+        "campaign_id": "5d15d174-23e4-4c92-8120-486bf4c2713f",
+        "grant_id": "d1135b22-c5f2-4c2d-9f8d-71ce73fa6b5e",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-12T02:23:01.648133Z",
-      "prev_hash": "647f12c52804760960e0f0678245f5bb7fa5b03ed29b41f536ae896ea9343a1a",
-      "target_ref": "b366705c-db61-4096-8915-0e3d9fb9a9e2",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.316044Z",
+      "prev_hash": "07bc1a9c1bd8e4636664d19022bb24f018da746f0dac1174b687480d61555824",
+      "target_ref": "7c890687-4748-4145-b4a6-64140247b3fa",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "4c51f79bf9703d3b085693e8c8dab0467738b2d677ca1b3965f09054d2ceb2ea",
+      "chain_hash": "fcdd2752b72b571a017df5752e644bb14ae21f7061d39e4ce9dfee590e304cd6",
       "chain_seq": 44,
-      "id": "f313d278-723f-42a9-80e4-87954f0bb7f7",
+      "id": "7350e664-129b-42fc-9d1e-ebe4c8639005",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-12T02:23:01.654677Z",
-      "prev_hash": "b841df7ea60cb0d595cff6838945a3e1363dc8d3c465eed3bfd17f0657da8bf9",
-      "target_ref": "4cdd0d25-a449-4517-9eb1-094361461a9a",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.321248Z",
+      "prev_hash": "7eb575fcbbcf0941bacd35f10d02e732e6a822cd6c5e5364131540be4da2afe9",
+      "target_ref": "5d15d174-23e4-4c92-8120-486bf4c2713f",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.revoked",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "e5da597f904133b82db6307744b9833e3debcfc08a6332545a207d5603d1067b",
+      "chain_hash": "dec36497ff1d60a4e56529cb5a3017fedba597a5639b694e63c8f08d65efebf6",
       "chain_seq": 45,
-      "id": "4ec77912-3c8c-407d-a383-5d8d5ac9d565",
+      "id": "934edcb2-5984-4b5f-be49-470dc6b85171",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.663201Z",
-      "prev_hash": "4c51f79bf9703d3b085693e8c8dab0467738b2d677ca1b3965f09054d2ceb2ea",
-      "target_ref": "aea873c5-0938-4b8d-b97c-6d2ca3a033f6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.328889Z",
+      "prev_hash": "fcdd2752b72b571a017df5752e644bb14ae21f7061d39e4ce9dfee590e304cd6",
+      "target_ref": "dd372c0f-8fd4-49fe-b055-e8922f999d93",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.revoked",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "f10098ca3bd3013bebf48c59cef5e77dffde1f77f31a6966e5b9a19f0a7309d2",
+      "chain_hash": "f4559617fb1fe3959f8202a15ca55792a1ea94b3a0a8553fed17e658405fe558",
       "chain_seq": 46,
-      "id": "30657a94-d835-427c-9f54-d3eb952a3f5f",
+      "id": "3dbaed62-facc-4620-bd7b-c48494e32210",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-12T02:23:01.661017Z",
-      "prev_hash": "e5da597f904133b82db6307744b9833e3debcfc08a6332545a207d5603d1067b",
-      "target_ref": "a3fe3740-726c-40f6-ac93-b10366d5b853",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.327308Z",
+      "prev_hash": "dec36497ff1d60a4e56529cb5a3017fedba597a5639b694e63c8f08d65efebf6",
+      "target_ref": "d1135b22-c5f2-4c2d-9f8d-71ce73fa6b5e",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "9c68d08dd70cf150fea4db6bd9d751c2c389cbcecbcbd3608894357bd6c5dc45",
+      "chain_hash": "b7becc3f2c33b7231b70dd4ca6e2251be60d0b45a23335ce3521f3be71286f59",
       "chain_seq": 47,
-      "id": "54bd2614-d51f-40bf-865a-be86c28ba165",
+      "id": "10c1ac1a-f879-429b-90cf-f854e4fde007",
       "kind": "access_requested",
-      "occurred_at": "2026-06-12T02:23:01.675571Z",
-      "prev_hash": "f10098ca3bd3013bebf48c59cef5e77dffde1f77f31a6966e5b9a19f0a7309d2",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.338871Z",
+      "prev_hash": "f4559617fb1fe3959f8202a15ca55792a1ea94b3a0a8553fed17e658405fe558",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "a8bab9bf60a729f562666a5a156e815d7bbc8afb91864394da8868ac8d42b2e6",
+      "chain_hash": "70cb8efce2ad53daec2a3a5b0ab10a5186116fb0aad97c004d581dd5408efa2e",
       "chain_seq": 48,
-      "id": "ba9b5d8f-c2b5-4404-8693-18d281d2684d",
+      "id": "d7bfca88-e5b7-4a5d-8ec1-ae8545d25af8",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.68084Z",
-      "prev_hash": "9c68d08dd70cf150fea4db6bd9d751c2c389cbcecbcbd3608894357bd6c5dc45",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.342808Z",
+      "prev_hash": "b7becc3f2c33b7231b70dd4ca6e2251be60d0b45a23335ce3521f3be71286f59",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "4539c2d72b8c258019f514929c60b7788582d0d0f7d9861345daa9588b148668",
+      "chain_hash": "bc302fabb7f1cc712d0a6b028507bcdf2c2af72d1c3469597d0e5006b3a94edc",
       "chain_seq": 49,
-      "id": "ba1c4cd1-0535-4af0-b265-04e5b4dc0ef9",
+      "id": "f0bfcc30-2d7b-45b6-bd9c-8481cbdba908",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.686164Z",
-      "prev_hash": "a8bab9bf60a729f562666a5a156e815d7bbc8afb91864394da8868ac8d42b2e6",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.346744Z",
+      "prev_hash": "70cb8efce2ad53daec2a3a5b0ab10a5186116fb0aad97c004d581dd5408efa2e",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "1500965645ddef540d887e76f80587ca8425286cc1e1ba744cb643eba0d0eda5",
+      "chain_hash": "3b9925e32f615f59ba861c9e7fe64ea74c261f54ac4ea48c39a5a67dc59e5c56",
       "chain_seq": 50,
-      "id": "42fc0f82-cd61-4375-b763-dc11080ec11e",
+      "id": "09a1acc2-f74b-42fa-b18b-fa9de27684e9",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.692017Z",
-      "prev_hash": "4539c2d72b8c258019f514929c60b7788582d0d0f7d9861345daa9588b148668",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.352004Z",
+      "prev_hash": "bc302fabb7f1cc712d0a6b028507bcdf2c2af72d1c3469597d0e5006b3a94edc",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "8b0b6cb7e1b9ca8c2beb9bf5be431ce0a160d6d40dc2a49ced313350dca53a4c",
+      "chain_hash": "d5253a1eb5db18860252c11734aec7090a674d8f466a5e8f6a035f662d31ba9c",
       "chain_seq": 51,
-      "id": "b5800681-9619-4403-96cc-ae28876e4b79",
+      "id": "cf8ef5c8-313d-4904-99e4-0c33b9ec4752",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.695935Z",
-      "prev_hash": "1500965645ddef540d887e76f80587ca8425286cc1e1ba744cb643eba0d0eda5",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.355426Z",
+      "prev_hash": "3b9925e32f615f59ba861c9e7fe64ea74c261f54ac4ea48c39a5a67dc59e5c56",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "d59839e06e7dfa85e5900176398d800b67333007713d986fdf8317fd962c6c89",
+      "chain_hash": "5e6d02570143c7a748247531ee6957cf68dcf3375f77ac88957663f31d911cc5",
       "chain_seq": 52,
-      "id": "0531a489-5f0b-46d3-a4f2-c8a10bcdebd5",
+      "id": "28cc6b29-2895-46ad-ab22-9b93054458fe",
       "kind": "access_granted",
-      "occurred_at": "2026-06-12T02:23:01.689993Z",
-      "prev_hash": "8b0b6cb7e1b9ca8c2beb9bf5be431ce0a160d6d40dc2a49ced313350dca53a4c",
-      "target_ref": "9831fd7e-6b97-4866-8265-71f9e32d1bd5",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.350656Z",
+      "prev_hash": "d5253a1eb5db18860252c11734aec7090a674d8f466a5e8f6a035f662d31ba9c",
+      "target_ref": "bcd23e54-350a-40d3-96ec-46f0779423f6",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "be168dc86b1b861f355344a0c5f2303c9bef1197f6f2e8e4d5ba686b54dea5de",
+      "chain_hash": "08153d2be6dd5945fb9eaa62769bffdd41e2f4b173d2895d65d63a9b16e94363",
       "chain_seq": 53,
-      "id": "efea520d-8b7e-4c5a-950c-62443e453fb7",
+      "id": "b3f99f22-f44b-4ae2-8239-fa986bf35505",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-12T02:23:01.70463Z",
-      "prev_hash": "d59839e06e7dfa85e5900176398d800b67333007713d986fdf8317fd962c6c89",
+      "occurred_at": "2026-06-12T08:57:01.36077Z",
+      "prev_hash": "5e6d02570143c7a748247531ee6957cf68dcf3375f77ac88957663f31d911cc5",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "4e065d8c1554b49b4ef092ec8315b26851113aa6bd3f9121d0a1e0475a9628d7",
+      "chain_hash": "59583a79a1c3c279f48c0de8821dd1f74009477352aaff5b3312349be080260b",
       "chain_seq": 54,
-      "id": "92260cc8-6b42-42cc-b682-c990362eef66",
+      "id": "3266b934-c9a2-4f5d-b4b9-ae470566c361",
       "kind": "other",
-      "occurred_at": "2026-06-12T02:23:01.712876Z",
-      "prev_hash": "be168dc86b1b861f355344a0c5f2303c9bef1197f6f2e8e4d5ba686b54dea5de",
-      "target_ref": "833e2b2d-84ff-4b18-a7dc-804ececf13e9",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.366863Z",
+      "prev_hash": "08153d2be6dd5945fb9eaa62769bffdd41e2f4b173d2895d65d63a9b16e94363",
+      "target_ref": "23d73474-7841-43f8-838d-d988d0136e24",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "0e1cffb09310faedb19ce02e459e281533e3bb4e7770b6abede1bf42cdfcf49d",
+      "chain_hash": "de72efea70d17d63041a0132ea66974e68aeacc83378cd41d4fb83d00d259c68",
       "chain_seq": 55,
-      "id": "06a337cc-ba7a-444f-92d4-be772a713f19",
+      "id": "9fd157f3-79cf-4889-8efe-b53bc430c059",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-12T02:23:01.710959Z",
-      "prev_hash": "4e065d8c1554b49b4ef092ec8315b26851113aa6bd3f9121d0a1e0475a9628d7",
-      "target_ref": "9831fd7e-6b97-4866-8265-71f9e32d1bd5",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.365336Z",
+      "prev_hash": "59583a79a1c3c279f48c0de8821dd1f74009477352aaff5b3312349be080260b",
+      "target_ref": "bcd23e54-350a-40d3-96ec-46f0779423f6",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "35d3fb0e1f3eddfd0804f9c7d086f6ca4950a72fad94d5a25b544435b1615f59",
+      "chain_hash": "f08ccba345b6a7bd70e10cea86f88807fb92a83218f537567ed0f7ef34999a70",
       "chain_seq": 56,
-      "id": "3d06429d-0196-4c32-aa34-5714b3c5fc49",
+      "id": "b8e6fa19-ce20-45f2-b2e5-5eefbddee1dd",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:01.717615Z",
-      "prev_hash": "0e1cffb09310faedb19ce02e459e281533e3bb4e7770b6abede1bf42cdfcf49d",
+      "occurred_at": "2026-06-12T08:57:01.37077Z",
+      "prev_hash": "de72efea70d17d63041a0132ea66974e68aeacc83378cd41d4fb83d00d259c68",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "8443c8323cccc0b86d3769b817d787b919be07df6d1eabb441d73be76a57e5f0",
+      "chain_hash": "6e2c6e15ffabab6848c5eef9543284fdb60029a993cc2e932134967d4a73269d",
       "chain_seq": 57,
-      "id": "7c1683c2-9138-4daf-8a70-5a1934dbe845",
+      "id": "74e51117-e7f5-4279-97d6-a242a7c4cdbd",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:01.721446Z",
-      "prev_hash": "35d3fb0e1f3eddfd0804f9c7d086f6ca4950a72fad94d5a25b544435b1615f59",
+      "occurred_at": "2026-06-12T08:57:01.374267Z",
+      "prev_hash": "f08ccba345b6a7bd70e10cea86f88807fb92a83218f537567ed0f7ef34999a70",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "3c4b801b9b4187dfeee276ab7770591833ab49036f461c87aabb74329092f4a7",
+      "chain_hash": "67b35b84c13595dab926b1ce74b2c4d3bf09a31bc591ac89aa156da44396db5e",
       "chain_seq": 58,
-      "id": "ca556a2d-f06b-4b54-9c81-a6792fe143b9",
+      "id": "ec38a5c9-ff2a-45a5-9066-72db4750b79c",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:01.724659Z",
-      "prev_hash": "8443c8323cccc0b86d3769b817d787b919be07df6d1eabb441d73be76a57e5f0",
+      "occurred_at": "2026-06-12T08:57:01.37658Z",
+      "prev_hash": "6e2c6e15ffabab6848c5eef9543284fdb60029a993cc2e932134967d4a73269d",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "fa46087cf174bde7b361283615fced0e1d14e1c293d5a723e4b2b4b45ec197a9",
+      "chain_hash": "960286b9fc8424851c76a9ea762476d30f6b7008a0ac9c447b38ba03ae63b236",
       "chain_seq": 59,
-      "id": "ba450185-d58d-44e9-830e-fef2a1cec64c",
+      "id": "fd7aaab3-1c3a-4ddc-9200-3698c6e129ce",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:02.159643Z",
-      "prev_hash": "3c4b801b9b4187dfeee276ab7770591833ab49036f461c87aabb74329092f4a7",
+      "occurred_at": "2026-06-12T08:57:01.928237Z",
+      "prev_hash": "67b35b84c13595dab926b1ce74b2c4d3bf09a31bc591ac89aa156da44396db5e",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "b311678dae343b13452ba35b86979c1e318256f30e81ad673173bba0a676352e",
+      "chain_hash": "301d8529323b368ea776d270f2537108718f94a649a020c4290e25538c34de12",
       "chain_seq": 60,
-      "id": "8b7647a4-af09-4760-886c-50d45f21d0e8",
+      "id": "6adaab07-17a9-4d75-801f-5dc55f6d922c",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:02.162126Z",
-      "prev_hash": "fa46087cf174bde7b361283615fced0e1d14e1c293d5a723e4b2b4b45ec197a9",
+      "occurred_at": "2026-06-12T08:57:01.931339Z",
+      "prev_hash": "960286b9fc8424851c76a9ea762476d30f6b7008a0ac9c447b38ba03ae63b236",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "74e925f12c366e85068462244744e4d1a60952ab40b0d81aeecd6bbc08e73ea5",
+      "chain_hash": "69347a0c12a68c690e26a3258bd025b59f7d50135eea7ba54f4ee9ab327a02c3",
       "chain_seq": 61,
-      "id": "1eb23316-feb3-4626-aa4a-31e57471c50a",
+      "id": "26702b2e-38e2-4ff7-bafc-21eaa244ee57",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-12T02:23:02.166043Z",
-      "prev_hash": "b311678dae343b13452ba35b86979c1e318256f30e81ad673173bba0a676352e",
+      "occurred_at": "2026-06-12T08:57:01.935631Z",
+      "prev_hash": "301d8529323b368ea776d270f2537108718f94a649a020c4290e25538c34de12",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "sod.rule.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "8ec3429539b138073c7eeb57925b323d0806a8afb27c724ba6bfb2723a8af820",
+      "chain_hash": "644366399533cf3ccc07c3de5b054bd9eba41206c3e5775bb15a3a76165498ae",
       "chain_seq": 62,
-      "id": "b229266c-f62c-4c7c-9637-fe12a8b573e6",
+      "id": "9d72d3b8-fb6c-4601-9718-8f0fe649cbe2",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -813,211 +813,534 @@
         },
         "severity": "high"
       },
-      "occurred_at": "2026-06-12T02:23:02.169097Z",
-      "prev_hash": "74e925f12c366e85068462244744e4d1a60952ab40b0d81aeecd6bbc08e73ea5",
-      "target_ref": "5a137cd8-366e-42fd-bd1e-d2317837ead8",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.938915Z",
+      "prev_hash": "69347a0c12a68c690e26a3258bd025b59f7d50135eea7ba54f4ee9ab327a02c3",
+      "target_ref": "de5e7d69-7b4b-4418-be94-048930ae750c",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "499bdac1a2e24332a0f22c25dd232f82bfbd8edfc944a66706031d4757f21239",
+      "chain_hash": "d0d684d84bc8513c49a499fc72c3ca14997c0a8e185cfff75fe53f96be0ebd27",
       "chain_seq": 63,
-      "id": "1b03e261-abad-4d50-a46e-88440db62f65",
+      "id": "3c0f58df-b613-4e8b-a7d3-9fe00b595212",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-sre-oncall@vendor.example",
-        "expires_at": "2026-07-03T02:23:02Z",
+        "expires_at": "2026-07-03T08:57:01Z",
         "resource_ref": "prod:deploy",
         "role": "operator",
         "sponsor_id": "au-admin"
       },
-      "occurred_at": "2026-06-12T02:23:02.175045Z",
-      "prev_hash": "8ec3429539b138073c7eeb57925b323d0806a8afb27c724ba6bfb2723a8af820",
-      "target_ref": "0c4fce69-5468-4c20-94d8-7f00389617b3",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.945612Z",
+      "prev_hash": "644366399533cf3ccc07c3de5b054bd9eba41206c3e5775bb15a3a76165498ae",
+      "target_ref": "eeb3af37-e7d9-4262-a465-674ed699c424",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "access_grant.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "3e231e1afd462ec43955cc0de0963ffda00844b7630c4de89929d055a2ca14a2",
+      "chain_hash": "e03d05b571c73c20d0952cea194ef3951d2a4c885a6102e13396e37a32b46a85",
       "chain_seq": 64,
-      "id": "9cf70df1-0c81-4523-8f41-7638f4dedf79",
+      "id": "a703515f-945f-4e22-9fb3-e054fa7bbc7e",
       "kind": "access_granted",
-      "occurred_at": "2026-06-12T02:23:02.179637Z",
-      "prev_hash": "499bdac1a2e24332a0f22c25dd232f82bfbd8edfc944a66706031d4757f21239",
-      "target_ref": "2207d4e2-0782-42e5-a51d-ac8ef83d0cf5",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.950471Z",
+      "prev_hash": "d0d684d84bc8513c49a499fc72c3ca14997c0a8e185cfff75fe53f96be0ebd27",
+      "target_ref": "9dfa0f90-5b3c-4c70-8c51-916d66850990",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "76d7c9463437994ec31676231596ca99cf11c387e2e079dec7f7b97ffdac6e2b",
+      "chain_hash": "e5bc19848960fa6e38418a160be8e1f9f5f2d37cf73e7df2b2791945b2147b83",
       "chain_seq": 65,
-      "id": "5f9b6255-17ca-4322-b6fd-d7a0c35673a6",
+      "id": "04c4aa00-dfb0-48e5-b44b-8eaa68d7fd95",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-sre-oncall@vendor.example",
-        "expires_at": "2026-07-03T02:23:02Z",
-        "grant_id": "2207d4e2-0782-42e5-a51d-ac8ef83d0cf5"
+        "expires_at": "2026-07-03T08:57:01Z",
+        "grant_id": "9dfa0f90-5b3c-4c70-8c51-916d66850990"
       },
-      "occurred_at": "2026-06-12T02:23:02.179637Z",
-      "prev_hash": "3e231e1afd462ec43955cc0de0963ffda00844b7630c4de89929d055a2ca14a2",
-      "target_ref": "0c4fce69-5468-4c20-94d8-7f00389617b3",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.950471Z",
+      "prev_hash": "e03d05b571c73c20d0952cea194ef3951d2a4c885a6102e13396e37a32b46a85",
+      "target_ref": "eeb3af37-e7d9-4262-a465-674ed699c424",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "contractor.grant.extended",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "367adedefcd33a339fe00138f4844f2e0d0964a24bcf5fed3eaf38f89858b906",
+      "chain_hash": "30bb3b11a8fd753e6412838421ae9adf790dc42dce0970b8fc77f98cf7ccafe7",
       "chain_seq": 66,
-      "id": "ca4bd1ee-9665-4896-a6c0-49d7b406a5f0",
+      "id": "c3e8c070-415d-4e72-83b8-c3261bf3ad9c",
       "kind": "other",
       "metadata": {
-        "new_expires_at": "2026-07-24T02:23:02Z",
-        "previous_expires_at": "2026-07-03T02:23:02Z",
+        "new_expires_at": "2026-07-24T08:57:01Z",
+        "previous_expires_at": "2026-07-03T08:57:01Z",
         "reason": "Sponsor-approved extension: engagement prolonged."
       },
-      "occurred_at": "2026-06-12T02:23:02.18656Z",
-      "prev_hash": "76d7c9463437994ec31676231596ca99cf11c387e2e079dec7f7b97ffdac6e2b",
-      "target_ref": "0c4fce69-5468-4c20-94d8-7f00389617b3",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.958225Z",
+      "prev_hash": "e5bc19848960fa6e38418a160be8e1f9f5f2d37cf73e7df2b2791945b2147b83",
+      "target_ref": "eeb3af37-e7d9-4262-a465-674ed699c424",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.target.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "a7da25595ced52868333e822a11c5ac220c58faf560583c99881b26457baa721",
+      "chain_hash": "2bf0114002ccb556b5c7b04e914d27a6419edb61a4ebe66a9eb260808a019bd0",
       "chain_seq": 67,
-      "id": "e0ac6504-03be-4a28-99d1-02cacac41575",
+      "id": "5ab8c611-b8b6-4f5e-bb17-d745e9653e3f",
       "kind": "other",
       "metadata": {
         "address": "prod-au-1.contoso-saas.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-12T02:23:02.194215Z",
-      "prev_hash": "367adedefcd33a339fe00138f4844f2e0d0964a24bcf5fed3eaf38f89858b906",
-      "target_ref": "45ee27db-8c72-45ac-872d-28115b16d19a",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.965691Z",
+      "prev_hash": "30bb3b11a8fd753e6412838421ae9adf790dc42dce0970b8fc77f98cf7ccafe7",
+      "target_ref": "558c6aad-bc25-48bb-89a8-9d876d458ac0",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.lease.requested",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "86fbbe6a317e556d41659ab6001d732890b46869aef12a84717ad8bc127c6d4e",
+      "chain_hash": "3ffdb2e5e9de7f7be0f7c9f6760afd1217bb74ed538ea9f9988b886ab150f12b",
       "chain_seq": 68,
-      "id": "a3a83dbf-4a60-456c-8900-04424454d858",
+      "id": "e470a614-9ec4-432f-a672-b94efc2cfcb6",
       "kind": "other",
       "metadata": {
-        "risk_degraded": true,
-        "risk_level": "medium",
+        "risk_degraded": false,
+        "risk_level": "low",
         "subject": "au-contoso-saas-owner",
-        "target_id": "45ee27db-8c72-45ac-872d-28115b16d19a",
+        "target_id": "558c6aad-bc25-48bb-89a8-9d876d458ac0",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-12T02:23:02.197745Z",
-      "prev_hash": "a7da25595ced52868333e822a11c5ac220c58faf560583c99881b26457baa721",
-      "target_ref": "918ac1ee-6093-444d-9ab8-b96600eaf510",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:01.970345Z",
+      "prev_hash": "2bf0114002ccb556b5c7b04e914d27a6419edb61a4ebe66a9eb260808a019bd0",
+      "target_ref": "200474c5-78c8-490d-91ca-b030b03a3917",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.lease.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "a6bedf83e7f9ea2895266064202e4ae9b1fc64510d573bbb08db2e0b527dc5db",
+      "chain_hash": "a098e15adba65cf685707471deb512130f3a5a1daf1b159d1187c5298b2c87a8",
       "chain_seq": 69,
-      "id": "b39549fd-a1c3-401e-bfb5-931d235cf327",
+      "id": "afb8cdd0-ed1d-46e4-b311-092fc66540e3",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-12T02:53:31Z",
+        "expires_at": "2026-06-12T09:27:31Z",
         "subject": "au-contoso-saas-owner",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-12T02:23:31.230061Z",
-      "prev_hash": "86fbbe6a317e556d41659ab6001d732890b46869aef12a84717ad8bc127c6d4e",
-      "target_ref": "918ac1ee-6093-444d-9ab8-b96600eaf510",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:31.978455Z",
+      "prev_hash": "3ffdb2e5e9de7f7be0f7c9f6760afd1217bb74ed538ea9f9988b886ab150f12b",
+      "target_ref": "200474c5-78c8-490d-91ca-b030b03a3917",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "5940ed1f694d2542e23b80fc828646aada96e94f55b2871723843cdc3085ddcf",
+      "chain_hash": "0e141e9da678b32f6484aa4f20c1321ec4ad488dd1b3d39abbf52a1f4be4de44",
       "chain_seq": 70,
-      "id": "89b16f18-0106-40e2-b0be-11e877d6ebf0",
+      "id": "301e59a3-10ca-47d8-8ca9-ee86222b66df",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-12T02:53:31Z",
+        "expires_at": "2026-06-12T09:27:31Z",
         "subject": "au-contoso-saas-owner"
       },
-      "occurred_at": "2026-06-12T02:23:31.237843Z",
-      "prev_hash": "a6bedf83e7f9ea2895266064202e4ae9b1fc64510d573bbb08db2e0b527dc5db",
-      "target_ref": "45ee27db-8c72-45ac-872d-28115b16d19a",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:31.985977Z",
+      "prev_hash": "a098e15adba65cf685707471deb512130f3a5a1daf1b159d1187c5298b2c87a8",
+      "target_ref": "558c6aad-bc25-48bb-89a8-9d876d458ac0",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.target.created",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "38575f54e8368b59fe8aade0826aa07f378ae3cfd6768c40de3f4639517d7249",
+      "chain_hash": "8b70cab7236a0c8e5cf1f43b04ea5bd5d16922c899b7a8c8ad2184b0a8fe9a34",
       "chain_seq": 71,
-      "id": "69333122-d3ac-4ba2-943f-8b008b47252a",
+      "id": "68a08f46-237c-40f7-b176-d652249512ad",
       "kind": "other",
       "metadata": {
         "address": "prod-db-1.contoso-saas.internal:5432",
         "protocol": "postgres"
       },
-      "occurred_at": "2026-06-12T02:23:31.243025Z",
-      "prev_hash": "5940ed1f694d2542e23b80fc828646aada96e94f55b2871723843cdc3085ddcf",
-      "target_ref": "46dd114f-d84b-4a6b-985f-79c768f27c20",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:31.99066Z",
+      "prev_hash": "0e141e9da678b32f6484aa4f20c1321ec4ad488dd1b3d39abbf52a1f4be4de44",
+      "target_ref": "359120b8-d693-4cca-a2e7-e57fa4bf048b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.lease.requested",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "772ffa16aa1ccab674614352162a9def817ec9d58cbf790afbe07857087811c4",
+      "chain_hash": "f7946ee3f4b5005d8438fe823c32d0b3ed1d14c4940e2a928d6522e4a63ce91e",
       "chain_seq": 72,
-      "id": "3739bb47-7316-4df9-b923-7f6e5ff1a566",
+      "id": "106444ee-a264-4540-8324-765c2430b6a0",
       "kind": "other",
       "metadata": {
-        "risk_degraded": true,
-        "risk_level": "medium",
+        "risk_degraded": false,
+        "risk_level": "low",
         "subject": "au-contoso-saas-owner",
-        "target_id": "46dd114f-d84b-4a6b-985f-79c768f27c20",
+        "target_id": "359120b8-d693-4cca-a2e7-e57fa4bf048b",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-12T02:23:31.24689Z",
-      "prev_hash": "38575f54e8368b59fe8aade0826aa07f378ae3cfd6768c40de3f4639517d7249",
-      "target_ref": "8bd8ee57-5cf1-4c43-b335-922d212efba6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:57:32.000287Z",
+      "prev_hash": "8b70cab7236a0c8e5cf1f43b04ea5bd5d16922c899b7a8c8ad2184b0a8fe9a34",
+      "target_ref": "068305f8-ecc3-406f-8fb7-2ba5ed6046f9",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.lease.approved",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "00cdc27ab20bc5d1c94ec83495099d2b0aba14ba0710031fd239ff5c456a19ee",
+      "chain_hash": "322a8962e0d135902119b2d90b6f19f09b13b1d3772a3aab95161dd3bba067ce",
       "chain_seq": 73,
-      "id": "d9d7a8ab-4378-48b7-9df1-eea6ddac3a86",
+      "id": "cebb2298-e794-4786-b5c7-9cd3bc834f3c",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-12T02:54:01Z",
+        "expires_at": "2026-06-12T09:28:01Z",
         "subject": "au-contoso-saas-owner",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-12T02:24:01.308309Z",
-      "prev_hash": "772ffa16aa1ccab674614352162a9def817ec9d58cbf790afbe07857087811c4",
-      "target_ref": "8bd8ee57-5cf1-4c43-b335-922d212efba6",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:58:01.098784Z",
+      "prev_hash": "f7946ee3f4b5005d8438fe823c32d0b3ed1d14c4940e2a928d6522e4a63ce91e",
+      "target_ref": "068305f8-ecc3-406f-8fb7-2ba5ed6046f9",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "au-contoso-saas-owner",
-      "chain_hash": "2e8c35cf3283ce9544942d4b069e8c07f7e388177572b0c713f2a899881b888a",
+      "chain_hash": "6b4d845c91bc66f5d7968c47d0be0a9ad75a16c612e936eb64f5a54cea94b234",
       "chain_seq": 74,
-      "id": "3ff1e836-0d97-4052-8967-e47cf19b572e",
+      "id": "519bfce3-0fb1-4cc6-a6b7-91e7d4a9b06d",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-12T02:54:01Z",
+        "expires_at": "2026-06-12T09:28:01Z",
         "subject": "au-contoso-saas-owner"
       },
-      "occurred_at": "2026-06-12T02:24:01.315761Z",
-      "prev_hash": "00cdc27ab20bc5d1c94ec83495099d2b0aba14ba0710031fd239ff5c456a19ee",
-      "target_ref": "46dd114f-d84b-4a6b-985f-79c768f27c20",
-      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
+      "occurred_at": "2026-06-12T08:58:01.105051Z",
+      "prev_hash": "322a8962e0d135902119b2d90b6f19f09b13b1d3772a3aab95161dd3bba067ce",
+      "target_ref": "359120b8-d693-4cca-a2e7-e57fa4bf048b",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.target.created",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "72748b82839582675b98a8f93d11dc85b62918c28760fc33af9e2410b090adad",
+      "chain_seq": 75,
+      "id": "46ddf356-098f-4fba-8db4-350df345b6e1",
+      "kind": "other",
+      "metadata": {
+        "address": "prod-bastion.contoso.internal:22",
+        "protocol": "ssh"
+      },
+      "occurred_at": "2026-06-12T08:58:01.111872Z",
+      "prev_hash": "6b4d845c91bc66f5d7968c47d0be0a9ad75a16c612e936eb64f5a54cea94b234",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.connect_token.minted",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "d41acaa605aee89697f5cd5bc0f0e8e980667a6828bdeaf4c83132a4d2c100a5",
+      "chain_seq": 76,
+      "id": "40041c5d-4153-479d-8b5a-0caa6044848d",
+      "kind": "other",
+      "metadata": {
+        "expires_at": "2026-06-12T09:28:01Z",
+        "subject": "au-contoso-saas-owner"
+      },
+      "occurred_at": "2026-06-12T08:58:01.116102Z",
+      "prev_hash": "72748b82839582675b98a8f93d11dc85b62918c28760fc33af9e2410b090adad",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.session.opened",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "5b9cf7a2c4d6561cf44dd5dd0135ce3aaf322b90309f66ec5223d4c30a5823ab",
+      "chain_seq": 77,
+      "id": "d2ff0360-85ba-4daa-b8f7-2bd0a5eddd4c",
+      "kind": "privileged_session",
+      "metadata": {
+        "client_addr": "blog-seed",
+        "protocol": "ssh",
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730"
+      },
+      "occurred_at": "2026-06-12T08:58:01.120124Z",
+      "prev_hash": "d41acaa605aee89697f5cd5bc0f0e8e980667a6828bdeaf4c83132a4d2c100a5",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.command",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "b938a9f3ad483068f5c5bf28ac4c2ab68a2c7ed629487f0f04918a39b9861227",
+      "chain_seq": 78,
+      "id": "6cfed60f-ee84-4553-badb-3140b2fa4f7e",
+      "kind": "privileged_command",
+      "metadata": {
+        "command": "whoami",
+        "decision": "allow",
+        "reason": "",
+        "seq": 1,
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730"
+      },
+      "occurred_at": "2026-06-12T08:58:01.122507Z",
+      "prev_hash": "5b9cf7a2c4d6561cf44dd5dd0135ce3aaf322b90309f66ec5223d4c30a5823ab",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.command",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "4756c08c59dd7a147d58606eddc6859e046f4d89247fb0b7a19d499b4a0c0fd3",
+      "chain_seq": 79,
+      "id": "32244e91-a2cc-4e97-94b8-c118ce582edd",
+      "kind": "privileged_command",
+      "metadata": {
+        "command": "sudo systemctl status app-prod",
+        "decision": "allow",
+        "reason": "",
+        "seq": 2,
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730"
+      },
+      "occurred_at": "2026-06-12T08:58:01.125635Z",
+      "prev_hash": "b938a9f3ad483068f5c5bf28ac4c2ab68a2c7ed629487f0f04918a39b9861227",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.command",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "6bf838ec7eaa7925dcc2e2406db8d5f777d3c9a06bed40edfcdaa119af5f714e",
+      "chain_seq": 80,
+      "id": "f377fd54-2d86-42db-a5ad-32651a3a964b",
+      "kind": "privileged_command",
+      "metadata": {
+        "command": "kubectl get deploy -n prod app -o jsonpath='{.status.readyReplicas}'",
+        "decision": "allow",
+        "reason": "",
+        "seq": 3,
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730"
+      },
+      "occurred_at": "2026-06-12T08:58:01.12868Z",
+      "prev_hash": "4756c08c59dd7a147d58606eddc6859e046f4d89247fb0b7a19d499b4a0c0fd3",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.command",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "6d91be417d7d04fb980e55ee4b5303f3a16a165e4194f7114b7cc32e9618b006",
+      "chain_seq": 81,
+      "id": "75456bbb-5183-4ba2-a7d4-509b9e3156c4",
+      "kind": "privileged_command",
+      "metadata": {
+        "command": "exit",
+        "decision": "allow",
+        "reason": "",
+        "seq": 4,
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730"
+      },
+      "occurred_at": "2026-06-12T08:58:01.131779Z",
+      "prev_hash": "6bf838ec7eaa7925dcc2e2406db8d5f777d3c9a06bed40edfcdaa119af5f714e",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.session.recording",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "8008c52f5066ee99f2104e7285e15573463a2de5ace97f5ce7acc78095bb16d5",
+      "chain_seq": 82,
+      "id": "708465d2-a671-4871-9960-6198d86a67bf",
+      "kind": "privileged_recording",
+      "metadata": {
+        "bytes": 354,
+        "replay_key": "sessions/b58750a5-fb3e-4b15-84de-7ab96378d730/replay.bin",
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730",
+        "sha256": "2270270640c8ba27e9f7b54b18d807341b4a659e30cacf29128cd927b29eb9ae",
+        "truncated": false
+      },
+      "occurred_at": "2026-06-12T08:58:01.134937Z",
+      "prev_hash": "6d91be417d7d04fb980e55ee4b5303f3a16a165e4194f7114b7cc32e9618b006",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "pam.session.closed",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "dd4343b0674b47de52d173f495aa2c64167a742cbe9746bf60f2387c23650d97",
+      "chain_seq": 83,
+      "id": "96d85489-596f-4ec6-a3be-3c86aa713b0d",
+      "kind": "privileged_session",
+      "metadata": {
+        "session_id": "b58750a5-fb3e-4b15-84de-7ab96378d730",
+        "state": "closed"
+      },
+      "occurred_at": "2026-06-12T08:58:01.137142Z",
+      "prev_hash": "8008c52f5066ee99f2104e7285e15573463a2de5ace97f5ce7acc78095bb16d5",
+      "target_ref": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "2c550326d11592819bf87276f9422a2d9e27fd7f0365135e643e0dd35a4b7bf5",
+      "chain_seq": 84,
+      "id": "3230b8e5-bccb-4460-8150-e6d9306a3521",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@au-contoso-saas.example",
+        "expires_at": "2026-07-12T08:58:01Z",
+        "resource_ref": "prod:deploy",
+        "role": "operator",
+        "sponsor_id": "au-admin"
+      },
+      "occurred_at": "2026-06-12T08:58:01.141084Z",
+      "prev_hash": "dd4343b0674b47de52d173f495aa2c64167a742cbe9746bf60f2387c23650d97",
+      "target_ref": "e24821b3-5545-4bb9-be93-9fe19f97b18d",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "9fab6fc46e7f1d82f7ca26583e6db7e4253b252ecdfc0b40a80fb17a4e7e89b1",
+      "chain_seq": 85,
+      "id": "7249babb-6d8a-4d8a-a1eb-01125f29fee2",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-12T08:58:01.145779Z",
+      "prev_hash": "2c550326d11592819bf87276f9422a2d9e27fd7f0365135e643e0dd35a4b7bf5",
+      "target_ref": "2ff377a9-abfe-4779-a3eb-4325a7dc256f",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "2cf3365a3f8e481a1a055cefda3a636fd9dff9fb0dfb344874a0c34c3fd90316",
+      "chain_seq": 86,
+      "id": "783617cd-036c-4b94-8822-59edff50d1d9",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@au-contoso-saas.example",
+        "expires_at": "2026-07-12T08:58:01Z",
+        "grant_id": "2ff377a9-abfe-4779-a3eb-4325a7dc256f"
+      },
+      "occurred_at": "2026-06-12T08:58:01.145779Z",
+      "prev_hash": "9fab6fc46e7f1d82f7ca26583e6db7e4253b252ecdfc0b40a80fb17a4e7e89b1",
+      "target_ref": "e24821b3-5545-4bb9-be93-9fe19f97b18d",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "12178597adb07274ebe0e06accdb43ffd367f5e12e84ddbd04d7171bd06dc1c6",
+      "chain_seq": 87,
+      "id": "ea7bf106-ba4d-4461-93ff-2a58ceffe8ba",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@au-contoso-saas.example",
+        "expires_at": "2026-07-12T08:58:01Z",
+        "resource_ref": "billing:admin",
+        "role": "operator",
+        "sponsor_id": "au-admin"
+      },
+      "occurred_at": "2026-06-12T08:58:01.152429Z",
+      "prev_hash": "2cf3365a3f8e481a1a055cefda3a636fd9dff9fb0dfb344874a0c34c3fd90316",
+      "target_ref": "19411980-0084-48aa-8fe5-e8b6d3225c39",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "0da450ae209e490dafa72e79a6d6b5e35f436a98d5df95e4a14aa836854e38b7",
+      "chain_seq": 88,
+      "id": "643064c5-1e77-4893-9d82-360b0ae39751",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-12T08:58:01.156566Z",
+      "prev_hash": "12178597adb07274ebe0e06accdb43ffd367f5e12e84ddbd04d7171bd06dc1c6",
+      "target_ref": "44b16cf7-0786-4aba-bd56-97aca3c508c8",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "411b9681052647837ed364ebcb1c0a8eec7d694a48179c17f9f882d38a1d90c5",
+      "chain_seq": 89,
+      "id": "556f5594-2079-440d-ad66-d6e0416e7dba",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@au-contoso-saas.example",
+        "expires_at": "2026-07-12T08:58:01Z",
+        "grant_id": "44b16cf7-0786-4aba-bd56-97aca3c508c8"
+      },
+      "occurred_at": "2026-06-12T08:58:01.156566Z",
+      "prev_hash": "0da450ae209e490dafa72e79a6d6b5e35f436a98d5df95e4a14aa836854e38b7",
+      "target_ref": "19411980-0084-48aa-8fe5-e8b6d3225c39",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "orphan.detected",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "2dd16ecf6d26d8d89927a49a072cec185d94966359aa487f8c283604aaa86ece",
+      "chain_seq": 90,
+      "id": "34ba61f5-f663-4a89-b02e-da32c9d8af5e",
+      "kind": "orphan_detected",
+      "metadata": {
+        "anomaly_id": "fa64b53e-28c3-49f8-99ed-568f7eb2ab92",
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "billing:admin",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "prod:deploy",
+          "role": "operator"
+        },
+        "rule_id": "de5e7d69-7b4b-4418-be94-048930ae750c",
+        "rule_name": "Production deploy must not also hold billing admin",
+        "severity": "high",
+        "subject": "ext-dual-role@au-contoso-saas.example"
+      },
+      "occurred_at": "2026-06-12T08:58:01.164695Z",
+      "prev_hash": "411b9681052647837ed364ebcb1c0a8eec7d694a48179c17f9f882d38a1d90c5",
+      "target_ref": "fa64b53e-28c3-49f8-99ed-568f7eb2ab92",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "orphan.disposition.flagged",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "9d01aa52f4a48180db9434b557b9766638e921d2134772912a76afb7e3bbe287",
+      "chain_seq": 91,
+      "id": "a884e902-c1d2-45bf-852d-b23b7f2736d0",
+      "kind": "orphan_disposition",
+      "metadata": {
+        "anomaly_id": "fa64b53e-28c3-49f8-99ed-568f7eb2ab92",
+        "anomaly_kind": "sod_violation",
+        "automated": true,
+        "disposition": "flagged",
+        "severity": "high",
+        "subject": "ext-dual-role@au-contoso-saas.example"
+      },
+      "occurred_at": "2026-06-12T08:58:01.164695Z",
+      "prev_hash": "2dd16ecf6d26d8d89927a49a072cec185d94966359aa487f8c283604aaa86ece",
+      "target_ref": "fa64b53e-28c3-49f8-99ed-568f7eb2ab92",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+    },
+    {
+      "action": "compliance.export",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "2503308ae2d51c3ee63c55679eee4c09467c7d8971ead3683ff4af0bbdbfc08a",
+      "chain_seq": 92,
+      "id": "4963bf57-8b35-412a-834b-278663fc0f2f",
+      "kind": "evidence_exported",
+      "metadata": {
+        "chain_status": "valid",
+        "content_sha256": "65caada6d76b1070e1b3f9685bd8ae62e8e04c178e13c0ca200e2cb3ae036b50",
+        "evidence_total": 91,
+        "framework": "SOC 2",
+        "mfa_satisfied": true
+      },
+      "occurred_at": "2026-06-12T08:58:31.281523Z",
+      "prev_hash": "9d01aa52f4a48180db9434b557b9766638e921d2134772912a76afb7e3bbe287",
+      "target_ref": "SOC 2",
+      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
     }
   ]
 }

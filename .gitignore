@@ -4,6 +4,10 @@
 *.exe
 *.test
 *.out
+/ztna-api
+
+# PAM replay store written by the seed harness / live gateway (runtime data)
+/pam-replays/
 
 # Local env / secrets
 .env

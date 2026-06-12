@@ -1,30 +1,43 @@
 {
   "targets": [
     {
-      "address": "sap-pos-db-1.initech.internal:3306",
-      "created_at": "2026-06-12T02:19:01.196677Z",
+      "address": "pos-bastion.initech.internal:22",
+      "created_at": "2026-06-12T08:51:31.333268Z",
       "deleted_at": null,
-      "id": "e3754b48-964a-4b65-9625-a5940951d3fe",
+      "id": "6bdc7189-effe-4db2-91c1-16f4129de0c6",
+      "lease_ttl_seconds": 1800,
+      "name": "POS bastion (recorded session)",
+      "protocol": "ssh",
+      "require_mfa": false,
+      "updated_at": "2026-06-12T08:51:31.333268Z",
+      "username": "pos-ops",
+      "workspace_id": "5166f52c-2cfa-4ff0-9007-d87ba3ad0abb"
+    },
+    {
+      "address": "sap-pos-db-1.initech.internal:3306",
+      "created_at": "2026-06-12T08:51:31.324483Z",
+      "deleted_at": null,
+      "id": "4efe191d-aa6c-47db-879c-3f9e3eeea6ae",
       "lease_ttl_seconds": 1800,
       "name": "SAP POS database (MySQL)",
       "protocol": "mysql",
       "require_mfa": true,
-      "updated_at": "2026-06-12T02:19:01.196677Z",
+      "updated_at": "2026-06-12T08:51:31.324483Z",
       "username": "pos_admin",
-      "workspace_id": "e716eb19-9b02-4c09-a2ab-0bf4479a5175"
+      "workspace_id": "5166f52c-2cfa-4ff0-9007-d87ba3ad0abb"
     },
     {
       "address": "pos-jump-1.initech.internal:22",
-      "created_at": "2026-06-12T02:18:33.070755Z",
+      "created_at": "2026-06-12T08:51:03.290138Z",
       "deleted_at": null,
-      "id": "0c5e5f01-2606-4250-9f03-f1fd77e009d2",
+      "id": "6a7a3f63-ae66-4710-94fb-60a3c739f631",
       "lease_ttl_seconds": 1800,
       "name": "Azure POS jump host (de-pos-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-12T02:18:33.070755Z",
+      "updated_at": "2026-06-12T08:51:03.290138Z",
       "username": "pos-ops",
-      "workspace_id": "e716eb19-9b02-4c09-a2ab-0bf4479a5175"
+      "workspace_id": "5166f52c-2cfa-4ff0-9007-d87ba3ad0abb"
     }
   ]
 }

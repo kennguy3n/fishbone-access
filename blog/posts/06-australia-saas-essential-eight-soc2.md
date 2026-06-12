@@ -82,19 +82,18 @@ is mechanical and needs **zero trust in Contoso**:
 1. Re-hash each file → compare to the per-file `sha256` in the manifest.
 2. Re-hash the whole pack → compare to `content_sha256`.
 3. Replay `evidence.jsonl`'s hash chain → confirm it matches
-   `chain-verification.json` (`length: 74, status: valid`).
+   `chain-verification.json` (`length: 92, status: valid`).
 
 If a single byte of any evidence record was altered after the fact, a link
 breaks and the chain fails. That's the difference between "here are some
 screenshots" and "here is a tamper-evident record you can independently verify."
 
-> Note on the numbers: the committed manifest shows `length: 74` (captured at
-> the moment of export); the live screenshot shows **75** because a subsequent
-> export appended one more `compliance.export` event to the chain. Both are
-> honest — the chain simply grew by that export, and each new export re-verifies
-> the whole chain before writing its own record. (The manifest also now ships a
-> `pam-recordings.jsonl` file — empty here, because `pam_sessions = 0`; the pack
-> carries the slot even when the demo has nothing to put in it.)
+> Note on the numbers: the export now runs **before** the capture snapshots the
+> chain (an ordering fix from the first cut), so the committed manifest, the
+> live screenshot and `chain-verification.json` all agree at `length: 92` — the
+> `evidence_exported` record is itself inside the verified chain. The manifest's
+> `pam-recordings.jsonl` now carries a line for the **recorded privileged
+> session** (`pam_sessions = 1`), not an empty slot.
 
 ## What the export actually covers — the full access surface
 
@@ -114,8 +113,14 @@ surface through the chain before exporting it:
   ```
 - **The Essential-Eight "restrict admin privileges" control becomes a SoD rule**:
   whoever can deploy to production must not also hold billing-admin. The
-  simulation flags the combination `catastrophic` before it lands
-  ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json)).
+  simulation flags the combination `catastrophic` before it lands, and the
+  standing sweep records `sod_anomalies = 1` when a subject actually holds both
+  `prod:deploy` and `billing:admin`
+  ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json),
+  [`-sod-anomalies.json`](../artifacts/payloads/s6-au-contoso-saas-sod-anomalies.json)).
+- **The prod lease is followed by a recorded session** (`pam_sessions = 1`),
+  replayable over `GET /pam/sessions/b58750a5-fb3e-4b15-84de-7ab96378d730/replay`
+  and chained — the `CC6.7` evidence.
 - **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
   expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):
   ```json
@@ -128,24 +133,27 @@ the certification — is on the *same* hash chain the export re-verifies. That i
 the point: the evidence pack is a single, tamper-evident record of the entire
 access lifecycle, not a folder of disconnected reports.
 
-## Where we fall short — the same two gaps, named one last time
+## Where we fall short — the gaps closed, and the line we stop at
 
-Contoso's SOC 2 coverage is **4 / 6**, and the two uncovered controls are the
-recurring honest limits of the entire product:
+Contoso's SOC 2 coverage is now **6 / 6**. The two controls the first cut showed
+at 0 records are covered — with a stated boundary on each:
 
-- **`CC6.7` "Privileged access monitored" — 0 records.** The JIT lease to the
-  prod DB/VM above is governed and chained, but `pam_sessions = 0`: no in-path
-  session proxy, no keystroke recording. We govern the *lease*, not the *session*.
-  (Post 5 is the full version of this gap.)
-- **`CC7.3` "Orphan / anomalous access detected and dispositioned" — 0 records.**
-  We *detect* orphans (the scan ran and found 0), but we don't run behavioural
-  anomaly analytics, so there's no dispositioned-anomaly event to evidence the
-  control.
+- **`CC6.7` "Privileged access monitored" — covered.** `pam_sessions = 1`: the JIT
+  lease to the prod DB/VM is now followed by a recorded, replayable, chain-anchored
+  session. The residual (Post 5 is the full version): the recorder drives
+  representative commands against a bastion target, proving the
+  record-and-replay pipeline — it is not an in-path proxy capturing live keystrokes
+  off the prod box.
+- **`CC7.3` "Orphan / anomalous access detected and dispositioned" — covered via
+  the standing SoD anomaly.** A subject really holds both halves of a toxic
+  combination and the sweep detects + dispositions it. The **orphan** scan still
+  ran and found 0 (honest — nothing to disposition), and we still don't run
+  behavioural anomaly analytics; the `CC7.3` evidence is the declared-rule SoD
+  anomaly, not ML.
 
-A SOC 2 auditor will note both. fishbone-access gives Contoso a defensible 4/6
-with a re-verifiable pack and a clear, honest list of what it does **not** cover
-— which is far stronger than a tool that claims 6/6 by mapping controls
-loosely.
+That 6/6 is honest because each cell is backed by a real evidence record an
+auditor can open and re-verify — and the two newest cells come with an explicit
+statement of what they do and don't prove, rather than a loose mapping.
 
 ## The full competitive scorecard
 
@@ -158,14 +166,15 @@ Across the whole series, here is the honest positioning:
 | Tamper-evident, **re-verifiable** evidence export | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | Step-up MFA on promote, export **and** lease approval | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
 | Access certifications / campaigns | ✅ | ✅ | ✅✅ | ✅✅ | ⚠️ | ❌ | ❌ |
-| AI-assisted risk on requests/leases (fail-safe degraded) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| AI-assisted risk on requests/leases (real agent, fails safe if offline) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Time-boxed contractor access (sponsor + auto-expiry) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
 | SoD toxic-combo check at simulation (rule-based) | ✅ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
 | SoD entitlement-mining **analytics** at scale | ⚠️ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
-| Orphan/anomaly **analytics** | ❌ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
+| Standing SoD anomaly detection (declared-rule) | ✅ | ⚠️ | ✅✅ | ✅✅ | ❌ | ❌ | ❌ |
+| Orphan/anomaly **behavioural analytics** | ❌ detect only | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
 | Privileged JIT **lease** lifecycle (request→approve→expire) | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ | ✅ |
 | Privileged credential vaulting | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ⚠️ | ⚠️ |
-| Live privileged **session recording** | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅ | ✅ |
+| Privileged **session recording** (replayable, chained) | ⚠️ recorded; demo upstream is a bastion | ❌ | ❌ | ⚠️ | ✅✅ live wire | ✅ | ✅ |
 | Infra (DB/SSH/k8s) access brokering (in-path) | ❌ | ❌ | ❌ | ❌ | ⚠️ | ✅✅ | ✅✅ |
 | Multi-locale incl. RTL | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ |
 | SME fit (one console, days→weeks) | ✅ | ⚠️ | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -174,17 +183,19 @@ Across the whole series, here is the honest positioning:
 
 ### How to read it
 
-- **If your risk is recording the privileged *session*** (keystrokes inside
-  core-banking, a prod DB, Kubernetes): **CyberArk** (vault + session), or
-  **Teleport / StrongDM** for modern infra access. We now govern the JIT *lease*
-  to those targets — request, approve, expire, all chained — but we are not in
-  the connection path recording the session, so pair us with one of these for the
-  recording half.
+- **If your risk is recording the privileged *session* off a live wire**
+  (keystrokes inside core-banking, a prod DB, Kubernetes): **CyberArk** (vault +
+  session), or **Teleport / StrongDM** for modern infra access. We now govern the
+  JIT *lease* and record + replay a chained session, but the demo upstream is a
+  bastion — we are not an in-path proxy vaulting the live credential and capturing
+  real keystrokes, so pair us with one of these where in-path interception is the
+  requirement.
 - **If your risk is *toxic combinations* across thousands of *un-enumerated*
   entitlements:** **SailPoint** or **Saviynt**. We catch *declared* toxic
   combinations at simulation time (the `catastrophic` verdict in Posts 1, 3, 5),
   but their entitlement-*mining* finds the conflicts nobody wrote down — and their
-  orphan/anomaly analytics are the `CC7.3` gap we openly don't fill.
+  behavioural orphan/anomaly analytics go beyond the declared-rule standing
+  anomaly we use to evidence `CC7.3`.
 - **If your risk is *proving framework compliance fast, as an SME*, across
   jurisdictions, with evidence an auditor can re-verify — over the full access
   surface (SaaS, internal systems, JIT-privileged DB/VM, contractors, JML):**
@@ -194,10 +205,11 @@ Across the whole series, here is the honest positioning:
   locales including RTL, in one console.
 
 **The honest conclusion:** fishbone-access is not trying to out-record CyberArk's
-session vault or out-mine SailPoint's entitlement analytics, and this series has
-shown — with real 0-record coverage cells (`CC6.7`, `CC7.3`) and honestly
-*degraded* AI-risk verdicts — exactly where those tools win. What it now covers is
-broad: SaaS and internal-system access through one connector fabric, JIT
+in-path session vault or out-mine SailPoint's entitlement analytics, and this
+series has shown — with explicit boundaries on the now-covered `CC6.7` / `CC7.3`
+cells (bastion-recorded session, declared-rule SoD anomaly) and real (no longer
+degraded) AI-risk verdicts — exactly where those tools still win. What it now
+covers is broad: SaaS and internal-system access through one connector fabric, JIT
 privileged leases to cloud VMs and databases, time-boxed contractor access,
 AI-assisted risk on every request, SoD simulation that stops catastrophic grants,
 JML with a layered leaver kill switch, and regulation-keyed certification with a

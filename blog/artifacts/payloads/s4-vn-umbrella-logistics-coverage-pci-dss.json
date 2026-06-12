@@ -2,12 +2,12 @@
   "controls": [
     {
       "by_kind": {
-        "access_granted": 4,
+        "access_granted": 6,
         "policy_created": 2,
         "policy_promoted": 2
       },
       "covered": true,
-      "evidence_count": 8,
+      "evidence_count": 10,
       "id": "7.2",
       "kinds": [
         "policy_promoted",
@@ -52,12 +52,12 @@
     },
     {
       "by_kind": {
-        "access_granted": 4,
+        "access_granted": 6,
         "access_requested": 4,
         "joiner_provisioned": 1
       },
       "covered": true,
-      "evidence_count": 9,
+      "evidence_count": 11,
       "id": "8.2",
       "kinds": [
         "access_requested",
@@ -67,8 +67,14 @@
       "title": "Access provisioned on authorization"
     },
     {
-      "covered": false,
-      "evidence_count": 0,
+      "by_kind": {
+        "evidence_exported": 1,
+        "privileged_command": 4,
+        "privileged_recording": 1,
+        "privileged_session": 2
+      },
+      "covered": true,
+      "evidence_count": 8,
       "id": "10.2",
       "kinds": [
         "privileged_session",
@@ -79,8 +85,8 @@
       "title": "Audit trail of access to system components"
     }
   ],
-  "controls_covered": 4,
+  "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 29,
+  "evidence_total": 41,
   "framework": "PCI-DSS"
 }

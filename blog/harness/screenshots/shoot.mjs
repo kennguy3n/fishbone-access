@@ -105,6 +105,14 @@ const clickFrameworkTab = (label) => async (page) => {
   await page.waitForTimeout(800);
 };
 
+// The Live sessions screen defaults to "Active only"; the seeded recording is a
+// closed session, so untick the filter to show it (and its replay affordance).
+const showAllSessions = async (page) => {
+  const box = page.getByRole("checkbox", { name: /active only/i });
+  if (await box.isChecked()) await box.uncheck();
+  await page.waitForTimeout(800);
+};
+
 const ids = Object.fromEntries(Object.keys(WS).map((s) => [s, dynamicIDs(s)]));
 
 // ---- S1 Singapore (en) — flagship full surface ----
@@ -119,7 +127,7 @@ await shot("sg-acme-payments", "en", "/directory", "directory");
 await shot("sg-acme-payments", "en", "/workflows", "workflows");
 await shot("sg-acme-payments", "en", "/pam/targets", "pam-targets");
 await shot("sg-acme-payments", "en", "/pam/leases", "pam-leases");
-await shot("sg-acme-payments", "en", "/pam/sessions", "pam-sessions");
+await shot("sg-acme-payments", "en", "/pam/sessions", "pam-sessions", { action: showAllSessions });
 await shot("sg-acme-payments", "en", "/compliance/evidence", "compliance-pci-dss", { action: clickFrameworkTab("PCI-DSS") });
 await shot("sg-acme-payments", "en", "/compliance/evidence", "compliance-soc2", { action: clickFrameworkTab("SOC 2") });
 await shot("sg-acme-payments", "en", "/settings/roles", "roles-permissions");

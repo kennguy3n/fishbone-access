@@ -154,8 +154,10 @@ compliance artifact produced, and the evidence source.
   grants → PDPL DSR auditor request → DESC privileged-access review with a revoke
   → ISO 27001 Annex A certification → orphan scan → JML. Locale `ar` exercises RTL.
 - **Compliance artifact:** privileged-access review + ISO 27001 certification.
-  Honest boundary: `A.8.2` "privileged access *monitored*" stays at **0 records** —
-  the JIT lease is governed and chained, but the session is not recorded.
+  `A.8.2` "privileged access *monitored*" is now covered — the JIT lease is
+  governed and chained **and** a session is recorded (`pam_sessions = 1`),
+  replayable over the API. Honest boundary: the demo upstream is a bastion, so we
+  prove the record/replay pipeline, not in-path keystroke capture off a live T24.
 - **Evidence:** `s5-ae-northwind-finance-*.json` (review-report, sso-status,
   `-pam-targets`, `-pam-leases`, `-pam-sessions`, `-sod-simulation`,
   `-contractor-grants`).
@@ -190,10 +192,11 @@ compliance artifact produced, and the evidence source.
 | Policy lifecycle: apply → simulate → promote | S1–S6 |
 | Step-up MFA (promote + export + lease approval) | S1 (promote), S6 (export), S1/S2/S5 (lease) |
 | Access requests → approve → provision | S1–S6 |
-| Access request **AI risk verdict** (degraded fail-safe) | S1–S6 (`-request-risk`) |
+| Access request **AI risk verdict** (real agent; fail-safe if offline) | S1–S6 (`-request-risk`) |
 | **PAM targets** (SSH/Postgres/MySQL cloud-VM + DB) | S1, S2, S3, S4, S5, S6 (`-pam-targets`) |
 | **PAM JIT lease** lifecycle (request→approve→expire) | S1, S2, S5 highlighted; `-pam-leases` |
-| **PAM session recording** (honest 0-record gap) | S1–S6 (`-pam-sessions` = 0) |
+| **PAM session recording** (recorded + replayable; bastion upstream) | S1–S6 (`-pam-sessions` = 1) |
+| **Standing SoD anomaly** (declared-rule, detected + dispositioned) | S1–S6 (`-sod-anomalies` = 1) |
 | **Contractor access** (time-boxed sponsor grant) | S1–S6 (`-contractor-grants`) |
 | **SoD toxic-combo rule + simulation** (`catastrophic`) | S1, S3, S5 highlighted; `-sod-rules` / `-sod-simulation` |
 | Access-review campaign + decisions | S1–S6 |
@@ -222,8 +225,9 @@ compliance artifact produced, and the evidence source.
    over one connector fabric + the SoD toxic-combination check.
 4. **S4 — Vietnam** (PDPD Decree 13): standing up an emerging-market posture from
    one pack — with the full access primitives (PAM lease, contractor, SoD).
-5. **S5 — UAE finance** (PDPL + DESC): privileged access — the JIT lease now
-   exists, the session recording still doesn't; RTL locale.
+5. **S5 — UAE finance** (PDPL + DESC): privileged access — the JIT lease and a
+   recorded, replayable session both exist now; the remaining boundary is in-path
+   vaulting/keystroke capture off a live mainframe. RTL locale.
 6. **S6 — Australian SaaS** (Essential Eight + SOC 2): certification campaign,
    evidence export, full competitive scorecard.
 7. **Benchmarks on this VM** — latency percentiles and throughput for the live

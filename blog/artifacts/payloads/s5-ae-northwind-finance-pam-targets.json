@@ -1,30 +1,43 @@
 {
   "targets": [
     {
-      "address": "treasury-db-1.northwind.internal:5432",
-      "created_at": "2026-06-12T02:21:01.212048Z",
+      "address": "t24-bastion.northwind.internal:22",
+      "created_at": "2026-06-12T08:55:01.719411Z",
       "deleted_at": null,
-      "id": "efc42ab3-7fac-4e5f-a9b2-51ab44fe1178",
+      "id": "9fde8eb2-250a-4aad-a9d8-106003defe9f",
+      "lease_ttl_seconds": 1800,
+      "name": "T24 bastion (recorded session)",
+      "protocol": "ssh",
+      "require_mfa": false,
+      "updated_at": "2026-06-12T08:55:01.719411Z",
+      "username": "t24-ops",
+      "workspace_id": "14c4c9d2-71fb-4280-b8a7-8ef503c57947"
+    },
+    {
+      "address": "treasury-db-1.northwind.internal:5432",
+      "created_at": "2026-06-12T08:54:31.690891Z",
+      "deleted_at": null,
+      "id": "bf73f2a3-b6a9-4681-b82d-7b25e02821ca",
       "lease_ttl_seconds": 900,
       "name": "Treasury ledger (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-12T02:21:01.212048Z",
+      "updated_at": "2026-06-12T08:54:31.690891Z",
       "username": "treasury_ro",
-      "workspace_id": "d962da2a-3ac5-4ff7-829b-262113ff0439"
+      "workspace_id": "14c4c9d2-71fb-4280-b8a7-8ef503c57947"
     },
     {
       "address": "t24-prod-1.northwind.internal:22",
-      "created_at": "2026-06-12T02:20:32.090828Z",
+      "created_at": "2026-06-12T08:54:02.573815Z",
       "deleted_at": null,
-      "id": "9e709eea-e5ed-4ba5-b9ee-11b0b25078cd",
+      "id": "311c77f7-a811-4a81-a5a7-c17125464edc",
       "lease_ttl_seconds": 900,
       "name": "Temenos T24 core-banking host (t24-prod-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-12T02:20:32.090828Z",
+      "updated_at": "2026-06-12T08:54:02.573815Z",
       "username": "t24-admin",
-      "workspace_id": "d962da2a-3ac5-4ff7-829b-262113ff0439"
+      "workspace_id": "14c4c9d2-71fb-4280-b8a7-8ef503c57947"
     }
   ]
 }

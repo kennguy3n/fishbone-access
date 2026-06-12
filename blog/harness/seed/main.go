@@ -207,6 +207,13 @@ func (s *seeder) seedWorkspace(ws harnesskit.Workspace) harnesskit.WorkspaceSumm
 	// expire) against the ones flagged for it.
 	sum.IDs.PAMTargetIDs, sum.IDs.PAMLeaseID = s.seedPAM(c, ws, disp)
 
+	// (r) Close the evidence trails the older seed left empty, using only
+	// production services: a real recorded privileged session (CC6.7 / A.8.2 /
+	// PCI 10.2), the standing-SoD anomaly sweep (CC7.3), and an in-chain
+	// evidence-pack export (A.8.15). Runs before the counts read so the summary
+	// reflects the new evidence, and before capture so coverage sees it.
+	sum.IDs.PAMSessionID = s.closeEvidenceGaps(c, ws, workspaceID, manualID, disp)
+
 	sum.Counts = s.readCounts(c, ws, sum.IDs)
 	return sum
 }
