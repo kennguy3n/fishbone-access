@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-11T05:17:31.400051Z",
+      "created_at": "2026-06-12T02:21:01.216882Z",
       "deleted_at": null,
-      "expires_at": "2026-06-11T05:33:01.406666Z",
-      "granted_at": "2026-06-11T05:18:01.406666Z",
-      "id": "70b35e5a-c1a7-43c0-bfd7-ef8d8d187050",
+      "expires_at": "2026-06-12T02:36:31.223911Z",
+      "granted_at": "2026-06-12T02:21:31.223911Z",
+      "id": "2df9e5b6-ad38-4053-b96a-f89fa4d5e584",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
@@ -18,17 +18,17 @@
       "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "d32b7079-38ce-4717-8b33-e4d534149833",
-      "updated_at": "2026-06-11T05:18:01.406666Z",
-      "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+      "target_id": "efc42ab3-7fac-4e5f-a9b2-51ab44fe1178",
+      "updated_at": "2026-06-12T02:21:31.223911Z",
+      "workspace_id": "d962da2a-3ac5-4ff7-829b-262113ff0439"
     },
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-11T05:17:02.340303Z",
+      "created_at": "2026-06-12T02:20:32.09563Z",
       "deleted_at": null,
-      "expires_at": "2026-06-11T05:32:31.385303Z",
-      "granted_at": "2026-06-11T05:17:31.385303Z",
-      "id": "b6827e09-fb49-43a2-b3f5-1978cc6c4ff3",
+      "expires_at": "2026-06-12T02:36:01.200735Z",
+      "granted_at": "2026-06-12T02:21:01.200735Z",
+      "id": "a46d0e31-7d90-407d-ab79-2a2ce362a520",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
@@ -40,9 +40,9 @@
       "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "4768fd39-e955-4ae8-a60b-d56c717f1471",
-      "updated_at": "2026-06-11T05:17:31.385303Z",
-      "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+      "target_id": "9e709eea-e5ed-4ba5-b9ee-11b0b25078cd",
+      "updated_at": "2026-06-12T02:21:01.200735Z",
+      "workspace_id": "d962da2a-3ac5-4ff7-829b-262113ff0439"
     }
   ]
 }

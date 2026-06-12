@@ -1,11 +1,11 @@
 {
   "chain_verification": {
-    "length": 77,
+    "length": 76,
     "ok": true,
     "status": "valid",
-    "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+    "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682"
   },
-  "content_sha256": "5c771df6825188fd7bdbc46da90f7763923c63756496579456c26be2880be456",
+  "content_sha256": "bab297aac1127e341b0164b9010db4b15cb7baa6360b1ef979ce7bd2e5435c40",
   "coverage": {
     "controls": [
       {
@@ -75,11 +75,8 @@
         "title": "Access provisioned on authorization"
       },
       {
-        "by_kind": {
-          "evidence_exported": 1
-        },
-        "covered": true,
-        "evidence_count": 1,
+        "covered": false,
+        "evidence_count": 0,
         "id": "10.2",
         "kinds": [
           "privileged_session",
@@ -90,18 +87,18 @@
         "title": "Audit trail of access to system components"
       }
     ],
-    "controls_covered": 5,
+    "controls_covered": 4,
     "controls_total": 5,
-    "evidence_total": 39,
+    "evidence_total": 38,
     "framework": "PCI-DSS"
   },
-  "evidence_total": 77,
+  "evidence_total": 76,
   "files": [
     {
       "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
       "name": "evidence.jsonl",
-      "rows": 77,
-      "sha256": "138587c689bf6d4066a4a85c19f90751209595b81c9bb8987a80d89501e8d907"
+      "rows": 76,
+      "sha256": "9bd015e58d86470900093e02e4f3aa57d680e437e3a18459ba930a3e2eeafefe"
     },
     {
       "comment": "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
@@ -113,48 +110,48 @@
       "comment": "Every grant active at any point during the period (granted_at < to AND (revoked_at IS NULL OR revoked_at >= from)).",
       "name": "access-grants.jsonl",
       "rows": 5,
-      "sha256": "dd66bbcccc3b139db8b377a033f21353791b5c91f2b1b373367bc04f28acb690"
+      "sha256": "c17aacbdd357a3eab90689581d7eea48785f3b87ebebf4f133c401789a44b63a"
     },
     {
       "comment": "Certification campaigns whose lifecycle overlapped the period.",
       "name": "certification-campaigns.jsonl",
       "rows": 1,
-      "sha256": "6b76aa2502c31a65f7ab39cb3581ad906dc9f13f3c63c45f721cd6445c6f0f6a"
+      "sha256": "609cbb19294eaf0f400c77b2ec4b98938c9ddab9608925870f10aa0a569ef4cd"
     },
     {
       "comment": "Per-grant certification decisions for the campaigns above. Sorted by (campaign_id, created_at).",
       "name": "certification-items.jsonl",
       "rows": 1,
-      "sha256": "cae3e9f2726d4fb5d845455b3d6274bea5937508ffe170f96b0bafda143dc445"
+      "sha256": "23e1c737f7db0f269956b90e78fdb1e93182c89dc568a3b8f4c122e28397d843"
     },
     {
       "comment": "Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
       "name": "policies.jsonl",
       "rows": 6,
-      "sha256": "fdb9bd8c0d6b9bde73179919b730cbfff5b9dd8f9b950cb450b7c63ce6eff827"
+      "sha256": "0ad072b3521b2b0a21d4e52b84f03a116c29eaed2694a3f815727d334531c7a2"
     },
     {
       "comment": "Per-control evidence coverage for the framework over the period.",
       "name": "control-coverage.json",
       "rows": 0,
-      "sha256": "8c8ee83d0c4e8a2d1ebbe9099753f8d591618e9106cefdaf9758c6ee3bfd6ea9"
+      "sha256": "a499aec97691e19800603d4b15a4fecfc8bd8e0ea19b86f2a8fac51ff08c14c0"
     },
     {
       "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
       "name": "chain-verification.json",
       "rows": 0,
-      "sha256": "c20937e85fec6436a7c8024e29d04917666d32999f0644c2c3c144079404e8a2"
+      "sha256": "7b506f43759dae0858318dfb2d5bc0950da8db9b84107ab7453e47a89bba7b6a"
     },
     {
       "comment": "Auditor-facing guide to this evidence pack.",
       "name": "README.md",
       "rows": 0,
-      "sha256": "84dfc66acfb5bbfaa0a9b32c3d2cd9dcc42bc30d680506003c3856d1a3ee9b51"
+      "sha256": "04b7b4d6a951e639ea4e4be0c8fae5424b817c08c038a83dc61edc98636417bc"
     }
   ],
   "framework": "PCI-DSS",
-  "generated_at": "2026-06-11T05:22:42.741573904Z",
+  "generated_at": "2026-06-12T02:24:12.314499376Z",
   "generated_by": "sg-acme-payments-owner",
   "schema_version": "1.1",
-  "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+  "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682"
 }

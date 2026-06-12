@@ -67,11 +67,8 @@
       "title": "Access provisioned on authorization"
     },
     {
-      "by_kind": {
-        "evidence_exported": 1
-      },
-      "covered": true,
-      "evidence_count": 1,
+      "covered": false,
+      "evidence_count": 0,
       "id": "10.2",
       "kinds": [
         "privileged_session",
@@ -82,8 +79,8 @@
       "title": "Audit trail of access to system components"
     }
   ],
-  "controls_covered": 5,
+  "controls_covered": 4,
   "controls_total": 5,
-  "evidence_total": 39,
+  "evidence_total": 38,
   "framework": "PCI-DSS"
 }

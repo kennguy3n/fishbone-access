@@ -1,9 +1,10 @@
 # fishbone-access — the evidence-based access-governance series
 
-A seven-post engineering series that walks the real product end-to-end across
-six jurisdictions, with live console screenshots, verbatim API payloads, and a
-tamper-evident evidence chain you can export and verify. Every figure traces to
-an evidence source; every post ends with an honest "where we fall short."
+An eight-post engineering series that walks the real product end-to-end across
+six jurisdictions, with live console screenshots, verbatim API payloads, on-VM
+benchmarks, and a tamper-evident evidence chain you can export and verify. Every
+figure traces to an evidence source; every post ends with an honest "where we
+fall short."
 
 The series covers the full access surface, not just compliance reporting:
 **SaaS + internal-system** access through one connector fabric, **PAM** to cloud
@@ -28,6 +29,7 @@ StrongDM).
 | 4 | [Vietnam: PDPD Decree 13 — an emerging-market posture from one pack](04-vietnam-logistics-pdpd-decree13.md) | S4 | 🇻🇳 vn | Priya / Marcus |
 | 5 | [UAE finance: PDPL + DESC — privileged access / PAM](05-uae-finance-pdpl-desc-pam.md) | S5 | 🇦🇪 ae | Sofia / Marcus |
 | 6 | [Australian SaaS: Essential Eight + SOC 2 — certify, export, critique](06-australia-saas-essential-eight-soc2.md) | S6 | 🇦🇺 au | Marcus / Aisha |
+| 7 | [Benchmarks on this VM — latency, throughput, honest caveats](07-benchmarks-on-this-vm.md) | — | — | Marcus / Dmitri |
 
 Scenario definitions and the evidence map live in
 [`../scenarios/00-scenario-catalog.md`](../scenarios/00-scenario-catalog.md).
@@ -49,9 +51,16 @@ Scenario definitions and the evidence map live in
   `../artifacts/connector-test-matrix.txt`,
   `../artifacts/compliance-test-results.txt`,
   `../artifacts/handler-test-results.txt` — produced by `make blog-test`.
+- **Benchmarks:** [`../artifacts/benchmark-results.json`](../artifacts/benchmark-results.json)
+  — API latency percentiles + throughput plus the `system` block describing the
+  VM, produced by [`../harness/bench`](../harness/bench/main.go) (`make blog-bench`).
 - **Screenshots:** `../artifacts/screenshots/` — live console captures taken
-  after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi, ja)
-  over the same seeded data.
+  after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi) over
+  the same seeded data, produced by the Playwright harness
+  [`../harness/screenshots`](../harness/screenshots/shoot.mjs) (`make blog-screenshots`).
+  Identities come from `minttokens` and the deep-link IDs are read from the
+  committed capture payloads, so the set regenerates against whatever was last
+  seeded — no hand-navigation, no hard-coded UUIDs.
 
 ## Reproducing the artifacts
 
@@ -77,18 +86,32 @@ make blog-capture
 #   equivalently: (cd blog/harness/capture && go run . -base http://localhost:8080 \
 #                    -out ../../artifacts/payloads -summary ../../artifacts/seed-summary.json)
 
-# 4. Take screenshots from the live console at localhost:5173.
-#    - Switch locale for each screenshot set (en, zh-Hans, de, ar, vi, ja).
-#    - Navigate each scenario path (S1–S6) and capture.
+# 4. Take screenshots from the live console at localhost:5173 (needs `npm run dev`
+#    in ui/). Drives headless Chromium across S1–S6 and every locale, including
+#    the interactive policy-conflict + step-up-MFA flow. First run installs
+#    Playwright + Chromium automatically.
+make blog-screenshots
+#   equivalently: go run ./blog/harness/minttokens > tokens.tsv && \
+#     BLOG_TOKENS=tokens.tsv node blog/harness/screenshots/shoot.mjs
 
 # 5. Run the connector / compliance / handler test matrices.
 make blog-test
+
+# 6. Benchmark the live API on this VM (latency/throughput + system info).
+make blog-bench
+#   equivalently: (cd blog/harness/bench && go run . -base http://localhost:8080 \
+#                    -out ../../artifacts/benchmark-results.json)
 ```
+
+`make blog-all` runs seed → capture → bench → test in order. (`blog-screenshots`
+is kept separate because it additionally needs the UI dev server running.)
 
 The seed and capture harnesses are deterministic against the same seeded data: a
 re-run reproduces the same payload files (modulo live timestamps and the export
-ZIP's embedded generation time). Screenshots are taken from the live console
-after the seed step.
+ZIP's embedded generation time). Screenshots are regenerated the same way — the
+[`screenshots`](../harness/screenshots/shoot.mjs) harness drives the live console
+headlessly after the seed step, deriving identities and deep-link IDs from
+`minttokens` and the committed payloads rather than any hand-navigation.
 
 > **First-run timing.** Promoting a policy and exporting an evidence pack are
 > step-up-MFA-gated: each consumes a fresh 6-digit TOTP code, and the server

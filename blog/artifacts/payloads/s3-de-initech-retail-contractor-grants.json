@@ -1,24 +1,24 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:15:03.27723Z",
+      "approved_at": "2026-06-12T02:18:33.051793Z",
       "approved_by": "de-initech-retail-owner",
-      "connector_id": "67dc6a0a-1650-46bd-92e6-4a1346bfa0e4",
+      "connector_id": "a67f2f8c-a40c-4d50-9c3c-b2e08be2a140",
       "contractor_user_id": "ext-pos-integrator@vendor.example",
-      "created_at": "2026-06-11T05:15:03.272665Z",
+      "created_at": "2026-06-12T02:18:33.045753Z",
       "deleted_at": null,
       "display_name": "Seasonal POS integrator",
-      "expires_at": "2026-10-09T05:15:03Z",
-      "grant_id": "edfaac79-16d7-4f1d-8fc9-87625cd88d9c",
-      "id": "4c3eea18-1b57-42bf-a079-2df9d2304212",
+      "expires_at": "2026-10-10T02:18:33Z",
+      "grant_id": "301c5c35-ee4d-4f19-a5a3-30d9dc391b53",
+      "id": "2a131e73-dc53-411e-89ca-4345dc7b0177",
       "justification": "Holiday-season POS rollout; works-council-approved fixed term.",
       "requested_by": "de-initech-retail-owner",
       "resource_ref": "pos:store-manager",
       "role": "operator",
       "sponsor_id": "de-admin",
       "state": "active",
-      "updated_at": "2026-06-11T05:15:03.284113Z",
-      "workspace_id": "f6b5113b-9d3a-4810-8717-2e37c581ba15"
+      "updated_at": "2026-06-12T02:18:33.060985Z",
+      "workspace_id": "e716eb19-9b02-4c09-a2ab-0bf4479a5175"
     }
   ]
 }

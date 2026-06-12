@@ -1,45 +1,45 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:10:31.967548Z",
+      "approved_at": "2026-06-12T02:14:02.133401Z",
       "approved_by": "sg-acme-payments-owner",
-      "connector_id": "1cbe94f5-52e7-415a-b856-4ca5d61c1575",
+      "connector_id": "28a7bfe7-8f6d-4f06-a277-3d186cde1624",
       "contractor_user_id": "ext-pentest@security.example",
-      "created_at": "2026-06-11T05:10:31.963335Z",
+      "created_at": "2026-06-12T02:14:02.128599Z",
       "deleted_at": null,
       "display_name": "External penetration tester",
-      "expires_at": "2026-06-21T05:10:31Z",
-      "grant_id": "66edb218-8c94-4de1-97de-a93b019e7815",
-      "id": "0937a4da-334c-456d-b036-ce883c630e97",
+      "expires_at": "2026-06-22T02:14:02Z",
+      "grant_id": "2b6c5b48-cf99-4214-96dd-39e8ae6c0c36",
+      "id": "07f50616-dceb-4a68-952f-8982098c3bb2",
       "justification": "PCI-DSS 11.3 annual penetration test, read-only CDE.",
       "requested_by": "sg-acme-payments-owner",
       "resource_ref": "cde:pci-scope",
-      "revoked_at": "2026-06-11T05:10:31.977001Z",
+      "revoked_at": "2026-06-12T02:14:02.144215Z",
       "role": "auditor",
       "sponsor_id": "sg-security_admin",
       "state": "revoked",
-      "updated_at": "2026-06-11T05:10:31.977001Z",
-      "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+      "updated_at": "2026-06-12T02:14:02.144215Z",
+      "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682"
     },
     {
-      "approved_at": "2026-06-11T05:10:31.947224Z",
+      "approved_at": "2026-06-12T02:14:02.112297Z",
       "approved_by": "sg-acme-payments-owner",
-      "connector_id": "1cbe94f5-52e7-415a-b856-4ca5d61c1575",
+      "connector_id": "28a7bfe7-8f6d-4f06-a277-3d186cde1624",
       "contractor_user_id": "ext-paytech-integrator@vendor.example",
-      "created_at": "2026-06-11T05:10:31.94053Z",
+      "created_at": "2026-06-12T02:14:02.105687Z",
       "deleted_at": null,
       "display_name": "PayTech integration contractor",
-      "expires_at": "2026-09-03T05:10:31Z",
-      "grant_id": "ffb310e4-18bb-4733-9c38-0a5b6f821c88",
-      "id": "0d925886-af98-449f-aef2-95b660e81bde",
+      "expires_at": "2026-09-04T02:14:02Z",
+      "grant_id": "dabcc9d2-69d7-4e36-aff9-6c74f5f68a8c",
+      "id": "9870b076-c29f-4a65-90f5-e59b48b68513",
       "justification": "6-week payment-rails integration; sponsor: Head of Platform.",
       "requested_by": "sg-acme-payments-owner",
       "resource_ref": "ledger:reconcile",
       "role": "operator",
       "sponsor_id": "sg-admin",
       "state": "active",
-      "updated_at": "2026-06-11T05:10:31.956007Z",
-      "workspace_id": "7c7601e7-cca5-4ac2-b9cd-a26040c34e46"
+      "updated_at": "2026-06-12T02:14:02.120992Z",
+      "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682"
     }
   ]
 }

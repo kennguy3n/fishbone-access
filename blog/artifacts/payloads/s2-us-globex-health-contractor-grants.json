@@ -1,24 +1,24 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:12:02.222395Z",
+      "approved_at": "2026-06-12T02:15:32.180107Z",
       "approved_by": "us-globex-health-owner",
-      "connector_id": "1666335f-50a8-4069-96b5-267c8dfb4895",
+      "connector_id": "cfee67bb-b6d0-40e9-8762-c58ed8f8eed7",
       "contractor_user_id": "ext-coding-vendor@billing.example",
-      "created_at": "2026-06-11T05:12:02.215837Z",
+      "created_at": "2026-06-12T02:15:32.175201Z",
       "deleted_at": null,
       "display_name": "Medical-coding vendor",
-      "expires_at": "2026-08-10T05:12:02Z",
-      "grant_id": "6535b0d3-941f-40c5-8fa0-4d188770740a",
-      "id": "50b9374c-a10b-4bd6-88bf-fc7e804a72be",
+      "expires_at": "2026-08-11T02:15:32Z",
+      "grant_id": "e2ac8cd1-b267-4524-b9b8-a935df87ad93",
+      "id": "ad88ecc2-beaf-4379-b176-a1162c29ebc9",
       "justification": "Revenue-cycle coding backlog; minimum-necessary billing module only.",
       "requested_by": "us-globex-health-owner",
       "resource_ref": "ehr:billing",
       "role": "operator",
       "sponsor_id": "us-admin",
       "state": "active",
-      "updated_at": "2026-06-11T05:12:02.230805Z",
-      "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+      "updated_at": "2026-06-12T02:15:32.187493Z",
+      "workspace_id": "7698d925-6490-4def-98ab-3204ea0d2fc6"
     }
   ]
 }

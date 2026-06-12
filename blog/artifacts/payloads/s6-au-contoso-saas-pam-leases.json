@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-11T05:20:01.344958Z",
+      "created_at": "2026-06-12T02:23:31.247322Z",
       "deleted_at": null,
-      "expires_at": "2026-06-11T05:50:31.431585Z",
-      "granted_at": "2026-06-11T05:20:31.431585Z",
-      "id": "0e082569-07d1-45bc-a293-d13f3511ca19",
+      "expires_at": "2026-06-12T02:54:01.308309Z",
+      "granted_at": "2026-06-12T02:24:01.308309Z",
+      "id": "8bd8ee57-5cf1-4c43-b335-922d212efba6",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -18,17 +18,17 @@
       "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "5de2d598-0196-46d9-925d-00156cd6f788",
-      "updated_at": "2026-06-11T05:20:31.431585Z",
-      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+      "target_id": "46dd114f-d84b-4a6b-985f-79c768f27c20",
+      "updated_at": "2026-06-12T02:24:01.308309Z",
+      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
     },
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-11T05:19:32.313159Z",
+      "created_at": "2026-06-12T02:23:02.198166Z",
       "deleted_at": null,
-      "expires_at": "2026-06-11T05:50:01.329205Z",
-      "granted_at": "2026-06-11T05:20:01.329205Z",
-      "id": "d4bb09ed-5ab5-4297-b141-f32831b4ad9e",
+      "expires_at": "2026-06-12T02:53:31.230061Z",
+      "granted_at": "2026-06-12T02:23:31.230061Z",
+      "id": "918ac1ee-6093-444d-9ab8-b96600eaf510",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -40,9 +40,9 @@
       "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "78eed2f7-db1a-49fd-9f61-67471d822f74",
-      "updated_at": "2026-06-11T05:20:01.329205Z",
-      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+      "target_id": "45ee27db-8c72-45ac-872d-28115b16d19a",
+      "updated_at": "2026-06-12T02:23:31.230061Z",
+      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
     }
   ]
 }

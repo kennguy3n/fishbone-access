@@ -30,7 +30,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "75adb6e4-19af-4a13-98c6-f4d8e6048c88",
+          "rule_id": "7e68c745-1e28-4391-82f9-340258118bbb",
           "rule_name": "Clinician role must not hold billing export",
           "severity": "high",
           "subject": "us-globex-health-owner"

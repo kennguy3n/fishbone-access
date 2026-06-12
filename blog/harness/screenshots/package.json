@@ -1,0 +1,12 @@
+{
+  "name": "blog-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible Playwright driver that captures the blog console screenshots from a seeded, running control plane + UI dev server.",
+  "scripts": {
+    "shoot": "node shoot.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

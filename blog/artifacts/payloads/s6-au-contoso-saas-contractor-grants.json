@@ -1,24 +1,24 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:19:32.295251Z",
+      "approved_at": "2026-06-12T02:23:02.179637Z",
       "approved_by": "au-contoso-saas-owner",
-      "connector_id": "91d18b9a-6f09-46e5-b730-69a72dd9dc12",
+      "connector_id": "dfcb332e-d389-45aa-a885-52a383749767",
       "contractor_user_id": "ext-sre-oncall@vendor.example",
-      "created_at": "2026-06-11T05:19:32.290434Z",
+      "created_at": "2026-06-12T02:23:02.175045Z",
       "deleted_at": null,
       "display_name": "On-call SRE vendor",
-      "expires_at": "2026-07-23T05:19:32Z",
-      "grant_id": "24c035ac-8cb4-4e09-b306-9516ae6d3c59",
-      "id": "b5971ce9-1430-4e79-b65b-dcc442d753f8",
+      "expires_at": "2026-07-24T02:23:02Z",
+      "grant_id": "2207d4e2-0782-42e5-a51d-ac8ef83d0cf5",
+      "id": "0c4fce69-5468-4c20-94d8-7f00389617b3",
       "justification": "Follow-the-sun production on-call cover; Essential Eight time-boxed admin.",
       "requested_by": "au-contoso-saas-owner",
       "resource_ref": "prod:deploy",
       "role": "operator",
       "sponsor_id": "au-admin",
       "state": "active",
-      "updated_at": "2026-06-11T05:19:32.303013Z",
-      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+      "updated_at": "2026-06-12T02:23:02.18656Z",
+      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
     }
   ]
 }

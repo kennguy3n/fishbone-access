@@ -1,9 +1,9 @@
 {
   "request": {
-    "connector_id": "1666335f-50a8-4069-96b5-267c8dfb4895",
-    "created_at": "2026-06-11T05:12:01.413898Z",
+    "connector_id": "cfee67bb-b6d0-40e9-8762-c58ed8f8eed7",
+    "created_at": "2026-06-12T02:15:31.512912Z",
     "deleted_at": null,
-    "id": "bd03f43b-7694-42dd-9336-33b3dddcb34a",
+    "id": "709386de-2819-467d-9ecf-76b045a3c293",
     "justification": "CCPA/CPRA consumer data-subject access request fulfilment.",
     "requester_id": "us-globex-health-owner",
     "resource_ref": "phi:export",
@@ -14,17 +14,17 @@
     "role": "auditor",
     "state": "approved",
     "target_user_id": "us-globex-health-owner",
-    "updated_at": "2026-06-11T05:12:01.426132Z",
-    "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+    "updated_at": "2026-06-12T02:15:31.525552Z",
+    "workspace_id": "7698d925-6490-4def-98ab-3204ea0d2fc6"
   },
   "risk": {
-    "created_at": "2026-06-11T05:12:01.417628Z",
+    "created_at": "2026-06-12T02:15:31.516724Z",
     "degraded": true,
     "deleted_at": null,
     "factors": [
       "ai_unavailable"
     ],
-    "id": "aed0d66c-e699-4d73-a02e-ecce5539c693",
+    "id": "2d9091db-f63b-4dee-8ea6-621619325677",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -35,10 +35,10 @@
     },
     "rationale": "ai agent unavailable; applied fail-safe default",
     "recommendation": "needs_review",
-    "request_id": "bd03f43b-7694-42dd-9336-33b3dddcb34a",
+    "request_id": "709386de-2819-467d-9ecf-76b045a3c293",
     "score": "medium",
     "source": "fallback",
-    "updated_at": "2026-06-11T05:12:01.417628Z",
-    "workspace_id": "771dc9a7-1daa-4eff-a98f-a2098cd52f49"
+    "updated_at": "2026-06-12T02:15:31.516724Z",
+    "workspace_id": "7698d925-6490-4def-98ab-3204ea0d2fc6"
   }
 }

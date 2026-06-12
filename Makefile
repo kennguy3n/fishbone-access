@@ -13,10 +13,11 @@ TEST_TIMEOUT  ?= 180s
 # vars they require (AUTH_JWT_SECRET, ACCESS_CREDENTIAL_DEK, ACCESS_DATABASE_URL).
 BLOG_API_BASE ?= http://localhost:8080
 BLOG_ARTIFACTS ?= blog/artifacts
+BLOG_UI_BASE  ?= http://localhost:5173
 
 .PHONY: build vet test test-short test-integration tidy-check migrate-check lint-go lint ci \
         audit audit-report docker-up docker-down docker-logs help \
-        blog-seed blog-capture blog-test blog-all
+        blog-seed blog-capture blog-bench blog-screenshots blog-test blog-all
 
 build: ## go build ./...
 	$(GO) build $(PKG)
@@ -73,7 +74,18 @@ blog-test: ## run + tee the connector / compliance / handler test matrices
 	$(GO) test ./internal/services/compliance/... -v 2>&1 | tee $(BLOG_ARTIFACTS)/compliance-test-results.txt
 	$(GO) test ./internal/handlers/... -v 2>&1 | tee $(BLOG_ARTIFACTS)/handler-test-results.txt
 
-blog-all: blog-seed blog-capture blog-test ## seed, capture, then run the test matrices
+blog-bench: ## time the live API on this VM (latency/throughput; writes benchmark-results.json)
+	$(GO) run ./blog/harness/bench -base $(BLOG_API_BASE) -out $(BLOG_ARTIFACTS)/benchmark-results.json
+
+blog-screenshots: ## capture console screenshots (needs the UI dev server + seeded data; installs Playwright on first run)
+	npm --prefix blog/harness/screenshots install --no-audit --no-fund
+	npx --prefix blog/harness/screenshots playwright install chromium
+	TOK=$$(mktemp) && trap 'rm -f $$TOK' EXIT && \
+	  $(GO) run ./blog/harness/minttokens > $$TOK && \
+	  BLOG_UI_BASE=$(BLOG_UI_BASE) BLOG_TOKENS=$$TOK BLOG_PAYLOADS=$(BLOG_ARTIFACTS)/payloads \
+	  BLOG_SHOTS_OUT=$(BLOG_ARTIFACTS)/screenshots node blog/harness/screenshots/shoot.mjs
+
+blog-all: blog-seed blog-capture blog-bench blog-test ## seed, capture, benchmark, then run the test matrices
 
 help: ## print this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
