@@ -36,7 +36,7 @@ import (
 func (s *seeder) closeEvidenceGaps(c *harnesskit.Client, ws harnesskit.Workspace, workspaceID uuid.UUID, manualID string, disp *harnesskit.StepUpDispenser) string {
 	sessionID := s.recordPrivilegedSession(ws, workspaceID)
 	s.seedStandingConflict(c, ws, manualID)
-	s.detectStandingAnomalies(workspaceID)
+	s.detectStandingAnomalies(ws, workspaceID)
 	s.exportEvidence(c, disp)
 	return sessionID
 }
@@ -186,10 +186,12 @@ func (s *seeder) recordPrivilegedSession(ws harnesskit.Workspace, workspaceID uu
 
 	store, err := gateway.NewFilesystemReplayStore(replayDir())
 	if err != nil {
+		_ = sessions.CloseSession(ctx, workspaceID, session.ID)
 		harnesskit.Logf("WARN %s: open replay store: %v", ws.Slug, err)
 		return ""
 	}
 	if err := rec.Flush(ctx, store); err != nil {
+		_ = sessions.CloseSession(ctx, workspaceID, session.ID)
 		harnesskit.Logf("WARN %s: persist replay: %v", ws.Slug, err)
 		return ""
 	}
@@ -200,6 +202,7 @@ func (s *seeder) recordPrivilegedSession(ws harnesskit.Workspace, workspaceID uu
 		Bytes:     rc.Bytes,
 		Truncated: rc.Truncated,
 	}); err != nil {
+		_ = sessions.CloseSession(ctx, workspaceID, session.ID)
 		harnesskit.Logf("WARN %s: anchor recording: %v", ws.Slug, err)
 		return ""
 	}
@@ -217,13 +220,13 @@ func (s *seeder) recordPrivilegedSession(ws harnesskit.Workspace, workspaceID uu
 // halves of the workspace's SoD rule, so this surfaces a real standing
 // violation (not a what-if), recording the CC7.3 detection + auto-disposition
 // evidence the older seed never produced.
-func (s *seeder) detectStandingAnomalies(workspaceID uuid.UUID) {
+func (s *seeder) detectStandingAnomalies(ws harnesskit.Workspace, workspaceID uuid.UUID) {
 	n, err := lifecycle.NewAnomalyDetector(s.db).DetectAndRecord(context.Background(), workspaceID)
 	if err != nil {
-		harnesskit.Logf("WARN detect standing anomalies: %v", err)
+		harnesskit.Logf("WARN %s: detect standing anomalies: %v", ws.Slug, err)
 		return
 	}
-	harnesskit.Logf("OK   standing SoD anomalies detected + dispositioned: %d", n)
+	harnesskit.Logf("OK   %s: standing SoD anomalies detected + dispositioned: %d", ws.Slug, n)
 }
 
 // exportEvidence exports an evidence pack over the real, step-up-gated export
