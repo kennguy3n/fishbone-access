@@ -37,7 +37,7 @@ func (s *seeder) closeEvidenceGaps(c *harnesskit.Client, ws harnesskit.Workspace
 	sessionID := s.recordPrivilegedSession(ws, workspaceID)
 	s.seedStandingConflict(c, ws, manualID)
 	s.detectStandingAnomalies(ws, workspaceID)
-	s.exportEvidence(c, disp)
+	s.exportEvidence(c, ws, disp)
 	return sessionID
 }
 
@@ -236,19 +236,19 @@ func (s *seeder) detectStandingAnomalies(ws harnesskit.Workspace, workspaceID uu
 // export half of PCI-DSS 10.2 covered. SOC 2 is a valid framework for every
 // workspace and the record's kind — not its framework — is what the coverage
 // map keys on.
-func (s *seeder) exportEvidence(c *harnesskit.Client, disp *harnesskit.StepUpDispenser) {
+func (s *seeder) exportEvidence(c *harnesskit.Client, ws harnesskit.Workspace, disp *harnesskit.StepUpDispenser) {
 	status, _, err := c.Request("POST", "/api/v1/compliance/export",
 		map[string]any{"framework": "SOC 2"},
 		map[string]string{harnesskit.StepUpHeader: disp.Next()})
 	if err != nil {
-		harnesskit.Logf("WARN evidence export: %v", err)
+		harnesskit.Logf("WARN %s: evidence export: %v", ws.Slug, err)
 		return
 	}
 	if status < 200 || status >= 300 {
-		harnesskit.Logf("WARN evidence export: HTTP %d", status)
+		harnesskit.Logf("WARN %s: evidence export: HTTP %d", ws.Slug, status)
 		return
 	}
-	harnesskit.Logf("OK   evidence pack exported (evidence_exported anchored in-chain)")
+	harnesskit.Logf("OK   %s: evidence pack exported (evidence_exported anchored in-chain)", ws.Slug)
 }
 
 // recordedCommand is one logged command in a seeded session plus the synthetic
