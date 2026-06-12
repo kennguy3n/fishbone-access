@@ -1,11 +1,11 @@
 {
   "chain_verification": {
-    "length": 75,
+    "length": 74,
     "ok": true,
     "status": "valid",
-    "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+    "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
   },
-  "content_sha256": "8ba54cc8a5343c5379ab8bffd614c46ddb4c631c5cfe18d46c15b9718eda90ed",
+  "content_sha256": "b67b19a7dd61ae7bf6f3e0dc8d095e67b8467fe2259e323dd6f087e1d71eb8fe",
   "coverage": {
     "controls": [
       {
@@ -101,16 +101,16 @@
     ],
     "controls_covered": 4,
     "controls_total": 6,
-    "evidence_total": 37,
+    "evidence_total": 36,
     "framework": "SOC 2"
   },
-  "evidence_total": 75,
+  "evidence_total": 74,
   "files": [
     {
       "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
       "name": "evidence.jsonl",
-      "rows": 75,
-      "sha256": "fcb31f08a17278e342ce7d4d95d8056d2badc9500f6a644cad8ccbddee36b690"
+      "rows": 74,
+      "sha256": "731c5d924760d65e57cb423d78dc36351a0fd4a350e27e6d9e31ab558d014fb3"
     },
     {
       "comment": "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
@@ -122,48 +122,48 @@
       "comment": "Every grant active at any point during the period (granted_at < to AND (revoked_at IS NULL OR revoked_at >= from)).",
       "name": "access-grants.jsonl",
       "rows": 4,
-      "sha256": "4d3a4430e4a56308dad14c216fee89cb0613c5bdbe6747bab02e51df12f0b587"
+      "sha256": "1e0ce8638e523b683dd742dba8698dc33f7364d9061f7e4ab168ecf3b05343f7"
     },
     {
       "comment": "Certification campaigns whose lifecycle overlapped the period.",
       "name": "certification-campaigns.jsonl",
       "rows": 1,
-      "sha256": "92c26ad58fc98c8c260ae63cfdad39fe02464525a3ef8bc41d70cfa360c88243"
+      "sha256": "2d0e22769369ed0822f144df636c9d97e8982a4b7da943db662331b454f10e96"
     },
     {
       "comment": "Per-grant certification decisions for the campaigns above. Sorted by (campaign_id, created_at).",
       "name": "certification-items.jsonl",
       "rows": 1,
-      "sha256": "1cf6881161a990d6c2402cfc1b08d56a0c551a556ca46ac49c7a73c67fe08fc2"
+      "sha256": "5be1f4bad212d26619e4b38faa56648c8535acf3446b3475060419158a669869"
     },
     {
       "comment": "Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
       "name": "policies.jsonl",
       "rows": 6,
-      "sha256": "6d41e504e909e804ae733f827c2ee478b46388c248fda9d15f16cdb8ef89b958"
+      "sha256": "3feacf55b0693423213133e5de780e088ddf81e8a8f01c7269ef4179690cec97"
     },
     {
       "comment": "Per-control evidence coverage for the framework over the period.",
       "name": "control-coverage.json",
       "rows": 0,
-      "sha256": "2e7601ba0bce0ee8a9e98396362829ddbff5fa6202ff4328bcf13b5f95f437b6"
+      "sha256": "a341c9c624ab4fa209fbf87edbcf8c99dd80ed82873b3761a8b9b677b5e01132"
     },
     {
       "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
       "name": "chain-verification.json",
       "rows": 0,
-      "sha256": "89c423fc4e109ae2bc350aa4d700dbdbe1a89de6c5575bcd285a2823ddab562a"
+      "sha256": "590c172bd4def5f3034b3db187dd52a13d53ce47bbd14808d7f6a43608bfec0c"
     },
     {
       "comment": "Auditor-facing guide to this evidence pack.",
       "name": "README.md",
       "rows": 0,
-      "sha256": "397f5d70503c5f79f736a8274dccff5451958599027fff044f6b830081401e5f"
+      "sha256": "9dda24e6096bf0441942307a478c9dc3d2c94156812e88b36759fd312a371217"
     }
   ],
   "framework": "SOC 2",
-  "generated_at": "2026-06-11T05:22:42.756342814Z",
+  "generated_at": "2026-06-12T02:24:12.331488262Z",
   "generated_by": "au-contoso-saas-owner",
   "schema_version": "1.1",
-  "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+  "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
 }

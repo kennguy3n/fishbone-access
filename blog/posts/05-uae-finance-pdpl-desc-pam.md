@@ -73,7 +73,7 @@ And the ISO 27001 Annex A coverage from the chain
 [
   { "id": "A.5.15", "covered": true,  "evidence_count": 12, "title": "Access control policy" },
   { "id": "A.5.16", "covered": true,  "evidence_count": 7,  "title": "Identity lifecycle management" },
-  { "id": "A.5.18", "covered": true,  "evidence_count": 14, "title": "Access rights provisioned, reviewed and removed" },
+  { "id": "A.5.18", "covered": true,  "evidence_count": 15, "title": "Access rights provisioned, reviewed and removed" },
   { "id": "A.8.2",  "covered": false, "evidence_count": 0,  "title": "Privileged access rights monitored" },
   { "id": "A.8.15", "covered": false, "evidence_count": 0,  "title": "Tamper-evident logging" }
 ]

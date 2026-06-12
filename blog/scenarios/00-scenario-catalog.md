@@ -17,7 +17,10 @@ connector fabric (200+ providers) → policy packs by jurisdiction/framework →
 the access lifecycle (request → approve → provision → review → certify →
 deprovision) → a tamper-evident evidence chain you can export as a
 framework-mapped compliance pack. Five RBAC roles, step-up MFA on the
-highest-risk actions, and row-level tenant isolation across every table.
+highest-risk actions, and row-level tenant isolation across every table. Every
+policy decision is a route (`grant`/`deny`, deny-wins), and every access request
+carries an AI-risk **approval route** (`auto_approve_eligible` / `needs_review` /
+`high_risk`) that fails closed to `needs_review` when the risk agent is offline.
 
 ---
 
@@ -202,6 +205,7 @@ compliance artifact produced, and the evidence source.
 | Coverage map across frameworks | S3 |
 | RBAC: 5 roles | S1–S6 (seeded per workspace) |
 | Multi-locale UI (en, de, vi, ar, …) | S3 (de), S4 (vi), S5 (ar) |
+| **On-VM API benchmarks** (latency p50/p90/p99 + throughput) | Post 7 (`benchmark-results.json`, `make blog-bench`) |
 
 ---
 
@@ -222,6 +226,10 @@ compliance artifact produced, and the evidence source.
    exists, the session recording still doesn't; RTL locale.
 6. **S6 — Australian SaaS** (Essential Eight + SOC 2): certification campaign,
    evidence export, full competitive scorecard.
+7. **Benchmarks on this VM** — latency percentiles and throughput for the live
+   API (read paths + the inline policy/SoD simulate engine), with the machine
+   spec and the honest caveats (single un-tuned dev box, loopback, small
+   dataset). Source: `../artifacts/benchmark-results.json` (`make blog-bench`).
 
 Each post: business context → the scenario walked in the UI (real screenshots) →
 the real API payloads → how it works under the hood → where we fall short.

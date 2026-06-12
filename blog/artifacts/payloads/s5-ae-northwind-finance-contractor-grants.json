@@ -1,24 +1,24 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:17:02.324245Z",
+      "approved_at": "2026-06-12T02:20:32.07254Z",
       "approved_by": "ae-northwind-finance-owner",
-      "connector_id": "9425214b-baa5-4304-b6ef-0420798ff1f2",
+      "connector_id": "d7e4edaa-b899-4b21-a07c-2921dbfef245",
       "contractor_user_id": "ext-desc-auditor@regulator.example",
-      "created_at": "2026-06-11T05:17:02.319929Z",
+      "created_at": "2026-06-12T02:20:32.066763Z",
       "deleted_at": null,
       "display_name": "DESC external auditor",
-      "expires_at": "2026-07-09T05:17:02Z",
-      "grant_id": "58517899-876d-4695-b5d4-5f64c76e4ded",
-      "id": "6fb13c0d-7e63-4fc5-a4ac-ec661e286ac1",
+      "expires_at": "2026-07-10T02:20:32Z",
+      "grant_id": "bf2dd39e-bb23-4faa-be56-4b5dbdaff29b",
+      "id": "b0193c0b-e4c2-43d0-aed3-3a94828b846a",
       "justification": "DESC annual assessment, read-only audit window.",
       "requested_by": "ae-northwind-finance-owner",
       "resource_ref": "pdpl:dsr",
       "role": "auditor",
       "sponsor_id": "ae-security_admin",
       "state": "active",
-      "updated_at": "2026-06-11T05:17:02.330518Z",
-      "workspace_id": "b4239f5f-4c1d-40fb-8aa7-2d3346432682"
+      "updated_at": "2026-06-12T02:20:32.083163Z",
+      "workspace_id": "d962da2a-3ac5-4ff7-829b-262113ff0439"
     }
   ]
 }

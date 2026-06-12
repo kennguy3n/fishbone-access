@@ -69,12 +69,12 @@ The campaign closed, every item decided
 { "name": "Q2 2026 PDPD Decree 13 certification", "state": "closed", "all_decided": true, "total": 1, "revoked": 1 }
 ```
 
-And the chain — **53 records, valid** — is the artifact that turns "we have a
+And the chain — **63 records, valid** — is the artifact that turns "we have a
 policy" into "we can prove it"
 ([`s4-vn-umbrella-logistics-chain-verify.json`](../artifacts/payloads/s4-vn-umbrella-logistics-chain-verify.json)):
 
 ```json
-{ "length": 53, "ok": true, "status": "valid", "workspace_id": "d030dc2a-02ce-4b46-b177-84ae55b558d1" }
+{ "length": 63, "ok": true, "status": "valid", "workspace_id": "5f4754d7-24a6-4a11-80f8-2c1da580c442" }
 ```
 
 That's the day-one win: a Vietnamese SME with *two policies* still produces a
@@ -159,7 +159,7 @@ For an emerging-market SME, most of the "leaders" simply aren't realistic:
 deployment, expertise) exceeds the whole problem. Okta IGA is closer but still
 expects you to author the jurisdiction logic yourself. fishbone-access's edge
 here is precisely that it makes a *small* start *credible*: one PDPD pack, a full
-lifecycle, a valid 53-record chain, in Vietnamese, this week. The right tool is
+lifecycle, a valid 63-record chain, in Vietnamese, this week. The right tool is
 the one that meets the company where it actually is.
 
 ---

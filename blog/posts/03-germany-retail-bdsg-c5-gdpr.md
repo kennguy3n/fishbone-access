@@ -38,7 +38,7 @@ the live facets include `Cloud Infra`, `DevOps`, `Observability`, `ERP`,
 
 This is the headline. Initech ran *one* lifecycle — provision a store manager and
 a CDE-maintenance engineer, file a GDPR Article 15 export request, run a BSI C5 +
-GDPR review, close an ISO 27001 certification campaign. The **same 39 evidence
+GDPR review, close an ISO 27001 certification campaign. The **same 40 evidence
 records** then project onto every framework's control set. Here is the console's
 compliance view, in **German** (locale `de`) — the same data, translated chrome:
 
@@ -49,8 +49,8 @@ And the verbatim coverage maps, all from that one chain:
 **SOC 2** ([`coverage-soc2`](../artifacts/payloads/s3-de-initech-retail-coverage-soc2.json)) — 4 / 6:
 ```json
 [
-  { "id": "CC6.1", "covered": true,  "evidence_count": 19, "title": "Logical access security — least-privilege policy enforced" },
-  { "id": "CC6.2", "covered": true,  "evidence_count": 8,  "title": "Access provisioned on authorization" },
+  { "id": "CC6.1", "covered": true,  "evidence_count": 20, "title": "Logical access security — least-privilege policy enforced" },
+  { "id": "CC6.2", "covered": true,  "evidence_count": 9,  "title": "Access provisioned on authorization" },
   { "id": "CC6.3", "covered": true,  "evidence_count": 9,  "title": "Access modified/removed when no longer required" },
   { "id": "CC6.7", "covered": false, "evidence_count": 0,  "title": "Privileged access monitored" },
   { "id": "CC7.2", "covered": true,  "evidence_count": 6,  "title": "Access reviewed/certified periodically" },
@@ -63,7 +63,7 @@ And the verbatim coverage maps, all from that one chain:
 [
   { "id": "A.5.15", "covered": true,  "evidence_count": 16, "title": "Access control policy" },
   { "id": "A.5.16", "covered": true,  "evidence_count": 7,  "title": "Identity lifecycle management" },
-  { "id": "A.5.18", "covered": true,  "evidence_count": 14, "title": "Access rights provisioned, reviewed and removed" },
+  { "id": "A.5.18", "covered": true,  "evidence_count": 15, "title": "Access rights provisioned, reviewed and removed" },
   { "id": "A.8.2",  "covered": false, "evidence_count": 0,  "title": "Privileged access rights monitored" },
   { "id": "A.8.15", "covered": false, "evidence_count": 0,  "title": "Tamper-evident logging" }
 ]

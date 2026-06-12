@@ -31,10 +31,18 @@ goes well beyond simple SaaS grants:
    step-up TOTP** code. The same simulation runs a **separation-of-duties (SoD)
    toxic-combination check** that flags *catastrophic* grants before they land.
 4. **The access lifecycle.** Request → approve → provision → review → certify →
-   deprovision. Employee-initiated requests are **AI-risk-scored** before a human
-   sees them; SCIM-driven **joiner/mover/leaver (JML)** automation keeps grants
-   in step with identity and role changes; and a **leaver kill switch** sweeps
-   every connector supporting session revocation or SCIM deprovisioning.
+   deprovision. Every policy decision is a **route**: a request resolves to a
+   `grant` or a `deny`, and **deny always wins on conflict** — that is how
+   "allow this, block that" is expressed and how toxic combinations are caught.
+   Employee-initiated requests are then **AI-risk-scored** before a human sees
+   them, and the verdict carries an explicit **approval route** —
+   `auto_approve_eligible`, `needs_review`, or `high_risk` — so low-risk requests
+   can be fast-tracked while risky ones are forced to a human. When the risk
+   agent is unreachable the route fails **closed** to `needs_review`; it never
+   auto-approves on failure. SCIM-driven **joiner/mover/leaver (JML)** automation
+   keeps grants in step with identity and role changes, and a **leaver kill
+   switch** sweeps every connector supporting session revocation or SCIM
+   deprovisioning.
 5. **Privileged access (PAM).** Privileged targets — **cloud VMs over SSH** and
    **managed databases over their native wire protocol** — are registered in a
    vault and reached through a **just-in-time lease**: request → sponsor approval
@@ -46,7 +54,8 @@ goes well beyond simple SaaS grants:
 7. **A tamper-evident evidence chain.** Every consequential action across all of
    the above appends a hash-linked evidence record. You can verify the chain and
    **export a framework-mapped evidence pack** (a ZIP with a manifest carrying
-   the content digest and chain-verification status) for an auditor — the
+   the content digest and chain-verification status, plus a `pam-recordings.jsonl`
+   slot the pack now ships even when it is empty) for an auditor — the
    **access-certification** artifact regulators ask to see.
 
 ## The honesty contract
@@ -116,7 +125,7 @@ boundaries.
 
 - **200+ connectors** in the catalogue, including the first-class manual
   (offline-target) connector.
-- **18 compliance packs** spanning **15+ jurisdictions** (SG, US, DE, VN, AE, AU,
+- **19 compliance packs** spanning **15+ jurisdictions** (SG, US, DE, VN, AE, AU,
   EU/GDPR, …) and the major frameworks (PCI-DSS v4, HIPAA, SOC 2, ISO 27001,
   GDPR, BSI C5, Essential Eight, PDPA/PDPL/PDPD).
 - **5 RBAC roles** — owner, admin, security_admin, operator, auditor — seeded
@@ -127,9 +136,15 @@ boundaries.
   register screen.
 - **Time-boxed contractor access** — sponsor-approved external grants with a
   mandatory expiry and an extend / early-revoke history.
-- **AI-assisted risk scoring** on every access request and PAM lease, with a
-  fail-safe `needs_review` default when the AI agent is unavailable (honest, and
-  shown verbatim).
+- **AI-assisted risk scoring** on every access request and PAM lease, routing
+  each to `auto_approve_eligible` / `needs_review` / `high_risk`, with a
+  fail-closed `needs_review` default when the AI agent is unavailable (honest,
+  and shown verbatim — never an auto-approve on failure).
+- **On-VM benchmarks** of the live API (latency percentiles + throughput),
+  captured by [`blog/harness/bench`](../harness/bench/main.go) on this dev box
+  and written to [`../artifacts/benchmark-results.json`](../artifacts/benchmark-results.json).
+  See [Post 7](07-benchmarks-on-this-vm.md) for the methodology and honest
+  caveats.
 - **Separation-of-duties simulation** — a toxic-combination engine that marks a
   grant `catastrophic` *before* it is committed.
 - **12 UI locales**, exercised across the cast (en, zh-Hans, de, ar, vi, ja in
@@ -146,5 +161,7 @@ boundaries.
 ## How to reproduce everything
 
 See [`README.md`](README.md) for the exact commands (`make blog-seed`,
-`make blog-capture`, `make blog-test`) and the environment the harnesses need.
-The next post starts in Singapore.
+`make blog-capture`, `make blog-bench`, `make blog-test`) and the environment the
+harnesses need. The next post starts in Singapore; the series closes in
+[Post 7](07-benchmarks-on-this-vm.md) with the numbers this VM actually turned
+in.

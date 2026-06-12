@@ -2,29 +2,29 @@
   "targets": [
     {
       "address": "prod-db-1.contoso-saas.internal:5432",
-      "created_at": "2026-06-11T05:20:01.340555Z",
+      "created_at": "2026-06-12T02:23:31.242349Z",
       "deleted_at": null,
-      "id": "5de2d598-0196-46d9-925d-00156cd6f788",
+      "id": "46dd114f-d84b-4a6b-985f-79c768f27c20",
       "lease_ttl_seconds": 1800,
       "name": "Production datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-11T05:20:01.340555Z",
+      "updated_at": "2026-06-12T02:23:31.242349Z",
       "username": "app_ro",
-      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
     },
     {
       "address": "prod-au-1.contoso-saas.internal:22",
-      "created_at": "2026-06-11T05:19:32.308975Z",
+      "created_at": "2026-06-12T02:23:02.193381Z",
       "deleted_at": null,
-      "id": "78eed2f7-db1a-49fd-9f61-67471d822f74",
+      "id": "45ee27db-8c72-45ac-872d-28115b16d19a",
       "lease_ttl_seconds": 1800,
       "name": "GCP production VM (prod-au-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-11T05:19:32.308975Z",
+      "updated_at": "2026-06-12T02:23:02.193381Z",
       "username": "sre",
-      "workspace_id": "6e3b0423-3d23-458e-baad-bd68472910bb"
+      "workspace_id": "f5c3099c-4b10-4907-bf01-2de7bec04cce"
     }
   ]
 }

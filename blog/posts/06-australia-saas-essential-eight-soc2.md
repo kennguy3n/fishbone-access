@@ -38,11 +38,11 @@ On the **Compliance evidence** page, Contoso clicks **Export SOC 2 pack**. Two
 things happen that you can see in the live console:
 
 1. A ZIP downloads (here, `evidence-pack-SOC_2.zip`).
-2. A toast confirms **"Evidence pack exported — Digest `5ee4269f6ab7…` recorded
+2. A toast confirms **"Evidence pack exported — Digest `b67b19a7dd61…` recorded
    on the audit chain"**, and the export *itself* appears as a new
-   `compliance.export` event on the timeline.
+   `compliance.export` event on the timeline (record `#75` in the screenshot).
 
-![Contoso exporting the SOC 2 evidence pack — digest recorded on the chain, 63 records verified, chain intact](../artifacts/screenshots/s6-au-compliance-export.png)
+![Contoso exporting the SOC 2 evidence pack — digest recorded on the chain, 75 records verified, chain intact](../artifacts/screenshots/s6-au-compliance-export.png)
 
 The export is **step-up-MFA-gated** — it consumes a fresh TOTP code, the same
 strongest-gate treatment as policy promotion — and it is *self-recording*:
@@ -59,12 +59,13 @@ The committed manifest is the contract
   "framework": "SOC 2",
   "schema_version": "1.0",
   "generated_by": "au-contoso-saas-owner",
-  "content_sha256": "edcf915f7cd3b4bf55a234ca2329694f489d3de8ced522233cdef8e9a851771b",
-  "chain_verification": { "length": 61, "ok": true, "status": "valid" },
-  "coverage": { "framework": "SOC 2", "controls_covered": 4, "controls_total": 6, "evidence_total": 35 },
+  "content_sha256": "b67b19a7dd61ae7bf6f3e0dc8d095e67b8467fe2259e323dd6f087e1d71eb8fe",
+  "chain_verification": { "length": 74, "ok": true, "status": "valid" },
+  "coverage": { "framework": "SOC 2", "controls_covered": 4, "controls_total": 6, "evidence_total": 36 },
   "files": [
-    { "name": "evidence.jsonl",              "rows": 61 },
-    { "name": "access-grants.jsonl",          "rows": 3 },
+    { "name": "evidence.jsonl",              "rows": 74 },
+    { "name": "pam-recordings.jsonl",        "rows": 0 },
+    { "name": "access-grants.jsonl",          "rows": 4 },
     { "name": "certification-campaigns.jsonl","rows": 1 },
     { "name": "certification-items.jsonl",    "rows": 1 },
     { "name": "policies.jsonl",               "rows": 6 },
@@ -81,17 +82,19 @@ is mechanical and needs **zero trust in Contoso**:
 1. Re-hash each file → compare to the per-file `sha256` in the manifest.
 2. Re-hash the whole pack → compare to `content_sha256`.
 3. Replay `evidence.jsonl`'s hash chain → confirm it matches
-   `chain-verification.json` (`length: 61, status: valid`).
+   `chain-verification.json` (`length: 74, status: valid`).
 
 If a single byte of any evidence record was altered after the fact, a link
 breaks and the chain fails. That's the difference between "here are some
 screenshots" and "here is a tamper-evident record you can independently verify."
 
-> Note on the numbers: the committed manifest shows `length: 61` (captured at
-> seed time); the live screenshot shows **63** because exporting the pack twice
-> during capture appended two `compliance.export` events. Both are honest — the
-> chain simply grew by the two exports, and each new export re-verifies the whole
-> chain.
+> Note on the numbers: the committed manifest shows `length: 74` (captured at
+> the moment of export); the live screenshot shows **75** because a subsequent
+> export appended one more `compliance.export` event to the chain. Both are
+> honest — the chain simply grew by that export, and each new export re-verifies
+> the whole chain before writing its own record. (The manifest also now ships a
+> `pam-recordings.jsonl` file — empty here, because `pam_sessions = 0`; the pack
+> carries the slot even when the demo has nothing to put in it.)
 
 ## What the export actually covers — the full access surface
 
@@ -207,6 +210,10 @@ competitive claim of all.
 
 ---
 
+*Next: [Post 7 — Benchmarks on this VM](07-benchmarks-on-this-vm.md): what the
+live control plane actually clocks on a single dev box, with the methodology and
+the caveats spelled out.*
+
 *Reproduce everything in this series with `make blog-seed`, `make blog-capture`,
-and `make blog-test` — see [`README.md`](README.md). Every screenshot above is a
-real seeded page; every payload is a verbatim capture.*
+`make blog-bench`, and `make blog-test` — see [`README.md`](README.md). Every
+screenshot above is a real seeded page; every payload is a verbatim capture.*

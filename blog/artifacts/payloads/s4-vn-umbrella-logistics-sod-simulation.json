@@ -27,7 +27,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "341bee26-1177-478a-9ec2-dd471bca5c30",
+          "rule_id": "f9603f58-ebdc-41b7-bc60-ca6f9bb7ab59",
           "rule_name": "Dispatcher must not also adjust inventory",
           "severity": "medium",
           "subject": "vn-umbrella-logistics-owner"

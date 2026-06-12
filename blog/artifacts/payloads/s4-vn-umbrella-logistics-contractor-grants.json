@@ -1,25 +1,25 @@
 {
   "contractor_grants": [
     {
-      "approved_at": "2026-06-11T05:15:32.070724Z",
+      "approved_at": "2026-06-12T02:19:01.865025Z",
       "approved_by": "vn-umbrella-logistics-owner",
-      "connector_id": "75497aee-3802-41c5-b64f-ab9e80078cbc",
+      "connector_id": "294dbe98-5134-4ca9-90bc-2fee8bfffb2a",
       "contractor_user_id": "ext-3pl-partner@logistics.example",
-      "created_at": "2026-06-11T05:15:32.066067Z",
+      "created_at": "2026-06-12T02:19:01.860285Z",
       "deleted_at": null,
       "display_name": "3PL partner operator",
-      "expires_at": "2026-07-26T05:15:32Z",
-      "grant_id": "ea0e56f4-b3e7-4c0f-9250-d8d5982c34f4",
-      "id": "89132afa-86d8-42f4-a3d6-a6685bcb5b7c",
+      "expires_at": "2026-07-27T02:19:01Z",
+      "grant_id": "52070e85-52db-4842-972b-f972d2c9fd34",
+      "id": "b42c9a8b-8dc6-47d2-9af7-a645cf1da7fc",
       "justification": "Peak-season third-party logistics dispatch support.",
       "requested_by": "vn-umbrella-logistics-owner",
       "resource_ref": "wms:dispatcher",
-      "revoked_at": "2026-06-11T05:15:32.080997Z",
+      "revoked_at": "2026-06-12T02:19:01.876963Z",
       "role": "operator",
       "sponsor_id": "vn-admin",
       "state": "revoked",
-      "updated_at": "2026-06-11T05:15:32.080997Z",
-      "workspace_id": "437dbb70-2c66-4a56-9222-bfbb5b2dd5a3"
+      "updated_at": "2026-06-12T02:19:01.876963Z",
+      "workspace_id": "5f4754d7-24a6-4a11-80f8-2c1da580c442"
     }
   ]
 }

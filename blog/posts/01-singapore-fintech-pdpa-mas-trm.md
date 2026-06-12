@@ -187,7 +187,7 @@ plane mints a short-lived connect-token and the lease **expires automatically**
 {
   "state": "approved", "subject": "sg-acme-payments-owner",
   "requested_by": "sg-acme-payments-owner", "approved_by": "sg-acme-payments-owner",
-  "granted_at": "2026-06-11T05:11:02Z", "expires_at": "2026-06-11T05:41:02Z",
+  "granted_at": "2026-06-12T02:14:31Z", "expires_at": "2026-06-12T02:44:31Z",
   "requested_ttl_seconds": 1800,
   "risk_level": "medium", "risk_degraded": true, "risk_factors": ["ai_unavailable"],
   "risk_reason": "ai agent unavailable; applied fail-safe default"
@@ -266,11 +266,11 @@ grant is still `active` (expires in September), the other was **revoked early**
 [
   { "display_name": "PayTech integration contractor", "contractor_user_id": "ext-paytech-integrator@vendor.example",
     "resource_ref": "ledger:reconcile", "role": "operator", "sponsor_id": "sg-admin",
-    "state": "active", "expires_at": "2026-09-03T05:10:31Z",
+    "state": "active", "expires_at": "2026-09-04T02:14:02Z",
     "justification": "6-week payment-rails integration; sponsor: Head of Platform." },
   { "display_name": "External penetration tester", "contractor_user_id": "ext-pentest@security.example",
     "resource_ref": "cde:pci-scope", "role": "auditor", "sponsor_id": "sg-security_admin",
-    "state": "revoked", "expires_at": "2026-06-21T05:10:31Z",
+    "state": "revoked", "expires_at": "2026-06-22T02:14:02Z",
     "justification": "PCI-DSS 11.3 annual penetration test, read-only CDE." }
 ]
 ```
@@ -294,12 +294,12 @@ This is the verbatim coverage the export embeds
 {
   "coverage": {
     "framework": "PCI-DSS",
-    "controls_covered": 4, "controls_total": 5, "evidence_total": 35,
+    "controls_covered": 4, "controls_total": 5, "evidence_total": 38,
     "controls": [
-      { "id": "7.2",   "covered": true,  "evidence_count": 15, "title": "Least-privilege access control system" },
+      { "id": "7.2",   "covered": true,  "evidence_count": 17, "title": "Least-privilege access control system" },
       { "id": "7.2.4", "covered": true,  "evidence_count": 4,  "title": "Access reviewed at least every 6 months" },
-      { "id": "8.1.3", "covered": true,  "evidence_count": 9,  "title": "Access for terminated users revoked promptly" },
-      { "id": "8.2",   "covered": true,  "evidence_count": 8,  "title": "Access provisioned on authorization" },
+      { "id": "8.1.3", "covered": true,  "evidence_count": 10, "title": "Access for terminated users revoked promptly" },
+      { "id": "8.2",   "covered": true,  "evidence_count": 10, "title": "Access provisioned on authorization" },
       { "id": "10.2",  "covered": false, "evidence_count": 0,  "title": "Audit trail of access to system components" }
     ]
   }
@@ -313,19 +313,19 @@ The same page also renders SOC 2's logical-access controls from the *same* chain
 
 ## Under the hood: the tamper-evident chain
 
-The number that matters to an auditor is not "61 events" — it's that the **61
+The number that matters to an auditor is not "76 events" — it's that the **76
 events form an unbroken hash chain**. Each record links to the previous by
 SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 61, "ok": true, "status": "valid", "workspace_id": "6343e869-8ad8-4e82-a36c-7f441e398bb8" }
+{ "length": 76, "ok": true, "status": "valid", "workspace_id": "4c77eb85-9ca1-42fe-941f-822318c61682" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a
 `content_sha256` over the whole pack plus a per-file SHA-256, and the export
 *itself* is step-up-MFA-gated and recorded back onto the chain. The pack is a
-ZIP of newline-delimited JSON (`evidence.jsonl` with all 61 records,
+ZIP of newline-delimited JSON (`evidence.jsonl` with all 76 records,
 `access-grants.jsonl`, `certification-*.jsonl`, `policies.jsonl`,
 `chain-verification.json`, and an auditor README). An auditor can re-hash the
 files and match the manifest offline — no trust in Acme's word required.

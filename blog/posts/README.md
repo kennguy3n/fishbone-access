@@ -1,9 +1,10 @@
 # fishbone-access — the evidence-based access-governance series
 
-A seven-post engineering series that walks the real product end-to-end across
-six jurisdictions, with live console screenshots, verbatim API payloads, and a
-tamper-evident evidence chain you can export and verify. Every figure traces to
-an evidence source; every post ends with an honest "where we fall short."
+An eight-post engineering series that walks the real product end-to-end across
+six jurisdictions, with live console screenshots, verbatim API payloads, on-VM
+benchmarks, and a tamper-evident evidence chain you can export and verify. Every
+figure traces to an evidence source; every post ends with an honest "where we
+fall short."
 
 The series covers the full access surface, not just compliance reporting:
 **SaaS + internal-system** access through one connector fabric, **PAM** to cloud
@@ -28,6 +29,7 @@ StrongDM).
 | 4 | [Vietnam: PDPD Decree 13 — an emerging-market posture from one pack](04-vietnam-logistics-pdpd-decree13.md) | S4 | 🇻🇳 vn | Priya / Marcus |
 | 5 | [UAE finance: PDPL + DESC — privileged access / PAM](05-uae-finance-pdpl-desc-pam.md) | S5 | 🇦🇪 ae | Sofia / Marcus |
 | 6 | [Australian SaaS: Essential Eight + SOC 2 — certify, export, critique](06-australia-saas-essential-eight-soc2.md) | S6 | 🇦🇺 au | Marcus / Aisha |
+| 7 | [Benchmarks on this VM — latency, throughput, honest caveats](07-benchmarks-on-this-vm.md) | — | — | Marcus / Dmitri |
 
 Scenario definitions and the evidence map live in
 [`../scenarios/00-scenario-catalog.md`](../scenarios/00-scenario-catalog.md).
@@ -49,6 +51,9 @@ Scenario definitions and the evidence map live in
   `../artifacts/connector-test-matrix.txt`,
   `../artifacts/compliance-test-results.txt`,
   `../artifacts/handler-test-results.txt` — produced by `make blog-test`.
+- **Benchmarks:** [`../artifacts/benchmark-results.json`](../artifacts/benchmark-results.json)
+  — API latency percentiles + throughput plus the `system` block describing the
+  VM, produced by [`../harness/bench`](../harness/bench/main.go) (`make blog-bench`).
 - **Screenshots:** `../artifacts/screenshots/` — live console captures taken
   after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi, ja)
   over the same seeded data.
@@ -83,7 +88,14 @@ make blog-capture
 
 # 5. Run the connector / compliance / handler test matrices.
 make blog-test
+
+# 6. Benchmark the live API on this VM (latency/throughput + system info).
+make blog-bench
+#   equivalently: (cd blog/harness/bench && go run . -base http://localhost:8080 \
+#                    -out ../../artifacts/benchmark-results.json)
 ```
+
+`make blog-all` runs seed → capture → bench → test in order.
 
 The seed and capture harnesses are deterministic against the same seeded data: a
 re-run reproduces the same payload files (modulo live timestamps and the export
