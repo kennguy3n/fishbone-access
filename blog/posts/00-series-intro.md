@@ -52,7 +52,10 @@ goes well beyond simple SaaS grants:
    parties, with a **mandatory expiry**, a named internal sponsor, and a full
    extend / early-revoke history — a separate lifecycle from employees.
 7. **A tamper-evident evidence chain.** Every consequential action across all of
-   the above appends a hash-linked evidence record. You can verify the chain and
+   the above appends a hash-linked evidence record. You can verify the chain —
+   a full O(n) recompute of every link, or an **incremental O(Δ) consistency
+   verify** that re-checks only the rows added since a trusted anchor, so the
+   heaviest endpoint stays cheap as a workspace accretes years of evidence — and
    **export a framework-mapped evidence pack** (a ZIP with a manifest carrying
    the content digest and chain-verification status, plus a `pam-recordings.jsonl`
    line for each recorded privileged session in the pack) for an auditor — the
@@ -120,6 +123,20 @@ nothing is faked:
 - **AI risk scoring** — the agent is online over A2A mTLS, so risk verdicts now
   show `source: ai_agent`, `degraded: false`, with a real recommendation — not the
   fail-closed `needs_review` safety net.
+
+What this cut adds on top of closing those gaps is the **scale** answer for the
+evidence chain itself. The series' own benchmark (Post 7) is blunt that a full
+chain-verify is **O(n)** in chain length — the single worst-scaling endpoint at
+5,000-tenant SaaS scale, where workspaces accrete evidence for years. So the
+same `GET /compliance/chain/verify` route now also takes a trusted anchor
+(`?from_seq=&from_hash=`) and runs an **incremental consistency verify** that
+re-checks only the suffix appended since that anchor: an interactive dashboard
+pays the O(n) cost once to establish a baseline, then O(Δ) on every refresh
+thereafter. On this VM that is a **10.15 ms → 3.45 ms p50** drop on a ~100-row
+chain (Post 7); the gap widens without bound as the chain grows. The honest
+boundary is stated wherever it appears: the incremental call is a *consistency*
+proof of the suffix, **not** a fresh *integrity* proof of the whole chain — the
+periodic full sweep remains the root of trust.
 
 What stays honest (real hard limits a self-contained demo cannot close): killing
 a *real* Okta/Box session (no upstream credentials — Post 2); logging every read

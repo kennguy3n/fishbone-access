@@ -68,13 +68,13 @@
     },
     {
       "by_kind": {
-        "evidence_exported": 2,
+        "evidence_exported": 3,
         "privileged_command": 4,
         "privileged_recording": 1,
         "privileged_session": 2
       },
       "covered": true,
-      "evidence_count": 9,
+      "evidence_count": 10,
       "id": "10.2",
       "kinds": [
         "privileged_session",
@@ -87,6 +87,6 @@
   ],
   "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 49,
+  "evidence_total": 50,
   "framework": "PCI-DSS"
 }

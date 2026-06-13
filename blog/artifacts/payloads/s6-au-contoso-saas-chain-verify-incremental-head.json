@@ -1,8 +1,8 @@
 {
-  "from_hash": "9c375ff48d665b4baa7891be6e21c9b6854bdeaebbaa7c5e108242cf5b30dc84",
-  "from_seq": 93,
-  "head_hash": "9c375ff48d665b4baa7891be6e21c9b6854bdeaebbaa7c5e108242cf5b30dc84",
-  "head_seq": 93,
+  "from_hash": "f4b70e2b7710517b082562db36025eaf9ec0e39e6429d4b0969c29acf5e92d29",
+  "from_seq": 94,
+  "head_hash": "f4b70e2b7710517b082562db36025eaf9ec0e39e6429d4b0969c29acf5e92d29",
+  "head_seq": 94,
   "ok": true,
   "status": "consistent",
   "verified": 0,

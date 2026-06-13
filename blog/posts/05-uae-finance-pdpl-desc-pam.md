@@ -129,7 +129,7 @@ And the *other* half is now present too: Northwind opens a **recorded** session
 through the leased connect-token. The operator's commands run through the
 production `IORecorder`, the session is closed, and its recording digest is
 anchored on the chain — `pam_sessions = 1`, replayable over
-`GET /pam/sessions/7fbec5b7-0ceb-4461-8b0b-30801fb00376/replay`. That is what
+`GET /pam/sessions/a44bb3ea-6087-446f-b1e5-c94655dbfadd/replay`. That is what
 flips ISO `A.8.2` ("privileged access rights *monitored*") to covered.
 
 ## The toxic combination DESC cares about most

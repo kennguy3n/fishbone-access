@@ -69,12 +69,12 @@ The campaign closed, every item decided
 { "name": "Q2 2026 PDPD Decree 13 certification", "state": "closed", "all_decided": true, "total": 1, "revoked": 1 }
 ```
 
-And the chain — **63 records, valid** — is the artifact that turns "we have a
+And the chain — **81 records, valid** — is the artifact that turns "we have a
 policy" into "we can prove it"
 ([`s4-vn-umbrella-logistics-chain-verify.json`](../artifacts/payloads/s4-vn-umbrella-logistics-chain-verify.json)):
 
 ```json
-{ "length": 63, "ok": true, "status": "valid", "workspace_id": "5f4754d7-24a6-4a11-80f8-2c1da580c442" }
+{ "length": 81, "ok": true, "status": "valid", "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc" }
 ```
 
 That's the day-one win: a Vietnamese SME with *two policies* still produces a
