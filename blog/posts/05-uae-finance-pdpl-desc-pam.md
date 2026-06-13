@@ -114,10 +114,14 @@ agent risk verdict (`degraded: false` now the agent is online)
 
 ```json
 [
-  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "low",    "risk_degraded": false },
-  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": false }
+  { "state": "expired", "requested_ttl_seconds": 900, "risk_level": "low",    "risk_degraded": false },
+  { "state": "expired", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": false }
 ]
 ```
+
+Both read `expired` because the capture ran past the 15-minute ceiling: the leases
+lapsed on their own, exactly as designed — the risk verdict and TTL stay on the
+record after the credential is long gone.
 
 Every transition lands on the chain (`pam.target.created`,
 `pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). So

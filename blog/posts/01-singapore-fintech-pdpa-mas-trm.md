@@ -186,16 +186,20 @@ plane mints a short-lived connect-token and the lease **expires automatically**
 
 ```json
 {
-  "state": "approved", "subject": "sg-acme-payments-owner",
+  "state": "expired", "subject": "sg-acme-payments-owner",
   "requested_by": "sg-acme-payments-owner", "approved_by": "sg-acme-payments-owner",
-  "granted_at": "2026-06-12T08:46:01Z", "expires_at": "2026-06-12T09:16:01Z",
+  "granted_at": "2026-06-13T16:44:31.360978Z", "expires_at": "2026-06-13T17:14:31.360978Z",
   "requested_ttl_seconds": 1800,
   "risk_level": "low", "risk_degraded": false, "risk_factors": ["baseline_low_risk"],
   "risk_reason": "rule-based risk=low from 1 factor(s)"
 }
 ```
 
-![Acme's JIT leases — an approved lease with its AI risk verdict and a live expiry countdown](../artifacts/screenshots/s1-sg-pam-leases.png)
+This capture was taken after the 30-minute ceiling, so the lease reads `expired` —
+the terminal state the control plane reaches **on its own**, not by an operator
+revoking it. That is the point: standing credentials never lapse, JIT leases do.
+
+![Acme's JIT leases — the lease has run its full lifecycle to automatic expiry, its low-risk agent verdict retained on the record](../artifacts/screenshots/s1-sg-pam-leases.png)
 
 This is the full *lease* lifecycle — request → approve (step-up) → mint → expire
 — and every step lands on the evidence chain (`pam.target.created`,
