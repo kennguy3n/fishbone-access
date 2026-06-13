@@ -16,7 +16,7 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "vn-umbrella-logistics-owner",
       "target_id": "923ae9c5-67c2-44ff-9079-68e7654aa40d",
       "updated_at": "2026-06-13T16:50:32.096808Z",

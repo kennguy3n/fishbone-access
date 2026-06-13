@@ -16,7 +16,7 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "de-initech-retail-owner",
       "target_id": "108753ec-323e-40b7-9568-f5bb6fb04a05",
       "updated_at": "2026-06-13T16:50:01.366671Z",

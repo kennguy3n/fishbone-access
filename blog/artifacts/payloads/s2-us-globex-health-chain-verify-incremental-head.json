@@ -1,0 +1,10 @@
+{
+  "from_hash": "b0d0cd7683261b92b528cfebdf302634805c802daac7e42f2e385e7a6eb423ee",
+  "from_seq": 87,
+  "head_hash": "b0d0cd7683261b92b528cfebdf302634805c802daac7e42f2e385e7a6eb423ee",
+  "head_seq": 87,
+  "ok": true,
+  "status": "consistent",
+  "verified": 0,
+  "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+}

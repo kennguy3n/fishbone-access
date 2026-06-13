@@ -1,11 +1,11 @@
 {
   "chain_verification": {
-    "length": 92,
+    "length": 93,
     "ok": true,
     "status": "valid",
     "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
   },
-  "content_sha256": "c6a72903256937dcd3377483becef5ecab4d45135f22112589cf10aa0dbe8661",
+  "content_sha256": "ede2520a86a3cd5766505d4bdbf1b8a8b81380a15414a601b6b3705187b5ff0a",
   "coverage": {
     "controls": [
       {
@@ -110,16 +110,16 @@
     ],
     "controls_covered": 6,
     "controls_total": 6,
-    "evidence_total": 48,
+    "evidence_total": 49,
     "framework": "SOC 2"
   },
-  "evidence_total": 92,
+  "evidence_total": 93,
   "files": [
     {
       "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
       "name": "evidence.jsonl",
-      "rows": 92,
-      "sha256": "5ebcd7f1d9118c6b7a06039059d989ad9a0e42d7fcc34556b18f58abe2735de4"
+      "rows": 93,
+      "sha256": "9071dcaf96b5d864cee350ba92db70e027dc73b83a7448888a9e86906466464d"
     },
     {
       "comment": "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
@@ -155,23 +155,23 @@
       "comment": "Per-control evidence coverage for the framework over the period.",
       "name": "control-coverage.json",
       "rows": 0,
-      "sha256": "32669e310fd9c376fc29d308172fb32479547c1d513a5e520de2f8f49e506056"
+      "sha256": "51c19c75d2e4b6cfb6c377b72ef0dd5cfef20007f69fbb6c7c00a6588e431f4f"
     },
     {
       "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
       "name": "chain-verification.json",
       "rows": 0,
-      "sha256": "bb5210ac2d55faa63436d66464bbfc75db9653713a61a6adfb35e313de206ea4"
+      "sha256": "5dcf5277ba58196f39d23640672063d7accc7279171346693eb4a8f8199ce877"
     },
     {
       "comment": "Auditor-facing guide to this evidence pack.",
       "name": "README.md",
       "rows": 0,
-      "sha256": "ff04a4bd3ee0f03514deb52a76e72bbe12b99ab6b48a4f6e8d79ec2269592cc3"
+      "sha256": "f9b3870e0e191f3fbe93ea7d65ab9a63532e179004888e789e97a5be7d76ba12"
     }
   ],
   "framework": "SOC 2",
-  "generated_at": "2026-06-13T16:57:31.212314593Z",
+  "generated_at": "2026-06-13T17:21:01.167480064Z",
   "generated_by": "au-contoso-saas-owner",
   "schema_version": "1.1",
   "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"

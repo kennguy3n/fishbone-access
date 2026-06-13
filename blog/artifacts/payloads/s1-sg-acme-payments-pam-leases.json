@@ -16,7 +16,7 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "sg-acme-payments-owner",
       "target_id": "8fd829d9-00e7-4fa8-9440-e164909c81f2",
       "updated_at": "2026-06-13T16:44:31.360978Z",

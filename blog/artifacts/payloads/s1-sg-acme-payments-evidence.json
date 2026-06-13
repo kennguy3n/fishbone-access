@@ -1,5 +1,5 @@
 {
-  "count": 94,
+  "count": 97,
   "records": [
     {
       "action": "rbac.member.added",
@@ -1363,6 +1363,49 @@
       "occurred_at": "2026-06-13T16:45:01.429221Z",
       "prev_hash": "86124b5a3ea8e648e1f3b5a5f7862122d10ad664be94787ee23c9ed85f17ca5a",
       "target_ref": "SOC 2",
+      "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
+    },
+    {
+      "action": "compliance.export",
+      "actor": "sg-acme-payments-owner",
+      "chain_hash": "52d2147dd8d7a0e8141238f51f76103ea721bf8d56bc10a2a4930ab899debd71",
+      "chain_seq": 95,
+      "id": "ed47080f-4bc5-4ce6-9b1b-670287627104",
+      "kind": "evidence_exported",
+      "metadata": {
+        "chain_status": "valid",
+        "content_sha256": "3e70593159d375ef715369846d55c5a9182439ff3a506c0d33e1fbf2b6a4e142",
+        "evidence_total": 94,
+        "framework": "PCI-DSS",
+        "mfa_satisfied": true
+      },
+      "occurred_at": "2026-06-13T16:57:31.205912Z",
+      "prev_hash": "039c1aa625ed056bbe586ee2bef5105f272678d3d9fe64f1e965f2e9db2acafd",
+      "target_ref": "PCI-DSS",
+      "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
+    },
+    {
+      "action": "policy.created",
+      "actor": "sg-acme-payments-owner",
+      "chain_hash": "f136bf01f83f34271d99f759acb0e69a3afee5f9fd471112035929270267170d",
+      "chain_seq": 96,
+      "id": "185412c0-4fbe-404b-ab50-813254d2bda3",
+      "kind": "policy_created",
+      "occurred_at": "2026-06-13T17:05:55.140427Z",
+      "prev_hash": "52d2147dd8d7a0e8141238f51f76103ea721bf8d56bc10a2a4930ab899debd71",
+      "target_ref": "112fdcd2-f0a6-4edf-bc5c-e07bab14457b",
+      "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
+    },
+    {
+      "action": "policy.archived",
+      "actor": "sg-acme-payments-owner",
+      "chain_hash": "387b04f92d9a16cf2e9277b244324d03bee4f93ac04ab5e5e317a013fc859fad",
+      "chain_seq": 97,
+      "id": "45dee542-53ad-4b4a-8550-d690e5dc1ecf",
+      "kind": "policy_archived",
+      "occurred_at": "2026-06-13T17:06:00.380418Z",
+      "prev_hash": "f136bf01f83f34271d99f759acb0e69a3afee5f9fd471112035929270267170d",
+      "target_ref": "112fdcd2-f0a6-4edf-bc5c-e07bab14457b",
       "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
     }
   ]

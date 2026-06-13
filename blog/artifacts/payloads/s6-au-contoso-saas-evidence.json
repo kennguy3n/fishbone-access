@@ -1,5 +1,5 @@
 {
-  "count": 92,
+  "count": 93,
   "records": [
     {
       "action": "rbac.member.added",
@@ -1339,6 +1339,25 @@
       },
       "occurred_at": "2026-06-13T16:57:01.628008Z",
       "prev_hash": "f07154fc4ffc7619210c7b4d9821094bb2afed11db1157271b79b162b123c4f5",
+      "target_ref": "SOC 2",
+      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+    },
+    {
+      "action": "compliance.export",
+      "actor": "au-contoso-saas-owner",
+      "chain_hash": "9c375ff48d665b4baa7891be6e21c9b6854bdeaebbaa7c5e108242cf5b30dc84",
+      "chain_seq": 93,
+      "id": "aaf8b9f6-9015-4cda-94ac-3bf0ba061e65",
+      "kind": "evidence_exported",
+      "metadata": {
+        "chain_status": "valid",
+        "content_sha256": "c6a72903256937dcd3377483becef5ecab4d45135f22112589cf10aa0dbe8661",
+        "evidence_total": 92,
+        "framework": "SOC 2",
+        "mfa_satisfied": true
+      },
+      "occurred_at": "2026-06-13T16:57:31.217432Z",
+      "prev_hash": "014459f4bf7c9e12c6846d4412f0e5a8f8324d564b09607817555382e63a9ca0",
       "target_ref": "SOC 2",
       "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
     }

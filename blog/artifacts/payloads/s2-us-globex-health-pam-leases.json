@@ -16,7 +16,7 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "us-globex-health-owner",
       "target_id": "d78a139d-921c-483b-9388-d54c298a9989",
       "updated_at": "2026-06-13T16:46:31.335778Z",
