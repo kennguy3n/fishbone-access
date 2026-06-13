@@ -60,7 +60,7 @@ func envOr(k, def string) string {
 
 // chainHead reads the current (chain_seq, chain_hash) head of the bench
 // workspace's audit chain from the descending evidence stream, so the bench can
-// anchor the incremental verify on a real, current head. Returns ("",0) when
+// anchor the incremental verify on a real, current head. Returns (0, "") when
 // the workspace has no evidence yet, in which case the incremental target is
 // skipped rather than timed against an invalid anchor.
 func chainHead(c *harnesskit.Client) (int64, string) {
