@@ -1,66 +1,66 @@
 === RUN   TestStartCampaignEnumeratesScopedGrants
---- PASS: TestStartCampaignEnumeratesScopedGrants (0.03s)
+--- PASS: TestStartCampaignEnumeratesScopedGrants (0.04s)
 === RUN   TestStartCampaignRejectsUnknownFrameworkAndConnector
---- PASS: TestStartCampaignRejectsUnknownFrameworkAndConnector (0.02s)
+--- PASS: TestStartCampaignRejectsUnknownFrameworkAndConnector (0.05s)
 === RUN   TestSubmitDecisionStagesRevokeUntilClose
---- PASS: TestSubmitDecisionStagesRevokeUntilClose (0.02s)
+--- PASS: TestSubmitDecisionStagesRevokeUntilClose (0.04s)
 === RUN   TestCloseCampaignAppliesStagedRevokes
---- PASS: TestCloseCampaignAppliesStagedRevokes (0.03s)
+--- PASS: TestCloseCampaignAppliesStagedRevokes (0.06s)
 === RUN   TestCloseCampaignToleratesIndependentlyRevokedGrant
---- PASS: TestCloseCampaignToleratesIndependentlyRevokedGrant (0.02s)
+--- PASS: TestCloseCampaignToleratesIndependentlyRevokedGrant (0.05s)
 === RUN   TestCloseCampaignCompletesTeardownAfterRequestCancel
---- PASS: TestCloseCampaignCompletesTeardownAfterRequestCancel (0.03s)
+--- PASS: TestCloseCampaignCompletesTeardownAfterRequestCancel (0.04s)
 === RUN   TestCloseCampaignBoundsHungRevoke
---- PASS: TestCloseCampaignBoundsHungRevoke (0.07s)
+--- PASS: TestCloseCampaignBoundsHungRevoke (0.09s)
 === RUN   TestCloseWithoutRevokerFailsClosed
---- PASS: TestCloseWithoutRevokerFailsClosed (0.02s)
+--- PASS: TestCloseWithoutRevokerFailsClosed (0.06s)
 === RUN   TestDecisionTerminalGuardAndIdempotency
---- PASS: TestDecisionTerminalGuardAndIdempotency (0.02s)
+--- PASS: TestDecisionTerminalGuardAndIdempotency (0.07s)
 === RUN   TestDecisionOnClosedCampaignRejected
---- PASS: TestDecisionOnClosedCampaignRejected (0.02s)
+--- PASS: TestDecisionOnClosedCampaignRejected (0.07s)
 === RUN   TestEnforceOverdue
---- PASS: TestEnforceOverdue (0.02s)
+--- PASS: TestEnforceOverdue (0.06s)
 === RUN   TestEscalatedItemsAreNotTerminallyDecided
---- PASS: TestEscalatedItemsAreNotTerminallyDecided (0.02s)
+--- PASS: TestEscalatedItemsAreNotTerminallyDecided (0.05s)
 === RUN   TestCampaignCrossTenantIsolation
---- PASS: TestCampaignCrossTenantIsolation (0.02s)
+--- PASS: TestCampaignCrossTenantIsolation (0.04s)
 === RUN   TestVerifyChainAcceptsLegacyPrefixThenCanonical
---- PASS: TestVerifyChainAcceptsLegacyPrefixThenCanonical (0.02s)
+--- PASS: TestVerifyChainAcceptsLegacyPrefixThenCanonical (0.07s)
 === RUN   TestVerifyChainLegacyLinkageStillEnforced
---- PASS: TestVerifyChainLegacyLinkageStillEnforced (0.02s)
+--- PASS: TestVerifyChainLegacyLinkageStillEnforced (0.05s)
 === RUN   TestStreamClassifiesAndFilters
---- PASS: TestStreamClassifiesAndFilters (0.02s)
+--- PASS: TestStreamClassifiesAndFilters (0.04s)
 === RUN   TestVerifyChainValidThenTamperDetected
---- PASS: TestVerifyChainValidThenTamperDetected (0.02s)
+--- PASS: TestVerifyChainValidThenTamperDetected (0.05s)
 === RUN   TestVerifyChainEmpty
---- PASS: TestVerifyChainEmpty (0.02s)
+--- PASS: TestVerifyChainEmpty (0.05s)
 === RUN   TestVerifyChainDetectsDeletedRow
---- PASS: TestVerifyChainDetectsDeletedRow (0.02s)
+--- PASS: TestVerifyChainDetectsDeletedRow (0.05s)
 === RUN   TestVerifyChainDetectsSoftDeletedRow
---- PASS: TestVerifyChainDetectsSoftDeletedRow (0.02s)
+--- PASS: TestVerifyChainDetectsSoftDeletedRow (0.07s)
 === RUN   TestCoverageByFramework
---- PASS: TestCoverageByFramework (0.02s)
+--- PASS: TestCoverageByFramework (0.05s)
 === RUN   TestCoverageUnknownFramework
---- PASS: TestCoverageUnknownFramework (0.02s)
+--- PASS: TestCoverageUnknownFramework (0.04s)
 === RUN   TestEvidenceCrossTenantIsolation
---- PASS: TestEvidenceCrossTenantIsolation (0.02s)
+--- PASS: TestEvidenceCrossTenantIsolation (0.04s)
 === RUN   TestWritePackContentsAndMapping
---- PASS: TestWritePackContentsAndMapping (0.03s)
+--- PASS: TestWritePackContentsAndMapping (0.05s)
 === RUN   TestWritePackUnknownFramework
---- PASS: TestWritePackUnknownFramework (0.02s)
+--- PASS: TestWritePackUnknownFramework (0.06s)
 === RUN   TestWritePackCrossTenantExcludesOtherTenant
---- PASS: TestWritePackCrossTenantExcludesOtherTenant (0.03s)
+--- PASS: TestWritePackCrossTenantExcludesOtherTenant (0.09s)
 === RUN   TestWritePackCrossTenantWithPeriodFilter
---- PASS: TestWritePackCrossTenantWithPeriodFilter (0.03s)
+--- PASS: TestWritePackCrossTenantWithPeriodFilter (0.08s)
 === RUN   TestClassifyPrivilegedActions
 --- PASS: TestClassifyPrivilegedActions (0.00s)
 === RUN   TestProjectRecordingRowParseError
 --- PASS: TestProjectRecordingRowParseError (0.00s)
 === RUN   TestPrivilegedAccessCoverageCountsAndControls
---- PASS: TestPrivilegedAccessCoverageCountsAndControls (0.02s)
+--- PASS: TestPrivilegedAccessCoverageCountsAndControls (0.07s)
 === RUN   TestPrivilegedAccessCoverageEmpty
---- PASS: TestPrivilegedAccessCoverageEmpty (0.02s)
+--- PASS: TestPrivilegedAccessCoverageEmpty (0.06s)
 === RUN   TestPackIncludesRecordingReferences
---- PASS: TestPackIncludesRecordingReferences (0.02s)
+--- PASS: TestPackIncludesRecordingReferences (0.05s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/compliance	0.762s
+ok  	github.com/kennguy3n/fishbone-access/internal/services/compliance	1.769s

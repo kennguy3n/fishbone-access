@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-12T08:58:47.622624589Z",
+  "generated_at": "2026-06-13T16:57:31.550103201Z",
   "api_base": "http://localhost:8080",
   "workspace": "sg-acme-payments",
   "requests_per_endpoint": 400,
@@ -22,13 +22,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 13.961,
-      "throughput_rps": 28650.49164959933,
-      "mean_ms": 0.5194125,
-      "p50_ms": 0.432,
-      "p90_ms": 0.883,
-      "p99_ms": 2.017,
-      "max_ms": 2.507
+      "wall_ms": 11.199,
+      "throughput_rps": 35716.69978051195,
+      "mean_ms": 0.4209225000000001,
+      "p50_ms": 0.307,
+      "p90_ms": 0.78,
+      "p99_ms": 1.84,
+      "max_ms": 2.066
     },
     {
       "name": "list-policies",
@@ -38,13 +38,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 204.393,
-      "throughput_rps": 1957.0103918621714,
-      "mean_ms": 7.8818724999999965,
-      "p50_ms": 4.554,
-      "p90_ms": 21.083,
-      "p99_ms": 55.032,
-      "max_ms": 76.161
+      "wall_ms": 113.971,
+      "throughput_rps": 3509.6629839977704,
+      "mean_ms": 4.307114999999999,
+      "p50_ms": 2.728,
+      "p90_ms": 10.519,
+      "p99_ms": 21.638,
+      "max_ms": 28.237
     },
     {
       "name": "list-packs (region)",
@@ -54,13 +54,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 36.425,
-      "throughput_rps": 10981.363555363601,
-      "mean_ms": 1.4338274999999994,
-      "p50_ms": 1.375,
-      "p90_ms": 2.037,
-      "p99_ms": 2.771,
-      "max_ms": 3.448
+      "wall_ms": 24.64,
+      "throughput_rps": 16233.417057181805,
+      "mean_ms": 0.9491600000000004,
+      "p50_ms": 0.784,
+      "p90_ms": 1.486,
+      "p99_ms": 3.471,
+      "max_ms": 4.283
     },
     {
       "name": "list-providers (200+)",
@@ -70,13 +70,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 14.246,
-      "throughput_rps": 28077.68252423981,
-      "mean_ms": 0.5541124999999996,
-      "p50_ms": 0.388,
-      "p90_ms": 1.143,
-      "p99_ms": 2.763,
-      "max_ms": 2.878
+      "wall_ms": 14.988,
+      "throughput_rps": 26687.39565645289,
+      "mean_ms": 0.5756675000000001,
+      "p50_ms": 0.48,
+      "p90_ms": 1.09,
+      "p99_ms": 1.899,
+      "max_ms": 2.116
     },
     {
       "name": "catalogue-facets",
@@ -86,13 +86,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 38.944,
-      "throughput_rps": 10270.924916817063,
-      "mean_ms": 1.5309550000000016,
-      "p50_ms": 1.406,
-      "p90_ms": 2.285,
-      "p99_ms": 4.067,
-      "max_ms": 5.634
+      "wall_ms": 25.17,
+      "throughput_rps": 15891.772579040411,
+      "mean_ms": 0.9864274999999999,
+      "p50_ms": 0.872,
+      "p90_ms": 1.633,
+      "p99_ms": 2.456,
+      "max_ms": 3.168
     },
     {
       "name": "list-access-requests",
@@ -102,13 +102,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 159.398,
-      "throughput_rps": 2509.4413023799607,
-      "mean_ms": 6.240095000000002,
-      "p50_ms": 3.528,
-      "p90_ms": 18.063,
-      "p99_ms": 37.005,
-      "max_ms": 43.879
+      "wall_ms": 104.49,
+      "throughput_rps": 3828.0846974457945,
+      "mean_ms": 3.928524999999999,
+      "p50_ms": 2.582,
+      "p90_ms": 9.574,
+      "p99_ms": 18.519,
+      "max_ms": 25.677
     },
     {
       "name": "list-connectors",
@@ -118,13 +118,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 302.624,
-      "throughput_rps": 1321.7707602941398,
-      "mean_ms": 11.981550000000006,
-      "p50_ms": 10.339,
-      "p90_ms": 22.208,
-      "p99_ms": 37.075,
-      "max_ms": 48.201
+      "wall_ms": 185.268,
+      "throughput_rps": 2159.0230010705786,
+      "mean_ms": 7.324472499999996,
+      "p50_ms": 6.298,
+      "p90_ms": 12.775,
+      "p99_ms": 20.497,
+      "max_ms": 22.452
     },
     {
       "name": "pam-targets",
@@ -134,13 +134,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 187.626,
-      "throughput_rps": 2131.8982985804687,
-      "mean_ms": 7.024119999999999,
-      "p50_ms": 4.066,
-      "p90_ms": 21.07,
-      "p99_ms": 33.38,
-      "max_ms": 38.804
+      "wall_ms": 105.146,
+      "throughput_rps": 3804.2295176502316,
+      "mean_ms": 4.045215,
+      "p50_ms": 2.589,
+      "p90_ms": 9.799,
+      "p99_ms": 19.5,
+      "max_ms": 24.41
     },
     {
       "name": "pam-leases",
@@ -150,13 +150,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 195.086,
-      "throughput_rps": 2050.3717072734753,
-      "mean_ms": 7.547562499999998,
-      "p50_ms": 4.116,
-      "p90_ms": 21.99,
-      "p99_ms": 39.663,
-      "max_ms": 55.66
+      "wall_ms": 91.142,
+      "throughput_rps": 4388.735879269738,
+      "mean_ms": 3.4117250000000015,
+      "p50_ms": 2.083,
+      "p90_ms": 7.003,
+      "p99_ms": 19.996,
+      "max_ms": 22.29
     },
     {
       "name": "compliance-coverage (SOC2)",
@@ -166,13 +166,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 359.379,
-      "throughput_rps": 1113.0306034971304,
-      "mean_ms": 14.01645249999999,
-      "p50_ms": 10.831,
-      "p90_ms": 31.163,
-      "p99_ms": 44.742,
-      "max_ms": 58.467
+      "wall_ms": 265.46,
+      "throughput_rps": 1506.8165934108945,
+      "mean_ms": 10.253317499999998,
+      "p50_ms": 8.619,
+      "p90_ms": 20.156,
+      "p99_ms": 29.596,
+      "max_ms": 36.946
     },
     {
       "name": "chain-verify",
@@ -182,13 +182,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 405.897,
-      "throughput_rps": 985.4692655343881,
-      "mean_ms": 15.959432499999998,
-      "p50_ms": 12.338,
-      "p90_ms": 33.532,
-      "p99_ms": 47.414,
-      "max_ms": 52.069
+      "wall_ms": 252.021,
+      "throughput_rps": 1587.1684415045502,
+      "mean_ms": 9.798147500000002,
+      "p50_ms": 8.302,
+      "p90_ms": 18.92,
+      "p99_ms": 28.775,
+      "max_ms": 34.389
     },
     {
       "name": "evidence-timeline",
@@ -198,13 +198,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 424.637,
-      "throughput_rps": 941.978892537317,
-      "mean_ms": 16.749372500000007,
-      "p50_ms": 13.51,
-      "p90_ms": 34.384,
-      "p99_ms": 47.994,
-      "max_ms": 59.801
+      "wall_ms": 325.08,
+      "throughput_rps": 1230.4634889875288,
+      "mean_ms": 12.734587500000002,
+      "p50_ms": 10.484,
+      "p90_ms": 26.025,
+      "p99_ms": 36.406,
+      "max_ms": 38.032
     },
     {
       "name": "policy-simulate (engine)",
@@ -214,13 +214,13 @@
       "requests": 400,
       "errors": 0,
       "concurrency": 16,
-      "wall_ms": 336.551,
-      "throughput_rps": 1188.5256712839048,
-      "mean_ms": 13.1382375,
-      "p50_ms": 9.559,
-      "p90_ms": 31.957,
-      "p99_ms": 46.198,
-      "max_ms": 48.4
+      "wall_ms": 227.194,
+      "throughput_rps": 1760.605458132208,
+      "mean_ms": 8.890207499999997,
+      "p50_ms": 6.156,
+      "p90_ms": 20.007,
+      "p99_ms": 31.716,
+      "max_ms": 40.552
     }
   ]
 }

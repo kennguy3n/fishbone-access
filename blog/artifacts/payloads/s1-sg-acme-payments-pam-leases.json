@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "sg-acme-payments-owner",
-      "created_at": "2026-06-12T08:45:32.401885Z",
+      "created_at": "2026-06-13T16:44:02.282459Z",
       "deleted_at": null,
-      "expires_at": "2026-06-12T09:16:01.459348Z",
-      "granted_at": "2026-06-12T08:46:01.459348Z",
-      "id": "d34549bd-784b-4673-ad75-d52e1b05f4c2",
+      "expires_at": "2026-06-13T17:14:31.360978Z",
+      "granted_at": "2026-06-13T16:44:31.360978Z",
+      "id": "56ec1766-4868-4120-ba65-42f40c116c89",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "sg-acme-payments-owner",
       "requested_ttl_seconds": 1800,
@@ -18,9 +18,9 @@
       "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "sg-acme-payments-owner",
-      "target_id": "53217f57-a5d2-4638-bf1e-52a49fe6b0ed",
-      "updated_at": "2026-06-12T08:46:01.459348Z",
-      "workspace_id": "381a9ac4-f9a2-492f-bbf9-b002bc015d1d"
+      "target_id": "8fd829d9-00e7-4fa8-9440-e164909c81f2",
+      "updated_at": "2026-06-13T16:44:31.360978Z",
+      "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
     }
   ]
 }

@@ -2,29 +2,29 @@
   "targets": [
     {
       "address": "wms-bastion.umbrella.internal:22",
-      "created_at": "2026-06-12T08:52:02.328115Z",
+      "created_at": "2026-06-13T16:50:32.103881Z",
       "deleted_at": null,
-      "id": "6cca61f3-5c21-44c7-852e-58869029b377",
+      "id": "2a0afa16-3e06-4431-a564-5c6c4f17400c",
       "lease_ttl_seconds": 1800,
       "name": "WMS bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-12T08:52:02.328115Z",
+      "updated_at": "2026-06-13T16:50:32.103881Z",
       "username": "wms-ops",
-      "workspace_id": "1f1a9a2a-3e99-409a-b4e0-ee04044164e7"
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
     },
     {
       "address": "wms-1.umbrella.internal:22",
-      "created_at": "2026-06-12T08:52:02.306798Z",
+      "created_at": "2026-06-13T16:50:32.089566Z",
       "deleted_at": null,
-      "id": "8c93cf99-6259-41e2-a68c-10262790db6d",
+      "id": "923ae9c5-67c2-44ff-9079-68e7654aa40d",
       "lease_ttl_seconds": 1800,
       "name": "WMS application server (wms-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-12T08:52:02.306798Z",
+      "updated_at": "2026-06-13T16:50:32.089566Z",
       "username": "wms-ops",
-      "workspace_id": "1f1a9a2a-3e99-409a-b4e0-ee04044164e7"
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
     }
   ]
 }
