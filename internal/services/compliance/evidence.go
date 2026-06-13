@@ -408,11 +408,19 @@ func (s *EvidenceService) VerifyChainSince(ctx context.Context, workspaceID uuid
 	if workspaceID == uuid.Nil {
 		return ChainConsistency{}, fmt.Errorf("%w: workspace_id is required", ErrValidation)
 	}
-	if anchorSeq < 0 {
-		return ChainConsistency{}, fmt.Errorf("%w: from_seq must not be negative", ErrValidation)
+	// An incremental verify is anchored on a real, previously-verified row, so
+	// the anchor seq must be >= 1 (the first row is seq 1). seq 0 is the genesis
+	// sentinel of a full verify, not an incremental anchor: rejecting it at the
+	// service boundary keeps this method self-consistent even for a direct
+	// caller that bypasses the handler — without it, (0, "") would scan from
+	// genesis and return a "consistent" ChainConsistency instead of the "empty"
+	// ChainVerification a full VerifyChain produces. A caller that wants a full
+	// scan calls VerifyChain.
+	if anchorSeq < 1 {
+		return ChainConsistency{}, fmt.Errorf("%w: from_seq must be >= 1 for an incremental verify; use VerifyChain for a full scan", ErrValidation)
 	}
-	if anchorSeq > 0 && anchorHash == "" {
-		return ChainConsistency{}, fmt.Errorf("%w: from_hash is required when from_seq > 0", ErrValidation)
+	if anchorHash == "" {
+		return ChainConsistency{}, fmt.Errorf("%w: from_hash is required for an incremental verify", ErrValidation)
 	}
 
 	out := ChainConsistency{WorkspaceID: workspaceID, FromSeq: anchorSeq, FromHash: anchorHash}

@@ -451,12 +451,25 @@ func TestVerifyChainSinceStaleAnchor(t *testing.T) {
 	}
 }
 
-// TestVerifyChainSinceValidation rejects a non-zero anchor seq with no hash:
-// there is nothing for the first suffix row to link onto.
+// TestVerifyChainSinceValidation rejects anchors that are not valid incremental
+// baselines at the service boundary, independent of the handler: an anchor seq
+// with no hash has nothing for the first suffix row to link onto, and seq 0 is
+// the full-verify genesis sentinel, not an incremental anchor (a direct caller
+// passing it must be steered to VerifyChain rather than silently getting a
+// "consistent" scan-from-genesis).
 func TestVerifyChainSinceValidation(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")
-	if _, err := NewEvidenceService(db).VerifyChainSince(context.Background(), ws, 3, ""); err == nil {
+	svc := NewEvidenceService(db)
+	ctx := context.Background()
+
+	if _, err := svc.VerifyChainSince(ctx, ws, 3, ""); err == nil {
 		t.Fatal("expected validation error for from_seq>0 with empty from_hash")
+	}
+	if _, err := svc.VerifyChainSince(ctx, ws, 0, ""); err == nil {
+		t.Fatal("expected validation error for from_seq=0 (genesis sentinel is not an incremental anchor)")
+	}
+	if _, err := svc.VerifyChainSince(ctx, ws, 0, "somehash"); err == nil {
+		t.Fatal("expected validation error for from_seq=0 even with a hash")
 	}
 }
