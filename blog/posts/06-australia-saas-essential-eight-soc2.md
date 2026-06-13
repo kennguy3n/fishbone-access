@@ -38,11 +38,12 @@ On the **Compliance evidence** page, Contoso clicks **Export SOC 2 pack**. Two
 things happen that you can see in the live console:
 
 1. A ZIP downloads (here, `evidence-pack-SOC_2.zip`).
-2. A toast confirms **"Evidence pack exported — Digest `b67b19a7dd61…` recorded
+2. A toast confirms **"Evidence pack exported — Digest `d52bf907fdfb…` recorded
    on the audit chain"**, and the export *itself* appears as a new
-   `compliance.export` event on the timeline (record `#75` in the screenshot).
+   `compliance.export` event on the timeline (record `#94` in the screenshot —
+   the newest row on the chain).
 
-![Contoso exporting the SOC 2 evidence pack — digest recorded on the chain, 75 records verified, chain intact](../artifacts/screenshots/s6-au-compliance-export.png)
+![Contoso's SOC 2 compliance-evidence page — 94 records verified, chain intact, 6/6 controls covered, 50 evidence records, export button top-right](../artifacts/screenshots/s6-au-compliance-export.png)
 
 The export is **step-up-MFA-gated** — it consumes a fresh TOTP code, the same
 strongest-gate treatment as policy promotion — and it is *self-recording*:
@@ -57,15 +58,15 @@ The committed manifest is the contract
 ```json
 {
   "framework": "SOC 2",
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "generated_by": "au-contoso-saas-owner",
-  "content_sha256": "b67b19a7dd61ae7bf6f3e0dc8d095e67b8467fe2259e323dd6f087e1d71eb8fe",
-  "chain_verification": { "length": 74, "ok": true, "status": "valid" },
-  "coverage": { "framework": "SOC 2", "controls_covered": 4, "controls_total": 6, "evidence_total": 36 },
+  "content_sha256": "d52bf907fdfb8e5221c7d504d6984b3db01d559380d4ad9f57d9d38380b4ea60",
+  "chain_verification": { "length": 94, "ok": true, "status": "valid" },
+  "coverage": { "framework": "SOC 2", "controls_covered": 6, "controls_total": 6, "evidence_total": 50 },
   "files": [
-    { "name": "evidence.jsonl",              "rows": 74 },
-    { "name": "pam-recordings.jsonl",        "rows": 0 },
-    { "name": "access-grants.jsonl",          "rows": 4 },
+    { "name": "evidence.jsonl",              "rows": 94 },
+    { "name": "pam-recordings.jsonl",        "rows": 1 },
+    { "name": "access-grants.jsonl",          "rows": 6 },
     { "name": "certification-campaigns.jsonl","rows": 1 },
     { "name": "certification-items.jsonl",    "rows": 1 },
     { "name": "policies.jsonl",               "rows": 6 },
@@ -82,7 +83,7 @@ is mechanical and needs **zero trust in Contoso**:
 1. Re-hash each file → compare to the per-file `sha256` in the manifest.
 2. Re-hash the whole pack → compare to `content_sha256`.
 3. Replay `evidence.jsonl`'s hash chain → confirm it matches
-   `chain-verification.json` (`length: 92, status: valid`).
+   `chain-verification.json` (`length: 94, status: valid`).
 
 If a single byte of any evidence record was altered after the fact, a link
 breaks and the chain fails. That's the difference between "here are some
@@ -90,10 +91,19 @@ screenshots" and "here is a tamper-evident record you can independently verify."
 
 > Note on the numbers: the export now runs **before** the capture snapshots the
 > chain (an ordering fix from the first cut), so the committed manifest, the
-> live screenshot and `chain-verification.json` all agree at `length: 92` — the
-> `evidence_exported` record is itself inside the verified chain. The manifest's
+> live screenshot and `chain-verification.json` all agree at `length: 94` — the
+> `evidence_exported` record is itself inside the verified chain (it is record
+> `#94`, the newest row in the screenshot's timeline). The manifest's
 > `pam-recordings.jsonl` now carries a line for the **recorded privileged
-> session** (`pam_sessions = 1`), not an empty slot.
+> session** (`pam_sessions = 1`), not an empty slot, and the SOC 2 coverage is
+> the full **6 / 6** controls over **50** evidence records.
+>
+> One honest subtlety the digest makes concrete: every export is a fresh
+> invocation, so its `content_sha256` is computed over a manifest that includes
+> the moment it ran. Re-exporting an unchanged workspace therefore yields a
+> *different* digest — what is invariant is the **chain** the pack carries, which
+> any auditor re-verifies independently. The digest above is the one recorded by
+> the export that produced this committed manifest.
 
 ## What the export actually covers — the full access surface
 
@@ -119,7 +129,7 @@ surface through the chain before exporting it:
   ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json),
   [`-sod-anomalies.json`](../artifacts/payloads/s6-au-contoso-saas-sod-anomalies.json)).
 - **The prod lease is followed by a recorded session** (`pam_sessions = 1`),
-  replayable over `GET /pam/sessions/b58750a5-fb3e-4b15-84de-7ab96378d730/replay`
+  replayable over `GET /pam/sessions/96cad08a-6c2d-410e-bddb-8618640877f8/replay`
   and chained — the `CC6.7` evidence.
 - **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
   expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):
@@ -164,6 +174,7 @@ Across the whole series, here is the honest positioning:
 | Jurisdiction/framework packs out of the box | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
 | One chain → many framework maps | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ | ❌ | ❌ |
 | Tamper-evident, **re-verifiable** evidence export | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Evidence re-verify stays cheap as the chain grows (O(Δ) incremental) | ✅ | n/a | n/a | n/a | n/a | n/a | n/a |
 | Step-up MFA on promote, export **and** lease approval | ✅ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
 | Access certifications / campaigns | ✅ | ✅ | ✅✅ | ✅✅ | ⚠️ | ❌ | ❌ |
 | AI-assisted risk on requests/leases (real agent, fails safe if offline) | ✅ | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ |
@@ -196,6 +207,14 @@ Across the whole series, here is the honest positioning:
   but their entitlement-*mining* finds the conflicts nobody wrote down — and their
   behavioural orphan/anomaly analytics go beyond the declared-rule standing
   anomaly we use to evidence `CC7.3`.
+- **If your worry is that a verifiable chain gets *expensive* to keep proving
+  as years of evidence pile up:** that is the one scaling axis where the chain
+  could have hurt, and it is the gap this cut closes. A full verify is O(n) in
+  chain length; the incremental verify (Post 7) re-proves only the rows added
+  since a trusted anchor, so an interactive dashboard pays O(Δ) per refresh and
+  a periodic full sweep stays the root of trust. The `n/a` column entries are
+  honest: tools that emit flat, unverifiable reports have no chain to re-verify,
+  so they have neither this cost nor the guarantee that creates it.
 - **If your risk is *proving framework compliance fast, as an SME*, across
   jurisdictions, with evidence an auditor can re-verify — over the full access
   surface (SaaS, internal systems, JIT-privileged DB/VM, contractors, JML):**
@@ -218,7 +237,11 @@ session vault; they fail because they **can't prove the controls ran**. The whol
 product is built to make that proof verifiable, multi-framework, multilingual, and
 cheap enough for a 40-person company to stand up this quarter. Where it falls
 short, the coverage map says so on screen — which is, in the end, the most honest
-competitive claim of all.
+competitive claim of all. And the one place the verifiable-evidence model could
+have buckled at SaaS scale — the O(n) cost of re-verifying an ever-growing chain
+— is now an O(Δ) incremental verify, so 5,000 tenants accreting years of evidence
+does not turn the cheapest guarantee in the category into the most expensive
+endpoint in the product.
 
 ---
 

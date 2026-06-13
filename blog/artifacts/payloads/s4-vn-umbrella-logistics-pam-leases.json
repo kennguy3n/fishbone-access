@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "vn-umbrella-logistics-owner",
-      "created_at": "2026-06-12T08:52:02.312304Z",
+      "created_at": "2026-06-13T16:50:32.093729Z",
       "deleted_at": null,
-      "expires_at": "2026-06-12T09:22:02.316742Z",
-      "granted_at": "2026-06-12T08:52:02.316742Z",
-      "id": "0cd8f27f-b982-42c8-8cc2-64139a2cf0e3",
+      "expires_at": "2026-06-13T17:20:32.096808Z",
+      "granted_at": "2026-06-13T16:50:32.096808Z",
+      "id": "6582f352-def0-40f4-ba6b-594c1be201af",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "vn-umbrella-logistics-owner",
       "requested_ttl_seconds": 1800,
@@ -16,11 +16,11 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "vn-umbrella-logistics-owner",
-      "target_id": "8c93cf99-6259-41e2-a68c-10262790db6d",
-      "updated_at": "2026-06-12T08:52:02.316742Z",
-      "workspace_id": "1f1a9a2a-3e99-409a-b4e0-ee04044164e7"
+      "target_id": "923ae9c5-67c2-44ff-9079-68e7654aa40d",
+      "updated_at": "2026-06-13T16:50:32.096808Z",
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
     }
   ]
 }

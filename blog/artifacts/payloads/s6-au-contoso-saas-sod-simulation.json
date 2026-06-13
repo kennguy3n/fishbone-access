@@ -30,7 +30,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "de5e7d69-7b4b-4418-be94-048930ae750c",
+          "rule_id": "f94660ee-f436-4174-b1c8-21a01de10d9e",
           "rule_name": "Production deploy must not also hold billing admin",
           "severity": "high",
           "subject": "au-contoso-saas-owner"

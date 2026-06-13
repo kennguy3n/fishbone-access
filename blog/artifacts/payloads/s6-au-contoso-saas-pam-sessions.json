@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-12T08:58:01.119049Z",
+      "created_at": "2026-06-13T16:56:31.489391Z",
       "deleted_at": null,
-      "ended_at": "2026-06-12T08:58:01.137142Z",
-      "id": "b58750a5-fb3e-4b15-84de-7ab96378d730",
+      "ended_at": "2026-06-13T16:56:31.498981Z",
+      "id": "96cad08a-6c2d-410e-bddb-8618640877f8",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/b58750a5-fb3e-4b15-84de-7ab96378d730/replay.bin",
-      "started_at": "2026-06-12T08:58:01.117915Z",
+      "replay_key": "sessions/96cad08a-6c2d-410e-bddb-8618640877f8/replay.bin",
+      "started_at": "2026-06-13T16:56:31.488856Z",
       "state": "closed",
       "subject": "au-contoso-saas-owner",
-      "target_id": "e77de8cd-6d33-4975-bf48-5283d846c2ee",
-      "updated_at": "2026-06-12T08:58:01.137142Z",
-      "workspace_id": "157e4e29-5b11-4375-b144-4a9d57c64feb"
+      "target_id": "5997e171-64ae-40f2-81ef-3d73c02ad7ee",
+      "updated_at": "2026-06-13T16:56:31.498981Z",
+      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
     }
   ]
 }

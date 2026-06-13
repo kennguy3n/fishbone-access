@@ -58,6 +58,24 @@ func envOr(k, def string) string {
 	return def
 }
 
+// chainHead reads the current (chain_seq, chain_hash) head of the bench
+// workspace's audit chain from the descending evidence stream, so the bench can
+// anchor the incremental verify on a real, current head. Returns (0, "") when
+// the workspace has no evidence yet, in which case the incremental target is
+// skipped rather than timed against an invalid anchor.
+func chainHead(c *harnesskit.Client) (int64, string) {
+	var ev struct {
+		Records []struct {
+			ChainSeq  int64  `json:"chain_seq"`
+			ChainHash string `json:"chain_hash"`
+		} `json:"records"`
+	}
+	if !c.JSON("GET", "/api/v1/compliance/evidence?order=desc&limit=1", nil, &ev) || len(ev.Records) == 0 {
+		return 0, ""
+	}
+	return ev.Records[0].ChainSeq, ev.Records[0].ChainHash
+}
+
 // target is one endpoint to time. POST targets carry a body; everything else is
 // a GET. group buckets the endpoint for the blog's results table.
 type target struct {
@@ -142,6 +160,19 @@ func main() {
 		{Name: "chain-verify", Group: "compliance", Method: "GET", Path: "/api/v1/compliance/chain/verify"},
 		{Name: "evidence-timeline", Group: "compliance", Method: "GET", Path: "/api/v1/compliance/evidence"},
 		{Name: "policy-simulate (engine)", Group: "engine", Method: "POST", Path: "/api/v1/policies/simulate-definition", body: simDef},
+	}
+
+	// Time the O(Δ) incremental verify alongside the full O(n) chain-verify, on
+	// the SAME route and workspace. The anchor is the current chain head, so the
+	// timed call re-verifies zero new rows — the cheap re-verify a long-lived
+	// dashboard runs once it holds a baseline. The contrast with chain-verify is
+	// the whole point of the optimisation at 5,000-tenant scale, so we measure
+	// both rather than asserting the saving.
+	if headSeq, headHash := chainHead(c); headHash != "" {
+		targets = append(targets, target{
+			Name: "chain-verify-incremental", Group: "compliance", Method: "GET",
+			Path: fmt.Sprintf("/api/v1/compliance/chain/verify?from_seq=%d&from_hash=%s", headSeq, headHash),
+		})
 	}
 
 	rep := report{

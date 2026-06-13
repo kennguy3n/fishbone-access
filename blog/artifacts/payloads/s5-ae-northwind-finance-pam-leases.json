@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-12T08:54:31.700866Z",
+      "created_at": "2026-06-13T16:53:01.589821Z",
       "deleted_at": null,
-      "expires_at": "2026-06-12T09:10:01.707176Z",
-      "granted_at": "2026-06-12T08:55:01.707176Z",
-      "id": "3a14e97d-4c68-4ff9-9201-a70b27b678af",
+      "expires_at": "2026-06-13T17:08:31.616693Z",
+      "granted_at": "2026-06-13T16:53:31.616693Z",
+      "id": "6719866c-8686-45ab-b954-551fe56d0ec3",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
@@ -16,19 +16,19 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "bf73f2a3-b6a9-4681-b82d-7b25e02821ca",
-      "updated_at": "2026-06-12T08:55:01.707176Z",
-      "workspace_id": "14c4c9d2-71fb-4280-b8a7-8ef503c57947"
+      "target_id": "ad1ca9a5-2265-49d6-a860-e8502c26bf03",
+      "updated_at": "2026-06-13T16:53:31.616693Z",
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
     },
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-12T08:54:02.579096Z",
+      "created_at": "2026-06-13T16:52:32.47273Z",
       "deleted_at": null,
-      "expires_at": "2026-06-12T09:09:31.680342Z",
-      "granted_at": "2026-06-12T08:54:31.680342Z",
-      "id": "eb40dfa5-de5d-4295-9faa-a0d4e93e1ecb",
+      "expires_at": "2026-06-13T17:08:01.57618Z",
+      "granted_at": "2026-06-13T16:53:01.57618Z",
+      "id": "75821ca8-d983-466d-99c7-cfafef18eaee",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
@@ -38,11 +38,11 @@
       ],
       "risk_level": "medium",
       "risk_reason": "rule-based risk=medium from 1 factor(s)",
-      "state": "approved",
+      "state": "expired",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "311c77f7-a811-4a81-a5a7-c17125464edc",
-      "updated_at": "2026-06-12T08:54:31.680342Z",
-      "workspace_id": "14c4c9d2-71fb-4280-b8a7-8ef503c57947"
+      "target_id": "c41481b7-fd3f-4602-8c31-8e871085b09e",
+      "updated_at": "2026-06-13T16:53:01.57618Z",
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
     }
   ]
 }

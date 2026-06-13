@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -108,6 +109,7 @@ func main() {
 			cap.get(c, prefix+"coverage-"+fw.token, "/api/v1/compliance/coverage?framework="+url.QueryEscape(fw.query))
 		}
 		cap.get(c, prefix+"chain-verify", "/api/v1/compliance/chain/verify")
+		cap.chainIncremental(c, prefix)
 		cap.get(c, prefix+"campaigns", "/api/v1/compliance/campaigns")
 
 		// Detail endpoints need ids the seed recorded; skip (not fail) when a
@@ -346,6 +348,40 @@ func (cp *capturer) exportPack(c *harnesskit.Client, disp *harnesskit.StepUpDisp
 	}
 	harnesskit.Logf("OK   %-44s          %d bytes -> %s", name+"-manifest", len(pretty), dst)
 	cp.ok++
+}
+
+// chainIncremental captures the O(Δ) incremental ("consistency") verify added
+// for 5,000-tenant scale. It reads the current chain head and an earlier anchor
+// from the evidence stream (descending), then GETs the SAME verify route with
+// from_seq/from_hash set: once FROM the head (no rows after it -> "consistent",
+// verified 0 — the cheap re-verify a dashboard runs on every load) and once
+// FROM the earlier anchor (verifies only the suffix window). Both are verbatim
+// responses, so the blog can show that the incremental path re-checks a handful
+// of rows where the full verify re-walks the whole chain.
+func (cp *capturer) chainIncremental(c *harnesskit.Client, prefix string) {
+	var ev struct {
+		Records []struct {
+			ChainSeq  int64  `json:"chain_seq"`
+			ChainHash string `json:"chain_hash"`
+		} `json:"records"`
+	}
+	if !c.JSON("GET", "/api/v1/compliance/evidence?order=desc&limit=8", nil, &ev) || len(ev.Records) == 0 {
+		cp.skipf(prefix + "chain-verify-incremental (no evidence to anchor on)")
+		return
+	}
+	head := ev.Records[0]
+	cp.get(c, prefix+"chain-verify-incremental-head",
+		fmt.Sprintf("/api/v1/compliance/chain/verify?from_seq=%d&from_hash=%s", head.ChainSeq, head.ChainHash))
+
+	// The oldest row in the descending window is an earlier trusted anchor; a
+	// verify from it re-checks only the rows newer than it.
+	anchor := ev.Records[len(ev.Records)-1]
+	if anchor.ChainSeq != head.ChainSeq {
+		cp.get(c, prefix+"chain-verify-incremental-window",
+			fmt.Sprintf("/api/v1/compliance/chain/verify?from_seq=%d&from_hash=%s", anchor.ChainSeq, anchor.ChainHash))
+	} else {
+		cp.skipf(prefix + "chain-verify-incremental-window (chain too short for a window)")
+	}
 }
 
 func (cp *capturer) skipf(format string, args ...any) {
