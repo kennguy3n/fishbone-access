@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -257,6 +258,23 @@ func TestVerifyChainEndpointFullVsIncremental(t *testing.T) {
 	// Half-anchor (from_seq without from_hash) -> 400.
 	w = do(t, r, http.MethodGet, "/api/v1/compliance/chain/verify?from_seq=2", "tok-auditor", nil)
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("half-anchor: got %d body=%s, want 400", w.Code, w.Body.String())
+		t.Fatalf("half-anchor (seq only): got %d body=%s, want 400", w.Code, w.Body.String())
+	}
+
+	// Half-anchor the other way (from_hash without from_seq) -> 400 with the
+	// explicit both-required message, not the parser's "must be an integer".
+	w = do(t, r, http.MethodGet, "/api/v1/compliance/chain/verify?from_hash=deadbeef", "tok-auditor", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("half-anchor (hash only): got %d body=%s, want 400", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "both required") && !strings.Contains(w.Body.String(), "are both required") {
+		t.Fatalf("half-anchor (hash only) message: %s", w.Body.String())
+	}
+
+	// from_seq=0 is the genesis sentinel, not a valid incremental anchor -> 400
+	// (it must never silently fall through to a full scan).
+	w = do(t, r, http.MethodGet, "/api/v1/compliance/chain/verify?from_seq=0&from_hash=deadbeef", "tok-auditor", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("from_seq=0: got %d body=%s, want 400", w.Code, w.Body.String())
 	}
 }

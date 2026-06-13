@@ -420,19 +420,28 @@ func (s *EvidenceService) VerifyChainSince(ctx context.Context, workspaceID uuid
 	// Guard against an anchor that sits beyond the chain head: a contiguous-seq
 	// chain has no rows after a stale or fabricated anchor, which would
 	// otherwise masquerade as a clean "consistent, 0 new rows". Only treat
-	// "0 rows after anchor" as consistent when the anchor IS the head.
-	var headSeq int64
+	// "0 rows after anchor" as consistent when the anchor IS the head. We read
+	// the head row (seq + hash) rather than just MAX(seq) so a stale_anchor
+	// response can hand the caller the real head to re-anchor on in one round
+	// trip instead of forcing a second call.
+	var head struct {
+		ChainSeq  int64
+		ChainHash string
+	}
 	if err := s.db.WithContext(ctx).
 		Model(&models.AuditEvent{}).
 		Where("workspace_id = ?", workspaceID).
-		Select("COALESCE(MAX(chain_seq), 0)").
-		Scan(&headSeq).Error; err != nil {
+		Select("chain_seq", "chain_hash").
+		Order("chain_seq DESC").
+		Limit(1).
+		Scan(&head).Error; err != nil {
 		return ChainConsistency{}, fmt.Errorf("compliance: read chain head: %w", err)
 	}
-	if anchorSeq > headSeq {
+	if anchorSeq > head.ChainSeq {
 		out.Status = chainStatusStaleAnchor
-		out.HeadSeq = headSeq
-		out.Reason = fmt.Sprintf("anchor seq %d is ahead of chain head %d", anchorSeq, headSeq)
+		out.HeadSeq = head.ChainSeq
+		out.HeadHash = head.ChainHash
+		out.Reason = fmt.Sprintf("anchor seq %d is ahead of chain head %d", anchorSeq, head.ChainSeq)
 		return out, nil
 	}
 
