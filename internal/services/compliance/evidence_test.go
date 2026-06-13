@@ -385,6 +385,48 @@ func TestVerifyChainSinceWrongAnchorHash(t *testing.T) {
 	}
 }
 
+// TestVerifyChainSinceWrongAnchorHashAtHead proves the zero-new-rows case is
+// also guarded: when the anchor seq IS the chain head there is no suffix row to
+// run the prev_hash linkage check against, so the head-hash comparison must
+// reject a fabricated anchor hash instead of echoing it back as "consistent".
+func TestVerifyChainSinceWrongAnchorHashAtHead(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	svc := NewEvidenceService(db)
+
+	for i := 0; i < 4; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	headSeq, headHash := chainHead(t, db, ws)
+
+	// Anchor AT the head but with a fabricated hash; no rows have been appended.
+	cons, err := svc.VerifyChainSince(ctx, ws, headSeq, "deadbeefnotarealhash")
+	if err != nil {
+		t.Fatalf("VerifyChainSince: %v", err)
+	}
+	if cons.OK || cons.Status != chainStatusTampered {
+		t.Fatalf("expected tampered for wrong anchor hash at head, got %+v", cons)
+	}
+	if cons.BrokenAtSeq != headSeq {
+		t.Fatalf("expected break at head seq %d, got %d", headSeq, cons.BrokenAtSeq)
+	}
+	// The response must hand back the REAL head hash, not the caller's bogus one,
+	// so a client cannot persist the fabricated value as its next anchor.
+	if cons.HeadHash != headHash {
+		t.Fatalf("expected real head hash %s, got %s", headHash, cons.HeadHash)
+	}
+
+	// The correct anchor hash at the head is still a clean no-op consistent verify.
+	ok, err := svc.VerifyChainSince(ctx, ws, headSeq, headHash)
+	if err != nil {
+		t.Fatalf("VerifyChainSince (correct head anchor): %v", err)
+	}
+	if !ok.OK || ok.Status != chainStatusConsistent || ok.Verified != 0 {
+		t.Fatalf("expected consistent no-op for correct head anchor, got %+v", ok)
+	}
+}
+
 // TestVerifyChainSinceStaleAnchor proves an anchor seq ahead of the chain head
 // is reported as a stale anchor rather than masquerading as "consistent, 0 new
 // rows".

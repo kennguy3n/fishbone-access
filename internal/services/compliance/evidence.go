@@ -444,6 +444,21 @@ func (s *EvidenceService) VerifyChainSince(ctx context.Context, workspaceID uuid
 		out.Reason = fmt.Sprintf("anchor seq %d is ahead of chain head %d", anchorSeq, head.ChainSeq)
 		return out, nil
 	}
+	// When the anchor already sits AT the head there is no suffix to walk, so
+	// the per-row linkage check (which would otherwise catch a wrong anchor
+	// hash on the first new row) never runs. Validate the anchor hash against
+	// the real stored head here so a caller cannot get a "consistent" verdict —
+	// and re-anchor on — a fabricated hash. With new rows present the linkage
+	// check in scanChainFrom still catches a wrong anchor hash, so this guard
+	// closes the zero-new-rows gap specifically.
+	if anchorSeq == head.ChainSeq && anchorHash != head.ChainHash {
+		out.Status = chainStatusTampered
+		out.HeadSeq = head.ChainSeq
+		out.HeadHash = head.ChainHash
+		out.BrokenAtSeq = head.ChainSeq
+		out.Reason = "anchor hash does not match stored chain_hash at anchor seq (linkage broken)"
+		return out, nil
+	}
 
 	scan, err := s.scanChainFrom(ctx, workspaceID, anchorSeq, anchorHash)
 	if err != nil {
