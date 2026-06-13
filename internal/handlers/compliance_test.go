@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
@@ -12,6 +14,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
 // complianceTestDeps builds a router with tokens that exercise the export
@@ -189,5 +192,71 @@ func TestComplianceRoutesRBACGate(t *testing.T) {
 	// admin holds compliance.manage -> campaign start is admitted past the gate.
 	if w := do(t, r, http.MethodPost, "/api/v1/compliance/campaigns", "tok-admin", map[string]any{"name": "Q2"}); w.Code == http.StatusForbidden {
 		t.Fatalf("admin start campaign: got 403, want admitted by manage gate")
+	}
+}
+
+// TestVerifyChainEndpointFullVsIncremental proves the verify route serves a
+// full verification with no params and switches to the incremental consistency
+// verify when handed an anchor (from_seq + from_hash), and that a half-anchor
+// is a 400.
+func TestVerifyChainEndpointFullVsIncremental(t *testing.T) {
+	deps := complianceTestDeps(t)
+	wsA := workspaceIDByTenant(t, deps.DB, "tenant-a")
+	for i := 0; i < 4; i++ {
+		if err := lifecycle.AppendAudit(t.Context(), deps.DB, time.Now(), lifecycle.AuditInput{
+			WorkspaceID: wsA, Actor: "auditor", Action: "policy.promoted", TargetRef: "p",
+		}); err != nil {
+			t.Fatalf("seed audit row: %v", err)
+		}
+	}
+	r := NewRouter(deps)
+
+	// The head anchor a client would persist after a full verify. (RBAC seeding
+	// also appends audit rows, so the head seq is not just our 4 — read it.)
+	var head models.AuditEvent
+	if err := deps.DB.Where("workspace_id = ?", wsA).Order("chain_seq desc").Limit(1).
+		Take(&head).Error; err != nil {
+		t.Fatalf("read head: %v", err)
+	}
+
+	// Full verify (no params): auditor holds compliance.read.
+	w := do(t, r, http.MethodGet, "/api/v1/compliance/chain/verify", "tok-auditor", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("full verify: got %d body=%s", w.Code, w.Body.String())
+	}
+	var full struct {
+		OK     bool `json:"ok"`
+		Length int  `json:"length"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &full); err != nil {
+		t.Fatalf("unmarshal full: %v", err)
+	}
+	if !full.OK || int64(full.Length) != head.ChainSeq {
+		t.Fatalf("full verify body: %+v (head seq %d)", full, head.ChainSeq)
+	}
+
+	// Incremental verify with the head anchor and no new rows -> consistent, 0 verified.
+	url := fmt.Sprintf("/api/v1/compliance/chain/verify?from_seq=%d&from_hash=%s", head.ChainSeq, head.ChainHash)
+	w = do(t, r, http.MethodGet, url, "tok-auditor", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("incremental verify: got %d body=%s", w.Code, w.Body.String())
+	}
+	var cons struct {
+		OK       bool   `json:"ok"`
+		Status   string `json:"status"`
+		Verified int    `json:"verified"`
+		HeadSeq  int64  `json:"head_seq"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &cons); err != nil {
+		t.Fatalf("unmarshal cons: %v", err)
+	}
+	if !cons.OK || cons.Status != "consistent" || cons.Verified != 0 || cons.HeadSeq != head.ChainSeq {
+		t.Fatalf("incremental body: %+v", cons)
+	}
+
+	// Half-anchor (from_seq without from_hash) -> 400.
+	w = do(t, r, http.MethodGet, "/api/v1/compliance/chain/verify?from_seq=2", "tok-auditor", nil)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("half-anchor: got %d body=%s, want 400", w.Code, w.Body.String())
 	}
 }

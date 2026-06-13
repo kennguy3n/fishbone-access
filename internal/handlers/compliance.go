@@ -241,17 +241,41 @@ func (h *complianceHandlers) privilegedAccess(c *gin.Context) {
 	c.JSON(http.StatusOK, cov)
 }
 
+// verifyChain serves GET /compliance/chain/verify. With no query parameters it
+// runs a full O(n) tamper-evidence verification of the whole workspace chain.
+// When the caller passes a previously-verified anchor (from_seq + from_hash) it
+// runs the incremental O(Δ) consistency verification instead — re-checking only
+// the rows appended since that anchor — and returns the new head so the caller
+// can advance its baseline. from_seq without from_hash (or vice versa) is a
+// 400: an incremental verify needs both halves of the anchor to link onto.
 func (h *complianceHandlers) verifyChain(c *gin.Context) {
 	ws, ok := workspace(c)
 	if !ok {
 		return
 	}
-	v, err := h.evidence.VerifyChain(c.Request.Context(), ws)
+
+	fromSeqStr, fromHash := c.Query("from_seq"), c.Query("from_hash")
+	if fromSeqStr == "" && fromHash == "" {
+		v, err := h.evidence.VerifyChain(c.Request.Context(), ws)
+		if err != nil {
+			failCompliance(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, v)
+		return
+	}
+
+	fromSeq, err := strconv.ParseInt(fromSeqStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "from_seq must be an integer"})
+		return
+	}
+	cons, err := h.evidence.VerifyChainSince(c.Request.Context(), ws, fromSeq, fromHash)
 	if err != nil {
 		failCompliance(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, v)
+	c.JSON(http.StatusOK, cons)
 }
 
 // --- certification campaigns ---

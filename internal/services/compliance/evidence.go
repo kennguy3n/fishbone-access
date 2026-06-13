@@ -239,39 +239,89 @@ func (s *EvidenceService) VerifyChain(ctx context.Context, workspaceID uuid.UUID
 	}
 	out := ChainVerification{WorkspaceID: workspaceID}
 
-	rows, err := s.db.WithContext(ctx).
-		Model(&models.AuditEvent{}).
-		Where("workspace_id = ?", workspaceID).
-		Order("chain_seq asc").
-		Rows()
+	// A full verify is the consistency scan anchored at the genesis (seq 0,
+	// empty prev_hash): every row from the first is linkage-checked and
+	// recomputed. VerifyChain and VerifyChainSince share one scanner so the two
+	// can never drift in how they detect a gap, a broken link, or an edited row.
+	scan, err := s.scanChainFrom(ctx, workspaceID, 0, "")
 	if err != nil {
-		return ChainVerification{}, fmt.Errorf("compliance: open chain cursor: %w", err)
+		return ChainVerification{}, err
+	}
+	out.Length = scan.scanned
+	out.LegacyUnverified = scan.legacyUnverified
+	if scan.broken {
+		out.Status = chainStatusTampered
+		out.BrokenAtSeq = scan.brokenAtSeq
+		out.Reason = scan.reason
+		return out, nil
+	}
+	if scan.scanned == 0 {
+		out.Status = chainStatusEmpty
+		return out, nil
+	}
+	out.OK = true
+	out.Status = chainStatusValid
+	return out, nil
+}
+
+// chainScan is the raw outcome of walking a (sub)range of a workspace chain in
+// sequence order. It is the shared substrate VerifyChain and VerifyChainSince
+// project into their respective public shapes.
+type chainScan struct {
+	scanned          int    // rows walked in this scan (the suffix when anchored)
+	headSeq          int64  // chain_seq of the last good row (anchor seq when none scanned)
+	headHash         string // chain_hash of the last good row (anchor hash when none scanned)
+	legacyUnverified int
+	broken           bool
+	brokenAtSeq      int64
+	reason           string
+}
+
+// scanChainFrom walks the workspace chain in ascending sequence order starting
+// immediately AFTER anchorSeq, treating anchorHash as the chain_hash the first
+// scanned row must link back to. (anchorSeq=0, anchorHash="") scans the whole
+// chain from genesis — the full-verify case. A non-zero anchor scans only the
+// suffix, so the cost is O(rows-after-anchor) rather than O(chain length): this
+// is what lets a caller who already holds a trusted (seq, hash) baseline
+// re-verify just the tail. Linkage (contiguous chain_seq + prev_hash match) and
+// cryptographic recompute are applied identically to every scanned row, so the
+// suffix scan is exactly as strict as a full scan over the same rows. It does
+// NOT re-prove the prefix at or before the anchor — that soundness comes from
+// the earlier full verify that produced the anchor (see VerifyChainSince).
+func (s *EvidenceService) scanChainFrom(ctx context.Context, workspaceID uuid.UUID, anchorSeq int64, anchorHash string) (chainScan, error) {
+	q := s.db.WithContext(ctx).
+		Model(&models.AuditEvent{}).
+		Where("workspace_id = ?", workspaceID)
+	if anchorSeq > 0 {
+		q = q.Where("chain_seq > ?", anchorSeq)
+	}
+	rows, err := q.Order("chain_seq asc").Rows()
+	if err != nil {
+		return chainScan{}, fmt.Errorf("compliance: open chain cursor: %w", err)
 	}
 	defer rows.Close()
 
-	prevHash := ""
-	var expectedSeq int64 = 1
-	n := 0
+	res := chainScan{headSeq: anchorSeq, headHash: anchorHash}
+	prevHash := anchorHash
+	expectedSeq := anchorSeq + 1
 	for rows.Next() {
 		var e models.AuditEvent
 		if err := s.db.ScanRows(rows, &e); err != nil {
-			return ChainVerification{}, fmt.Errorf("compliance: scan chain row: %w", err)
+			return chainScan{}, fmt.Errorf("compliance: scan chain row: %w", err)
 		}
-		n++
+		res.scanned++
 
 		if e.ChainSeq != expectedSeq {
-			out.Length = n
-			out.Status = chainStatusTampered
-			out.BrokenAtSeq = e.ChainSeq
-			out.Reason = fmt.Sprintf("chain_seq gap: expected %d, got %d", expectedSeq, e.ChainSeq)
-			return out, nil
+			res.broken = true
+			res.brokenAtSeq = e.ChainSeq
+			res.reason = fmt.Sprintf("chain_seq gap: expected %d, got %d", expectedSeq, e.ChainSeq)
+			return res, nil
 		}
 		if e.PrevHash != prevHash {
-			out.Length = n
-			out.Status = chainStatusTampered
-			out.BrokenAtSeq = e.ChainSeq
-			out.Reason = "prev_hash does not match prior row's chain_hash (linkage broken)"
-			return out, nil
+			res.broken = true
+			res.brokenAtSeq = e.ChainSeq
+			res.reason = "prev_hash does not match prior row's chain_hash (linkage broken)"
+			return res, nil
 		}
 		// Linkage (chain_seq contiguity + prev_hash) is format-independent and was
 		// already enforced above for EVERY row, so an inserted, deleted, reordered
@@ -287,29 +337,121 @@ func (s *EvidenceService) VerifyChain(ctx context.Context, workspaceID uuid.UUID
 		// must learn the per-version pre-image so older canonical rows keep
 		// verifying under their own rule.
 		if e.ChainHashVersion == legacyHashVersion {
-			out.LegacyUnverified++
+			res.legacyUnverified++
 		} else if want := recomputeChainHash(prevHash, &e); want != e.ChainHash {
-			out.Length = n
-			out.Status = chainStatusTampered
-			out.BrokenAtSeq = e.ChainSeq
-			out.Reason = "chain_hash does not recompute from row contents (row edited)"
-			return out, nil
+			res.broken = true
+			res.brokenAtSeq = e.ChainSeq
+			res.reason = "chain_hash does not recompute from row contents (row edited)"
+			return res, nil
 		}
 
 		prevHash = e.ChainHash
+		res.headHash = e.ChainHash
+		res.headSeq = e.ChainSeq
 		expectedSeq++
 	}
 	if err := rows.Err(); err != nil {
-		return ChainVerification{}, fmt.Errorf("compliance: iterate chain rows: %w", err)
+		return chainScan{}, fmt.Errorf("compliance: iterate chain rows: %w", err)
+	}
+	return res, nil
+}
+
+// ChainConsistency is the outcome of an incremental ("since") verification: a
+// proof that the rows appended after a previously-verified anchor extend the
+// chain consistently, without re-walking the whole chain. It is the cheap
+// re-verify a long-lived workspace dashboard runs on every load once it holds a
+// trusted baseline, where a full VerifyChain is O(chain length).
+type ChainConsistency struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	OK          bool      `json:"ok"`
+	// Status is "consistent" (suffix links cleanly onto the anchor), "tampered"
+	// (a gap, broken link or edited row in the suffix), or "stale_anchor" (the
+	// anchor seq is ahead of the chain head — the caller's baseline does not
+	// belong to this chain).
+	Status string `json:"status"`
+	// FromSeq / FromHash echo the anchor the caller asserted.
+	FromSeq  int64  `json:"from_seq"`
+	FromHash string `json:"from_hash"`
+	// HeadSeq / HeadHash are the chain head after the scan — the caller persists
+	// these as its next anchor. When no new rows exist they equal the anchor.
+	HeadSeq  int64  `json:"head_seq"`
+	HeadHash string `json:"head_hash"`
+	// Verified is the number of new rows checked in this scan (0 when the chain
+	// has not grown since the anchor).
+	Verified         int    `json:"verified"`
+	LegacyUnverified int    `json:"legacy_unverified,omitempty"`
+	BrokenAtSeq      int64  `json:"broken_at_seq,omitempty"`
+	Reason           string `json:"reason,omitempty"`
+}
+
+const chainStatusConsistent = "consistent"
+const chainStatusStaleAnchor = "stale_anchor"
+
+// VerifyChainSince proves that the audit rows appended AFTER the anchor
+// (anchorSeq, anchorHash) extend the workspace chain consistently — i.e. the
+// first new row's prev_hash links to anchorHash, chain_seq stays contiguous,
+// and every new canonical row recomputes. It scans only the suffix, so its cost
+// is O(rows since the anchor) instead of O(chain length): a workspace with
+// 200k evidence rows that has added 12 since the dashboard last verified pays
+// for 12, not 200k. This is the standing-cost lever for the heaviest endpoint
+// at 5,000-tenant scale.
+//
+// Soundness boundary, stated plainly: this is a CONSISTENCY proof of the
+// suffix, not a fresh integrity proof of the whole chain. It assumes the anchor
+// was produced by an earlier trusted full VerifyChain (the dashboard runs one
+// full verify to establish the baseline, then cheap incremental verifies
+// thereafter). It deliberately does not re-read or re-hash the prefix at or
+// before anchorSeq, so it cannot by itself detect tampering of a row the anchor
+// already covered — exactly what the periodic full sweep still exists to catch.
+// A caller that needs the full guarantee calls VerifyChain.
+func (s *EvidenceService) VerifyChainSince(ctx context.Context, workspaceID uuid.UUID, anchorSeq int64, anchorHash string) (ChainConsistency, error) {
+	if workspaceID == uuid.Nil {
+		return ChainConsistency{}, fmt.Errorf("%w: workspace_id is required", ErrValidation)
+	}
+	if anchorSeq < 0 {
+		return ChainConsistency{}, fmt.Errorf("%w: from_seq must not be negative", ErrValidation)
+	}
+	if anchorSeq > 0 && anchorHash == "" {
+		return ChainConsistency{}, fmt.Errorf("%w: from_hash is required when from_seq > 0", ErrValidation)
 	}
 
-	out.Length = n
-	if n == 0 {
-		out.Status = chainStatusEmpty
+	out := ChainConsistency{WorkspaceID: workspaceID, FromSeq: anchorSeq, FromHash: anchorHash}
+
+	// Guard against an anchor that sits beyond the chain head: a contiguous-seq
+	// chain has no rows after a stale or fabricated anchor, which would
+	// otherwise masquerade as a clean "consistent, 0 new rows". Only treat
+	// "0 rows after anchor" as consistent when the anchor IS the head.
+	var headSeq int64
+	if err := s.db.WithContext(ctx).
+		Model(&models.AuditEvent{}).
+		Where("workspace_id = ?", workspaceID).
+		Select("COALESCE(MAX(chain_seq), 0)").
+		Scan(&headSeq).Error; err != nil {
+		return ChainConsistency{}, fmt.Errorf("compliance: read chain head: %w", err)
+	}
+	if anchorSeq > headSeq {
+		out.Status = chainStatusStaleAnchor
+		out.HeadSeq = headSeq
+		out.Reason = fmt.Sprintf("anchor seq %d is ahead of chain head %d", anchorSeq, headSeq)
+		return out, nil
+	}
+
+	scan, err := s.scanChainFrom(ctx, workspaceID, anchorSeq, anchorHash)
+	if err != nil {
+		return ChainConsistency{}, err
+	}
+	out.Verified = scan.scanned
+	out.LegacyUnverified = scan.legacyUnverified
+	out.HeadSeq = scan.headSeq
+	out.HeadHash = scan.headHash
+	if scan.broken {
+		out.Status = chainStatusTampered
+		out.BrokenAtSeq = scan.brokenAtSeq
+		out.Reason = scan.reason
 		return out, nil
 	}
 	out.OK = true
-	out.Status = chainStatusValid
+	out.Status = chainStatusConsistent
 	return out, nil
 }
 

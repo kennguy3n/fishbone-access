@@ -4,8 +4,24 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
+
+// chainHead returns the (seq, hash) of the current head of a workspace chain,
+// the trusted baseline a caller persists after a full verify and replays into
+// VerifyChainSince on the next load.
+func chainHead(t *testing.T, db *gorm.DB, ws uuid.UUID) (int64, string) {
+	t.Helper()
+	var head models.AuditEvent
+	if err := db.Where("workspace_id = ?", ws).Order("chain_seq desc").Limit(1).
+		Take(&head).Error; err != nil {
+		t.Fatalf("read chain head: %v", err)
+	}
+	return head.ChainSeq, head.ChainHash
+}
 
 func TestStreamClassifiesAndFilters(t *testing.T) {
 	db := newTestDB(t)
@@ -195,7 +211,7 @@ func TestCoverageByFramework(t *testing.T) {
 	ctx := context.Background()
 
 	// Evidence that should credit several SOC 2 controls.
-	appendEvent(t, db, ws, "policy.promoted", "p1")   // CC6.1
+	appendEvent(t, db, ws, "policy.promoted", "p1")      // CC6.1
 	appendEvent(t, db, ws, "access_grant.created", "g1") // CC6.1, CC6.2
 	appendEvent(t, db, ws, "access_grant.revoked", "g1") // CC6.3
 	appendEvent(t, db, ws, "weird.action", "x")          // KindOther — credits nothing
@@ -262,3 +278,143 @@ func TestEvidenceCrossTenantIsolation(t *testing.T) {
 	}
 }
 
+// TestVerifyChainSinceIncrementalConsistent is the headline case: a caller
+// holds a trusted baseline from an earlier full verify, the chain grows, and
+// the incremental verify scans only the new rows and reports the new head.
+func TestVerifyChainSinceIncrementalConsistent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	svc := NewEvidenceService(db)
+
+	for i := 0; i < 5; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	full, err := svc.VerifyChain(ctx, ws)
+	if err != nil || !full.OK || full.Length != 5 {
+		t.Fatalf("baseline full verify: %+v err=%v", full, err)
+	}
+	anchorSeq, anchorHash := chainHead(t, db, ws)
+
+	// Chain grows by two rows after the baseline.
+	appendEvent(t, db, ws, "access_grant.created", "g")
+	appendEvent(t, db, ws, "access_grant.created", "g")
+
+	cons, err := svc.VerifyChainSince(ctx, ws, anchorSeq, anchorHash)
+	if err != nil {
+		t.Fatalf("VerifyChainSince: %v", err)
+	}
+	if !cons.OK || cons.Status != chainStatusConsistent {
+		t.Fatalf("expected consistent, got %+v", cons)
+	}
+	if cons.Verified != 2 {
+		t.Fatalf("expected 2 new rows verified, got %d", cons.Verified)
+	}
+	wantSeq, wantHash := chainHead(t, db, ws)
+	if cons.HeadSeq != wantSeq || cons.HeadHash != wantHash {
+		t.Fatalf("head mismatch: got (%d,%s) want (%d,%s)", cons.HeadSeq, cons.HeadHash, wantSeq, wantHash)
+	}
+
+	// Replaying the now-current head must be a no-op consistent verify.
+	again, err := svc.VerifyChainSince(ctx, ws, cons.HeadSeq, cons.HeadHash)
+	if err != nil {
+		t.Fatalf("VerifyChainSince (no new rows): %v", err)
+	}
+	if !again.OK || again.Verified != 0 || again.HeadSeq != wantSeq {
+		t.Fatalf("expected consistent no-op, got %+v", again)
+	}
+}
+
+// TestVerifyChainSinceDetectsSuffixTamper proves the incremental scan is as
+// strict as a full scan over the rows it covers: editing a row after the anchor
+// without recomputing its hash is caught.
+func TestVerifyChainSinceDetectsSuffixTamper(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	svc := NewEvidenceService(db)
+
+	for i := 0; i < 3; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	anchorSeq, anchorHash := chainHead(t, db, ws)
+	for i := 0; i < 3; i++ {
+		appendEvent(t, db, ws, "access_grant.created", "g")
+	}
+
+	// Tamper a hashed field on a row in the SUFFIX (seq 5) without recomputing.
+	if err := db.Model(&models.AuditEvent{}).
+		Where("workspace_id = ? AND chain_seq = ?", ws, int64(5)).
+		Update("action", "access_grant.revoked").Error; err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+
+	cons, err := svc.VerifyChainSince(ctx, ws, anchorSeq, anchorHash)
+	if err != nil {
+		t.Fatalf("VerifyChainSince: %v", err)
+	}
+	if cons.OK || cons.Status != chainStatusTampered {
+		t.Fatalf("expected tampered, got %+v", cons)
+	}
+	if cons.BrokenAtSeq != 5 {
+		t.Fatalf("expected break at seq 5, got %d", cons.BrokenAtSeq)
+	}
+}
+
+// TestVerifyChainSinceWrongAnchorHash proves a baseline whose hash does not
+// match the real chain head cannot pass: the first suffix row's prev_hash will
+// not link to the asserted anchor.
+func TestVerifyChainSinceWrongAnchorHash(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	svc := NewEvidenceService(db)
+
+	for i := 0; i < 4; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	anchorSeq, _ := chainHead(t, db, ws)
+	appendEvent(t, db, ws, "access_grant.created", "g")
+
+	cons, err := svc.VerifyChainSince(ctx, ws, anchorSeq, "deadbeefnotarealhash")
+	if err != nil {
+		t.Fatalf("VerifyChainSince: %v", err)
+	}
+	if cons.OK || cons.Status != chainStatusTampered {
+		t.Fatalf("expected tampered on bad anchor link, got %+v", cons)
+	}
+}
+
+// TestVerifyChainSinceStaleAnchor proves an anchor seq ahead of the chain head
+// is reported as a stale anchor rather than masquerading as "consistent, 0 new
+// rows".
+func TestVerifyChainSinceStaleAnchor(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	ctx := context.Background()
+	svc := NewEvidenceService(db)
+
+	for i := 0; i < 3; i++ {
+		appendEvent(t, db, ws, "policy.promoted", "p")
+	}
+	cons, err := svc.VerifyChainSince(ctx, ws, 99, "anyhash")
+	if err != nil {
+		t.Fatalf("VerifyChainSince: %v", err)
+	}
+	if cons.OK || cons.Status != chainStatusStaleAnchor {
+		t.Fatalf("expected stale_anchor, got %+v", cons)
+	}
+	if cons.HeadSeq != 3 {
+		t.Fatalf("expected reported head 3, got %d", cons.HeadSeq)
+	}
+}
+
+// TestVerifyChainSinceValidation rejects a non-zero anchor seq with no hash:
+// there is nothing for the first suffix row to link onto.
+func TestVerifyChainSinceValidation(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	if _, err := NewEvidenceService(db).VerifyChainSince(context.Background(), ws, 3, ""); err == nil {
+		t.Fatal("expected validation error for from_seq>0 with empty from_hash")
+	}
+}
