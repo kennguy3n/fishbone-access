@@ -22,6 +22,14 @@ type sweepScheduler interface {
 	ScheduleReviewSweep(ctx context.Context, workspaceID uuid.UUID, campaignName, actor, workspaceAITier string) (string, error)
 }
 
+// hibernationGate decides whether a tenant's PERIODIC work should run now. The
+// scheduler consults it before enqueuing each workspace's review sweep and is
+// fail-open by contract (never-classified or any error → run). Declared locally
+// (the tenancy.Service satisfies it) so this package needs no tenancy import.
+type hibernationGate interface {
+	ShouldRunPeriodic(ctx context.Context, workspaceID uuid.UUID) (bool, error)
+}
+
 // GormWorkspaceLister lists workspace ids from the workspaces table.
 type GormWorkspaceLister struct {
 	db *gorm.DB
@@ -76,6 +84,15 @@ type ReviewScheduler struct {
 	lister workspaceLister
 	cfg    ReviewSchedulerConfig
 	now    func() time.Time
+
+	// gate defers a workspace's periodic review sweep when it is confidently
+	// dormant. nil means "no gate" (every workspace is swept) so a scheduler
+	// built without hibernation degrades to the pre-feature behaviour.
+	gate hibernationGate
+	// onSkipDormant, when non-nil, counts one review sweep skipped as dormant
+	// (the aggregate scale-to-zero metric). nil-able observer seam so this
+	// package needs no observability dependency.
+	onSkipDormant func()
 }
 
 // NewReviewScheduler wires the scheduler. engine and lister are required.
@@ -87,6 +104,16 @@ func NewReviewScheduler(engine sweepScheduler, lister workspaceLister, cfg Revie
 		return nil, fmt.Errorf("workflow_engine: ReviewScheduler needs a workspace lister")
 	}
 	return &ReviewScheduler{engine: engine, lister: lister, cfg: cfg.withDefaults(), now: time.Now}, nil
+}
+
+// WithHibernationGate attaches the dormancy gate (and an optional skip observer)
+// used to defer the periodic review sweep for hibernated workspaces. A nil gate
+// is accepted and leaves the scheduler ungated (every workspace is swept).
+// Returns the scheduler for chaining at the call site.
+func (s *ReviewScheduler) WithHibernationGate(gate hibernationGate, onSkipDormant func()) *ReviewScheduler {
+	s.gate = gate
+	s.onSkipDormant = onSkipDormant
+	return s
 }
 
 // Run blocks, enqueuing a sweep for every workspace once per Interval until ctx
@@ -123,9 +150,37 @@ func (s *ReviewScheduler) runOnce(ctx context.Context) {
 	}
 	name := fmt.Sprintf("scheduled-review-%s", s.now().UTC().Format("2006-01-02"))
 	for _, id := range ids {
+		// Hibernation gate (scale-to-zero): defer the periodic certification
+		// sweep for a confidently-dormant workspace. Fail-open — a dormant
+		// classification is the ONLY thing that skips a workspace; an
+		// unclassified tenant or any gate error still enqueues its sweep.
+		if !s.shouldSweep(ctx, id) {
+			if s.onSkipDormant != nil {
+				s.onSkipDormant()
+			}
+			continue
+		}
 		if _, err := s.engine.ScheduleReviewSweep(ctx, id, name, s.cfg.Actor, s.cfg.WorkspaceAITier); err != nil {
 			logger.Errorf(ctx, "workflow_engine: review scheduler: enqueue sweep for workspace %s: %v", id, err)
 			continue
 		}
 	}
+}
+
+// shouldSweep applies the hibernation gate FAIL-OPEN: false (defer the sweep)
+// ONLY when a gate is wired and confidently reports the workspace dormant. A nil
+// gate, an unclassified tenant, or any gate error all yield true (enqueue).
+//
+// The gate read is a workspace-scoped primary-key lookup that binds the tenant
+// explicitly and returns no tenant data, so it is correct under the worker's
+// permissive (non-request-scoped) RLS context and cannot widen isolation.
+func (s *ReviewScheduler) shouldSweep(ctx context.Context, workspaceID uuid.UUID) bool {
+	if s.gate == nil {
+		return true
+	}
+	run, err := s.gate.ShouldRunPeriodic(ctx, workspaceID)
+	if err != nil {
+		return true // fail open: never defer a real sweep on a classification error
+	}
+	return run
 }

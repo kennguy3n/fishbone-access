@@ -37,6 +37,13 @@ type Metrics struct {
 	usageEvents   *prometheus.CounterVec
 	quotaBreaches *prometheus.CounterVec
 	failOpen      *prometheus.CounterVec
+
+	// Hibernation (scale-to-zero) instruments. All are AGGREGATE — none is
+	// labelled by tenant id — so the series count stays bounded at 5,000
+	// tenants, mirroring the cardinality discipline of the usage counter above.
+	hibernationDormant prometheus.Gauge
+	hibernationSkipped *prometheus.CounterVec
+	hibernationWakeups prometheus.Counter
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -92,8 +99,27 @@ func NewMetrics() *Metrics {
 			Name:      "fail_open_total",
 			Help:      "Shared-store (Redis) operations that failed and were handled fail-open, by subsystem (ratelimit|usage). A non-zero rate means Redis is degraded: the rate limiter is admitting rather than enforcing, or usage is degrading to the Postgres path / dropping. Labelled by subsystem ONLY (never tenant id) to keep cardinality bounded; alert on its rate to catch a flapping Redis.",
 		}, []string{"subsystem"}),
+		hibernationDormant: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "shieldnet",
+			Subsystem: "hibernation",
+			Name:      "tenants_dormant",
+			Help:      "Number of tenants currently classified dormant (fleet-wide), refreshed by the ztna-api reconcile sweep. This is the headline scale-to-zero signal: it should track the dormant-trial majority. Aggregate only — never labelled by tenant id.",
+		}),
+		hibernationSkipped: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "hibernation",
+			Name:      "periodic_jobs_skipped_total",
+			Help:      "Periodic per-tenant jobs skipped because the tenant is dormant, by worker (e.g. connector_sync, review_sweep). This is the realized cost saving — every increment is work a periodic worker did NOT do for a hibernated tenant. Labelled by the small fixed worker set only, never by tenant id.",
+		}, []string{"worker"}),
+		hibernationWakeups: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "hibernation",
+			Name:      "wake_events_total",
+			Help:      "Lazy wake transitions (dormant->active) driven by real tenant activity on the request path. A healthy fleet wakes tenants promptly and rarely; a spike means dormant tenants are returning. Aggregate only — never labelled by tenant id.",
+		}),
 	}
-	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen)
+	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen,
+		m.hibernationDormant, m.hibernationSkipped, m.hibernationWakeups)
 	return m
 }
 
@@ -117,6 +143,36 @@ func (m *Metrics) AddUsageEvents(metric string, n int64) {
 		return
 	}
 	m.usageEvents.WithLabelValues(metric).Add(float64(n))
+}
+
+// SetDormantTenants publishes the current fleet-wide dormant tenant count as a
+// gauge. Wire it as the reconcile loop's post-sweep observer so the headline
+// scale-to-zero signal refreshes every sweep. A negative count is ignored
+// (a count read failure should not stomp the last good value with garbage).
+func (m *Metrics) SetDormantTenants(n int64) {
+	if n < 0 {
+		return
+	}
+	m.hibernationDormant.Set(float64(n))
+}
+
+// IncPeriodicJobSkipped records one periodic per-tenant job skipped because the
+// tenant is dormant, labelled by the worker name ONLY (a small fixed set such
+// as "connector_sync" / "review_sweep"), never the tenant id. Wire it where a
+// worker honours the hibernation gate and decides to defer a tenant's work.
+func (m *Metrics) IncPeriodicJobSkipped(worker string) {
+	if worker == "" {
+		worker = "unknown"
+	}
+	m.hibernationSkipped.WithLabelValues(worker).Inc()
+}
+
+// IncWakeEvents records one lazy wake (dormant->active) driven by real tenant
+// activity. Wire it as the activity recorder's wake observer so the counter
+// advances exactly once per wake (the recorder reports woke=true once per
+// transition, not per request).
+func (m *Metrics) IncWakeEvents() {
+	m.hibernationWakeups.Inc()
 }
 
 // IncQuotaBreach records an over-quota billing-enforcement decision, labelled by

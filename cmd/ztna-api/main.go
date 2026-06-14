@@ -434,10 +434,14 @@ func run() error {
 
 		// Always: drain request-path activity and lazily wake dormant tenants.
 		// Fed by the router's activity middleware (deps.ActivityRecorder).
+		// OnWake advances the aggregate wake-events counter once per dormant->
+		// active transition (not per request) — the observability seam proving
+		// dormant tenants return promptly on real activity.
 		recorder := tenancy.NewAsyncRecorder(tenancySvc, tenancy.AsyncRecorderConfig{
 			Throttle:      cfg.Tenancy.ActivityFlushInterval,
 			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
 			QueueSize:     cfg.Tenancy.ActivityQueueSize,
+			OnWake:        metrics.IncWakeEvents,
 		})
 		recCtx, recCancel := context.WithCancel(ctx)
 		joinRecorder := recorder.Run(recCtx)
@@ -450,7 +454,9 @@ func run() error {
 		if cfg.Tenancy.HibernationEnabled {
 			// Only when enabled: periodically (re)classify tenants set-based.
 			reconcileCtx, reconcileCancel := context.WithCancel(ctx)
-			joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).Run(reconcileCtx)
+			joinReconcile := tenancy.NewReconcileLoop(tenancySvc, cfg.Tenancy.ReconcileInterval).
+				WithDormantObserver(metrics.SetDormantTenants).
+				Run(reconcileCtx)
 			defer func() {
 				reconcileCancel()
 				joinReconcile()

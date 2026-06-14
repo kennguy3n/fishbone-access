@@ -5,6 +5,7 @@ package tenancy
 import (
 	"context"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -104,6 +105,55 @@ func TestPostgresRecordActivityAndWake(t *testing.T) {
 	dormant, _ = store.IsDormant(ctx, ws)
 	if dormant {
 		t.Error("tenant should be active after wake")
+	}
+}
+
+// TestPostgresConcurrentWakeAndReconcile runs RecordActivity and Reconcile
+// concurrently against the same just-dormant tenant and asserts the tenant is
+// never left stuck dormant — the wake-vs-reconcile race the unit suite can only
+// model sequentially (SQLite cannot do connection-concurrent writes). On
+// Postgres the reconcile transaction row-locks the rows it updates, so the wake
+// either commits its fresh last_activity_at before the sweep reads it (sweep
+// won't hibernate) or serializes after the sweep and flips it back to active.
+func TestPostgresConcurrentWakeAndReconcile(t *testing.T) {
+	db, store := newPostgresStore(t)
+	clk := &fakeClock{t: time.Now().UTC()}
+	store = store.WithClock(clk.now)
+	ctx := context.Background()
+	ws := pgSeedWorkspace(t, db, clk.now().Add(-40*24*time.Hour))
+
+	// Classify dormant first.
+	if _, err := store.Reconcile(ctx, 14*24*time.Hour); err != nil {
+		t.Fatalf("reconcile(seed dormant): %v", err)
+	}
+	if d, _ := store.IsDormant(ctx, ws); !d {
+		t.Fatal("precondition: tenant should be dormant")
+	}
+
+	// Activity lands "now" concurrently with a sweep.
+	clk.advance(time.Minute)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if _, err := store.RecordActivity(ctx, ws, KindAPI); err != nil {
+			t.Errorf("concurrent RecordActivity: %v", err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if _, err := store.Reconcile(ctx, 14*24*time.Hour); err != nil {
+			t.Errorf("concurrent Reconcile: %v", err)
+		}
+	}()
+	wg.Wait()
+
+	// A settling sweep must not re-hibernate: the recorded activity is fresh.
+	if _, err := store.Reconcile(ctx, 14*24*time.Hour); err != nil {
+		t.Fatalf("settling reconcile: %v", err)
+	}
+	if d, _ := store.IsDormant(ctx, ws); d {
+		t.Fatal("tenant with fresh activity must not be left dormant after a concurrent sweep")
 	}
 }
 

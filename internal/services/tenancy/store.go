@@ -139,6 +139,23 @@ func (s *Store) IsDormant(ctx context.Context, workspaceID uuid.UUID) (bool, err
 	return row.Dormant(), nil
 }
 
+// CountDormant returns the number of workspaces currently classified dormant.
+// It is a single indexed aggregate over the state column (no per-tenant fan-out
+// and no tenant data returned), so it is cheap to call once per reconcile sweep
+// to publish the fleet-wide dormant gauge. It needs no RLS/tenant context: it
+// is an unscoped COUNT of an operational classification column, not a read of
+// any tenant's data.
+func (s *Store) CountDormant(ctx context.Context) (int64, error) {
+	var n int64
+	if err := s.db.WithContext(ctx).
+		Model(&TenantActivity{}).
+		Where("state = ?", StateDormant).
+		Count(&n).Error; err != nil {
+		return 0, fmt.Errorf("tenancy: count dormant: %w", err)
+	}
+	return n, nil
+}
+
 // ReconcileResult reports what a sweep changed, for logging/metrics.
 type ReconcileResult struct {
 	// Seeded is the number of workspaces that gained an activity row this sweep

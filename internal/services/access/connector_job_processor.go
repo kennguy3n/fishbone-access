@@ -13,6 +13,15 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 )
 
+// HibernationGate decides whether a tenant's PERIODIC work should run now. The
+// processor only ever consults it for the periodic identity-sync job type, and
+// it is fail-open by contract (a never-classified tenant or any error yields
+// run). It is the same single-method interface the tenancy.Service satisfies;
+// declared locally so this package needs no dependency on tenancy.
+type HibernationGate interface {
+	ShouldRunPeriodic(ctx context.Context, workspaceID uuid.UUID) (bool, error)
+}
+
 // ConnectorJobProcessor is the workers.Processor that executes connector jobs
 // pulled from the access_jobs queue: identity syncs, access provisioning, and
 // revocations. It decodes the job payload, loads the target connector scoped to
@@ -22,6 +31,16 @@ type ConnectorJobProcessor struct {
 	svc          *ConnectorManagementService
 	syncState    *SyncStateStore
 	orchestrator *IdentityDeltaSyncOrchestrator
+
+	// gate defers the PERIODIC identity-sync for a confidently-dormant tenant.
+	// nil means "no gate" (every tenant runs) so a worker built without
+	// hibernation degrades to the pre-feature behaviour. It is consulted ONLY
+	// for JobTypeSyncIdentities; on-demand provision/revoke jobs always run.
+	gate HibernationGate
+	// onSkipDormant, when non-nil, counts one periodic sync skipped as dormant
+	// (the aggregate scale-to-zero metric). nil-able observer seam so the access
+	// package needs no observability dependency.
+	onSkipDormant func()
 }
 
 // NewConnectorJobProcessor builds a processor over the given DB and credential
@@ -35,6 +54,16 @@ func NewConnectorJobProcessor(db *gorm.DB, enc CredentialEncryptor) *ConnectorJo
 		syncState:    syncState,
 		orchestrator: NewIdentityDeltaSyncOrchestrator(syncState),
 	}
+}
+
+// WithHibernationGate attaches the dormancy gate (and an optional skip observer)
+// used to defer periodic identity syncs for hibernated tenants. A nil gate is
+// accepted and leaves the processor ungated (every tenant runs). Returns the
+// processor for chaining at the call site.
+func (p *ConnectorJobProcessor) WithHibernationGate(gate HibernationGate, onSkipDormant func()) *ConnectorJobProcessor {
+	p.gate = gate
+	p.onSkipDormant = onSkipDormant
+	return p
 }
 
 // Process implements workers.Processor.
@@ -53,6 +82,21 @@ func (p *ConnectorJobProcessor) Process(ctx context.Context, job workers.Job) er
 	connectorID, err := uuid.Parse(payload.ConnectorID)
 	if err != nil {
 		return fmt.Errorf("access: job %s: invalid connector_id: %w", job.ID, err)
+	}
+
+	// Hibernation gate (scale-to-zero). Identity sync is the connector worker's
+	// only PERIODIC per-tenant job, so it is the only type the gate may defer;
+	// provision/revoke are on-demand JML actions and must never be skipped.
+	// The check happens BEFORE loading the connector and opening its sealed
+	// secrets, so a dormant tenant costs one indexed gate read, not a provider
+	// round-trip. Returning nil completes (acks) the job: a deferred periodic
+	// sync is not lost work — the delta-sync cursor is untouched, so the next
+	// sync after the tenant wakes resumes exactly where this one would have.
+	if job.Type == JobTypeSyncIdentities && !p.shouldRunSync(ctx, workspaceID) {
+		if p.onSkipDormant != nil {
+			p.onSkipDormant()
+		}
+		return nil
 	}
 
 	row, err := p.svc.loadConnector(ctx, p.svc.db, workspaceID, connectorID)
@@ -111,6 +155,27 @@ func (p *ConnectorJobProcessor) runSync(ctx context.Context, connector AccessCon
 		return fmt.Errorf("access: stamp last_synced_at: %w", err)
 	}
 	return nil
+}
+
+// shouldRunSync applies the hibernation gate FAIL-OPEN: it returns false (defer
+// the sync) ONLY when a gate is wired and confidently reports the tenant
+// dormant. A nil gate, an unclassified tenant, or any gate error all yield true
+// (run) — hibernation may only ever defer work for a confidently-dormant
+// tenant, never drop a sync for an active/unclassified tenant or on error.
+//
+// The gate read is a workspace-scoped primary-key lookup (WHERE workspace_id =
+// ?). It binds the tenant explicitly and returns no tenant data, so it is
+// correct under the worker's permissive (non-request-scoped) RLS context and
+// cannot widen tenant isolation.
+func (p *ConnectorJobProcessor) shouldRunSync(ctx context.Context, workspaceID uuid.UUID) bool {
+	if p.gate == nil {
+		return true
+	}
+	run, err := p.gate.ShouldRunPeriodic(ctx, workspaceID)
+	if err != nil {
+		return true // fail open: never defer real work on a classification error
+	}
+	return run
 }
 
 // Ensure ConnectorJobProcessor satisfies the workers.Processor contract.

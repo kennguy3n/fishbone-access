@@ -18,7 +18,9 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 
 	// Blank-import connectors so the worker can dispatch to any provider.
@@ -84,6 +86,53 @@ func run() error {
 		logger.Warnf(ctx, "access-connector-worker: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; jobs needing connector secrets will fail closed")
 	}
 
+	// Operational telemetry. The worker has no API server, so it serves its own
+	// minimal /metrics (+ /healthz) endpoint; this is where the aggregate
+	// hibernation skip counter is scraped from. Best-effort: a metrics bind
+	// failure must not stop the worker draining jobs.
+	metrics := observability.NewMetrics()
+	if sqlDB, derr := gdb.DB(); derr == nil {
+		if rerr := metrics.RegisterDBPool(sqlDB); rerr != nil {
+			logger.Warnf(ctx, "access-connector-worker: db pool metrics not registered: %v", rerr)
+		}
+	}
+	joinMetrics := metrics.ServeMetrics(ctx, cfg.WorkerMetricsAddr)
+	defer joinMetrics()
+	// joinMetrics() blocks until ctx is cancelled, and the top-level defer stop()
+	// (which cancels ctx) runs AFTER it in LIFO order — so an early return or a
+	// panic below would otherwise deadlock shutdown. Registering stop() here,
+	// immediately after defer joinMetrics(), makes LIFO cancel ctx FIRST on every
+	// return path, so the invariant is self-enforcing rather than relying on the
+	// explicit stop() after Worker.Run. signal.NotifyContext's stop is idempotent.
+	defer stop()
+
+	// Hibernation gate (scale-to-zero): the worker only ever READS the gate to
+	// skip a dormant tenant's periodic sync; ztna-api owns classification (the
+	// reconcile sweep) and activity recording (the request path). The worker
+	// deliberately records NO activity of its own — doing work for a tenant must
+	// not itself count as that tenant's activity, or a hibernated tenant could
+	// never stay dormant. Construct the real DB-backed Service only when
+	// hibernation is enabled; otherwise AlwaysRun so the processor can depend on
+	// a non-nil gate and the disabled mode degrades cleanly (no gate DB reads).
+	//
+	// The gate path (ShouldRunPeriodic) consults only Enabled + the persisted
+	// dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor, which
+	// this binary never calls. They are passed anyway so the worker's gate is
+	// configured identically to ztna-api's Service — if classification semantics
+	// ever become threshold-aware on the read path, the worker stays in lockstep
+	// rather than silently diverging on a default.
+	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
+	if cfg.Tenancy.HibernationEnabled {
+		gate = tenancy.NewService(gdb, tenancy.Config{
+			Enabled:       true,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			DefaultTier:   cfg.Tenancy.DefaultTier,
+		})
+		logger.Infof(ctx, "access-connector-worker: tenant hibernation enabled; dormant tenants' periodic identity syncs are deferred (on-demand provision/revoke always run)")
+	} else {
+		logger.Infof(ctx, "access-connector-worker: tenant hibernation DISABLED; every tenant's syncs run (AlwaysRun gate)")
+	}
+
 	// Filter the shared access_jobs queue to connector job types only, so this
 	// worker never claims workflow-engine jobs (which it cannot process) when
 	// both workers drain the same table.
@@ -92,12 +141,19 @@ func run() error {
 		access.JobTypeProvision,
 		access.JobTypeRevoke,
 	))
-	processor := access.NewConnectorJobProcessor(gdb, enc)
+	processor := access.NewConnectorJobProcessor(gdb, enc).
+		WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("connector_sync") })
 	w := workers.New(queue, processor, workers.Config{})
 
 	logger.Infof(ctx, "access-connector-worker: ready; draining access_jobs")
-	if err := w.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		return err
+	werr := w.Run(ctx)
+
+	// Worker has returned (context cancelled or fatal). The deferred stop()
+	// registered after defer joinMetrics() cancels ctx before the metrics join
+	// runs, so shutdown is correct without depending on Worker.Run's internal
+	// "only returns ctx.Err()" contract.
+	if werr != nil && !errors.Is(werr, context.Canceled) {
+		return werr
 	}
 	logger.Infof(context.Background(), "access-connector-worker: shutting down")
 	return nil

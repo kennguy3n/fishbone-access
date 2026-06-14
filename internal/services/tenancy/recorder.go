@@ -54,6 +54,7 @@ type AsyncRecorder struct {
 	throttle     time.Duration
 	drainTimeout time.Duration
 	clock        func() time.Time
+	onWake       func()
 
 	queue chan recordReq
 
@@ -85,6 +86,13 @@ type AsyncRecorderConfig struct {
 	DrainTimeout time.Duration
 	// Clock overrides time.Now in tests.
 	Clock func() time.Time
+	// OnWake, when non-nil, is called exactly once per lazy wake (when the
+	// store reports a dormant->active transition), so production can advance the
+	// aggregate wake-events counter. It is the nil-able observer seam (mirroring
+	// the usage aggregator's Observe hook) that keeps this package free of an
+	// observability dependency. It runs on the drain goroutine, so it must not
+	// block; the metrics increment it is wired to is a non-blocking atomic add.
+	OnWake func()
 }
 
 // defaultDrainTimeout bounds the shutdown flush when DrainTimeout is unset.
@@ -123,6 +131,7 @@ func NewAsyncRecorder(sink activitySink, cfg AsyncRecorderConfig) *AsyncRecorder
 		throttle:     SafeThrottle(cfg.Throttle, cfg.IdleThreshold),
 		drainTimeout: drainTimeout,
 		clock:        clock,
+		onWake:       cfg.OnWake,
 		queue:        make(chan recordReq, qs),
 		lastSeen:     make(map[uuid.UUID]time.Time),
 	}
@@ -259,5 +268,8 @@ func (r *AsyncRecorder) persist(ctx context.Context, req recordReq) {
 	}
 	if woke {
 		logger.Infof(ctx, "tenancy: tenant woken from dormancy workspace_id=%s kind=%s", req.workspaceID, req.kind)
+		if r.onWake != nil {
+			r.onWake()
+		}
 	}
 }

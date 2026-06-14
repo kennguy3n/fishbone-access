@@ -32,8 +32,10 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 
@@ -170,14 +172,57 @@ func run() error {
 		return err
 	}
 
+	// Operational telemetry. Like the connector worker this binary serves no
+	// API, so it exposes its own minimal /metrics (+ /healthz); the aggregate
+	// review-sweep skip counter is scraped from here. Best-effort — a bind
+	// failure must not stop the engine.
+	metrics := observability.NewMetrics()
+	if sqlDB, derr := gdb.DB(); derr == nil {
+		if rerr := metrics.RegisterDBPool(sqlDB); rerr != nil {
+			logger.Warnf(ctx, "access-workflow-engine: db pool metrics not registered: %v", rerr)
+		}
+	}
+	joinMetrics := metrics.ServeMetrics(ctx, cfg.WorkerMetricsAddr)
+	defer joinMetrics()
+	// joinMetrics() blocks until ctx is cancelled, and the top-level defer stop()
+	// (which cancels ctx) runs AFTER it in LIFO order — so any early return below
+	// would otherwise deadlock shutdown. Registering stop() here, immediately
+	// after defer joinMetrics(), makes LIFO cancel ctx FIRST on every return path,
+	// so the invariant is self-enforcing rather than relying on each error site to
+	// remember an explicit stop(). signal.NotifyContext's stop is idempotent.
+	defer stop()
+
+	// Hibernation gate (scale-to-zero): the scheduler READS the gate to defer a
+	// dormant workspace's periodic certification sweep. ztna-api owns dormancy
+	// classification and activity recording; this binary only consults the gate
+	// and records no activity of its own (scheduled work must not keep a tenant
+	// awake). DB-backed Service only when enabled, else AlwaysRun for clean
+	// degradation. The gate path (ShouldRunPeriodic) consults only Enabled + the
+	// persisted dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor
+	// (never called here) and are passed only for parity with ztna-api's Service.
+	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
+	if cfg.Tenancy.HibernationEnabled {
+		gate = tenancy.NewService(gdb, tenancy.Config{
+			Enabled:       true,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			DefaultTier:   cfg.Tenancy.DefaultTier,
+		})
+		logger.Infof(ctx, "access-workflow-engine: tenant hibernation enabled; dormant workspaces' periodic review sweeps are deferred")
+	} else {
+		logger.Infof(ctx, "access-workflow-engine: tenant hibernation DISABLED; every workspace is swept (AlwaysRun gate)")
+	}
+
 	reviewScheduler, err := workflow_engine.NewReviewScheduler(
 		engine,
 		workflow_engine.NewGormWorkspaceLister(gdb),
 		workflow_engine.ReviewSchedulerConfig{},
 	)
 	if err != nil {
+		// Shutdown is safe here: the defer stop() registered after defer
+		// joinMetrics() cancels ctx before joinMetrics() joins (see above).
 		return err
 	}
+	reviewScheduler.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("review_sweep") })
 
 	w := workers.New(queue, processor, workers.Config{})
 
