@@ -132,8 +132,16 @@ func run() error {
 	w := workers.New(queue, processor, workers.Config{})
 
 	logger.Infof(ctx, "access-connector-worker: ready; draining access_jobs")
-	if err := w.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		return err
+	werr := w.Run(ctx)
+
+	// Worker has returned. Cancel the signal context explicitly before the
+	// deferred metrics-server join runs: joinMetrics() blocks on ctx.Done(), so
+	// calling stop() here keeps shutdown correct without depending on Worker.Run's
+	// internal "only returns ctx.Err()" contract. Mirrors access-workflow-engine.
+	stop()
+
+	if werr != nil && !errors.Is(werr, context.Canceled) {
+		return werr
 	}
 	logger.Infof(context.Background(), "access-connector-worker: shutting down")
 	return nil
