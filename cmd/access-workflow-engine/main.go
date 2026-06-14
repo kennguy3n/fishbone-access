@@ -211,6 +211,10 @@ func run() error {
 		workflow_engine.ReviewSchedulerConfig{},
 	)
 	if err != nil {
+		// joinMetrics() (deferred above) blocks on ctx.Done(), and the deferred
+		// stop() that cancels ctx runs AFTER it in LIFO order — so an early
+		// return here would deadlock shutdown. Cancel ctx explicitly first.
+		stop()
 		return err
 	}
 	reviewScheduler.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("review_sweep") })
