@@ -107,6 +107,13 @@ func run() error {
 	// never stay dormant. Construct the real DB-backed Service only when
 	// hibernation is enabled; otherwise AlwaysRun so the processor can depend on
 	// a non-nil gate and the disabled mode degrades cleanly (no gate DB reads).
+	//
+	// The gate path (ShouldRunPeriodic) consults only Enabled + the persisted
+	// dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor, which
+	// this binary never calls. They are passed anyway so the worker's gate is
+	// configured identically to ztna-api's Service — if classification semantics
+	// ever become threshold-aware on the read path, the worker stays in lockstep
+	// rather than silently diverging on a default.
 	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
 	if cfg.Tenancy.HibernationEnabled {
 		gate = tenancy.NewService(gdb, tenancy.Config{

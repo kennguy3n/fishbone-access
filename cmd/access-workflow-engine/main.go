@@ -190,7 +190,9 @@ func run() error {
 	// classification and activity recording; this binary only consults the gate
 	// and records no activity of its own (scheduled work must not keep a tenant
 	// awake). DB-backed Service only when enabled, else AlwaysRun for clean
-	// degradation.
+	// degradation. The gate path (ShouldRunPeriodic) consults only Enabled + the
+	// persisted dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor
+	// (never called here) and are passed only for parity with ztna-api's Service.
 	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
 	if cfg.Tenancy.HibernationEnabled {
 		gate = tenancy.NewService(gdb, tenancy.Config{
