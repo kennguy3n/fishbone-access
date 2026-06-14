@@ -142,10 +142,10 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
             progress={progress}
             onBack={back}
             onFinish={() => {
-              update({
+              update((prev) => ({
                 finished: true,
-                completed: withCompleted(progress.completed, "done"),
-              });
+                completed: withCompleted(prev.completed, "done"),
+              }));
               navigate({ to: "/" });
             }}
           />

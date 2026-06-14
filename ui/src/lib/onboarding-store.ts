@@ -67,6 +67,12 @@ function keyFor(tenantId: string): string {
 // localStorage can throw (private mode, quota, disabled) — never let a storage
 // failure break the wizard. A read failure yields fresh defaults; a write
 // failure is swallowed (progress simply won't persist across reloads).
+const STEP_SET = new Set<string>(ONBOARDING_STEPS);
+
+function isStep(value: unknown): value is OnboardingStepId {
+  return typeof value === "string" && STEP_SET.has(value);
+}
+
 export function loadProgress(tenantId: string): OnboardingProgress {
   if (!tenantId) return defaults();
   try {
@@ -74,9 +80,29 @@ export function loadProgress(tenantId: string): OnboardingProgress {
     if (!raw) return defaults();
     const parsed = JSON.parse(raw) as Partial<OnboardingProgress>;
     if (parsed.version !== 1) return defaults();
-    // Merge over defaults so a partially-written or older blob can't leave a
-    // field undefined and crash a consumer reading e.g. `completed.length`.
-    return { ...defaults(), ...parsed, version: 1 };
+    // Coerce each field to its expected type rather than spreading `parsed`
+    // verbatim: a tampered or partially-written blob could carry a non-array
+    // `completed` or an unknown `lastStep`, and a consumer doing
+    // `completed.includes(...)` / `ONBOARDING_STEPS.indexOf(lastStep)` must not
+    // crash or jump to a nonexistent step. Unknown values fall back to defaults.
+    const base = defaults();
+    return {
+      version: 1,
+      lastStep: isStep(parsed.lastStep) ? parsed.lastStep : base.lastStep,
+      completed: Array.isArray(parsed.completed)
+        ? parsed.completed.filter(isStep)
+        : base.completed,
+      workspaceName:
+        typeof parsed.workspaceName === "string"
+          ? parsed.workspaceName
+          : base.workspaceName,
+      finished:
+        typeof parsed.finished === "boolean" ? parsed.finished : base.finished,
+      nudgeDismissed:
+        typeof parsed.nudgeDismissed === "boolean"
+          ? parsed.nudgeDismissed
+          : base.nudgeDismissed,
+    };
   } catch {
     return defaults();
   }
