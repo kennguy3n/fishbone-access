@@ -367,12 +367,16 @@ make lint    # go vet + golangci-lint
 make ci      # full local CI gate
 ```
 
-## Roadmap
+## What's included
 
-This repository is built in sessions. 1A (this scaffold) ships the foundation:
-config, iam-core integration, models, migrations, middleware, the connector
-registry, and the worker/gateway supervisors. Subsequent sessions add the 200+
-connectors (1B), the access-request lifecycle and policy engine (1C), the full
-PAM implementation (1D), and the AI agent and workflow engine (1E). The
-Kubernetes deployment artifacts (Helm chart + plain manifests) live under
-[`deploy/`](deploy); the client SDKs land in a later session (1F).
+This repository is the complete control plane:
+
+- The foundation — config, iam-core integration, models, migrations,
+  middleware, the connector registry, and the worker/gateway supervisors.
+- The 200+ connector catalogue and the access-request lifecycle with its
+  policy engine.
+- The multi-protocol PAM gateway, plus the AI risk agent and the workflow
+  engine.
+- The Kubernetes deployment artifacts (Helm chart + plain manifests) under
+  [`deploy/`](deploy).
+- The Android and iOS client SDKs under [`sdk/`](sdk).

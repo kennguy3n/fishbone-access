@@ -8,7 +8,7 @@ without re-implementing the wire contract.
 
 > **No on-device inference.** This SDK ships no model files and imports no ML
 > runtime. "AI-initiated" means the SDK calls the server endpoint that triggers
-> the server-side `access-ai-agent` (WS5). The risk verdict is read from the
+> the server-side `access-ai-agent`. The risk verdict is read from the
 > persisted request fields and the workflow routing decision.
 
 The Swift package under [`sdk/ios`](../ios) mirrors this contract method-for-method.
@@ -20,7 +20,7 @@ stock JDK. Consume the published Maven artifact:
 
 ```kotlin
 dependencies {
-    implementation("com.shieldnet.access:access-sdk:0.1.0")
+    implementation("com.shieldnet.access:access-sdk:0.2.0")
 }
 ```
 
@@ -73,12 +73,14 @@ default — override via the `ioDispatcher` constructor parameter.
 | Submit request | `createRequest(...)` | `POST /access-requests` |
 | List requests | `listRequests()` | `GET /access-requests` |
 | Poll / observe status | `getRequest(id)` | `GET /access-requests/:id` |
+| Detail with AI risk + anomalies | `getRequestDetail(id)` | `GET /access-requests/:id` |
 | State history | `requestHistory(id)` | `GET /access-requests/:id/history` |
 | Approve (with reason) | `approveRequest(id, reason)` | `POST /access-requests/:id/approve` |
 | Deny (with reason) | `denyRequest(id, reason)` | `POST /access-requests/:id/deny` |
 | Cancel own request | `cancelRequest(id, reason)` | `POST /access-requests/:id/cancel` |
 | Activate JIT lease | `provisionRequest(id)` | `POST /access-requests/:id/provision` |
 | Revoke lease early | `revokeGrant(id, reason)` | `POST /grants/:id/revoke` |
+| Emergency offboard (six-layer kill switch) | `emergencyOffboard(userExternalId, reason)` | `POST /emergency-offboard` |
 
 ### Step-up MFA / WebAuthn
 

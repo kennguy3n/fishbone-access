@@ -80,7 +80,7 @@ maps**. Promoting the least-privilege policy lit `CC6.1` *and* `A.5.15` *and*
 
 Initech's PCI-DSS exposure is concentrated in one rule: a store manager must not
 also hold **cardholder-data** access. That is a textbook separation-of-duties
-conflict, and it is now encoded as a rule the engine enforces at simulation time
+conflict, and it is encoded as a rule the engine enforces at simulation time
 ([`s3-de-initech-retail-sod-rules.json`](../artifacts/payloads/s3-de-initech-retail-sod-rules.json)):
 
 ```json
@@ -106,13 +106,12 @@ in the *what-if*, not discovered in next year's PCI assessment
     ] } }
 ```
 
-This is the capability the previous version of this post listed as a flat gap.
 It is **not** SailPoint-grade entitlement-mining across thousands of roles — it
 is rule-based toxic-combination detection wired into the same simulate-then-promote
 gate the policy lifecycle already uses. For a mid-size retailer with a handful of
 known-dangerous combinations, that is exactly the right shape.
 
-And the *standing* sweep now records the violation when a subject actually holds
+And the *standing* sweep records the violation when a subject actually holds
 both halves — `sod_anomalies = 1`, the `CC7.3` evidence
 ([`s3-de-initech-retail-sod-anomalies.json`](../artifacts/payloads/s3-de-initech-retail-sod-anomalies.json)):
 
@@ -122,14 +121,14 @@ both halves — `sod_anomalies = 1`, the `CC7.3` evidence
     "conflicting": { "resource": "pos:cardholder-data", "role": "operator" } } }
 ```
 
-## The privileged session is now recorded
+## The privileged session is recorded
 
 Initech also opens a JIT-leased session to the POS bastion and records it through
 the production `IORecorder` — `pam_sessions = 1`, replayable over
 `GET /pam/sessions/96c5ba01-4e0b-4ebf-934e-de0fd292f9dd/replay`, digest on the
-chain. That is what flips `CC6.7` / `A.8.2` ("privileged access monitored") to
-covered. The honest residual: the captured commands are representative I/O against
-a bastion target (no live SSH daemon in the demo), proving the record-and-replay
+chain. That is what covers `CC6.7` / `A.8.2` ("privileged access monitored").
+The honest residual: the captured commands are representative I/O against a
+bastion target (no live SSH daemon in the demo), proving the record-and-replay
 pipeline rather than `pos_admin`'s real keystrokes in the SAP MySQL box.
 
 ## Privileged access to the POS estate
@@ -161,26 +160,26 @@ permanent account someone forgets to remove
 
 ## Where we fall short
 
-The German view was the most brutal in the first cut — all four of its recurring
-gaps are now closed, and we are precise about how:
+Four controls that are easy to leave empty are covered here, and we are precise
+about how:
 
-- **`CC6.7` / `A.8.2` "privileged access monitored" — now covered.**
+- **`CC6.7` / `A.8.2` "privileged access monitored" — covered.**
   `pam_sessions = 1`: a real JIT-leased session is recorded through the production
   `IORecorder`, anchored on the chain and replayable over the API. Residual: the
   recorded I/O is representative commands against a bastion target — the demo has
   no live SSH daemon — so it proves the recording pipeline, not `pos_admin`'s real
   keystrokes inside the SAP MySQL box. In-path against a reachable upstream the
   same recorder captures the real wire.
-- **`CC7.3` "anomalous access detected and dispositioned" — now covered via the
+- **`CC7.3` "anomalous access detected and dispositioned" — covered via the
   standing SoD anomaly.** `sod_anomalies = 1`: a subject really holds both halves
   of the toxic combination and the sweep detects + dispositions it. Note the
   **orphan** scan still ran and found **0 orphans** (honest — no orphan to
   disposition); the `CC7.3` evidence comes from the standing SoD anomaly, not
   behavioural analytics.
-- **`A.8.15` "tamper-evident logging" — now covered.** It was an ordering bug: the
-  evidence-pack export ran *after* the chain was snapshotted. Exporting before
-  capture anchors `evidence_exported` in the verified chain.
-- **SoD is still rule-based, not analytics.** The check is real, pre-commit *and*
+- **`A.8.15` "tamper-evident logging" — covered.** The evidence-pack export runs
+  *before* the chain is snapshotted, so `evidence_exported` is anchored in the
+  verified chain.
+- **SoD is rule-based, not analytics.** The check is real, pre-commit *and*
   standing — but it evaluates *declared rules*; it does not *mine* the entitlement
   graph to discover unknown conflicts the way SailPoint/Saviynt do. For a *large*
   retailer with conflicts nobody has enumerated, that mining is the gap that
@@ -200,7 +199,7 @@ gaps are now closed, and we are precise about how:
 | Multi-locale (de native) | ✅ 12 locales | ⚠️ | ⚠️ | ✅ |
 | SME fit (one console, weeks not quarters) | ✅ | ❌ enterprise | ❌ enterprise | ⚠️ |
 
-**The honest read:** we now catch *declared* toxic combinations at simulation
+**The honest read:** we catch *declared* toxic combinations at simulation
 time — enough for a retailer with a known set of dangerous pairings like
 store-manager-vs-cardholder-data. But for a *large* retailer with thousands of
 roles and conflicts nobody has enumerated yet, **SailPoint** or **Saviynt** are
