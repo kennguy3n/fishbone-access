@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"testing"
+
+	pkgcrypto "github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 )
 
 // testMasterKey returns a fresh base64-encoded 32-byte master key.
@@ -329,6 +331,108 @@ func TestCredentialEncryptorFromConfigPrecedence(t *testing.T) {
 
 	t.Run("malformed master key is a hard error", func(t *testing.T) {
 		if _, err := CredentialEncryptorFromConfig("!!notb64!!", 1, ""); err == nil {
+			t.Fatal("malformed master key should error, not silently downgrade")
+		}
+	})
+}
+
+// TestCryptoEncryptorFromConfig covers the process-wide (non-per-workspace)
+// crypto.Encryptor used for TOTP step-up MFA. It must mirror the connector
+// path's precedence so one master key roots all at-rest encryption, fixing the
+// review finding where a KMS-only deployment silently lost MFA.
+func TestCryptoEncryptorFromConfig(t *testing.T) {
+	master := testMasterKey(t)
+	aad := []byte("totp:user-1")
+	pt := []byte("totp-shared-secret")
+
+	t.Run("master key only seals and opens (MFA works under KMS-only)", func(t *testing.T) {
+		enc, err := CryptoEncryptorFromConfig(master, "")
+		if err != nil {
+			t.Fatalf("CryptoEncryptorFromConfig(master): %v", err)
+		}
+		env, err := enc.Seal(pt, aad)
+		if err != nil {
+			t.Fatalf("Seal: %v", err)
+		}
+		got, err := enc.Open(env, aad)
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if !bytes.Equal(got, pt) {
+			t.Fatalf("Open = %q, want %q", got, pt)
+		}
+	})
+
+	t.Run("derived TOTP key differs from any per-workspace DEK", func(t *testing.T) {
+		// The service key is derived under a distinct "svc/" info domain, so it
+		// must never equal a per-workspace DEK derived from the same master.
+		svcKey, err := deriveServiceKey(master, "totp-mfa")
+		if err != nil {
+			t.Fatalf("deriveServiceKey: %v", err)
+		}
+		km, err := NewDerivedDEKKeyManager(master, 1)
+		if err != nil {
+			t.Fatalf("NewDerivedDEKKeyManager: %v", err)
+		}
+		dek, _, err := km.GetLatestOrgDEK(context.Background(), "totp-mfa")
+		if err != nil {
+			t.Fatalf("GetLatestOrgDEK: %v", err)
+		}
+		if bytes.Equal(svcKey, dek) {
+			t.Fatal("service key collided with a per-workspace DEK; HKDF info domains overlap")
+		}
+	})
+
+	t.Run("master key takes precedence over static DEK", func(t *testing.T) {
+		// Seal under master-only, then confirm a DEK-only encryptor (the static
+		// fallback) cannot open it — proving the master path is actually used
+		// when both are present.
+		masterEnc, err := CryptoEncryptorFromConfig(master, "")
+		if err != nil {
+			t.Fatalf("FromConfig(master): %v", err)
+		}
+		env, err := masterEnc.Seal(pt, aad)
+		if err != nil {
+			t.Fatalf("Seal: %v", err)
+		}
+		dekEnc, err := CryptoEncryptorFromConfig("", testDEK(t))
+		if err != nil {
+			t.Fatalf("FromConfig(dek): %v", err)
+		}
+		if _, err := dekEnc.Open(env, aad); err == nil {
+			t.Fatal("static DEK opened a master-sealed envelope; precedence is wrong")
+		}
+	})
+
+	t.Run("static DEK only seals and opens (back-compat)", func(t *testing.T) {
+		enc, err := CryptoEncryptorFromConfig("", testDEK(t))
+		if err != nil {
+			t.Fatalf("FromConfig(dek): %v", err)
+		}
+		env, err := enc.Seal(pt, aad)
+		if err != nil {
+			t.Fatalf("Seal: %v", err)
+		}
+		if _, err := enc.Open(env, aad); err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+	})
+
+	t.Run("neither set fails closed", func(t *testing.T) {
+		enc, err := CryptoEncryptorFromConfig("", "")
+		if err != nil {
+			t.Fatalf("FromConfig(none): %v", err)
+		}
+		// The crypto-path passthrough returns crypto.ErrSecretsDisabled (distinct
+		// from the access package's own ErrSecretsDisabled used by the
+		// KeyManager/EnvelopeEncryptor path).
+		if _, err := enc.Seal(pt, aad); !errors.Is(err, pkgcrypto.ErrSecretsDisabled) {
+			t.Fatalf("Seal err = %v, want crypto.ErrSecretsDisabled", err)
+		}
+	})
+
+	t.Run("malformed master key is a hard error", func(t *testing.T) {
+		if _, err := CryptoEncryptorFromConfig("!!notb64!!", ""); err == nil {
 			t.Fatal("malformed master key should error, not silently downgrade")
 		}
 	})

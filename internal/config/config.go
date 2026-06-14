@@ -349,6 +349,14 @@ func (c Config) Validate() error {
 		return fmt.Errorf("config: unknown ACCESS_DATABASE_DRIVER %q (want %q or %q)",
 			c.DatabaseDriver, DriverPgx, DriverGorm)
 	}
+	// Surface a bad key version with a clear, field-specific message at the
+	// config layer rather than letting the generic getInt (which permits 0) pass
+	// it through to the crypto layer, where NewDerivedDEKKeyManager would reject
+	// it with a lower-level error. Only enforced when the master key is set,
+	// since the version is meaningless without it.
+	if c.KMSMasterKey != "" && c.KMSKeyVersion < 1 {
+		return fmt.Errorf("config: ACCESS_KMS_KEY_VERSION must be >= 1 when ACCESS_KMS_MASTER_KEY is set (got %d)", c.KMSKeyVersion)
+	}
 	return nil
 }
 
@@ -364,7 +372,20 @@ func (c Config) Validate() error {
 // sacrificing the never-crash-on-config contract. Tier-name validation lives at
 // the wiring site, which knows the recognised tiers, rather than here.
 func (c Config) Warnings() []string {
-	return c.Tenancy.Warnings()
+	var w []string
+	// Both credential keys set: the per-workspace master key wins for new seals
+	// (see CredentialEncryptorFromConfig), so any secret previously sealed under
+	// the static DEK becomes unreadable until re-sealed. This is a deliberate
+	// precedence, not a bug, but it is a migration footgun worth flagging loudly
+	// so an operator who added the master key to an existing deployment knows
+	// they must re-seal (or remove ACCESS_CREDENTIAL_DEK once migration is done).
+	if c.KMSMasterKey != "" && c.CredentialDEK != "" {
+		w = append(w, "both ACCESS_KMS_MASTER_KEY and ACCESS_CREDENTIAL_DEK are set; "+
+			"the per-workspace master key takes precedence for new seals, so secrets "+
+			"sealed earlier under ACCESS_CREDENTIAL_DEK will NOT open until re-sealed "+
+			"under the master key (remove ACCESS_CREDENTIAL_DEK once migration is complete)")
+	}
+	return append(w, c.Tenancy.Warnings()...)
 }
 
 // Warnings reports tenancy knobs whose value will be silently overridden by a

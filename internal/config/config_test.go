@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -61,6 +62,48 @@ func TestValidateRejectsUnknownDriver(t *testing.T) {
 	}
 	if err := (Config{DatabaseDriver: "mariadb"}).Validate(); err == nil {
 		t.Error("unknown driver should fail Validate")
+	}
+}
+
+func TestValidateKMSKeyVersion(t *testing.T) {
+	const master = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // base64 of 32 zero bytes
+	// Bad version is only an error when the master key is actually set; without
+	// it the version is meaningless and must not block boot.
+	if err := (Config{DatabaseDriver: DriverGorm, KMSKeyVersion: 0}).Validate(); err != nil {
+		t.Errorf("version 0 without master key should validate: %v", err)
+	}
+	if err := (Config{DatabaseDriver: DriverGorm, KMSMasterKey: master, KMSKeyVersion: 0}).Validate(); err == nil {
+		t.Error("version 0 with master key should fail Validate")
+	}
+	if err := (Config{DatabaseDriver: DriverGorm, KMSMasterKey: master, KMSKeyVersion: -1}).Validate(); err == nil {
+		t.Error("negative version with master key should fail Validate")
+	}
+	if err := (Config{DatabaseDriver: DriverGorm, KMSMasterKey: master, KMSKeyVersion: 1}).Validate(); err != nil {
+		t.Errorf("version 1 with master key should validate: %v", err)
+	}
+}
+
+func TestWarningsCredentialKeyOverlap(t *testing.T) {
+	const master = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	has := func(ws []string, sub string) bool {
+		for _, w := range ws {
+			if strings.Contains(w, sub) {
+				return true
+			}
+		}
+		return false
+	}
+	// Only the master key set: no overlap warning.
+	if has((Config{KMSMasterKey: master}).Warnings(), "both ACCESS_KMS_MASTER_KEY") {
+		t.Error("master-key-only should not warn about overlap")
+	}
+	// Only the static DEK set: no overlap warning.
+	if has((Config{CredentialDEK: master}).Warnings(), "both ACCESS_KMS_MASTER_KEY") {
+		t.Error("DEK-only should not warn about overlap")
+	}
+	// Both set: re-seal migration footgun warning surfaces.
+	if !has((Config{KMSMasterKey: master, CredentialDEK: master}).Warnings(), "both ACCESS_KMS_MASTER_KEY") {
+		t.Error("both keys set should warn about the re-seal migration footgun")
 	}
 }
 

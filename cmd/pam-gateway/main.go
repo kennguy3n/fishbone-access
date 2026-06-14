@@ -65,6 +65,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "pam-gateway: %s", warning)
+	}
 	logger.Infof(ctx, "pam-gateway: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {

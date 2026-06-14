@@ -58,6 +58,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "access-workflow-engine: %s", warning)
+	}
 	logger.Infof(ctx, "access-workflow-engine: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {

@@ -40,6 +40,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "access-connector-worker: %s", warning)
+	}
 	logger.Infof(ctx, "access-connector-worker: starting; %s", cfg.String())
 	logger.Infof(ctx, "access-connector-worker: registered connectors: %d", access.RegisteredCount())
 

@@ -8,6 +8,8 @@ import (
 	"io"
 
 	"golang.org/x/crypto/hkdf"
+
+	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 )
 
 // DerivedDEKKeyManager is the per-workspace KeyManager for deployments that
@@ -93,6 +95,58 @@ func (m *DerivedDEKKeyManager) GetOrgDEK(_ context.Context, workspaceID string, 
 		return nil, fmt.Errorf("access: DerivedDEKKeyManager: key version %d out of range [1,%d]", keyVersion, m.currentVersion)
 	}
 	return m.derive(workspaceID, keyVersion)
+}
+
+// deriveServiceKey derives a 32-byte process-wide key from the base64 master
+// for a NON-per-workspace use identified by label (e.g. TOTP step-up MFA
+// secrets, which are not workspace-scoped). The label is bound into the HKDF
+// info under a fixed "svc/" prefix so these keys can never collide with the
+// "dek/" per-workspace keys derived by DerivedDEKKeyManager.derive — a single
+// master key can therefore root every at-rest key without any two derivations
+// overlapping. The label must never change for a given use or previously sealed
+// data won't open.
+func deriveServiceKey(base64Master, label string) ([]byte, error) {
+	master, err := base64.StdEncoding.DecodeString(base64Master)
+	if err != nil {
+		return nil, fmt.Errorf("access: deriveServiceKey: decode master key: %w", err)
+	}
+	if len(master) != 32 {
+		return nil, fmt.Errorf("access: deriveServiceKey: master key must be 32 bytes (got %d)", len(master))
+	}
+	info := []byte("svc/v1/" + label)
+	r := hkdf.New(sha256.New, master, hkdfSalt, info)
+	key := make([]byte, 32)
+	if _, err := io.ReadFull(r, key); err != nil {
+		return nil, fmt.Errorf("access: deriveServiceKey(%s): %w", label, err)
+	}
+	return key, nil
+}
+
+// CryptoEncryptorFromConfig builds the process-wide crypto.Encryptor used for
+// at-rest secrets that are NOT per-workspace — today the TOTP step-up MFA
+// secrets sealed via deps.Encryptor. It mirrors the precedence of
+// CredentialEncryptorFromConfig so that one ACCESS_KMS_MASTER_KEY roots ALL
+// at-rest encryption when set, and a fully KMS-migrated deployment (master key,
+// no static DEK) keeps MFA working instead of silently degrading to a
+// seal-refusing passthrough:
+//
+//   - masterKey set  -> AES-256 key derived from the master (HKDF, a fixed
+//     service-scoped info distinct from every per-workspace DEK).
+//   - else staticDEK -> the static DEK (back-compat for existing deployments).
+//   - else neither   -> fail-closed passthrough (MFA enrolment/verify 503).
+//
+// As with the connector path, when BOTH keys are set the master takes
+// precedence, so TOTP secrets sealed earlier under the static DEK must be
+// re-enrolled; Config.Warnings surfaces that overlap at boot.
+func CryptoEncryptorFromConfig(masterKey, staticDEK string) (crypto.Encryptor, error) {
+	if masterKey != "" {
+		key, err := deriveServiceKey(masterKey, "totp-mfa")
+		if err != nil {
+			return nil, err
+		}
+		return crypto.NewAESGCMEncryptor(base64.StdEncoding.EncodeToString(key))
+	}
+	return crypto.FromKey(staticDEK)
 }
 
 // derive computes the per-(workspace,version) DEK via HKDF-SHA256. The version

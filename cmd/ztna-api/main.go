@@ -177,11 +177,14 @@ func run() error {
 		logger.Warnf(ctx, "ztna-api: no token validator configured; authenticated API returns 503")
 	}
 
-	// Credential encryptor opens connector secret envelopes for the lifecycle
-	// provisioning / JML / reconciliation services. FromKey returns a
-	// passthrough (seal-refusing) encryptor when no DEK is set, so connectors
-	// without sealed secrets still resolve in degraded dev boots.
-	enc, err := crypto.FromKey(cfg.CredentialDEK)
+	// Encryptor for the process-wide (non-per-workspace) at-rest secrets — today
+	// the TOTP step-up MFA secrets. CryptoEncryptorFromConfig mirrors the
+	// connector path's precedence so one ACCESS_KMS_MASTER_KEY roots ALL at-rest
+	// encryption: with the master key set it derives a stable service key from it
+	// (so a fully KMS-migrated deployment keeps MFA working rather than silently
+	// degrading), else it uses the static DEK, else a passthrough that fails
+	// closed in degraded dev boots.
+	enc, err := access.CryptoEncryptorFromConfig(cfg.KMSMasterKey, cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("credential encryptor init: %w", err)
 	}
@@ -257,12 +260,12 @@ func run() error {
 		}()
 		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
 		if crypto.IsPassthrough(deps.Encryptor) {
-			// No DEK ⇒ the encryptor refuses to seal/open, so TOTP enrolment
-			// and every VerifyStepUp fail closed with ErrSecretsDisabled (503).
-			// The gate stays wired (fail-closed is correct), but make the
-			// degraded posture loud at boot rather than only surfacing on the
-			// first promote attempt.
-			logger.Warnf(ctx, "ztna-api: ACCESS_CREDENTIAL_DEK unset; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a DEK is configured)")
+			// No key at all ⇒ the encryptor refuses to seal/open, so TOTP
+			// enrolment and every VerifyStepUp fail closed with
+			// ErrSecretsDisabled (503). The gate stays wired (fail-closed is
+			// correct), but make the degraded posture loud at boot rather than
+			// only surfacing on the first promote attempt.
+			logger.Warnf(ctx, "ztna-api: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a key is configured)")
 		} else {
 			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
 		}
