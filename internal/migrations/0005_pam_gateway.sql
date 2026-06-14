@@ -1,4 +1,4 @@
--- Session 1D: PAM gateway schema.
+-- PAM gateway schema.
 --
 -- The privileged-access gateway proxies SSH / PostgreSQL / MySQL / Kubernetes
 -- sessions. These tables back the credential vault (pam_targets), the one-shot
@@ -6,7 +6,7 @@
 -- (pam_sessions), and the per-command audit log (pam_session_commands).
 --
 -- Every table carries workspace_id so the RequireTenant middleware + service
--- layer scope every query by workspace, exactly like the 1A/1C schema. The
+-- layer scope every query by workspace, exactly like the rest of the schema. The
 -- per-command rows additionally land in the shared audit_events hash chain for
 -- tamper evidence (see internal/services/lifecycle/audit.go); these tables hold
 -- the queryable projection, the chain holds the integrity proof.

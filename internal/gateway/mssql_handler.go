@@ -65,7 +65,7 @@ const maxTDSMessageSize = 32 * 1024 * 1024
 // token from the LOGIN7 password field, redeems it, then dials the upstream and
 // performs its own PRELOGIN/LOGIN7 with the JIT vault credential. The upstream's
 // login response is relayed to the operator, after which the proxy frame-relays
-// the session: every SQL_BATCH is decoded, gated against the 1C policy engine,
+// the session: every SQL_BATCH is decoded, gated against the policy engine,
 // and appended to the workspace audit hash chain before reaching the upstream;
 // a denied batch fails the session closed.
 //

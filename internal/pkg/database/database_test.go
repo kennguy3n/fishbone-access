@@ -14,7 +14,7 @@ import (
 // models.Base.DeletedAt gorm.DeletedAt field enables. If that field ever
 // regresses to *time.Time, GORM emits a hard DELETE and stops filtering deleted
 // rows, and every assertion below fails — which is exactly the silent data-loss
-// bug we want CI to catch before the 1B–1E handlers start querying these models.
+// bug we want CI to catch before the handlers start querying these models.
 func TestSoftDeleteIsActive(t *testing.T) {
 	db, err := OpenSQLite(":memory:")
 	if err != nil {

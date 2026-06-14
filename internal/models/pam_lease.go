@@ -49,7 +49,7 @@ const (
 // it. This is what binds "the credential is brokered only while Active" to the
 // lease rather than to the long-lived target row.
 //
-// Risk fields capture the AI risk assessment computed at request time (WS5
+// Risk fields capture the AI risk assessment computed at request time (the
 // Bonsai Ternary-8B via the server-side aiclient). The assessment is advisory
 // and fail-OPEN — an unreachable model yields a degraded "medium" score and the
 // request still proceeds to human approval — but the model's score, factors,

@@ -4,10 +4,9 @@
 // accepts connections, and hands each connection to that protocol's
 // ConnHandler.
 //
-// Session 1A ships the listener supervisor — connection lifecycle, concurrency
-// tracking, and graceful drain — which is real, exercised infrastructure. The
-// per-protocol ConnHandlers (wire-protocol parsing, CA-signed cert injection,
-// session recording, the audit hash chain) are implemented in Session 1D and
+// The listener supervisor handles connection lifecycle, concurrency
+// tracking, and graceful drain. The per-protocol ConnHandlers (wire-protocol
+// parsing, CA-signed cert injection, session recording, the audit hash chain)
 // plug into this supervisor unchanged.
 package gateway
 

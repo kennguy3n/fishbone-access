@@ -2,7 +2,7 @@
 
 Scores a privileged session (user + target + the commands they ran) on a
 low / medium / high scale with a recommendation string. This is a
-decision-support signal consumed by the PAM layer (Session 1D); this agent only
+decision-support signal consumed by the PAM layer; this agent only
 produces the score — it does not proxy or gate the session itself.
 
 The Go side wraps it with AssessSessionRiskWithFallback, so a failure defaults

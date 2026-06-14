@@ -1,5 +1,5 @@
 //
-// RiskAssessmentTests.swift — pure-function coverage for the WS5 risky-access
+// RiskAssessmentTests.swift — pure-function coverage for the risky-access
 // classifier (`RiskAssessment`) and the step-up revocation planner
 // (`Revocation`). No network: these assert the cross-platform severity logic
 // that both the iOS and Android SDKs (and, by mirroring, the web console) use

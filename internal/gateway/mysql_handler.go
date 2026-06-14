@@ -44,7 +44,7 @@ const mysqlClearPassword = "mysql_clear_password"   //nolint:gosec // G101: auth
 // mysql_clear_password so the one-shot connect token arrives in clear text,
 // redeems it, then dials the upstream server and authenticates with the
 // JIT-injected vault credential via mysql_native_password. In steady state it
-// frame-proxies the connection: every COM_QUERY is gated against the 1C policy
+// frame-proxies the connection: every COM_QUERY is gated against the policy
 // engine and appended to the workspace audit hash chain before it reaches the
 // upstream, and a denied statement fails the session closed.
 type MySQLProxy struct {

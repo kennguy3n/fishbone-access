@@ -79,7 +79,7 @@ export function RequestDetail() {
   const [reasonFor, setReasonFor] = useState<RequestAction | null>(null);
   const [reason, setReason] = useState("");
 
-  // One-tap revoke (WS5). The control plane never returns a grant id on the
+  // One-tap revoke. The control plane never returns a grant id on the
   // request-detail read, so we learn it two ways: an in-session provision
   // response carries the fresh grant, and an advisory anomaly flag carries the
   // grant_id of the active grant it was raised against. Either lets the
@@ -197,7 +197,7 @@ export function RequestDetail() {
           const stepUpNeeded =
             requiresStepUp(verdict) && !(me.data?.mfa_satisfied ?? false);
 
-          // Risky-access awareness (WS5): the same cross-platform classifier the
+          // Risky-access awareness: the same cross-platform classifier the
           // mobile SDKs use, so web/Android/iOS agree on what is risky.
           const advisory = evaluateRisk(req, verdict, anomalies);
           const liveGrant = hasLiveGrant(req.state);

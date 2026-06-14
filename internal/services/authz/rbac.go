@@ -1,12 +1,12 @@
 // Package authz is the role-based access-control layer for the ShieldNet
 // Access control plane.
 //
-// Up to WS1 the handlers enforced workspace scoping (every query filters by
-// the workspace resolved from the verified iam-core tenant claim) but had NO
-// role/permission model: any principal holding a valid JWT for a workspace
+// Workspace scoping alone (every query filters by the workspace resolved from
+// the verified iam-core tenant claim) is not authorization: without a
+// role/permission model, any principal holding a valid JWT for a workspace
 // could call every sensitive endpoint (policy promotion, access-request
-// approval, connector management, the PAM gateway). This package adds the
-// missing authorization tier.
+// approval, connector management, the PAM gateway). This package provides that
+// authorization tier.
 //
 // Three concepts live in this file:
 //

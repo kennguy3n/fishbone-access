@@ -16,7 +16,7 @@ import (
 )
 
 // legacyChainHash reproduces the PRE-canonical (version 0) audit pre-image
-// exactly as it existed before WS6: it folds the raw nanosecond wall clock and
+// exactly as it existed before canonicalization: it folds the raw nanosecond wall clock and
 // the caller's raw metadata bytes (no microsecond truncation, no canonical
 // JSON). A row hashed this way is intentionally NOT recomputable by the current
 // canonical verifier, which is the whole point of the backward-compat path.

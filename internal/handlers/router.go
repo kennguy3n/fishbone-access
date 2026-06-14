@@ -2,9 +2,9 @@
 // Gin engine: always-on liveness/readiness probes plus an authenticated
 // /api/v1 surface guarded by the iam-core token + tenant-resolution middleware.
 //
-// Session 1A intentionally ships the routing skeleton and the cross-cutting
-// middleware; the access-request, connector, policy, and PAM handlers are added
-// by Sessions 1B-1E onto this same group.
+// The router ships the routing skeleton and the cross-cutting
+// middleware; the access-request, connector, policy, and PAM handlers attach
+// onto this same group.
 package handlers
 
 import (
@@ -36,8 +36,8 @@ type Deps struct {
 	Validator middleware.TokenValidator
 	Ready     *atomic.Bool
 	// DB is the shared control-plane connection pool. It is nil in degraded
-	// (no-database) dev boots. Session 1A only runs migrations through it; the
-	// 1B-1E handlers attached to the /api/v1 group query through this same
+	// (no-database) dev boots. NewRouter only runs migrations through it; the
+	// feature handlers attached to the /api/v1 group query through this same
 	// pool, which is owned and closed by the ztna-api main (so it is not a
 	// leaked, never-closed pool).
 	DB *gorm.DB
@@ -79,7 +79,7 @@ type Deps struct {
 	// the wizard returns a degraded manual plan instead of panicking.
 	AI *aiclient.AIClient
 	// ActivityRecorder records tenant activity on the authenticated request
-	// path — the LAZY WAKE side of tenant hibernation (WS1 scale/NoOps). When
+	// path — the LAZY WAKE side of tenant hibernation. When
 	// set, ActivityMiddleware is mounted on the tenant-scoped group so a dormant
 	// tenant's first API call wakes it. It is wired whenever a DB is present,
 	// INDEPENDENT of whether hibernation is enabled: activity is always recorded
@@ -165,7 +165,7 @@ func NewRouter(deps Deps) *gin.Engine {
 	// Tenant-scoped API. With iam-core configured the group is guarded by the
 	// auth + tenant-resolution middleware; without it the group fails closed
 	// with 503 (the routes still match so the failure is explicit, not a 404).
-	// Sessions 1B-1E attach their handlers to this same group.
+	// The feature handlers attach to this same group.
 	api := r.Group("/api/v1")
 	if deps.Validator != nil {
 		api.Use(middleware.Auth(deps.Validator), middleware.ResolveTenant())
@@ -199,7 +199,7 @@ func NewRouter(deps Deps) *gin.Engine {
 	// newLifecycleHandlers wires every lifecycle service off deps.DB, so mounting
 	// the group without it would hand those constructors a nil *gorm.DB and panic
 	// on the first request. RequireTenant runs on the resolver (pgx in
-	// production), but the handlers behind it remain GORM-backed until later WS10
+	// production), but the handlers behind it remain GORM-backed until later
 	// steps migrate them.
 	if deps.Validator != nil && resolver != nil && deps.DB != nil {
 		scoped := api.Group("")

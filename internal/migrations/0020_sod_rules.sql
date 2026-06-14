@@ -1,4 +1,4 @@
--- WS2: Separation-of-Duties (SoD) toxic-combination rules.
+-- Separation-of-Duties (SoD) toxic-combination rules.
 --
 -- An SoD rule names two entitlement SELECTORS (A and B). Each selector matches
 -- a held entitlement — an (resource_ref, role) pair from a subject's live

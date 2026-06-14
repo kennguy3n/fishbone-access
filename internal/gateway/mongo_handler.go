@@ -34,7 +34,7 @@ const maxMongoMessageSize = 48 * 1024 * 1024
 // requestID, responseTo, opCode — four int32s).
 const mongoHeaderLen = 16
 
-// mongoGatedCommands are the destructive MongoDB commands gated against the 1C
+// mongoGatedCommands are the destructive MongoDB commands gated against the
 // policy engine. They mirror the SQL DROP/DELETE/UPDATE gating the Postgres and
 // MySQL proxies apply: a deny policy with a resource like "cmd:drop *" or
 // "cmd:delete users*" blocks them live.
@@ -55,7 +55,7 @@ var mongoGatedCommands = map[string]struct{}{
 // upstream and authenticates as the gateway using SCRAM-SHA-256 with the vault
 // credential. Thereafter it relays wire messages in both directions, parsing
 // each operator command to gate destructive operations (drop/delete/update/…)
-// against the 1C policy engine and recording every command for replay. Session
+// against the policy engine and recording every command for replay. Session
 // open/close lands in the workspace audit hash chain via the session manager.
 type MongoProxy struct {
 	broker      *pam.Broker

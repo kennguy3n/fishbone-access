@@ -14,14 +14,14 @@ import (
 // connectorStatusPending mirrors the AccessConnector.Status column default
 // ("pending") declared in the models package. A connector in this state has
 // never been configured, so the orphan sweep skips it (see RunOrphanSweep).
-// Defined here in the lifecycle package rather than models to keep 1C scoped to
-// lifecycle/policy and avoid colliding with the 1B connector framework's own
+// Defined here in the lifecycle package rather than models to keep the lifecycle domain scoped to
+// lifecycle/policy and avoid colliding with the connector framework's own
 // status vocabulary.
 const connectorStatusPending = "pending"
 
 // Scheduler runs the periodic lifecycle maintenance jobs: the grant-expiry
 // sweep and the daily orphan-account reconciliation. It is a self-contained
-// ticker loop (independent of the Session 1B Postgres worker queue) so the
+// ticker loop (independent of the Postgres worker queue) so the
 // control plane enforces expiry and surfaces orphans even before the durable
 // queue lands. Every job iterates workspaces explicitly; nothing runs unscoped.
 type Scheduler struct {
@@ -195,7 +195,7 @@ func (s *Scheduler) RunOrphanSweep(ctx context.Context) (int, error) {
 	// resolving it always fails and the periodic sweep would log that error on
 	// every interval. Excluding it removes the recurring noise without risking
 	// skipping a configured connector: anything past the initial pending state
-	// (e.g. active, or a future disabled state owned by 1B) is still scanned, so
+	// (e.g. active, or a future disabled state owned by the connector layer) is still scanned, so
 	// orphans on a deactivated connector are still surfaced. The leaver kill
 	// switch deliberately keeps sweeping every connector regardless of status —
 	// that path is security-critical and must over-revoke, whereas this is

@@ -11,7 +11,7 @@
 // There is NO on-device inference in this SDK. No `import CoreML`, no
 // `import MLX`, no bundled model files (`.mlmodel`, `.tflite`, `.onnx`,
 // `.gguf`). The "AI risk verdict" the approver sees is computed server-side
-// (the access-ai-agent, WS5) and surfaced here only as the persisted
+// (the access-ai-agent) and surfaced here only as the persisted
 // `AccessRequest.riskLevel` / `riskFactors` fields and the `WorkflowDecision`.
 //
 
@@ -36,7 +36,7 @@ public enum AccessRequestState: String, Codable, CaseIterable, Sendable {
 /// Coarse risk bucket carried on an ``AccessRequest``. Mirrors the
 /// `risk_level` enum understood by the router in
 /// `internal/services/lifecycle/workflow_service.go`. Populated server-side
-/// by the access-ai-agent risk review (WS5); the SDK only reads it.
+/// by the access-ai-agent risk review; the SDK only reads it.
 public enum RiskLevel: String, Codable, CaseIterable, Sendable {
     case low
     case medium
@@ -337,7 +337,7 @@ public struct StateHistoryEntry: Codable, Identifiable, Sendable, Equatable {
     }
 }
 
-/// An active upstream grant — the JIT lease (WS4) materialised when an
+/// An active upstream grant — the JIT lease materialised when an
 /// approved request is provisioned. Mirrors `models.AccessGrant`.
 public struct AccessGrant: Codable, Identifiable, Sendable, Equatable {
     public let id: String

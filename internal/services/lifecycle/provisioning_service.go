@@ -23,8 +23,8 @@ const (
 // ResolvedConnector is a connector ready to call: the registered
 // implementation plus its decrypted config and secrets. The provisioning
 // service depends on this (via ConnectorResolver) rather than on connector
-// secret-sealing details, which are owned by the connector-management layer
-// (Session 1B). This keeps 1C independent of 1B at compile time.
+// secret-sealing details, which are owned by the connector-management layer.
+// This keeps lifecycle independent of that layer at compile time.
 type ResolvedConnector struct {
 	Provider string
 	Impl     access.AccessConnector

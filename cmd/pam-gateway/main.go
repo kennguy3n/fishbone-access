@@ -1,7 +1,7 @@
 // Command pam-gateway is the ShieldNet Access PAM multi-protocol proxy. It
 // fronts privileged targets over SSH (2222), PostgreSQL (5432), MySQL (3306),
 // and Kubernetes-exec (8443), minting short-lived credentials, recording each
-// session, gating every command against the 1C policy engine, and appending to
+// session, gating every command against the policy engine, and appending to
 // the per-workspace audit hash chain.
 //
 // Boot model (mirrors ztna-api): when ACCESS_DATABASE_URL is set the binary
@@ -91,7 +91,7 @@ func run() error {
 	}()
 
 	// Route the Vault's standalone audit appends through the backend selected by
-	// ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration). The chain bookkeeping is
+	// ACCESS_DATABASE_DRIVER (the GORM→pgx migration). The chain bookkeeping is
 	// shared via the auditchain package — same advisory lock, same version-1
 	// canonical hash — so a standalone event links into the same per-workspace
 	// hash chain as the in-transaction (GORM) appends regardless of which backend
@@ -236,9 +236,9 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		return nil, err
 	}
 
-	// Workstream 1 protocol proxies. Each follows the same pattern as the
-	// original four (token redemption, vault credential injection, session
-	// recording, 1C command gating, audit hash chain).
+	// The remaining protocol proxies. Each follows the same pattern as the
+	// SSH/Postgres/MySQL/k8s-exec proxies (token redemption, vault credential
+	// injection, session recording, command gating, audit hash chain).
 	//
 	// RDP presents server-side TLS to the operator when the target uses Enhanced
 	// RDP Security ("tls"/"nla"); reuse the shared operator-facing keypair.

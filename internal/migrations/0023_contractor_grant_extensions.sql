@@ -1,4 +1,4 @@
--- WS2: sponsor-approved extensions of a contractor grant's time box.
+-- Sponsor-approved extensions of a contractor grant's time box.
 --
 -- A contractor engagement is prolonged ONLY through an explicit, sponsor-
 -- approved, audited extension — never by silently editing expires_at. Each

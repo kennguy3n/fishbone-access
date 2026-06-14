@@ -24,7 +24,7 @@ import (
 // proxy redeems. The proxy then connects to the upstream cluster with the
 // JIT-injected vault credential (pgconn handles SCRAM-SHA-256/MD5/TLS), hijacks
 // the authenticated connection, and splices the two protocol streams. Every
-// Simple-Query and extended-protocol Parse is gated against the 1C policy
+// Simple-Query and extended-protocol Parse is gated against the policy
 // engine and appended to the workspace audit hash chain before it reaches the
 // cluster.
 type PostgresProxy struct {

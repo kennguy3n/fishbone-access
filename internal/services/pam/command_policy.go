@@ -1,7 +1,7 @@
-// Package pam implements the Session 1D Privileged Access Management domain
+// Package pam implements the Privileged Access Management domain
 // services that sit behind the pam-gateway proxy: the credential vault
 // (per-target sealed secrets), one-shot connect tokens with leasing and
-// rotation, live command-policy evaluation against the 1C policy engine, the
+// rotation, live command-policy evaluation against the policy engine, the
 // step-up MFA gate, session lifecycle + admin takeover, and appending every
 // command/decision to the per-workspace audit hash chain.
 //
@@ -24,12 +24,12 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
-// commandResourcePrefix marks a 1C policy resource ref that targets the PAM
+// commandResourcePrefix marks a policy resource ref that targets the PAM
 // command plane rather than a connector resource. A deny policy whose
 // definition lists resources like "cmd:rm -rf*" or "cmd:DROP *" is evaluated
 // live against every command/statement the gateway proxies. Reusing the
 // existing models.Policy storage and its draft→active→archived state machine
-// (only active policies bind) keeps PAM on the 1C policy engine instead of a
+// (only active policies bind) keeps PAM on the policy engine instead of a
 // parallel rule store.
 const commandResourcePrefix = "cmd:"
 
@@ -61,7 +61,7 @@ type commandRule struct {
 const defaultMaxCacheEntries = 4096
 
 // CommandPolicyEvaluator decides allow/deny for SSH commands and SQL statements
-// by consulting the workspace's active 1C policies. It caches the compiled deny
+// by consulting the workspace's active policies. It caches the compiled deny
 // rules per workspace for a short TTL so per-command evaluation does not hit the
 // database on every keystroke-delimited command, while still picking up policy
 // promotions within one TTL window. Deny wins; the default is allow because the

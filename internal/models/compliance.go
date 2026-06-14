@@ -19,7 +19,7 @@ const (
 	CertificationStateClosed  = "closed"
 )
 
-// Per-grant certification decisions. Mirror the 1C access-review vocabulary so
+// Per-grant certification decisions. Mirror the access-review vocabulary so
 // the two surfaces read consistently, but a revoke here is STAGED (recorded
 // without tearing the grant down) and only applied when the campaign closes.
 const (

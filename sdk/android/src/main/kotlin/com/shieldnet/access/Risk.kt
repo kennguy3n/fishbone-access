@@ -1,5 +1,5 @@
 /*
- * Risk.kt — risky-access awareness models + classification (Android, WS5).
+ * Risk.kt — risky-access awareness models + classification (Android).
  *
  * The ShieldNet Access control plane already computes an AI risk verdict and
  * advisory anomaly flags server-side (there is NO on-device inference). The

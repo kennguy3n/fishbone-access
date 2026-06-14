@@ -47,7 +47,7 @@ const maxPreAuthCommands = 16
 // connect token as the AUTH password (redis-cli -a <token>). The proxy redeems
 // it, dials the upstream server, authenticates with the JIT-injected vault
 // credential, then frame-proxies the RESP stream: every command is recorded and
-// gated against the 1C policy engine before it reaches the upstream, so an
+// gated against the policy engine before it reaches the upstream, so an
 // admin can deny destructive verbs (FLUSHALL, FLUSHDB, DEL, CONFIG SET, …) with
 // a policy. Both directions are recorded for replay and appended to the
 // workspace audit hash chain via the session manager.

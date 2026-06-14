@@ -1,5 +1,5 @@
 /*
- * Revocation.kt — one-tap revoke models + step-up planning (Android, WS5).
+ * Revocation.kt — one-tap revoke models + step-up planning (Android).
  *
  * Two server-side revoke paths exist, both reachable through [AccessClient]:
  *

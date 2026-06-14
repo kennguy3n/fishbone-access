@@ -1,4 +1,4 @@
--- Session WS3: JML no-code workflow builder schema.
+-- JML no-code workflow builder schema.
 --
 -- Adds the declarative, versioned Joiner/Mover/Leaver workflow document
 -- (draft → publish lifecycle, mirroring the policies table) and the workflow
@@ -7,11 +7,11 @@
 -- side effects and cache their result on workflows.draft_simulation instead.
 --
 -- NOTE: the runner keys schema_migrations by the numeric prefix, so the prefix
--- must be unique. This file originally shipped as 0012, but 0012 was also taken
--- by 0012_access_risk_verdicts (a separately-merged workstream); the duplicate
--- prefix made the runner silently skip one of the two on a fresh DB. Renumbered
--- to 0014 (0013 is WS2 connector setup; WS1 RBAC/TOTP is 0015) to restore a
--- unique, strictly-increasing ordering.
+-- must be unique. This migration is numbered 0014 because 0012 is taken by
+-- 0012_access_risk_verdicts (a duplicate prefix would make the runner silently
+-- skip one of the two on a fresh DB), 0013 by connector setup, and 0015 by
+-- RBAC/TOTP — so JML workflows take 0014 to keep the ordering unique and
+-- strictly increasing.
 --
 -- Tenant isolation: workspace_id scopes every row; the workflow service only
 -- ever queries (workspace_id, id) together, and every run is scoped by

@@ -1,7 +1,7 @@
 // Command access-workflow-engine runs the ShieldNet Access workflow
 // orchestration plane. It drives the JML (Joiner/Mover/Leaver) lifecycle,
-// approval chains, and scheduled access certifications on top of the 1C
-// lifecycle services and the 1B connector worker queue.
+// approval chains, and scheduled access certifications on top of the
+// lifecycle services and the connector worker queue.
 //
 // The binary runs two cooperating loops until SIGINT/SIGTERM:
 //
@@ -108,7 +108,7 @@ func run() error {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
 	}
 
-	// Lifecycle services (1C): the engine orchestrates these; it never
+	// Lifecycle services: the engine orchestrates these; it never
 	// re-implements the FSM, connector protocol, or kill switch.
 	resolver := lifecycle.NewDBConnectorResolver(gdb, connEnc)
 	reqSvc := lifecycle.NewAccessRequestService(gdb)

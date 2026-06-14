@@ -310,7 +310,7 @@ func (h *lifecycleHandlers) getRequest(c *gin.Context) {
 	}
 	// Surface the AI verdict + any anomaly flags so the approver view shows the
 	// rationale and risk factors alongside the request. Both are best-effort:
-	// a request created before WS5 has no verdict (omitted), and the flag list
+	// a request created before risk scoring has no verdict (omitted), and the flag list
 	// is simply empty when none were detected.
 	resp := gin.H{"request": req}
 	if verdict, verr := h.riskReview.LatestVerdict(c.Request.Context(), ws, id); verr == nil {

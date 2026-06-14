@@ -69,7 +69,7 @@ type auditEntry struct {
 
 // AuditInput is the stable, cross-package description of an action to append to
 // a workspace's tamper-evident audit hash chain. It is the public face of the
-// internal auditEntry so other services (e.g. the Session 1D PAM gateway) write
+// internal auditEntry so other services (e.g. the PAM gateway) write
 // into the SAME per-workspace chain — same audit_events table, same SHA-256
 // linking, same per-workspace advisory lock — rather than inventing a parallel
 // one. The chain bookkeeping (prev/chain hash, sequence, timestamps, id) is
@@ -84,7 +84,7 @@ type AuditInput struct {
 
 // AppendAuditTx appends one audit event to the workspace's hash chain inside an
 // existing transaction. Callers that mutate other rows in the same tx use this
-// so the state change and its audit record commit atomically (the 1C services
+// so the state change and its audit record commit atomically (the lifecycle services
 // do this via the internal appendAudit; PAM uses this exported entrypoint).
 func AppendAuditTx(ctx context.Context, tx *gorm.DB, now time.Time, in AuditInput) error {
 	return appendAudit(ctx, tx, now, auditEntry(in))

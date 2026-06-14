@@ -1,5 +1,5 @@
 //
-// Revocation.swift — one-tap revoke models + step-up planning (iOS, WS5).
+// Revocation.swift — one-tap revoke models + step-up planning (iOS).
 //
 // Two server-side revoke paths exist, both reachable through ``AccessClient``:
 //

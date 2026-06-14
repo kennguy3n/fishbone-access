@@ -21,7 +21,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
 
-// TestPrivilegedSessionEvidenceEndToEndPostgres is the WS3 success-criteria
+// TestPrivilegedSessionEvidenceEndToEndPostgres is the success-criteria
 // guard: it threads a *real* gateway recording (bytes captured, persisted, and
 // SHA-256'd by the production IORecorder) through the production PAM control
 // plane (mint → redeem → command → recording → close) and then proves the

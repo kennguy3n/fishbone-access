@@ -1,4 +1,4 @@
--- WS2: detected, dispositioned access anomalies.
+-- Detected, dispositioned access anomalies.
 --
 -- The scheduled anomaly detector evaluates a workspace's LIVE access_grants
 -- against the SoD rules and records each toxic-combination it finds here, then

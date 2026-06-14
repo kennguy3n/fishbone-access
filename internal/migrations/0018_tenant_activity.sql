@@ -1,4 +1,4 @@
--- 0018_tenant_activity: per-tenant activity + dormancy model (WS1 scale/NoOps).
+-- 0018_tenant_activity: per-tenant activity + dormancy model.
 --
 -- Tracks the last real interaction per workspace and the derived dormancy
 -- state, so the control plane can hibernate the large dormant-trial fraction of

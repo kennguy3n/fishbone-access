@@ -20,9 +20,9 @@ const contractorExpiryActor = "system:contractor-expiry"
 // access. Deprovision is precise per grant, and when an expiry leaves a
 // contractor with NO remaining active contractor grants it runs the existing JML
 // kill switch to fully offboard the external identity (revoke sessions, disable
-// the account, SCIM deprovision) — automatic deprovision via the kill switch,
-// as the workstream requires, without prematurely tearing down a contractor who
-// still has another live engagement.
+// the account, SCIM deprovision) — automatic deprovision via the kill switch
+// without prematurely tearing down a contractor who still has another live
+// engagement.
 //
 // It is driven by the lifecycle Scheduler (every 5m by default) but is also
 // directly invocable (EnforceExpired) for a seeded scenario or a test.

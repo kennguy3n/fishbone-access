@@ -1,4 +1,4 @@
--- Workstream 2: AI-assisted connector setup assistant persistence.
+-- AI-assisted connector setup assistant persistence.
 --
 -- Every invocation of the connector_setup_assistant skill is persisted here so
 -- the model's structured plan, the inputs that produced it, and its provenance

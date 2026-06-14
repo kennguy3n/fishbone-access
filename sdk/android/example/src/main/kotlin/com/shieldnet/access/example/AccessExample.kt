@@ -34,7 +34,7 @@ fun main() = runBlocking {
     println("acting as ${me.userId} in tenant ${me.tenantId}; mfaSatisfied=${me.mfaSatisfied}")
 
     // 2. Submit an elevation request. The server runs risk-based routing
-    //    (the AI risk verdict, WS5) and tells us which lane it landed in.
+    //    (the AI risk verdict) and tells us which lane it landed in.
     val submission = client.createRequest(
         CreateAccessRequest(
             targetUserId = me.userId,
@@ -66,7 +66,7 @@ fun main() = runBlocking {
         val grant = client.provisionRequest(req.id)
         println("lease ${grant.id} active=${grant.isActive()} remaining=${grant.remaining()}")
 
-        // 6. Risky-access awareness (WS5): read the AI risk verdict + anomaly
+        // 6. Risky-access awareness: read the AI risk verdict + anomaly
         //    signals and classify them with the cross-platform pure helper.
         val detail = client.getRequestDetail(req.id)
         val advisory = RiskAssessment.evaluate(detail)
@@ -74,7 +74,7 @@ fun main() = runBlocking {
             println("⚠️ elevated access ${detail.request.id}: ${advisory.reasons.joinToString("; ")}")
         }
 
-        // 7. One-tap revoke (WS5). For a high-risk revoke the SDK tells the host
+        // 7. One-tap revoke. For a high-risk revoke the SDK tells the host
         //    to gate behind step-up MFA first — the same decision on every
         //    platform. The grant-revoke endpoint itself is permission-gated.
         val plan = Revocation.plan(advisory)
@@ -85,7 +85,7 @@ fun main() = runBlocking {
             println("revoked lease ${grant.id}")
         }
 
-        // 8. Emergency offboard (WS5): the "revoke everything for this user"
+        // 8. Emergency offboard: the "revoke everything for this user"
         //    kill switch. Step-up-gated server-side; a partial failure still
         //    returns the per-layer breakdown so the operator can retry.
         //    NOTE: emergencyOffboard takes the EXTERNAL identity id (the value

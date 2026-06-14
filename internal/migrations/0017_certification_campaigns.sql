@@ -1,4 +1,4 @@
--- WS6: certification campaigns + compliance evidence.
+-- Certification campaigns + compliance evidence.
 --
 -- The compliance EVIDENCE stream is deliberately NOT a new table: it is a
 -- typed projection over the existing per-workspace audit hash chain
@@ -6,7 +6,7 @@
 -- operation and inherits the chain's tamper-evidence (prev_hash → chain_hash)
 -- rather than duplicating a parallel, separately-forgeable log.
 --
--- Certification campaigns are the "full" expansion of the 1C access-review
+-- Certification campaigns are the "full" expansion of the access-review
 -- primitive: a scoped (resource / role / connector), reviewer-assigned,
 -- due-dated review whose per-grant decisions are STAGED and only applied
 -- (revoked) at close — so the destructive teardown is preview-able first, the
@@ -72,7 +72,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_cert_items_campaign_grant
 
 -- Hash-format marker on the shared audit chain so the compliance verifier can
 -- recompute each row under the rule that actually produced its chain_hash.
--- The WS6 evidence verifier is the first reader to recompute the chain. Rows
+-- The evidence verifier is the first reader to recompute the chain. Rows
 -- appended before this release used a pre-image that folded the raw nanosecond
 -- wall clock and non-canonical jsonb metadata — neither survives a round-trip
 -- through stored columns (timestamptz keeps only microseconds; jsonb reorders

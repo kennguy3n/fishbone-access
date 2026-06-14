@@ -39,7 +39,7 @@ const maxWebRequestsPerConn = 10000
 // printer management): the operator points a browser or HTTP client at the
 // gateway and presents the one-shot connect token in the X-Pam-Connect-Token
 // header. The proxy redeems it, opens a session, then for every request on the
-// (keep-alive) connection it gates the method+path against the 1C policy
+// (keep-alive) connection it gates the method+path against the policy
 // engine, injects the upstream credential the operator never sees (HTTP Basic,
 // Bearer token, or a form-login cookie), forwards to the upstream, and relays
 // the response. Each request/response is recorded as a metadata log line (not

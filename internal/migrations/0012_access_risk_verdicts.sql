@@ -1,4 +1,4 @@
--- WS5: AI risk review baked into the elevation request flow.
+-- AI risk review baked into the elevation request flow.
 --
 -- Adds the append-only AI risk-verdict trail and the advisory anomaly-flag
 -- table that back the lifecycle RiskReviewService. Both are workspace-scoped so

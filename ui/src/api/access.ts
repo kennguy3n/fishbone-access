@@ -522,7 +522,7 @@ export const listRequests = () =>
   }).then((r) => r.requests ?? []);
 
 // RequestDetailResult is the request plus its operative AI risk verdict and any
-// advisory anomaly flags. `risk` is absent for requests created before WS5 (no
+// advisory anomaly flags. `risk` is absent for requests created before risk scoring existed (no
 // verdict was ever persisted); `anomalies` is empty until an approved elevation
 // is scored by the anomaly skill.
 export interface RequestDetailResult {
@@ -620,7 +620,7 @@ export function useRequestAction(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Grants — one-tap revoke of a provisioned JIT lease (WS5)
+// Grants — one-tap revoke of a provisioned JIT lease
 // ---------------------------------------------------------------------------
 
 // revokeGrant ends one active grant early via POST /grants/:id/revoke. The
@@ -1034,7 +1034,7 @@ export function useCreateConnector() {
 }
 
 // ---------------------------------------------------------------------------
-// PAM — targets, JIT leases, sessions, live session control (WS4)
+// PAM — targets, JIT leases, sessions, live session control
 //
 // Mirrors internal/models (PAMTarget, PAMLease, PAMSession) and the REST surface
 // in internal/handlers/pam.go. The lease state is the server-derived machine
