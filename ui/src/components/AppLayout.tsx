@@ -11,6 +11,7 @@ import { Icon } from "./Icon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useAuth } from "@/auth/auth-context";
 import { useMe } from "@/api/access";
+import { useIsWorkspaceAdmin } from "@/lib/permissions";
 
 // The Access console is single-tenant per session: the bearer token resolves to
 // exactly one workspace server-side (iam-core tenant_id → workspace), so there
@@ -33,6 +34,13 @@ function TenantBadge() {
 function Sidebar() {
   const { location } = useRouterState();
   const path = location.pathname;
+  const isAdmin = useIsWorkspaceAdmin();
+  // Hide admin-only setup surfaces from a plain operator, then drop any group
+  // left with no visible items so an empty header never renders.
+  const groups = NAV.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || isAdmin),
+  })).filter((group) => group.items.length > 0);
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -45,7 +53,7 @@ function Sidebar() {
         </span>
       </div>
       <nav>
-        {NAV.map((group, gi) => (
+        {groups.map((group, gi) => (
           <div className="nav-group" key={`${group.labelId}-${gi}`}>
             <div className="nav-group__label">
               <FormattedMessage id={group.labelId} />

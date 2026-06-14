@@ -22,6 +22,7 @@ export type MessageKey =
   | "topbar.signOut"
   | "topbar.language"
   | "topbar.menu"
+  | "nav.group.getStarted"
   | "nav.group.overview"
   | "nav.group.govern"
   | "nav.group.lifecycle"
@@ -29,6 +30,8 @@ export type MessageKey =
   | "nav.group.compliance"
   | "nav.group.preferences"
   | "nav.dashboard"
+  | "nav.onboarding"
+  | "nav.selfService"
   | "nav.policies"
   | "nav.packs"
   | "nav.connectors"
@@ -71,6 +74,7 @@ const en: Catalog = {
   "topbar.signOut": "Sign out",
   "topbar.language": "Language",
   "topbar.menu": "Open navigation menu",
+  "nav.group.getStarted": "Get started",
   "nav.group.overview": "Overview",
   "nav.group.govern": "Govern",
   "nav.group.lifecycle": "Lifecycle",
@@ -78,6 +82,8 @@ const en: Catalog = {
   "nav.group.compliance": "Compliance",
   "nav.group.preferences": "Preferences",
   "nav.dashboard": "Dashboard",
+  "nav.onboarding": "Get started",
+  "nav.selfService": "Your access",
   "nav.policies": "Access policies",
   "nav.packs": "Policy packs",
   "nav.connectors": "Connectors",

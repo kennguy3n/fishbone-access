@@ -2863,3 +2863,133 @@ label.field > span {
   align-items: flex-start;
   gap: 10px;
 }
+
+/* ======================================================================== */
+/* SME day-1 onboarding wizard + self-service portal                        */
+/* ======================================================================== */
+
+/* Banner leading icon (the dashboard "get started" nudge). */
+.banner__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  color: var(--brand);
+  background: rgba(var(--brand-rgb), 0.14);
+  border: 1px solid rgba(var(--brand-rgb), 0.3);
+}
+
+/* Plain-language explainer used in the connector step. */
+.explainer {
+  margin: 12px 0 16px;
+}
+.explainer__list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  line-height: 1.9;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* Native progressive-disclosure (advanced options, FAQ). Styled to match the
+   console rather than the browser default triangle/spacing. */
+.disclosure {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.disclosure > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+.disclosure[open] > summary::before {
+  content: "−";
+}
+.disclosure > summary:hover {
+  color: var(--text);
+}
+.disclosure > p {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 8px 0 2px;
+  max-width: 64ch;
+}
+
+/* "You're set up" summary checklist. */
+.done-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.check-list > li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+.check-list__item--done {
+  color: var(--text);
+  border-color: rgba(5, 150, 105, 0.3);
+}
+.check-list__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.check-list__item--done .check-list__mark {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #06101f;
+}
+
+/* Small vertical-rhythm helper for stacked cards. */
+.stack-mt {
+  margin-top: 16px;
+}

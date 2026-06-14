@@ -2,13 +2,74 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader, Card, Stat, Badge, StatusBadge } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
+import { Icon } from "@/components/Icon";
 import {
   usePolicies,
   useAccessRequests,
   useOrphans,
+  useConnectors,
+  useMe,
   type Policy,
 } from "@/api/access";
 import { formatRelative } from "@/lib/format";
+import { useIsWorkspaceAdmin } from "@/lib/permissions";
+import { useOnboardingProgress } from "@/lib/onboarding-store";
+
+// OnboardingNudge is the day-1 zero-state prompt. It only shows for workspace
+// admins who haven't finished (or dismissed) the guided setup AND whose
+// workspace still lacks a connected source or a policy — so once the workspace
+// is genuinely set up, or for a plain operator, it never appears.
+function OnboardingNudge() {
+  const me = useMe();
+  if (!me.data) return null;
+  return <OnboardingNudgeInner tenantId={me.data.tenant_id} />;
+}
+
+function OnboardingNudgeInner({ tenantId }: { tenantId: string }) {
+  const isAdmin = useIsWorkspaceAdmin();
+  const [progress, update] = useOnboardingProgress(tenantId);
+  const connectors = useConnectors({});
+  const policies = usePolicies();
+
+  if (!isAdmin || progress.finished || progress.nudgeDismissed) return null;
+  const connected = (connectors.data ?? []).some((c) => c.connected);
+  const hasPolicies = (policies.data?.length ?? 0) > 0;
+  if (connected && hasPolicies) return null;
+
+  const resuming =
+    progress.completed.length > 0 || progress.lastStep !== "welcome";
+
+  return (
+    <div className="banner">
+      <span className="banner__icon" aria-hidden>
+        <Icon name="rocket" size={22} />
+      </span>
+      <div className="banner__body">
+        <div className="banner__title">
+          {resuming
+            ? "Finish setting up your workspace"
+            : "Welcome — let's get your workspace ready"}
+        </div>
+        <div className="banner__sub">
+          A short, guided setup: connect a source, write your first access rule,
+          and invite a teammate. Takes a few minutes, and you can pick up where
+          you left off.
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+        <Link className="btn btn--primary btn--sm" to="/onboarding">
+          {resuming ? "Resume setup" : "Start setup"}
+        </Link>
+        <button
+          className="btn btn--ghost btn--sm"
+          onClick={() => update({ nudgeDismissed: true })}
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // The open-request states an operator still needs to action. Anything past
 // these (provisioned/denied/cancelled) is terminal and isn't "pending work".
@@ -49,6 +110,7 @@ export function Dashboard() {
 
   return (
     <>
+      <OnboardingNudge />
       <PageHeader
         title="Dashboard"
         subtitle="Who can reach what — and what still needs testing before rollout."
