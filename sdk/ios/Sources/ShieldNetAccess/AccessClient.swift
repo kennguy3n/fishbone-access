@@ -21,7 +21,7 @@
 //   revokeGrant      → POST   /api/v1/grants/:id/revoke
 //   emergencyOffboard→ POST   /api/v1/emergency-offboard
 //
-// There is NO on-device inference. AI risk review (WS5) is server-side; the
+// There is NO on-device inference. AI risk review is server-side; the
 // SDK only reads the resulting `AccessRequest.riskLevel` / `riskFactors` and
 // the `WorkflowDecision`.
 //
