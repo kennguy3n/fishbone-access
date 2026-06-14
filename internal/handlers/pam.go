@@ -56,8 +56,10 @@ func newPAMHandlers(deps Deps) *pamHandlers {
 		// Parse ACCESS_KMS_KEY_VERSION with the same semantics as
 		// config.getInt (accept only a non-negative integer, else keep the
 		// default 1) so this legacy/bare-Deps path and the main config path
-		// never disagree on the effective version. A 0/negative value is left
-		// for NewDerivedDEKKeyManager to reject, identical to the config path.
+		// never disagree on the effective version. A negative value fails the
+		// n>=0 guard and keeps the default 1 (matching config.getInt); 0 passes
+		// the guard and is then rejected by NewDerivedDEKKeyManager, identical
+		// to the config path.
 		keyVersion := 1
 		if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
 			if n, perr := strconv.Atoi(v); perr == nil && n >= 0 {

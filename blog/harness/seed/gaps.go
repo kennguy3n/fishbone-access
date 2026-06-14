@@ -125,7 +125,11 @@ func (s *seeder) recordPrivilegedSession(ws harnesskit.Workspace, workspaceID uu
 		return existing[0].ID.String()
 	}
 
-	enc, err := access.CredentialEncryptorFromKey(os.Getenv("ACCESS_CREDENTIAL_DEK"))
+	// Honour the same master-key-first precedence as the binaries (and the
+	// TOTP path in main.go) so the PAM vault secret is sealed under the same key
+	// ztna-api / pam-gateway will open it with, rather than hard-requiring the
+	// static DEK.
+	enc, err := access.CredentialEncryptorFromConfig(os.Getenv("ACCESS_KMS_MASTER_KEY"), kmsKeyVersion(), os.Getenv("ACCESS_CREDENTIAL_DEK"))
 	if err != nil {
 		harnesskit.Logf("WARN %s: build pam encryptor: %v", ws.Slug, err)
 		return ""

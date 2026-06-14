@@ -22,6 +22,11 @@
 //
 //	AUTH_JWT_SECRET=... ACCESS_CREDENTIAL_DEK=... ACCESS_DATABASE_URL=... \
 //	  go run ./blog/harness/seed -base http://localhost:8080 -out blog/artifacts
+//
+// Either ACCESS_KMS_MASTER_KEY (per-workspace KMS posture) or ACCESS_CREDENTIAL_DEK
+// (static DEK) seals the owner's TOTP secret; the seeder honours the same
+// master-key-first precedence as the binaries so it seals under the exact key
+// ztna-api will open with.
 package main
 
 import (
@@ -29,6 +34,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +42,8 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/blog/harness/harnesskit"
 	"github.com/kennguy3n/fishbone-access/internal/models"
-	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"gorm.io/gorm"
 )
@@ -58,16 +64,21 @@ func main() {
 	if *dbURL == "" {
 		harnesskit.Fatalf("ACCESS_DATABASE_URL (or -db) is required for the workspace/owner/TOTP bootstrap")
 	}
+	masterKey := os.Getenv("ACCESS_KMS_MASTER_KEY")
 	dek := os.Getenv("ACCESS_CREDENTIAL_DEK")
-	if dek == "" {
-		harnesskit.Fatalf("ACCESS_CREDENTIAL_DEK is required (seals the owner's enrolled TOTP secret so step-up MFA can verify it)")
+	if masterKey == "" && dek == "" {
+		harnesskit.Fatalf("one of ACCESS_KMS_MASTER_KEY or ACCESS_CREDENTIAL_DEK is required (seals the owner's enrolled TOTP secret so step-up MFA can verify it)")
 	}
 	issuer := envOr("AUTH_JWT_ISSUER", harnesskit.DefaultIssuer)
 	audience := envOr("AUTH_JWT_AUDIENCE", harnesskit.DefaultAudience)
 
-	enc, err := crypto.FromKey(dek)
+	// Mirror the binaries' precedence (master key first, then the static DEK) so
+	// the seeded TOTP secret is sealed under the same key ztna-api opens with;
+	// otherwise a KMS-only or mid-migration deployment would produce an
+	// unreadable seal.
+	enc, err := access.CryptoEncryptorFromConfig(masterKey, dek)
 	if err != nil {
-		harnesskit.Fatalf("build credential encryptor from ACCESS_CREDENTIAL_DEK: %v", err)
+		harnesskit.Fatalf("build credential encryptor (ACCESS_KMS_MASTER_KEY / ACCESS_CREDENTIAL_DEK): %v", err)
 	}
 	db, err := database.Open(*dbURL)
 	if err != nil {
@@ -707,6 +718,18 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// kmsKeyVersion parses ACCESS_KMS_KEY_VERSION with the same n>=0-else-default
+// semantics as config.getInt, so the seeder seals connector secrets under the
+// same key version the binaries will open them with.
+func kmsKeyVersion() int {
+	if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return 1
 }
 
 func writeJSON(path string, v any) error {
