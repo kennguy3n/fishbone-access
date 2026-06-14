@@ -11,14 +11,14 @@ artifact registry to push to.
 | Package | `ShieldNetAccess` |
 | Product (library) | `ShieldNetAccess` |
 | Repository | `https://github.com/kennguy3n/fishbone-access` |
-| Current version | `0.1.0` |
+| Current version | `0.2.0` |
 | Tag prefix | `sdk-ios-v` |
 
 ## Consuming the package
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kennguy3n/fishbone-access.git", from: "0.1.0"),
+    .package(url: "https://github.com/kennguy3n/fishbone-access.git", from: "0.2.0"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
