@@ -36,6 +36,7 @@ type Metrics struct {
 	throttled     *prometheus.CounterVec
 	usageEvents   *prometheus.CounterVec
 	quotaBreaches *prometheus.CounterVec
+	failOpen      *prometheus.CounterVec
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -85,8 +86,14 @@ func NewMetrics() *Metrics {
 			Name:      "quota_breaches_total",
 			Help:      "Over-quota billing-enforcement decisions, by state (soft_exceeded/hard_exceeded) and matched route template. Like the throttle counter this is the FLEET-WIDE aggregate: deliberately NOT labelled by tenant id (unbounded at 5,000 tenants) — per-tenant quota status is read back through the authenticated billing endpoint.",
 		}, []string{"state", "route"}),
+		failOpen: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "sharedstore",
+			Name:      "fail_open_total",
+			Help:      "Shared-store (Redis) operations that failed and were handled fail-open, by subsystem (ratelimit|usage). A non-zero rate means Redis is degraded: the rate limiter is admitting rather than enforcing, or usage is degrading to the Postgres path / dropping. Labelled by subsystem ONLY (never tenant id) to keep cardinality bounded; alert on its rate to catch a flapping Redis.",
+		}, []string{"subsystem"}),
 	}
-	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches)
+	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen)
 	return m
 }
 
@@ -125,6 +132,18 @@ func (m *Metrics) IncQuotaBreach(state, route string) {
 		route = "unmatched"
 	}
 	m.quotaBreaches.WithLabelValues(state, route).Inc()
+}
+
+// IncSharedStoreFailOpen records one shared-store (Redis) operation that failed
+// and was handled fail-open, labelled by subsystem ("ratelimit" or "usage")
+// only — never the tenant id, to keep cardinality bounded. Wire it as the
+// OnError hook of the Redis-backed limiter and usage sink so a degraded Redis
+// surfaces as a non-zero counter rate instead of being invisible.
+func (m *Metrics) IncSharedStoreFailOpen(subsystem string) {
+	if subsystem == "" {
+		subsystem = "unknown"
+	}
+	m.failOpen.WithLabelValues(subsystem).Inc()
 }
 
 // Handler is the Prometheus scrape endpoint backed by this registry.

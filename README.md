@@ -107,13 +107,29 @@ template, never by tenant id, to bound cardinality).
 
 The limiter is a token bucket per tenant: `ACCESS_TENANT_RATE_LIMIT_RPS` is the
 sustained refill rate and `ACCESS_TENANT_RATE_LIMIT_BURST` the instantaneous
-depth. It is **in-memory and therefore per-replica** — with `N` ztna-api
-replicas a tenant's effective ceiling is `N × RPS`. That is the deliberate
-local/dev posture (no extra infrastructure) and already bounds a single abusive
-tenant to a small multiple of the rate; a globally exact limit across replicas
-would use a shared store via `ACCESS_REDIS_URL`, which the limiter interface is
-designed to accept later without call-site changes. Set
-`ACCESS_TENANT_RATE_LIMIT_ENABLED=false` to disable it entirely.
+depth. By default it is **in-memory and therefore per-replica** — with `N`
+ztna-api replicas a tenant's effective ceiling is `N × RPS`. That is the
+no-extra-infrastructure posture and already bounds a single abusive tenant to a
+small multiple of the rate.
+
+For a **globally exact** limit across replicas, set `ACCESS_REDIS_URL` and
+`ACCESS_TENANT_RATE_LIMIT_SHARED_STORE=true`: the limiter then becomes a
+**Redis-backed atomic token bucket**, so a tenant's ceiling is `RPS` across the
+whole fleet rather than `N × RPS`. The admission decision (refill, check,
+consume) runs as a single server-side Lua script (`EVALSHA`, one round trip), so
+two replicas hitting the same tenant in the same instant cannot both over-admit
+against the shared budget — the exactness guarantee is enforced inside Redis,
+not approximated per replica. The trade-off is one Redis round trip on the
+admission path of every request (versus a lock-and-map with no I/O before). It
+is **fail-open**: if Redis is unreachable, slow, or errors, the limiter *admits*
+rather than failing the tenant's request, so a flapping Redis reverts to the
+permissive posture and never takes down request serving (a degraded backend is
+visible as `shieldnet_sharedstore_fail_open_total{subsystem="ratelimit"}`). The
+flag is only honoured when `ACCESS_REDIS_URL` is set; otherwise the limiter
+falls back to the in-memory bucket and logs a startup warning. The middleware
+and its `RateLimiter` interface are unchanged — only the construction site in
+`cmd/ztna-api` chooses the backend. Set `ACCESS_TENANT_RATE_LIMIT_ENABLED=false`
+to disable rate limiting entirely.
 
 #### Per-tenant usage metering
 
@@ -216,6 +232,22 @@ off by default: the safe rollout at 5,000 tenants is **shadow mode** — detect 
 surface breaches (headers + the `shieldnet_billing_quota_breaches_total{state,route}`
 aggregate counter) without rejecting — so an operator can observe who *would* be
 capped before flipping enforcement on.
+
+Setting `ACCESS_REDIS_URL` and `ACCESS_USAGE_METERING_SHARED_STORE=true`
+**consolidates** the rollup through a shared Redis accumulator: instead of every
+replica writing the same `(workspace, period, metric)` row each window, the
+per-replica deltas are first summed into one Redis counter (`HINCRBY`), and a
+single **claim-based flush** rolls that global counter up into `tenant_usage`.
+The claim is an atomic `HGETALL`+`DEL` in one Lua script, so when multiple
+replicas' flushers race, exactly one reads the counters and the rest see an
+empty hash — no double counting. The hot path is unchanged (recording is still
+the in-memory increment) and Postgres stays the durable record. It is
+**fail-open**: if Redis is down the sink degrades the deltas to the Postgres
+path (the same per-replica UPSERT) or, failing that, drops them — usage is
+best-effort telemetry and never blocks a request (a degraded backend shows as
+`shieldnet_sharedstore_fail_open_total{subsystem="usage"}`). The flag is only
+honoured when `ACCESS_REDIS_URL` is set; otherwise metering keeps the
+per-replica UPSERT and logs a startup warning.
 
 ## Deployment
 

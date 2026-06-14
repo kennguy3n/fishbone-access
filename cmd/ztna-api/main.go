@@ -29,6 +29,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/config"
@@ -114,20 +115,56 @@ func run() error {
 		logger.Infof(ctx, "ztna-api: OpenTelemetry tracing enabled (OTLP endpoint configured)")
 	}
 
+	// Shared store (Redis) for the globally-exact rate limiter and the
+	// cross-replica usage accumulator. It is opened ONCE here and shared by both
+	// subsystems, and only when a feature that needs it is actually active
+	// (ACCESS_REDIS_URL set AND the relevant SharedStore flag on) — a default
+	// deployment opens no Redis connection at all. go-redis dials lazily, so a
+	// down Redis does not fail this boot; the fail-open paths handle a runtime
+	// outage. A malformed URL is the one config error we surface, and even then
+	// we fall back to the per-replica backends rather than crash a 5,000-tenant
+	// fleet over a typo.
+	var redisClient *redis.Client
+	if cfg.RateLimitSharedStoreActive() || cfg.UsageSharedStoreActive() {
+		if opt, err := redis.ParseURL(cfg.RedisURL); err != nil {
+			logger.Warnf(ctx, "ztna-api: ACCESS_REDIS_URL is malformed (%v); shared-store features fall back to the per-replica in-memory/Postgres backends", err)
+		} else {
+			redisClient = redis.NewClient(opt)
+			defer func() {
+				if cerr := redisClient.Close(); cerr != nil {
+					logger.Warnf(ctx, "ztna-api: closing shared Redis client: %v", cerr)
+				}
+			}()
+		}
+	}
+
 	// Per-tenant inbound rate limiting: cap a single tenant's request rate so a
 	// noisy or runaway tenant cannot monopolise the shared Postgres pool (and
-	// our bill) at the expense of the other tenants. The limiter is in-memory
-	// (per replica — see config.RateLimitConfig) and opt-out via
-	// ACCESS_TENANT_RATE_LIMIT_ENABLED=false. Stop releases its janitor on
-	// shutdown.
+	// our bill) at the expense of the other tenants. Opt-out via
+	// ACCESS_TENANT_RATE_LIMIT_ENABLED=false.
+	//
+	// Two backends satisfy the identical RateLimiter seam: when the shared store
+	// is active the limiter is the Redis-backed atomic token bucket (GLOBALLY
+	// EXACT — a tenant's ceiling is RPS across the whole fleet, not N×RPS), else
+	// the in-memory per-replica bucket. Both are fail-open. Only the Redis path's
+	// fail-open events feed the degraded-Redis counter.
 	if cfg.RateLimit.Enabled {
-		limiter := ratelimit.New(ratelimit.Config{
-			RPS:   cfg.RateLimit.RequestsPerSecond,
-			Burst: cfg.RateLimit.Burst,
-		})
-		defer limiter.Stop()
-		deps.RateLimiter = limiter
-		logger.Infof(ctx, "ztna-api: per-tenant rate limiting enabled (%g req/s, burst %d, per replica)", cfg.RateLimit.RequestsPerSecond, cfg.RateLimit.Burst)
+		if cfg.RateLimitSharedStoreActive() && redisClient != nil {
+			deps.RateLimiter = ratelimit.NewRedisLimiter(redisClient, ratelimit.RedisConfig{
+				RPS:     cfg.RateLimit.RequestsPerSecond,
+				Burst:   cfg.RateLimit.Burst,
+				OnError: func(error) { metrics.IncSharedStoreFailOpen("ratelimit") },
+			})
+			logger.Infof(ctx, "ztna-api: per-tenant rate limiting enabled (%g req/s, burst %d, GLOBALLY EXACT via shared Redis store; fail-open on Redis outage)", cfg.RateLimit.RequestsPerSecond, cfg.RateLimit.Burst)
+		} else {
+			limiter := ratelimit.New(ratelimit.Config{
+				RPS:   cfg.RateLimit.RequestsPerSecond,
+				Burst: cfg.RateLimit.Burst,
+			})
+			defer limiter.Stop()
+			deps.RateLimiter = limiter
+			logger.Infof(ctx, "ztna-api: per-tenant rate limiting enabled (%g req/s, burst %d, per replica)", cfg.RateLimit.RequestsPerSecond, cfg.RateLimit.Burst)
+		}
 	}
 
 	if cfg.DatabaseConfigured() {
@@ -448,7 +485,36 @@ func run() error {
 	// touch a closed pool.
 	if deps.DB != nil && cfg.UsageMetering.Enabled {
 		usageStore := usage.NewStore(deps.DB)
-		aggregator := usage.New(usageStore, usage.Config{
+
+		// The in-memory Aggregator is unchanged on the hot path (Record is still
+		// a fail-open in-memory increment). What changes when the shared store is
+		// active is its SINK: instead of flushing per-replica deltas straight to
+		// Postgres, it flushes them into a shared Redis accumulator, and a single
+		// claim-based RedisFlusher rolls that global counter up into tenant_usage
+		// — so N replicas no longer each write the same row every window. The
+		// Redis sink is fail-open: it degrades to the Postgres store (its
+		// fallback) or drops on a Redis outage, never blocking. When the shared
+		// store is inactive the sink IS the Postgres store, exactly as before.
+		var sink usage.Sink = usageStore
+		if cfg.UsageSharedStoreActive() && redisClient != nil {
+			sink = usage.NewRedisSink(redisClient, usage.RedisSinkConfig{
+				Fallback: usageStore,
+				OnError:  func(error) { metrics.IncSharedStoreFailOpen("usage") },
+			})
+			flusher := usage.NewRedisFlusher(redisClient, usageStore, usage.RedisFlusherConfig{
+				Interval: cfg.UsageMetering.FlushInterval,
+				OnError:  func(error) { metrics.IncSharedStoreFailOpen("usage") },
+			})
+			flushCtx, flushCancel := context.WithCancel(context.WithoutCancel(ctx))
+			joinFlush := flusher.Run(flushCtx)
+			defer func() {
+				flushCancel()
+				joinFlush()
+			}()
+			logger.Infof(ctx, "ztna-api: usage metering using shared Redis accumulator (roll-up every %s); per-replica deltas sum into Redis, one claim-based flush writes tenant_usage", cfg.UsageMetering.FlushInterval)
+		}
+
+		aggregator := usage.New(sink, usage.Config{
 			FlushInterval: cfg.UsageMetering.FlushInterval,
 			Observe:       metrics.AddUsageEvents,
 		})
@@ -460,7 +526,7 @@ func run() error {
 		}()
 		deps.UsageMeter = aggregator
 		deps.UsageReader = usageStore
-		logger.Infof(ctx, "ztna-api: per-tenant usage metering enabled (flush every %s, per replica); per-tenant counts roll up to tenant_usage, only aggregate counters on /metrics", cfg.UsageMetering.FlushInterval)
+		logger.Infof(ctx, "ztna-api: per-tenant usage metering enabled (flush every %s, shared-store=%t); per-tenant counts roll up to tenant_usage, only aggregate counters on /metrics", cfg.UsageMetering.FlushInterval, cfg.UsageSharedStoreActive())
 	}
 
 	// Billing economics layer: per-tenant statements + quota enforcement, ON TOP

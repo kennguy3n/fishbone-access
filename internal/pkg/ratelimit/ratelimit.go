@@ -5,13 +5,17 @@
 // expense of the other 4,999; a per-tenant bucket isolates that blast radius
 // without throttling well-behaved tenants.
 //
-// The limiter is in-memory and therefore per-process: with N ztna-api replicas
-// a tenant's effective ceiling is N×RPS. This is the deliberate local/dev
-// posture — it needs no extra infrastructure and already bounds a single
-// abusive tenant to a small multiple of the configured rate. A globally exact
-// limit across replicas would need a shared store (the ACCESS_REDIS_URL seam);
-// this package's KeyLimiter interface is the seam a Redis-backed limiter plugs
-// into later with no caller changes.
+// TenantLimiter is in-memory and therefore per-process: with N ztna-api
+// replicas a tenant's effective ceiling is N×RPS. This is the deliberate
+// local/dev posture — it needs no extra infrastructure and already bounds a
+// single abusive tenant to a small multiple of the configured rate. A globally
+// exact limit across replicas needs a shared store (the ACCESS_REDIS_URL seam);
+// RedisLimiter (redis.go) is that backend — an atomic, server-side token bucket
+// that satisfies the SAME Allow(key) (bool, time.Duration) contract, so it
+// plugs into this seam with no caller changes (only the construction site in
+// cmd/ztna-api chooses between the two). Both implementations are FAIL-OPEN: a
+// backend that is misconfigured (in-memory) or unreachable (Redis) admits
+// rather than rejecting, so the limiter can never itself take down serving.
 package ratelimit
 
 import (

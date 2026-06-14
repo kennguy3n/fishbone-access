@@ -56,8 +56,12 @@ type Config struct {
 	// degraded mode (handlers that need the DB return 503) so `go run`
 	// works without provisioning Postgres.
 	DatabaseURL string
-	// RedisURL is the Redis connection URL used for the worker queue and
-	// rate limiting. Optional in degraded mode.
+	// RedisURL is the Redis connection URL (ACCESS_REDIS_URL). It is the shared
+	// store seam for the globally-exact rate limiter and the cross-replica usage
+	// accumulator (see RateLimitConfig.SharedStore and
+	// UsageMeteringConfig.SharedStore), and the future worker-queue backend. It
+	// is parsed and dialled only when a feature that needs it is enabled;
+	// optional otherwise (degraded mode, and the default per-replica posture).
 	RedisURL string
 	// DBMaxOpenConns bounds the Postgres pool's total open connections.
 	// ztna-api and access-connector-worker share a database but run as
@@ -217,6 +221,17 @@ type RateLimitConfig struct {
 	// RequestsPerSecond. Read from ACCESS_TENANT_RATE_LIMIT_BURST; defaults to
 	// 100.
 	Burst int
+	// SharedStore opts the limiter into the globally-exact, Redis-backed
+	// backend (an atomic server-side token bucket) instead of the per-replica
+	// in-memory one, so a tenant's ceiling is RequestsPerSecond across the whole
+	// fleet rather than N×RequestsPerSecond. Read from
+	// ACCESS_TENANT_RATE_LIMIT_SHARED_STORE; defaults to false (the no-extra-
+	// infrastructure posture). It is ONLY honoured when ACCESS_REDIS_URL is also
+	// set — without a shared store there is nothing to share, so the wiring
+	// falls back to the in-memory limiter and Warnings flags the dropped intent.
+	// The Redis path is fail-open: a Redis outage reverts to admitting requests,
+	// never to rejecting them.
+	SharedStore bool
 }
 
 // UsageMeteringConfig tunes the per-tenant usage-metering rollup. Per-tenant
@@ -245,6 +260,17 @@ type UsageMeteringConfig struct {
 	// since counts coalesce in memory between flushes. Read from
 	// ACCESS_USAGE_METERING_FLUSH_INTERVAL; defaults to 30s.
 	FlushInterval time.Duration
+	// SharedStore opts metering into the Redis-backed cross-replica accumulator:
+	// per-replica deltas are first summed into one shared Redis counter and a
+	// single claim-based flush rolls that global counter up into the
+	// tenant_usage table, instead of every replica writing the same row each
+	// window. Postgres stays the durable record. Read from
+	// ACCESS_USAGE_METERING_SHARED_STORE; defaults to false. ONLY honoured when
+	// ACCESS_REDIS_URL is also set; otherwise the wiring falls back to the
+	// per-replica additive UPSERT (already cross-replica correct) and Warnings
+	// flags the dropped intent. The Redis path is fail-open: a Redis outage
+	// degrades to the Postgres path or drops, never blocking a request.
+	SharedStore bool
 }
 
 // BillingConfig tunes the per-tenant billing economics layer: statement
@@ -396,10 +422,12 @@ func Load() Config {
 			Enabled:           getBool("ACCESS_TENANT_RATE_LIMIT_ENABLED", true),
 			RequestsPerSecond: getFloat("ACCESS_TENANT_RATE_LIMIT_RPS", 50),
 			Burst:             getInt("ACCESS_TENANT_RATE_LIMIT_BURST", 100),
+			SharedStore:       getBool("ACCESS_TENANT_RATE_LIMIT_SHARED_STORE", false),
 		},
 		UsageMetering: UsageMeteringConfig{
 			Enabled:       getBool("ACCESS_USAGE_METERING_ENABLED", true),
 			FlushInterval: getDuration("ACCESS_USAGE_METERING_FLUSH_INTERVAL", 30*time.Second),
+			SharedStore:   getBool("ACCESS_USAGE_METERING_SHARED_STORE", false),
 		},
 		Billing: BillingConfig{
 			Enabled:        getBool("ACCESS_BILLING_ENABLED", false),
@@ -541,7 +569,39 @@ func (c Config) Warnings() []string {
 			"ACCESS_BILLING_CACHE_TTL=%s is non-positive; the billing service will use its built-in default cache TTL",
 			c.Billing.CacheTTL))
 	}
+	// A shared-store flag is meaningless without a store to share: the limiter
+	// and usage accumulator both need ACCESS_REDIS_URL. Surface the dropped
+	// intent loudly (rather than silently ignoring it) so an operator who asked
+	// for globally-exact behaviour but forgot the Redis URL learns at boot that
+	// they got the per-replica fallback instead — the never-crash-on-config
+	// contract means we fall back rather than fail.
+	if c.RedisURL == "" {
+		if c.RateLimit.Enabled && c.RateLimit.SharedStore {
+			w = append(w, "ACCESS_TENANT_RATE_LIMIT_SHARED_STORE is set but ACCESS_REDIS_URL is empty; "+
+				"the rate limiter is falling back to the per-replica in-memory bucket (a tenant's effective ceiling stays N×RPS, not globally exact)")
+		}
+		if c.UsageMetering.Enabled && c.UsageMetering.SharedStore {
+			w = append(w, "ACCESS_USAGE_METERING_SHARED_STORE is set but ACCESS_REDIS_URL is empty; "+
+				"usage metering is falling back to the per-replica additive UPSERT into Postgres (still cross-replica correct, just not consolidated through Redis)")
+		}
+	}
 	return w
+}
+
+// RateLimitSharedStoreActive reports whether the globally-exact Redis-backed
+// limiter should be wired: the operator opted in AND a Redis URL is present to
+// back it. The composition root uses this to choose the backend, keeping the
+// "only honoured with ACCESS_REDIS_URL" rule in one place rather than duplicated
+// across Warnings and main.
+func (c Config) RateLimitSharedStoreActive() bool {
+	return c.RateLimit.Enabled && c.RateLimit.SharedStore && c.RedisURL != ""
+}
+
+// UsageSharedStoreActive reports whether the Redis-backed usage accumulator
+// should be wired: opted in AND a Redis URL is present. Mirrors
+// RateLimitSharedStoreActive.
+func (c Config) UsageSharedStoreActive() bool {
+	return c.UsageMetering.Enabled && c.UsageMetering.SharedStore && c.RedisURL != ""
 }
 
 // Warnings reports tenancy knobs whose value will be silently overridden by a
@@ -660,11 +720,11 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s billing=%t/hardcap=%t/%s iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst/shared=%t usagemetering=%t/%s/shared=%t billing=%t/hardcap=%t/%s iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
-		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst,
-		c.UsageMetering.Enabled, c.UsageMetering.FlushInterval,
+		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst, c.RateLimitSharedStoreActive(),
+		c.UsageMetering.Enabled, c.UsageMetering.FlushInterval, c.UsageSharedStoreActive(),
 		c.Billing.Enabled, c.Billing.EnforceHardCap, c.Billing.CacheTTL,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
