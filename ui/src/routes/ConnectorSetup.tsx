@@ -565,6 +565,7 @@ function GuidedFieldInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const intl = useIntl();
   const patternMismatch =
     !!field.pattern && value.trim() !== "" && !patternMatches(field.pattern, value.trim());
 
@@ -604,8 +605,11 @@ function GuidedFieldInput({
       )}
       {patternMismatch && (
         <span className="field__hint muted">
-          That doesn't look like the expected format — double-check it before
-          creating.
+          {intl.formatMessage({
+            id: "connectorSetup.guided.patternMismatch",
+            defaultMessage:
+              "That doesn't look like the expected format — double-check it before creating.",
+          })}
         </span>
       )}
     </label>

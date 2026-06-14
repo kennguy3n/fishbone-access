@@ -2855,13 +2855,21 @@ label.field > span {
   background: var(--brand-soft);
 }
 .auth-method > input {
-  margin-top: 2px;
+  /* Reset the global full-width input styling so the radio stays a radio and
+     the method label/description keep their space instead of overflowing. */
+  width: auto;
   flex: none;
+  margin: 2px 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
 }
 .auth-method__body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .auth-method__label {
   display: flex;
