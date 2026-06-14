@@ -41,7 +41,12 @@ export function SelfService() {
   const myRequests = useMemo(() => {
     const uid = me.data?.user_id;
     const rows = requests.data ?? [];
-    if (!uid) return rows;
+    // Fail safe for a page titled "Your access": if the caller's identity is
+    // unknown (e.g. /me errored while the request list is still cached), show
+    // nothing rather than the whole workspace's requests. The server still
+    // authorizes the read — this is the user-facing scoping, not a security
+    // boundary — but defaulting to "everything" would break the page's contract.
+    if (!uid) return [];
     return rows.filter(
       (r) => r.requester_id === uid || r.target_user_id === uid,
     );

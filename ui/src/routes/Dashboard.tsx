@@ -13,7 +13,11 @@ import {
 } from "@/api/access";
 import { formatRelative } from "@/lib/format";
 import { useIsWorkspaceAdmin } from "@/lib/permissions";
-import { useOnboardingProgress } from "@/lib/onboarding-store";
+import {
+  useOnboardingProgress,
+  type OnboardingProgress,
+  type OnboardingUpdate,
+} from "@/lib/onboarding-store";
 
 // OnboardingNudge is the day-1 zero-state prompt. It only shows for workspace
 // admins who haven't finished (or dismissed) the guided setup AND whose
@@ -22,16 +26,29 @@ import { useOnboardingProgress } from "@/lib/onboarding-store";
 function OnboardingNudge() {
   const me = useMe();
   if (!me.data) return null;
-  return <OnboardingNudgeInner tenantId={me.data.tenant_id} />;
+  return <OnboardingNudgeGate tenantId={me.data.tenant_id} />;
 }
 
-function OnboardingNudgeInner({ tenantId }: { tenantId: string }) {
+// Resolve admin status and dismissal *before* mounting the body that fires the
+// workspace data queries, so a non-admin (or someone who already finished or
+// dismissed the nudge) never pays for the connector/policy fetches.
+function OnboardingNudgeGate({ tenantId }: { tenantId: string }) {
   const isAdmin = useIsWorkspaceAdmin();
   const [progress, update] = useOnboardingProgress(tenantId);
+  if (!isAdmin || progress.finished || progress.nudgeDismissed) return null;
+  return <OnboardingNudgeBody progress={progress} update={update} />;
+}
+
+function OnboardingNudgeBody({
+  progress,
+  update,
+}: {
+  progress: OnboardingProgress;
+  update: OnboardingUpdate;
+}) {
   const connectors = useConnectors({});
   const policies = usePolicies();
 
-  if (!isAdmin || progress.finished || progress.nudgeDismissed) return null;
   const connected = (connectors.data ?? []).some((c) => c.connected);
   const hasPolicies = (policies.data?.length ?? 0) > 0;
   if (connected && hasPolicies) return null;

@@ -97,17 +97,28 @@ function saveProgress(tenantId: string, value: OnboardingProgress): void {
  * tenant id is part of the lazy initializer so a different bound tenant
  * resolves to its own progress.
  */
+// A progress update is either a flat patch, or a function of the previous state
+// (for updates that derive fields from the current value, e.g. appending to
+// `completed`). The functional form is computed inside the setState updater so
+// it always reads the latest state and can't clobber a concurrent update.
+export type OnboardingPatch =
+  | Partial<OnboardingProgress>
+  | ((prev: OnboardingProgress) => Partial<OnboardingProgress>);
+
+export type OnboardingUpdate = (patch: OnboardingPatch) => void;
+
 export function useOnboardingProgress(
   tenantId: string,
-): [OnboardingProgress, (patch: Partial<OnboardingProgress>) => void] {
+): [OnboardingProgress, OnboardingUpdate] {
   const [state, setState] = useState<OnboardingProgress>(() =>
     loadProgress(tenantId),
   );
 
-  const update = useCallback(
-    (patch: Partial<OnboardingProgress>) => {
+  const update = useCallback<OnboardingUpdate>(
+    (patch) => {
       setState((prev) => {
-        const next = { ...prev, ...patch };
+        const resolved = typeof patch === "function" ? patch(prev) : patch;
+        const next = { ...prev, ...resolved };
         saveProgress(tenantId, next);
         return next;
       });

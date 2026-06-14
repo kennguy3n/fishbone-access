@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { useToast } from "@/components/Toast";
 import {
   useMe,
+  useMyPermissions,
   useConnectors,
   usePolicies,
   useCreatePolicy,
@@ -16,7 +17,7 @@ import {
   type ConnectorCatalogueEntry,
   ApiError,
 } from "@/api/access";
-import { useHasPermission, Perm } from "@/lib/permissions";
+import { useHasPermission, isWorkspaceAdmin, Perm } from "@/lib/permissions";
 import {
   ONBOARDING_STEPS,
   useOnboardingProgress,
@@ -38,11 +39,49 @@ const STEP_LABELS: Record<OnboardingStepId, string> = {
 
 export function Onboarding() {
   const me = useMe();
+  const perms = useMyPermissions();
   // Resolve the bound tenant before mounting the wizard so the progress store
   // keys on the real tenant id from its first render (the persistence hook
   // initializes lazily and won't re-key afterwards).
-  if (me.isLoading) return <LoadingState label="Preparing your setup…" />;
+  if (me.isLoading || perms.isLoading)
+    return <LoadingState label="Preparing your setup…" />;
+  // The wizard drives admin-only mutations and its nav entry is admin-only, but
+  // a non-admin reaching /onboarding directly would otherwise see a wizard that
+  // 403s on submit. Once permissions resolve and the caller isn't an admin,
+  // send them to their self-service portal instead. (Permissions absent = an
+  // unenforced RBAC tier → fail-open to the wizard, matching the server.)
+  if (perms.data && !isWorkspaceAdmin(perms.data.permissions))
+    return <SetupNotAvailable />;
   return <OnboardingWizard tenantId={me.data?.tenant_id ?? ""} />;
+}
+
+// Shown when a non-admin lands on /onboarding directly: day-1 setup is an admin
+// task, so point them at the surface that is theirs rather than a wizard the
+// server will reject.
+function SetupNotAvailable() {
+  return (
+    <>
+      <PageHeader
+        title="Get started"
+        subtitle="Guided setup is handled by a workspace admin."
+      />
+      <Card
+        title="Setup is done by an admin"
+        subtitle="Your role doesn't include workspace setup."
+      >
+        <div className="callout callout--info" role="status">
+          Connecting identity sources, writing access rules, and inviting people
+          are admin tasks. You can request the access you need from your
+          self-service portal — no setup required.
+        </div>
+        <div className="onboard__actions">
+          <Link className="btn btn--primary" to="/self-service">
+            Go to your access
+          </Link>
+        </div>
+      </Card>
+    </>
+  );
 }
 
 function OnboardingWizard({ tenantId }: { tenantId: string }) {
@@ -53,10 +92,18 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   const step = ONBOARDING_STEPS[stepIndex];
 
   const goto = (next: OnboardingStepId) => update({ lastStep: next });
-  const advance = () => {
-    const next = ONBOARDING_STEPS[Math.min(stepIndex + 1, ONBOARDING_STEPS.length - 1)];
-    update({ lastStep: next, completed: withCompleted(progress.completed, step) });
-  };
+  // Derive the next step + completed list from the latest state inside the
+  // updater so rapid advances can't clobber each other's `completed` entries.
+  const advance = () =>
+    update((prev) => {
+      const idx = Math.max(0, ONBOARDING_STEPS.indexOf(prev.lastStep));
+      const next =
+        ONBOARDING_STEPS[Math.min(idx + 1, ONBOARDING_STEPS.length - 1)];
+      return {
+        lastStep: next,
+        completed: withCompleted(prev.completed, ONBOARDING_STEPS[idx]),
+      };
+    });
   const back = () => {
     if (stepIndex === 0) return;
     goto(ONBOARDING_STEPS[stepIndex - 1]);

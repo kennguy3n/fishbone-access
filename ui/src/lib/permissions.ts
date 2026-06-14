@@ -47,13 +47,17 @@ export function useHasPermission(perm: PermKey): boolean {
  * these; a plain operator (end user) does not, so the wizard entry point is
  * hidden for them and the self-service portal is surfaced instead.
  */
+export function isWorkspaceAdmin(permissions: string[]): boolean {
+  return (
+    permissions.includes(Perm.ConnectorManage) ||
+    permissions.includes(Perm.PolicyWrite) ||
+    permissions.includes(Perm.RbacManage) ||
+    permissions.includes(Perm.WorkspaceManage)
+  );
+}
+
 export function useIsWorkspaceAdmin(): boolean {
   const { data } = useMyPermissions();
   if (!data) return true;
-  return (
-    data.permissions.includes(Perm.ConnectorManage) ||
-    data.permissions.includes(Perm.PolicyWrite) ||
-    data.permissions.includes(Perm.RbacManage) ||
-    data.permissions.includes(Perm.WorkspaceManage)
-  );
+  return isWorkspaceAdmin(data.permissions);
 }
