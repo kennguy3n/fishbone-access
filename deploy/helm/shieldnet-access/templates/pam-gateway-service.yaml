@@ -1,0 +1,20 @@
+{{- if .Values.pamGateway.enabled -}}
+{{- $component := "pam-gateway" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  type: {{ .Values.pamGateway.service.type }}
+  selector:
+    {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+  ports:
+    {{- range $name, $port := .Values.pamGateway.service.ports }}
+    - name: {{ $name }}
+      port: {{ $port }}
+      targetPort: {{ $name }}
+      protocol: TCP
+    {{- end }}
+{{- end }}

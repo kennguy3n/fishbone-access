@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shieldnet-access-pam-gateway
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: pam-gateway
+    app.kubernetes.io/part-of: shieldnet-access
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shieldnet-access
+      app.kubernetes.io/component: pam-gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shieldnet-access
+        app.kubernetes.io/component: pam-gateway
+    spec:
+      serviceAccountName: shieldnet-access
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pam-gateway
+          image: ghcr.io/kennguy3n/fishbone-access:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["pam-gateway"]
+          ports:
+            - { name: ssh, containerPort: 2222 }
+            - { name: postgres, containerPort: 5432 }
+            - { name: mysql, containerPort: 3306 }
+            - { name: k8s-exec, containerPort: 8443 }
+            - { name: rdp, containerPort: 3389 }
+            - { name: vnc, containerPort: 5900 }
+            - { name: mongodb, containerPort: 27017 }
+            - { name: redis, containerPort: 6379 }
+            - { name: mssql, containerPort: 1433 }
+            - { name: http, containerPort: 8080 }
+          envFrom:
+            - configMapRef:
+                name: shieldnet-access-config
+            - secretRef:
+                name: shieldnet-access-secrets
+          # No HTTP health endpoint; protocol listeners bind only once Postgres
+          # is connected, so a TCP probe on the SSH listener is the readiness signal.
+          startupProbe:
+            tcpSocket:
+              port: ssh
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket:
+              port: ssh
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: ssh
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # Writable session-replay store (read-only root fs). For production
+            # prefer the S3 store (PAM_REPLAY_S3_BUCKET) so recordings survive restarts.
+            - name: replays
+              mountPath: /var/run/pam-replays
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: replays
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shieldnet-access-pam-gateway
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: pam-gateway
+    app.kubernetes.io/part-of: shieldnet-access
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: pam-gateway
+  ports:
+    - { name: ssh, port: 2222, targetPort: ssh }
+    - { name: postgres, port: 5432, targetPort: postgres }
+    - { name: mysql, port: 3306, targetPort: mysql }
+    - { name: k8s-exec, port: 8443, targetPort: k8s-exec }
+    - { name: rdp, port: 3389, targetPort: rdp }
+    - { name: vnc, port: 5900, targetPort: vnc }
+    - { name: mongodb, port: 27017, targetPort: mongodb }
+    - { name: redis, port: 6379, targetPort: redis }
+    - { name: mssql, port: 1433, targetPort: mssql }
+    - { name: http, port: 8080, targetPort: http }

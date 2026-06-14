@@ -1,4 +1,4 @@
-# Single-server (Tier 1) ShieldNet Access stack: Postgres + Redis + the three
+# Single-server (Tier 1) ShieldNet Access stack: Postgres + Redis + the four
 # Go services. `docker compose up --build --wait` blocks until every service
 # with a healthcheck reports healthy, so this doubles as a CI smoke test.
 #
@@ -6,6 +6,13 @@
 # IAM_CORE_ISSUER (and client credentials) in a .env file to enable
 # authenticated endpoints; without it ztna-api boots in degraded mode and the
 # authenticated API surface returns 503.
+#
+# ACCESS_CREDENTIAL_DEK below defaults to a throwaway DEV-ONLY key so the
+# credential-encryption path works out of the box and access-workflow-engine
+# (which refuses to boot without a credential key) actually starts. NEVER use
+# this value outside local dev — override it via a .env file. All three
+# credential-handling services share the same key so secrets seal/open
+# consistently across the stack.
 
 services:
   postgres:
@@ -47,7 +54,7 @@ services:
       IAM_CORE_CLIENT_ID: "${IAM_CORE_CLIENT_ID:-}"
       IAM_CORE_CLIENT_SECRET: "${IAM_CORE_CLIENT_SECRET:-}"
       IAM_CORE_AUDIENCE: "${IAM_CORE_AUDIENCE:-}"
-      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-}"
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-QTw6wycdVC/eucyv4tPXzAb6NM2McLIM/w8OFFl8UeY=}"
     ports:
       - "8080:8080"
     depends_on:
@@ -68,11 +75,32 @@ services:
       ACCESS_ENV: dev
       ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
       ACCESS_REDIS_URL: "redis://redis:6379/0"
-      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-}"
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-QTw6wycdVC/eucyv4tPXzAb6NM2McLIM/w8OFFl8UeY=}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      # ztna-api owns the schema migrations; wait for it so the worker doesn't
+      # poll access_jobs before the tables exist on a fresh stack.
+      ztna-api:
+        condition: service_healthy
+
+  access-workflow-engine:
+    build: .
+    command: ["access-workflow-engine"]
+    environment:
+      ACCESS_ENV: dev
+      ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
+      # Requires a credential key (DEK or KMS master) or it refuses to start;
+      # defaults to the shared dev-only key above (override via .env).
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-QTw6wycdVC/eucyv4tPXzAb6NM2McLIM/w8OFFl8UeY=}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # ztna-api is authoritative for schema migrations; wait for it so the
+      # engine doesn't poll access_jobs before the tables exist.
+      ztna-api:
         condition: service_healthy
 
   pam-gateway:

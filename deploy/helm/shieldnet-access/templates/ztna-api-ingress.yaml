@@ -1,0 +1,38 @@
+{{- if .Values.ztnaApi.ingress.enabled -}}
+{{- $component := "ztna-api" -}}
+{{- $svc := include "shieldnet-access.componentName" (dict "ctx" . "component" $component) -}}
+{{- $port := .Values.ztnaApi.service.port -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+  {{- with .Values.ztnaApi.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ztnaApi.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ztnaApi.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.ztnaApi.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $svc }}
+                port:
+                  number: {{ $port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,96 @@
+{{- $component := "ztna-api" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  {{- if not .Values.ztnaApi.autoscaling.enabled }}
+  replicas: {{ .Values.ztnaApi.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll pods when the rendered config/secret change.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "shieldnet-access.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $component }}
+          image: {{ include "shieldnet-access.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["ztna-api"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            {{- include "shieldnet-access.envFrom" . | nindent 12 }}
+          {{- with (include "shieldnet-access.extraEnv" .) }}
+          env:
+            {{- . | nindent 12 }}
+          {{- end }}
+          # The HTTP listener only opens AFTER startup migrations finish, so the
+          # startup probe gives a generous window before liveness/readiness take
+          # over and never kills a slow first-boot migration.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.ztnaApi.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.ztnaApi.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ztnaApi.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ztnaApi.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

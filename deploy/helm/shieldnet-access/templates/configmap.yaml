@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "shieldnet-access.configMapName" . }}
+  labels:
+    {{- include "shieldnet-access.labels" . | nindent 4 }}
+data:
+  # --- core ---
+  ACCESS_ENV: {{ .Values.config.env | quote }}
+  ACCESS_HTTP_ADDR: {{ .Values.config.httpAddr | quote }}
+  ACCESS_DATABASE_DRIVER: {{ .Values.config.databaseDriver | quote }}
+  ACCESS_KMS_KEY_VERSION: {{ .Values.config.kmsKeyVersion | quote }}
+  ACCESS_SHUTDOWN_TIMEOUT: {{ .Values.config.shutdownTimeout | quote }}
+  # --- database pool ---
+  ACCESS_DB_MAX_OPEN_CONNS: {{ .Values.config.dbMaxOpenConns | quote }}
+  ACCESS_DB_PGX_MAX_CONNS: {{ .Values.config.dbPgxMaxConns | quote }}
+  ACCESS_DB_MAX_IDLE_CONNS: {{ .Values.config.dbMaxIdleConns | quote }}
+  ACCESS_DB_CONN_MAX_LIFETIME: {{ .Values.config.dbConnMaxLifetime | quote }}
+  ACCESS_DB_CONN_MAX_IDLE_TIME: {{ .Values.config.dbConnMaxIdleTime | quote }}
+  # --- tenancy / hibernation ---
+  ACCESS_TENANCY_HIBERNATION_ENABLED: {{ .Values.config.tenancy.hibernationEnabled | quote }}
+  ACCESS_TENANCY_DORMANT_IDLE: {{ .Values.config.tenancy.dormantIdle | quote }}
+  ACCESS_TENANCY_RECONCILE_INTERVAL: {{ .Values.config.tenancy.reconcileInterval | quote }}
+  ACCESS_TENANCY_ACTIVITY_FLUSH: {{ .Values.config.tenancy.activityFlush | quote }}
+  ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE: {{ .Values.config.tenancy.activityQueueSize | quote }}
+  ACCESS_TENANCY_DEFAULT_TIER: {{ .Values.config.tenancy.defaultTier | quote }}
+  # --- per-tenant rate limiting (in-memory, per replica: ceiling = replicas × rps) ---
+  ACCESS_TENANT_RATE_LIMIT_ENABLED: {{ .Values.config.rateLimit.enabled | quote }}
+  ACCESS_TENANT_RATE_LIMIT_RPS: {{ .Values.config.rateLimit.rps | quote }}
+  ACCESS_TENANT_RATE_LIMIT_BURST: {{ .Values.config.rateLimit.burst | quote }}
+  # --- iam-core (non-secret; client secret is a Secret) ---
+  IAM_CORE_ISSUER: {{ .Values.config.iamCore.issuer | quote }}
+  IAM_CORE_JWKS_URL: {{ .Values.config.iamCore.jwksUrl | quote }}
+  IAM_CORE_OIDC_DISCOVERY: {{ .Values.config.iamCore.discoveryUrl | quote }}
+  IAM_CORE_AUDIENCE: {{ .Values.config.iamCore.audience | quote }}
+  IAM_CORE_CLIENT_ID: {{ .Values.config.iamCore.clientId | quote }}
+  IAM_CORE_MGMT_BASE_URL: {{ .Values.config.iamCore.managementBaseUrl | quote }}
+  # --- AI agent (non-secret; api key is a Secret) ---
+  ACCESS_AI_AGENT_URL: {{ .Values.config.aiAgent.url | quote }}
+  ACCESS_AI_AGENT_TIMEOUT: {{ .Values.config.aiAgent.timeout | quote }}
+  # --- pam-gateway operational (non-secret) ---
+  PAM_REPLAY_DIR: {{ .Values.config.pam.replayDir | quote }}
+  PAM_REPLAY_S3_BUCKET: {{ .Values.config.pam.replayS3Bucket | quote }}
+  PAM_REPLAY_S3_REGION: {{ .Values.config.pam.replayS3Region | quote }}
+  PAM_REPLAY_S3_ENDPOINT: {{ .Values.config.pam.replayS3Endpoint | quote }}
+  PAM_STEPUP_MAX_AGE: {{ .Values.config.pam.stepUpMaxAge | quote }}
+  PAM_SSH_CERT_TTL: {{ .Values.config.pam.sshCertTtl | quote }}
+  # --- observability (tracing opt-in: set to a collector to enable) ---
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.observability.otelExporterOtlpEndpoint | quote }}
+  {{- with .Values.config.http }}
+  # --- outbound HTTP transport tuning (connector fan-out) ---
+  {{- with .maxIdleConns }}
+  ACCESS_HTTP_MAX_IDLE_CONNS: {{ . | quote }}
+  {{- end }}
+  {{- with .maxIdleConnsPerHost }}
+  ACCESS_HTTP_MAX_IDLE_CONNS_PER_HOST: {{ . | quote }}
+  {{- end }}
+  {{- with .maxConnsPerHost }}
+  ACCESS_HTTP_MAX_CONNS_PER_HOST: {{ . | quote }}
+  {{- end }}
+  {{- with .idleConnTimeout }}
+  ACCESS_HTTP_IDLE_CONN_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .tlsHandshakeTimeout }}
+  ACCESS_HTTP_TLS_HANDSHAKE_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .dialTimeout }}
+  ACCESS_HTTP_DIAL_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- end }}

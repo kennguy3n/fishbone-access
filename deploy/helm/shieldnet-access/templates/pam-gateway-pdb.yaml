@@ -1,0 +1,14 @@
+{{- if and .Values.pamGateway.enabled .Values.pamGateway.podDisruptionBudget.enabled -}}
+{{- $component := "pam-gateway" -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pamGateway.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 6 }}
+{{- end }}

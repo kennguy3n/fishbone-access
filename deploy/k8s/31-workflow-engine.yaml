@@ -1,0 +1,61 @@
+# access-workflow-engine REQUIRES a credential key (ACCESS_KMS_MASTER_KEY or
+# ACCESS_CREDENTIAL_DEK in the Secret) or it refuses to start.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shieldnet-access-workflow-engine
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: access-workflow-engine
+    app.kubernetes.io/part-of: shieldnet-access
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shieldnet-access
+      app.kubernetes.io/component: access-workflow-engine
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shieldnet-access
+        app.kubernetes.io/component: access-workflow-engine
+    spec:
+      serviceAccountName: shieldnet-access
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: access-workflow-engine
+          image: ghcr.io/kennguy3n/fishbone-access:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["access-workflow-engine"]
+          envFrom:
+            - configMapRef:
+                name: shieldnet-access-config
+            - secretRef:
+                name: shieldnet-access-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 192Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

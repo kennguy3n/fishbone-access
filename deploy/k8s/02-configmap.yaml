@@ -1,0 +1,46 @@
+# Non-secret ACCESS_* / PAM_* / OTEL_* configuration. Every key maps to an
+# environment variable read by internal/config/config.go (and the gateway /
+# observability packages). Secrets live in 03-secret.example.yaml, never here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shieldnet-access-config
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/part-of: shieldnet-access
+data:
+  # --- core ---
+  ACCESS_ENV: "prod"
+  ACCESS_HTTP_ADDR: ":8080"
+  ACCESS_DATABASE_DRIVER: "pgx"
+  ACCESS_KMS_KEY_VERSION: "1"
+  ACCESS_SHUTDOWN_TIMEOUT: "10s"
+  # --- database pool (per process); see deploy/SCALE_SIZING.md ---
+  ACCESS_DB_MAX_OPEN_CONNS: "25"
+  ACCESS_DB_PGX_MAX_CONNS: "8"
+  ACCESS_DB_MAX_IDLE_CONNS: "5"
+  ACCESS_DB_CONN_MAX_LIFETIME: "30m"
+  ACCESS_DB_CONN_MAX_IDLE_TIME: "5m"
+  # --- tenancy / hibernation ---
+  ACCESS_TENANCY_HIBERNATION_ENABLED: "true"
+  ACCESS_TENANCY_DORMANT_IDLE: "336h"
+  ACCESS_TENANCY_RECONCILE_INTERVAL: "15m"
+  ACCESS_TENANCY_ACTIVITY_FLUSH: "60s"
+  ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE: "8192"
+  ACCESS_TENANCY_DEFAULT_TIER: "trial"
+  # --- per-tenant rate limiting (in-memory, per replica: ceiling = replicas × rps) ---
+  ACCESS_TENANT_RATE_LIMIT_ENABLED: "true"
+  ACCESS_TENANT_RATE_LIMIT_RPS: "50"
+  ACCESS_TENANT_RATE_LIMIT_BURST: "100"
+  # --- iam-core (non-secret; client secret is in the Secret). Empty issuer ⇒
+  #     authenticated API returns 503 (fail closed). Set to enable real auth. ---
+  IAM_CORE_ISSUER: ""
+  IAM_CORE_AUDIENCE: ""
+  IAM_CORE_CLIENT_ID: ""
+  # --- pam-gateway operational (non-secret). Writable replay dir (read-only root fs). ---
+  PAM_REPLAY_DIR: "/var/run/pam-replays"
+  PAM_STEPUP_MAX_AGE: "5m"
+  PAM_SSH_CERT_TTL: "5m"
+  # --- observability: set to a collector (e.g. http://otel-collector:4317) to enable tracing ---
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
