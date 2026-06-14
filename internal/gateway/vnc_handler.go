@@ -80,7 +80,7 @@ const maxRFBCutTextLen = 4 * 1024 * 1024
 // as the gateway using VNC Authentication (DES challenge-response) with the
 // JIT-injected vault password, bridges the ClientInit/ServerInit exchange, then
 // relays the RFB stream with frame-buffer recording. ClientCutText (clipboard
-// paste) messages are gated against the 1C policy engine and dropped when
+// paste) messages are gated against the policy engine and dropped when
 // denied. Session open/close lands in the workspace audit hash chain.
 type VNCProxy struct {
 	broker      *pam.Broker

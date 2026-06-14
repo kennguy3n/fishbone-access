@@ -3,7 +3,7 @@ info:
   title: ShieldNet Access — Lifecycle & Policy API
   version: "1.0.0"
   description: |
-    Session 1C surface of the ShieldNet Access control plane: access-request
+    The lifecycle and policy surface of the ShieldNet Access control plane: access-request
     lifecycle, policy draft/simulate/promote, access-review campaigns, JML/SCIM
     automation, orphan reconciliation, grant expiry, and SSO enforcement status.
 

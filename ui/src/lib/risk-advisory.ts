@@ -1,4 +1,4 @@
-// risk-advisory.ts — risky-access classification for the web console (WS5).
+// risk-advisory.ts — risky-access classification for the web console.
 //
 // The control plane computes the AI risk verdict and advisory anomaly flags
 // server-side; `GET /api/v1/access-requests/:id` returns `{ request, risk,

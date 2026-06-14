@@ -183,7 +183,7 @@ func TestRBACAuditorReadAllowedWriteDenied(t *testing.T) {
 	}
 }
 
-// TestRBACWorkflowGating proves the WS3 workflow routes honor the workflow.read
+// TestRBACWorkflowGating proves the workflow routes honor the workflow.read
 // / workflow.edit split: a read-only auditor may list workflows but cannot
 // author one or fire the emergency-offboard kill switch, while an edit-holder
 // (admin) clears the permission gate. This guards the separation of duties the
@@ -212,7 +212,7 @@ func TestRBACWorkflowGating(t *testing.T) {
 	}
 }
 
-// TestRBACPAMTargetGating proves the WS4 PAM target routes honor the
+// TestRBACPAMTargetGating proves the PAM target routes honor the
 // pam.target.read / pam.target.write split. Registering a target binds a sealed
 // credential to the workspace, so it is a privileged write: a standard operator
 // holds pam.target.read (may list) but not pam.target.write (may not register),
@@ -251,7 +251,7 @@ func TestRBACPAMTargetGating(t *testing.T) {
 	}
 }
 
-// TestRBACConnectorGating proves the WS2 connector routes honor the
+// TestRBACConnectorGating proves the connector routes honor the
 // connector.read / connector.manage split. An operator holds connector.read so
 // the catalogue list is allowed, but lacks connector.manage so creating a
 // connector is denied at the permission gate. A compliance auditor holds

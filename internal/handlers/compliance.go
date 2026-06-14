@@ -32,7 +32,7 @@ const (
 	evidenceMaxLimit     = 1000
 )
 
-// complianceHandlers serves the WS6 compliance surface: the evidence stream /
+// complianceHandlers serves the compliance surface: the evidence stream /
 // coverage / chain-verification read APIs, full certification campaigns, and
 // the framework-mapped evidence-pack export. Like the lifecycle handlers, every
 // handler derives workspace + actor from the request context (never the body),
@@ -47,7 +47,7 @@ type complianceHandlers struct {
 // newComplianceHandlers wires the compliance services off the shared DB pool.
 // The certification service reuses the provisioning service as its grant
 // revoker so a campaign close drives the same idempotent connector teardown the
-// 1C review path uses, rather than a parallel one.
+// access-review path uses, rather than a parallel one.
 func newComplianceHandlers(deps Deps) *complianceHandlers {
 	db := deps.DB
 	resolver := lifecycle.NewDBConnectorResolver(db, deps.ConnectorEncryptor)

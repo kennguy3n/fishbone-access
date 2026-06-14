@@ -184,7 +184,7 @@ func run() error {
 			logger.Warnf(ctx, "ztna-api: db pool metrics not registered: %v", err)
 		}
 		// Own the pool: close it on the way out so we don't leak idle Postgres
-		// connections (the pool outlives setupDatabase because the 1B-1E
+		// connections (the pool outlives setupDatabase because the
 		// handlers query through it).
 		defer func() {
 			if sqlDB, err := gdb.DB(); err == nil {
@@ -193,7 +193,7 @@ func run() error {
 		}()
 
 		// Route RequireTenant's tenant→workspace resolution through the backend
-		// selected by ACCESS_DATABASE_DRIVER (WS10/WS15 GORM→pgx migration, starting
+		// selected by ACCESS_DATABASE_DRIVER (the GORM→pgx migration, starting
 		// with the workspace-config read on the hot path of every authenticated
 		// request). Both backends honour the identical contract (same query, same
 		// gorm.ErrRecordNotFound on a miss), so tenant isolation is unchanged
@@ -367,7 +367,7 @@ func run() error {
 
 	// Periodic lifecycle maintenance: the grant-expiry sweep and the daily
 	// orphan-account reconciliation. Run in-process (tied to the server's
-	// signal context) so expiry is enforced even before the Session 1B durable
+	// signal context) so expiry is enforced even before the durable
 	// worker queue lands. The sweeps are idempotent and workspace-scoped, so
 	// running them on every replica is safe. Only started when a DB is present.
 	if deps.DB != nil {
@@ -410,7 +410,7 @@ func run() error {
 		logger.Infof(ctx, "ztna-api: lifecycle scheduler started (expiry + orphan reconciliation + sod anomaly evidence + contractor expiry)")
 	}
 
-	// Tenant hibernation (WS1 scale/NoOps): track per-tenant activity, classify
+	// Tenant hibernation: track per-tenant activity, classify
 	// the dormant-trial fraction, and let periodic workers skip them so the
 	// dormant majority costs ~nothing. Background loops are tied to the signal
 	// context and joined on the way out (LIFO, after the scheduler, before the

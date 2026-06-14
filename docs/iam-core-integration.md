@@ -2,9 +2,8 @@
 
 This is the single source of truth for how **fishbone-access** (ShieldNet Access)
 and **visible-fishbone** (ShieldNet Gateway) integrate with **uneycom/iam-core**
-as their identity provider. All child sessions must follow this contract so the
-two products stay consistent. Replaces every Keycloak reference inherited from
-cautious-fishstick.
+as their identity provider. It is the contract both products implement so they
+stay consistent. There is no Keycloak anywhere in either product.
 
 ## iam-core facts (verified from uneycom/iam-core protos + server code)
 
@@ -26,9 +25,9 @@ API is defined in `iam-core-api/api/**/*.proto`. Verified endpoints:
 - MFA (TOTP): `POST /auth/mfa/totp/enroll`, `POST /auth/api/mfa/totp/confirm`,
   `GET /auth/mfa/status`, `POST /auth/mfa/totp/disable`,
   `POST /auth/mfa/recovery-codes/generate`
-- **NOTE:** there is **no** `/auth/mfa/verify` endpoint (the original plan's
-  reference is wrong). MFA is enforced **inside the OIDC/login flow**: when a
-  tenant requires MFA, the universal-login flow challenges the user and the
+- **NOTE:** there is **no** `/auth/mfa/verify` endpoint. MFA is enforced
+  **inside the OIDC/login flow**: when a tenant requires MFA, the
+  universal-login flow challenges the user and the
   resulting access token carries an MFA/`amr` claim. For **step-up** in
   ShieldNet (PAM secret reveal, sensitive ops), the correct pattern is:
   (1) read MFA state from token claims (`amr`/custom `mfa` claim); if absent,
@@ -62,7 +61,7 @@ API is defined in `iam-core-api/api/**/*.proto`. Verified endpoints:
 ### 1. JWT validation middleware (shared pattern)
 - Fetch + cache JWKS from `${IAM_CORE_ISSUER}/oauth2/jwks` (honor cache headers;
   refresh on unknown `kid`). In Go use `github.com/MicahParks/keyfunc/v3`
-  (already a cautious-fishstick dependency) or lestrrat-go/jwx.
+  or lestrrat-go/jwx.
 - Validate: signature (RS256/ES256 per JWKS), `iss == IAM_CORE_ISSUER`,
   `aud` contains the product's client/audience, `exp`/`nbf`/`iat`.
 - Extract claims → request context: `sub` (iam-core user_id), `tenant_id`
@@ -92,7 +91,7 @@ API is defined in `iam-core-api/api/**/*.proto`. Verified endpoints:
   → `google-oauth2`; Okta/Ping/OneLogin/JumpCloud/Auth0 → `oidc` (generic);
   Zoho → `zoho`; GitHub → `github`.
 
-### 4. SCIM bridge (visible-fishbone specific, Session 2A)
+### 4. SCIM bridge (visible-fishbone specific)
 - iam-core has no SCIM inbound yet. SNG already exposes SCIM 2.0
   (`internal/service/identity/scim.go`). Wire SNG's SCIM create/update/delete →
   iam-core Management API (`POST/GET/DELETE /api/v1/management/users`,
@@ -104,7 +103,7 @@ API is defined in `iam-core-api/api/**/*.proto`. Verified endpoints:
   with MFA-requesting claims or introspect; never call a nonexistent verify
   endpoint (see NOTE above).
 
-### 6. Endpoint clients (visible-fishbone `crates/sng-oidc`, Session 2E)
+### 6. Endpoint clients (visible-fishbone `crates/sng-oidc`)
 - Point PKCE flow at iam-core `/.well-known/openid-configuration` for discovery
   and `/oauth2/authorize` + `/oauth2/token`. Handle the MFA-challenge path
   surfaced by the universal-login flow.
@@ -124,8 +123,7 @@ Mgmt API calls authenticate with a `client_credentials` token minted at
 `/oauth2/token` for the management audience; cache + refresh before expiry.
 
 ## Hard rules
-- No Keycloak anywhere. No runtime dependency between fishbone-access and
-  cautious-fishstick (cautious-fishstick is read-only reference only).
+- No Keycloak anywhere. iam-core is the only identity provider.
 - Secrets encrypted at rest (AES-GCM). Inter-service over TLS/mTLS. Tenant
   isolation enforced at every layer. No stubs — real API calls, real tests;
   mock iam-core only in unit tests.

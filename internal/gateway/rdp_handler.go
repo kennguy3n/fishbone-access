@@ -73,7 +73,7 @@ type rdpChannelDef struct {
 // target configures (standard RDP, TLS, or NLA/CredSSP). It injects the JIT vault
 // credential into the Client Info PDU (TS_INFO_PACKET domain/username/password)
 // and gates clipboard and drive redirection by dropping virtual-channel PDUs on
-// the cliprdr/rdpdr channels when the 1C policy engine denies them. The stream
+// the cliprdr/rdpdr channels when the policy engine denies them. The stream
 // is recorded and the session open/close is appended to the workspace audit
 // hash chain.
 //
@@ -286,7 +286,7 @@ func (p *RDPProxy) negotiateOperator(ctx context.Context, conn net.Conn, operato
 }
 
 // clipboardAllowed evaluates the synthetic "clipboard:redirect" command against
-// the 1C policy engine once per session and records the decision in the audit
+// the policy engine once per session and records the decision in the audit
 // chain.
 func (p *RDPProxy) clipboardAllowed(ctx context.Context, session *models.PAMSession) bool {
 	decision, err := p.sessions.LogCommand(ctx, session, "clipboard:redirect")

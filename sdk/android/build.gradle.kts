@@ -22,7 +22,7 @@ plugins {
 }
 
 group = "com.shieldnet.access"
-version = (findProperty("sdk.android.version") as String?) ?: "0.1.0"
+version = (findProperty("sdk.android.version") as String?) ?: "0.2.0"
 
 repositories {
     mavenCentral()

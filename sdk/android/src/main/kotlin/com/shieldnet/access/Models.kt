@@ -13,7 +13,7 @@
  * `{"history": [...]}`); the concrete client unwraps these envelopes.
  *
  * There is NO on-device inference in this SDK. The "AI risk verdict" the
- * approver sees is computed server-side (the access-ai-agent, WS5) and
+ * approver sees is computed server-side (the access-ai-agent) and
  * surfaced here only as the persisted [AccessRequest.riskLevel] /
  * [AccessRequest.riskFactors] fields plus the [WorkflowDecision] routing
  * outcome. The SDK never imports a model runtime and ships no model files.
@@ -65,8 +65,8 @@ enum class AccessRequestState(val wireValue: String) {
  * `risk_level` enum (`low` / `medium` / `high`) understood by the
  * risk-based router in `internal/services/lifecycle/workflow_service.go`.
  *
- * The bucket is populated server-side by the access-ai-agent risk review
- * (WS5); the SDK only reads it.
+ * The bucket is populated server-side by the access-ai-agent risk review;
+ * the SDK only reads it.
  */
 enum class RiskLevel(val wireValue: String) {
     LOW("low"),
@@ -212,7 +212,7 @@ data class StateHistoryEntry(
 )
 
 /**
- * An active upstream grant — the JIT lease (WS4) materialised when an
+ * An active upstream grant — the JIT lease materialised when an
  * approved request is provisioned. Mirrors `models.AccessGrant`. The lease
  * "countdown" is [expiresAt]; use [remaining] / [isActive] to drive a UI
  * timer without re-deriving the arithmetic per call site.

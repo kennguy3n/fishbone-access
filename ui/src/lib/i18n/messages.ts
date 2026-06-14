@@ -48,7 +48,7 @@ export type MessageKey =
   | "nav.campaigns"
   | "nav.evidence"
   | "nav.settings"
-  // WS5 — access-request AI risk review surface.
+  // Access-request AI risk review surface.
   | "requests.risk.title"
   | "requests.risk.score"
   | "requests.risk.recommendation"

@@ -3,7 +3,7 @@
 The SDK is versioned independently of the backend. Tags follow
 `sdk-android-vMAJOR.MINOR.PATCH`. See `PUBLISHING.md` for the release flow.
 
-## 0.2.0 — cross-platform revoke UX (WS5)
+## 0.2.0 — cross-platform revoke UX
 
 - Adds two methods to the `AccessClient` interface (now 12 methods):
   - `getRequestDetail(id)` reads the same `GET /access-requests/:id` endpoint
@@ -26,7 +26,7 @@ The SDK is versioned independently of the backend. Tags follow
   score, and any elevated anomaly; `Revocation.plan` gates a high-risk revoke
   behind step-up MFA so the UX matches the web console and iOS SDK.
 - No new dependencies; identical logic and wire mapping to the iOS SDK.
-- `RiskAssessment.evaluate` now emits an `"AI verdict score: medium"` reason when
+- `RiskAssessment.evaluate` emits an `"AI verdict score: medium"` reason when
   a medium verdict score diverges from the request band, so an `isElevated`
   advisory never renders with an empty justification. Matches the iOS/web
   classifiers byte-for-byte.
@@ -36,7 +36,7 @@ The SDK is versioned independently of the backend. Tags follow
   makes this state reachable from the SDK, so the enum now matches the server
   state machine and `docs/openapi.yaml` exactly.
 
-## 0.1.0 — initial publishable cut
+## 0.1.0
 
 - First public Maven artifact (`com.shieldnet.access:access-sdk:0.1.0`).
 - Ships the `AccessClient` Kotlin interface with all 10 REST methods mapping to
@@ -51,8 +51,8 @@ The SDK is versioned independently of the backend. Tags follow
   `Http`, `Decoding`, `InvalidInput`, `Unauthenticated`, `StepUpRequired`, and
   `NotConfigured` subclasses. `StepUpRequired` surfaces the server's high-risk
   step-up-MFA gate so the host can drive WebAuthn and retry.
-- Surfaces the server-side AI risk verdict (WS5) via `AccessRequest.riskLevel` /
+- Surfaces the server-side AI risk verdict via `AccessRequest.riskLevel` /
   `riskFactors` and the `WorkflowDecision` routing lane. No on-device inference.
-- Models JIT leases (WS4) as `AccessGrant` with fail-closed `isActive()` /
+- Models JIT leases as `AccessGrant` with fail-closed `isActive()` /
   `remaining()` countdown helpers.
 - Ships a Kotlin JVM sample under `sdk/android/example/`.

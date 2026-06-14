@@ -1,6 +1,6 @@
 // Package workflow_engine orchestrates the ShieldNet Access JML
 // (Joiner/Mover/Leaver) lifecycle, approval chains, and scheduled access
-// reviews on top of the 1C lifecycle services and the 1B connector worker
+// reviews on top of the lifecycle services and the connector worker
 // queue.
 //
 // The engine never re-implements the access-request FSM, the connector

@@ -1,4 +1,4 @@
--- WS2: time-boxed, sponsor-approved contractor / external access grants.
+-- Time-boxed, sponsor-approved contractor / external access grants.
 --
 -- Every contractor grant carries a MANDATORY expires_at (NOT NULL) and a named
 -- internal sponsor, so external access is time-boxed and owned by construction.

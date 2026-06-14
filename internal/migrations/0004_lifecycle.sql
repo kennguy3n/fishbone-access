@@ -1,4 +1,4 @@
--- Session 1C: access-request lifecycle + policy engine schema.
+-- Access-request lifecycle + policy engine schema.
 --
 -- Extends the 0001 core schema with the request state-history audit trail,
 -- the columns the provisioning + JML services need on access_requests and
@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_chain_seq ON audit_events(workspace_
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS draft_impact JSONB;
 ALTER TABLE policies ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ;
 
--- access_reviews: campaigns start active (the 1C review lifecycle is
+-- access_reviews: campaigns start active (the access-review lifecycle is
 -- active → completed; there is no draft campaign state), so align the column
 -- default with the only initial state the service produces. The 0001 default
 -- of 'draft' was never exercised because StartCampaign always sets state

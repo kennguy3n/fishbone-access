@@ -3,7 +3,7 @@
 The SDK is versioned independently of the backend. Tags follow
 `sdk-ios-vMAJOR.MINOR.PATCH`. See `PUBLISHING.md` for the release flow.
 
-## 0.2.0 — cross-platform revoke UX (WS5)
+## 0.2.0 — cross-platform revoke UX
 
 - Adds two methods to the `AccessClient` protocol (now 12 methods):
   - `getRequestDetail(id:)` reads the same `GET /access-requests/:id` endpoint
@@ -28,7 +28,7 @@ The SDK is versioned independently of the backend. Tags follow
   behind step-up MFA so the UX matches the web console and Android SDK.
 - No new dependencies (Foundation-only); identical logic and wire mapping to the
   Android SDK.
-- `RiskAssessment.evaluate` now emits an `"AI verdict score: medium"` reason when
+- `RiskAssessment.evaluate` emits an `"AI verdict score: medium"` reason when
   a medium verdict score diverges from the request band, so an `isElevated`
   advisory never renders with an empty justification. Matches the Android/web
   classifiers byte-for-byte.
@@ -38,7 +38,7 @@ The SDK is versioned independently of the backend. Tags follow
   `getRequestDetail(id:)` makes this state reachable from the SDK, so the enum
   now matches the server state machine and `docs/openapi.yaml` exactly.
 
-## 0.1.0 — initial publishable cut
+## 0.1.0
 
 - First Swift Package release of `ShieldNetAccess` (iOS 15+, macOS 12+).
 - Ships the `AccessClient` protocol with all 10 async methods mapping to the
@@ -53,9 +53,9 @@ The SDK is versioned independently of the backend. Tags follow
 - Ships the typed `AccessSDKError` enum: `transport`, `http`, `decoding`,
   `invalidInput`, `unauthenticated`, `stepUpRequired`, `notConfigured`.
   `stepUpRequired` surfaces the server's high-risk step-up-MFA gate.
-- Surfaces the server-side AI risk verdict (WS5) via `AccessRequest.riskLevel` /
+- Surfaces the server-side AI risk verdict via `AccessRequest.riskLevel` /
   `riskFactors` and the `WorkflowDecision`. No on-device inference (no CoreML /
   MLX / bundled model files).
-- Models JIT leases (WS4) as `AccessGrant` with fail-closed `isActive()` /
+- Models JIT leases as `AccessGrant` with fail-closed `isActive()` /
   `remaining()` helpers.
 - Ships a compiled console sample under `sdk/ios/Example/` (`swift run AccessExample`).

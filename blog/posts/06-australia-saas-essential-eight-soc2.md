@@ -89,14 +89,13 @@ If a single byte of any evidence record was altered after the fact, a link
 breaks and the chain fails. That's the difference between "here are some
 screenshots" and "here is a tamper-evident record you can independently verify."
 
-> Note on the numbers: the export now runs **before** the capture snapshots the
-> chain (an ordering fix from the first cut), so the committed manifest, the
-> live screenshot and `chain-verification.json` all agree at `length: 94` — the
-> `evidence_exported` record is itself inside the verified chain (it is record
-> `#94`, the newest row in the screenshot's timeline). The manifest's
-> `pam-recordings.jsonl` now carries a line for the **recorded privileged
-> session** (`pam_sessions = 1`), not an empty slot, and the SOC 2 coverage is
-> the full **6 / 6** controls over **50** evidence records.
+> Note on the numbers: the export runs **before** the capture snapshots the
+> chain, so the committed manifest, the live screenshot and
+> `chain-verification.json` all agree at `length: 94` — the `evidence_exported`
+> record is itself inside the verified chain (it is record `#94`, the newest row
+> in the screenshot's timeline). The manifest's `pam-recordings.jsonl` carries a
+> line for the **recorded privileged session** (`pam_sessions = 1`), and the
+> SOC 2 coverage is the full **6 / 6** controls over **50** evidence records.
 >
 > One honest subtlety the digest makes concrete: every export is a fresh
 > invocation, so its `content_sha256` is computed over a manifest that includes
@@ -143,13 +142,12 @@ the certification — is on the *same* hash chain the export re-verifies. That i
 the point: the evidence pack is a single, tamper-evident record of the entire
 access lifecycle, not a folder of disconnected reports.
 
-## Where we fall short — the gaps closed, and the line we stop at
+## Where we fall short — and the line we stop at
 
-Contoso's SOC 2 coverage is now **6 / 6**. The two controls the first cut showed
-at 0 records are covered — with a stated boundary on each:
+Contoso's SOC 2 coverage is **6 / 6**, with a stated boundary on each control:
 
 - **`CC6.7` "Privileged access monitored" — covered.** `pam_sessions = 1`: the JIT
-  lease to the prod DB/VM is now followed by a recorded, replayable, chain-anchored
+  lease to the prod DB/VM is followed by a recorded, replayable, chain-anchored
   session. The residual (Post 5 is the full version): the recorder drives
   representative commands against a bastion target, proving the
   record-and-replay pipeline — it is not an in-path proxy capturing live keystrokes
@@ -157,13 +155,13 @@ at 0 records are covered — with a stated boundary on each:
 - **`CC7.3` "Orphan / anomalous access detected and dispositioned" — covered via
   the standing SoD anomaly.** A subject really holds both halves of a toxic
   combination and the sweep detects + dispositions it. The **orphan** scan still
-  ran and found 0 (honest — nothing to disposition), and we still don't run
-  behavioural anomaly analytics; the `CC7.3` evidence is the declared-rule SoD
-  anomaly, not ML.
+  ran and found 0 (honest — nothing to disposition), and we don't run behavioural
+  anomaly analytics; the `CC7.3` evidence is the declared-rule SoD anomaly, not
+  ML.
 
 That 6/6 is honest because each cell is backed by a real evidence record an
-auditor can open and re-verify — and the two newest cells come with an explicit
-statement of what they do and don't prove, rather than a loose mapping.
+auditor can open and re-verify — and the privileged-access cells come with an
+explicit statement of what they do and don't prove, rather than a loose mapping.
 
 ## The full competitive scorecard
 
@@ -196,7 +194,7 @@ Across the whole series, here is the honest positioning:
 
 - **If your risk is recording the privileged *session* off a live wire**
   (keystrokes inside core-banking, a prod DB, Kubernetes): **CyberArk** (vault +
-  session), or **Teleport / StrongDM** for modern infra access. We now govern the
+  session), or **Teleport / StrongDM** for modern infra access. We govern the
   JIT *lease* and record + replay a chained session, but the demo upstream is a
   bastion — we are not an in-path proxy vaulting the live credential and capturing
   real keystrokes, so pair us with one of these where in-path interception is the
@@ -209,7 +207,7 @@ Across the whole series, here is the honest positioning:
   anomaly we use to evidence `CC7.3`.
 - **If your worry is that a verifiable chain gets *expensive* to keep proving
   as years of evidence pile up:** that is the one scaling axis where the chain
-  could have hurt, and it is the gap this cut closes. A full verify is O(n) in
+  could hurt, and the incremental verify is the answer. A full verify is O(n) in
   chain length; the incremental verify (Post 7) re-proves only the rows added
   since a trusted anchor, so an interactive dashboard pays O(Δ) per refresh and
   a periodic full sweep stays the root of trust. The `n/a` column entries are
@@ -225,10 +223,10 @@ Across the whole series, here is the honest positioning:
 
 **The honest conclusion:** fishbone-access is not trying to out-record CyberArk's
 in-path session vault or out-mine SailPoint's entitlement analytics, and this
-series has shown — with explicit boundaries on the now-covered `CC6.7` / `CC7.3`
-cells (bastion-recorded session, declared-rule SoD anomaly) and real (no longer
-degraded) AI-risk verdicts — exactly where those tools still win. What it now
-covers is broad: SaaS and internal-system access through one connector fabric, JIT
+series has shown — with explicit boundaries on the `CC6.7` / `CC7.3` cells
+(bastion-recorded session, declared-rule SoD anomaly) and real AI-risk verdicts
+— exactly where those tools still win. What it covers is broad: SaaS and
+internal-system access through one connector fabric, JIT
 privileged leases to cloud VMs and databases, time-boxed contractor access,
 AI-assisted risk on every request, SoD simulation that stops catastrophic grants,
 JML with a layered leaver kill switch, and regulation-keyed certification with a
@@ -238,10 +236,10 @@ product is built to make that proof verifiable, multi-framework, multilingual, a
 cheap enough for a 40-person company to stand up this quarter. Where it falls
 short, the coverage map says so on screen — which is, in the end, the most honest
 competitive claim of all. And the one place the verifiable-evidence model could
-have buckled at SaaS scale — the O(n) cost of re-verifying an ever-growing chain
-— is now an O(Δ) incremental verify, so 5,000 tenants accreting years of evidence
-does not turn the cheapest guarantee in the category into the most expensive
-endpoint in the product.
+buckle at SaaS scale — the O(n) cost of re-verifying an ever-growing chain — has
+an O(Δ) incremental verify, so 5,000 tenants accreting years of evidence does
+not turn the cheapest guarantee in the category into the most expensive endpoint
+in the product.
 
 ---
 

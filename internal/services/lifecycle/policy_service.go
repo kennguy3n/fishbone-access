@@ -27,7 +27,7 @@ type SimulationResult struct {
 // PolicyService owns the policies table and the draft → simulate → promote
 // lifecycle. Drafts never touch the data plane: only Promote flips a policy to
 // PolicyStateActive, and only active policies are read by impact/conflict scans
-// and (in 1B/1E) by the enforcement path.
+// and by the enforcement path.
 type PolicyService struct {
 	db       *gorm.DB
 	impact   *ImpactResolver

@@ -103,7 +103,7 @@ it tracks how much work each route actually does:
   while the incremental is **O(Δ)** in rows-since-anchor, so on a multi-year
   chain of hundreds of thousands of rows the full verify climbs and the
   incremental stays flat. See "The 5,000-tenant question" below for why this is
-  the change that matters most for SaaS scale.
+  the capability that matters most for SaaS scale.
 - **The policy/SoD engine is cheap enough to run inline.** A full dry-run
   simulation — impact analysis **plus** the toxic-combination check — costs
   **5.3 ms p50 / 7.7 ms mean**. That matters: it means the `catastrophic`
@@ -117,10 +117,10 @@ The series' own honesty caveat — *a full `chain-verify` is O(n) in chain lengt
 tenants**, each accreting evidence for years. A compliance dashboard that re-runs
 a full verify on every load is re-hashing the entire history every time, and the
 cost grows without bound as the chain does. That is the single worst-scaling
-endpoint in the product, and it is the one we changed for this cut.
+endpoint in the product.
 
-The fix is **incremental (consistency) verification**, and it is wired into the
-same route the full verify uses:
+The answer is **incremental (consistency) verification**, and it is wired into
+the same route the full verify uses:
 
 - A caller does **one** full `GET /compliance/chain/verify` to establish a
   trusted baseline and remembers the head it returned — a `(from_seq, from_hash)`
@@ -165,8 +165,8 @@ footnotes:
   client. A real client over the internet adds tens of milliseconds that have
   nothing to do with the control plane.
 - **The dataset is small.** These workspaces hold tens to low-hundreds of
-  evidence records (81–100 per workspace after the gap-closure seed). A *full*
-  `chain-verify` and `evidence` are **O(n)** in chain length, so a workspace
+  evidence records (81–100 per workspace). A *full* `chain-verify` and
+  `evidence` are **O(n)** in chain length, so a workspace
   with hundreds of thousands of records will be materially slower on those two
   routes specifically. We measured what we seeded; we are **not** extrapolating
   the curve — which is exactly why the incremental verify exists: a long-lived
@@ -195,7 +195,7 @@ crown. The honest, useful takeaways for Marcus:
   endpoint, a single modest VM comfortably serves a 40–500-person company's
   interactive console and API traffic. You are buying this for the evidence
   chain, not fighting it for latency.
-- **Tamper-evidence has a real but bounded cost — and now an O(Δ) fast path.**
+- **Tamper-evidence has a real but bounded cost — with an O(Δ) fast path.**
   A full hash-chain verification is the slowest read we do, and we showed you
   exactly how slow (~10 ms p50, ~1.3k req/s here). The incremental verify keeps
   the interactive cost flat as the chain grows (3.45 ms p50 / 2.8k req/s),

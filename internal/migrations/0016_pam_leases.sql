@@ -1,4 +1,4 @@
--- WS4: JIT lease state machine + live session control.
+-- JIT lease state machine + live session control.
 --
 -- pam_leases is the just-in-time access grant: an operator requests a lease
 -- against a pam_targets row, an approver grants a time-boxed window, and the

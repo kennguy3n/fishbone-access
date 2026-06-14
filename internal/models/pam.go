@@ -79,7 +79,7 @@ const (
 	PAMSessionTerminated = "terminated"
 )
 
-// PAM command decisions, mirroring the 1C policy engine's grant/deny vocabulary
+// PAM command decisions, mirroring the policy engine's grant/deny vocabulary
 // plus a "step_up" outcome that demands a fresh MFA assertion before the
 // command is forwarded. These are the values written to
 // pam_session_commands.decision and to the audit chain metadata.

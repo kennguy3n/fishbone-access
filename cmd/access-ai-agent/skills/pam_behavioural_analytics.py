@@ -5,7 +5,7 @@ comparing them against a (optional) baseline of the user's normal behaviour.
 Output is a list of anomaly objects ``{kind, reason, severity, confidence}`` —
 the same envelope as access_anomaly_detection — so the Go side reuses the
 anomaly fallback path. Detection is advisory decision-support: this agent never
-proxies or gates the session itself (that is the PAM layer, Session 1D), and an
+proxies or gates the session itself (that is the PAM layer), and an
 empty list (nothing anomalous) is a valid, common response.
 """
 from __future__ import annotations

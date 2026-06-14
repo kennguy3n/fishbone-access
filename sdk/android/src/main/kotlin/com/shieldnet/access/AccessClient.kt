@@ -28,7 +28,7 @@
  * [AccessSDKException.StepUpRequired] so the host can drive an iam-core
  * step-up and retry with a fresh token. See [Identity.mfaSatisfied].
  *
- * There is NO on-device inference. AI risk review (WS5) is server-side; the
+ * There is NO on-device inference. AI risk review is server-side; the
  * SDK only reads the resulting [AccessRequest.riskLevel] /
  * [AccessRequest.riskFactors] and the [WorkflowDecision].
  */

@@ -127,9 +127,8 @@ The same page in English, for reference:
 
 ![Umbrella's compliance evidence in English](../artifacts/screenshots/s4-vn-compliance.png)
 
-Even from one pack, the framework projection still runs — SOC 2 now reads 6 / 6,
-including `CC6.7` (the recorded session) and `CC7.3` (the standing SoD anomaly)
-that the first cut showed empty.
+Even from one pack, the framework projection still runs — SOC 2 reads 6 / 6,
+including `CC6.7` (the recorded session) and `CC7.3` (the standing SoD anomaly).
 
 ## Where we fall short
 
@@ -137,7 +136,7 @@ that the first cut showed empty.
   core processing principles, but a mature posture needs role-specific grants per
   warehouse, per route, per data category. fishbone-access makes the start
   credible; it does not pretend two policies are a finished control set.
-- **`CC6.7` and `CC7.3` are now covered — with the series-wide caveats.** The
+- **`CC6.7` and `CC7.3` are covered — with the series-wide caveats.** The
   recorded session is real, replayable and chained but runs against a bastion
   target (representative commands, not a live `wms-ops` box); the `CC7.3` evidence
   is a *standing declared-rule* SoD anomaly, not behavioural orphan analytics (the

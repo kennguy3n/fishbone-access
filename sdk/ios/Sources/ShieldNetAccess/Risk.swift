@@ -1,5 +1,5 @@
 //
-// Risk.swift — risky-access awareness models + classification (iOS, WS5).
+// Risk.swift — risky-access awareness models + classification (iOS).
 //
 // The ShieldNet Access control plane already computes an AI risk verdict and
 // advisory anomaly flags server-side (there is NO on-device inference). The

@@ -144,10 +144,10 @@ quarterly CDE request, with the verbatim risk verdict the API attaches
 
 ![Acme's access-request detail — AI risk verdict Low / Auto-approve-eligible, full state-machine history](../artifacts/screenshots/s1-sg-request-risk.png)
 
-Read that honestly. The risk record is **real** and — unlike the first cut of this
-series — it is now an actual **agent verdict**: `source` is `ai_agent` and
-`degraded` is `false`, because the AI risk agent is online over A2A mTLS in this
-seed. For this read-only `auditor` request the agent's deterministic tier returns
+Read that honestly. The risk record is **real** and is an actual **agent
+verdict**: `source` is `ai_agent` and `degraded` is `false`, because the AI risk
+agent is online over A2A mTLS in this seed. For this read-only `auditor` request
+the agent's deterministic tier returns
 `low` / `auto_approve_eligible` from a single `baseline_low_risk` factor, and the
 `inputs` it scored on (resource, role, duration) are recorded alongside the
 verdict. The fail-closed path is still the design: were the agent unreachable,
@@ -329,9 +329,8 @@ they cut off?" is a query, not an archaeology project.
 ## The compliance view: control coverage you didn't hand-assemble
 
 Open **Compliance evidence** and pick PCI-DSS. The system maps the audit chain
-onto framework controls. With the recorded session and the in-chain export now
-present, all five map to evidence — including `10.2`, which the first cut of this
-post showed uncovered:
+onto framework controls. With the recorded session and the in-chain export
+present, all five controls map to evidence — including `10.2`:
 
 ![Acme's PCI-DSS coverage — 5 of 5 controls covered from the audit chain](../artifacts/screenshots/s1-sg-compliance-pci-dss.png)
 
@@ -391,10 +390,10 @@ a control an operator actually understands and one they click through blindly.
 
 ## Where we fall short
 
-This cut closes four of the gaps the first version of this post flagged — and is
-precise about the line each one stops at:
+Four controls are covered — and this is precise about the line each one stops
+at:
 
-- **Privileged-session monitoring is now *covered* — with a stated boundary.**
+- **Privileged-session monitoring is *covered* — with a stated boundary.**
   `pam_sessions = 1`: Acme opens a real JIT-leased session that is recorded
   through the production `IORecorder`, anchored on the chain, and replayable over
   the API, so `CC6.7` / ISO `A.8.2` / PCI-DSS `10.2` read covered. The residual:
@@ -403,10 +402,11 @@ precise about the line each one stops at:
   pipeline and the chained artifact**, not keystrokes captured off a production
   box. Pointed at a reachable upstream through the in-path gateway, the same code
   records real bytes.
-- **The SoD anomaly is now *standing*, not just simulated.** `sod_anomalies = 1`:
-  a subject really holds both halves of the toxic combination and the sweep
-  detects + dispositions it (`CC7.3` covered). Still honest: this is a
-  **declared-rule** check, not graph-mined discovery of *unknown* conflicts.
+- **The SoD anomaly is *standing*, not only a pre-commit simulation.**
+  `sod_anomalies = 1`: a subject really holds both halves of the toxic
+  combination and the sweep detects + dispositions it (`CC7.3` covered). Honest
+  boundary: this is a **declared-rule** check, not graph-mined discovery of
+  *unknown* conflicts.
 - **AI risk scoring is real, not degraded.** Verdicts show `source: ai_agent`,
   `degraded: false`. The fail-closed `needs_review` safety net remains the
   behaviour *when the agent is offline* — it is the floor, not the demo's state.
@@ -418,7 +418,7 @@ What genuinely stays uncovered — and a self-contained demo cannot close:
 
 - **App-native read logging.** PCI-DSS 10.2 over reads performed *directly inside*
   the core-banking app (not through our gateway) still needs the app's own audit
-  trail or a SIEM. We prove the access was authorised, time-boxed, **and** (now)
+  trail or a SIEM. We prove the access was authorised, time-boxed, **and**
   recorded when brokered — we do not see a read an admin makes on a box we never
   brokered.
 - **Connector depth is shallow in-demo.** Stripe / Salesforce / GitHub register
@@ -442,11 +442,11 @@ For an SME like Acme, the honest competitive picture:
 | Access certifications / campaigns | ✅ | ✅ | ✅ deepest (SoD analytics) | ⚠️ |
 | SME pricing / time-to-value | ✅ single console, days | ⚠️ per-user, weeks | ❌ enterprise, months | ❌ enterprise |
 
-**The honest read:** we now ship a real SoD toxic-combination check that fires at
+**The honest read:** we ship a real SoD toxic-combination check that fires at
 simulation time (the `catastrophic` verdict above) **and** a standing anomaly
 sweep, a first-class contractor lifecycle, a governed JIT privileged-lease flow,
-and a **recorded, replayable, chain-anchored** privileged session — so the gap to
-SailPoint, Saviynt and CyberArk is narrower than it was. But they still
+and a **recorded, replayable, chain-anchored** privileged session — which closes
+much of the gap to SailPoint, Saviynt and CyberArk. But they still
 out-analyse us on entitlement-mining and deep certifications *at scale*, and
 CyberArk owns privileged *session* control against **live** upstreams outright:
 our recording proves the pipeline end-to-end against a bastion target, but if

@@ -109,14 +109,14 @@ linters:
         linters:
           - noctx
           - bodyclose
-      # Connector packages (added in Session 1B) use snake_case slugs as
+      # Connector packages use snake_case slugs as
       # their package name to stay aligned with the registry key. Suppress
       # only the package-name underscore lint there.
       - path: internal/services/access/connectors/
         text: "ST1003: should not use underscores in package names"
         linters:
           - staticcheck
-      # workflow_engine (Session 1E) is the canonical package name used in the
+      # workflow_engine is the canonical package name used in the
       # worker dispatcher job-type routes and the workflow audit log; renaming
       # the Go package would break that slug alignment. Suppress only the
       # package-name underscore lint (line 1 of each file), as for connectors.

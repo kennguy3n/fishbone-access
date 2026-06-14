@@ -1,4 +1,4 @@
--- Session 1E: workflow engine approval-chain persistence.
+-- Workflow engine approval-chain persistence.
 --
 -- The workflow engine routes medium/high/sensitive access requests to a
 -- human-approval lane (manager_approval / security_review). Each approver's
@@ -7,9 +7,9 @@
 -- a request's chain is satisfied purely from these rows, never from in-memory
 -- state.
 --
--- NOTE: migration prefixes 0005-0009 are reserved by Session 1D (PAM gateway),
--- so 1E starts at 0010 per the program migration plan. The runner keys
--- schema_migrations by the numeric prefix, so the prefix must be unique.
+-- NOTE: migration prefixes 0005-0009 are reserved by the PAM gateway schema,
+-- so workflow approvals start at 0010. The runner keys schema_migrations by the
+-- numeric prefix, so the prefix must be unique.
 --
 -- Tenant isolation: workspace_id scopes every row; the engine only ever queries
 -- (workspace_id, request_id) together.

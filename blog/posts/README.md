@@ -42,10 +42,10 @@ Scenario definitions and the evidence map live in
   control-plane responses captured by [`../harness/capture`](../harness/capture/main.go),
   prefixed `s{n}-{slug}-` per scenario, plus the global catalogue/pack captures
   and two evidence-pack exports (PCI-DSS for S1, SOC 2 for S6) with their
-  extracted `manifest.json`. Per scenario this now includes the new-feature
-  captures: `-pam-targets`, `-pam-leases`, `-pam-sessions`, `-contractor-grants`,
-  `-sod-rules`, `-sod-simulation`, `-sod-anomalies`, and `-request-risk` (the
-  AI-risk verdict on an access request).
+  extracted `manifest.json`. Each scenario includes `-pam-targets`,
+  `-pam-leases`, `-pam-sessions`, `-contractor-grants`, `-sod-rules`,
+  `-sod-simulation`, `-sod-anomalies`, and `-request-risk` (the AI-risk verdict
+  on an access request).
 - **Seed summary:** [`../artifacts/seed-summary.json`](../artifacts/seed-summary.json)
   — server-side counts per workspace (ground truth), written by
   [`../harness/seed`](../harness/seed/main.go).

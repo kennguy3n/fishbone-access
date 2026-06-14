@@ -10,8 +10,8 @@ using `async/await` and `URLSession`.
 
 > **No on-device inference.** This package imports only `Foundation` — no
 > `CoreML`, no `MLX`, no bundled model files. "AI-initiated" means the SDK
-> calls the server endpoint that triggers the server-side `access-ai-agent`
-> (WS5); the risk verdict is read from the persisted request fields and the
+> calls the server endpoint that triggers the server-side `access-ai-agent`;
+> the risk verdict is read from the persisted request fields and the
 > workflow routing decision.
 
 ## Requirements
@@ -23,7 +23,7 @@ using `async/await` and `URLSession`.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/kennguy3n/fishbone-access.git", from: "0.1.0"),
+    .package(url: "https://github.com/kennguy3n/fishbone-access.git", from: "0.2.0"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
@@ -76,12 +76,14 @@ print(grant.remaining() ?? 0)                         // seconds until the lease
 | Submit request | `createRequest(_:)` | `POST /access-requests` |
 | List requests | `listRequests()` | `GET /access-requests` |
 | Poll / observe status | `getRequest(id:)` | `GET /access-requests/:id` |
+| Detail with AI risk + anomalies | `getRequestDetail(id:)` | `GET /access-requests/:id` |
 | State history | `requestHistory(id:)` | `GET /access-requests/:id/history` |
 | Approve (with reason) | `approveRequest(id:reason:)` | `POST /access-requests/:id/approve` |
 | Deny (with reason) | `denyRequest(id:reason:)` | `POST /access-requests/:id/deny` |
 | Cancel own request | `cancelRequest(id:reason:)` | `POST /access-requests/:id/cancel` |
 | Activate JIT lease | `provisionRequest(id:)` | `POST /access-requests/:id/provision` |
 | Revoke lease early | `revokeGrant(id:reason:)` | `POST /grants/:id/revoke` |
+| Emergency offboard (six-layer kill switch) | `emergencyOffboard(userExternalID:reason:)` | `POST /emergency-offboard` |
 
 ### Step-up MFA / WebAuthn
 

@@ -61,7 +61,7 @@ func runExample() async {
         let grant = try await client.provisionRequest(id: request.id)
         print("lease \(grant.id) active=\(grant.isActive()) remaining=\(grant.remaining().map { "\(Int($0))s" } ?? "n/a")")
 
-        // 5. Risky-access awareness (WS5): read the AI risk verdict + anomaly
+        // 5. Risky-access awareness: read the AI risk verdict + anomaly
         //    signals and classify them with the cross-platform pure helper.
         let detail = try await client.getRequestDetail(id: request.id)
         let advisory = RiskAssessment.evaluate(detail)
@@ -69,7 +69,7 @@ func runExample() async {
             print("⚠️ elevated access \(detail.request.id): \(advisory.reasons.joined(separator: "; "))")
         }
 
-        // 6. One-tap revoke (WS5). For a high-risk revoke the SDK tells the host
+        // 6. One-tap revoke. For a high-risk revoke the SDK tells the host
         //    to gate behind step-up MFA first — the same decision on every
         //    platform. The grant-revoke endpoint itself is permission-gated.
         let plan = Revocation.plan(advisory)
@@ -80,7 +80,7 @@ func runExample() async {
             print("revoked lease \(grant.id)")
         }
 
-        // 7. Emergency offboard (WS5): the "revoke everything for this user"
+        // 7. Emergency offboard: the "revoke everything for this user"
         //    kill switch. Step-up-gated server-side; a partial failure still
         //    returns the per-layer breakdown so the operator can retry.
         //    NOTE: emergencyOffboard takes the EXTERNAL identity id (the value

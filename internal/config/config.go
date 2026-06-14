@@ -76,7 +76,7 @@ type Config struct {
 	// separate processes, so each sizes its own pool; keeping a bound avoids
 	// exhausting Postgres' max_connections under load.
 	DBMaxOpenConns int
-	// DBPgxMaxConns bounds the secondary pgxpool that the WS10 GORM→pgx
+	// DBPgxMaxConns bounds the secondary pgxpool that the GORM→pgx
 	// migration opens alongside the GORM pool (workspace-config reads in
 	// ztna-api, standalone audit appends in pam-gateway). It is sized
 	// independently and small by default because those paths are light — a

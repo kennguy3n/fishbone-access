@@ -515,7 +515,7 @@ func (v *Vault) open(ctx context.Context, target *models.PAMTarget) (Secret, err
 	return sec, nil
 }
 
-// audit appends one PAM event to the workspace's 1C audit hash chain in its own
+// audit appends one PAM event to the workspace's audit hash chain in its own
 // transaction. Use it for standalone events whose state change has already
 // committed on its own — today that is only the secret-reveal event (a read,
 // with no row to commit alongside). Events that mutate state (target create,

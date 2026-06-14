@@ -154,7 +154,7 @@ compliance artifact produced, and the evidence source.
   grants → PDPL DSR auditor request → DESC privileged-access review with a revoke
   → ISO 27001 Annex A certification → orphan scan → JML. Locale `ar` exercises RTL.
 - **Compliance artifact:** privileged-access review + ISO 27001 certification.
-  `A.8.2` "privileged access *monitored*" is now covered — the JIT lease is
+  `A.8.2` "privileged access *monitored*" is covered — the JIT lease is
   governed and chained **and** a session is recorded (`pam_sessions = 1`),
   replayable over the API. Honest boundary: the demo upstream is a bastion, so we
   prove the record/replay pipeline, not in-path keystroke capture off a live T24.
@@ -225,8 +225,8 @@ compliance artifact produced, and the evidence source.
    over one connector fabric + the SoD toxic-combination check.
 4. **S4 — Vietnam** (PDPD Decree 13): standing up an emerging-market posture from
    one pack — with the full access primitives (PAM lease, contractor, SoD).
-5. **S5 — UAE finance** (PDPL + DESC): privileged access — the JIT lease and a
-   recorded, replayable session both exist now; the remaining boundary is in-path
+5. **S5 — UAE finance** (PDPL + DESC): privileged access — the JIT lease plus a
+   recorded, replayable session; the remaining boundary is in-path
    vaulting/keystroke capture off a live mainframe. RTL locale.
 6. **S6 — Australian SaaS** (Essential Eight + SOC 2): certification campaign,
    evidence export, full competitive scorecard.

@@ -92,8 +92,8 @@ request is risk-scored before anyone approves it
 ```
 
 As in Post 1, the verdict is a **real agent verdict** (`source: ai_agent`,
-`degraded: false`) now that the risk agent is online. The fail-safe `needs_review`
-default is still what fires *if* the agent is unreachable — a fail-open on a PHI
+`degraded: false`): the risk agent is online. The fail-safe `needs_review`
+default is what fires *if* the agent is unreachable — a fail-open on a PHI
 export would be exactly the wrong default — but it is the floor, not this seed's
 state.
 
@@ -210,19 +210,19 @@ PAM target/lease events from the section above appear on this same timeline:
 ## The compliance view
 
 Globex's SOC 2 logical-access coverage from the same chain — provisioning,
-review, revocation **and** the privileged-monitoring control now backed by the
+review, revocation **and** the privileged-monitoring control backed by the
 recorded session:
 
 ![Globex SOC 2 logical-access coverage](../artifacts/screenshots/s2-us-compliance-soc2.png)
 
 ## Where we fall short
 
-Closed in this cut: **privileged-access monitoring** (`CC6.7` / `A.8.2`) is now
-covered by a real recorded, replayable, chain-anchored session (`pam_sessions =
-1`), and the **standing SoD anomaly** (`CC7.3`) fires for a subject that holds
-both `ehr:clinician` and `ehr:billing` (`sod_anomalies = 1`). Risk verdicts are
-real (`source: ai_agent`). What genuinely stays uncovered here — and matters most
-for a healthcare buyer:
+**Privileged-access monitoring** (`CC6.7` / `A.8.2`) is covered by a real
+recorded, replayable, chain-anchored session (`pam_sessions = 1`), and the
+**standing SoD anomaly** (`CC7.3`) fires for a subject that holds both
+`ehr:clinician` and `ehr:billing` (`sod_anomalies = 1`). Risk verdicts are real
+(`source: ai_agent`). What genuinely stays uncovered here — and matters most for
+a healthcare buyer:
 
 - **The two failed kill-switch layers are real gaps in the demo**, not cosmetic.
   Without real upstream credentials, fishbone-access cannot *prove* the Okta

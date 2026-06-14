@@ -45,7 +45,7 @@
     Helvetica, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Richer design system additions (WS5) ------------------------------- */
+  /* Richer design system additions ------------------------------------- */
   /* Gradient accent used on card accent bars, hero rings, and emphasis. */
   --accent-gradient: linear-gradient(90deg, var(--brand), var(--accent));
   --accent-gradient-vert: linear-gradient(180deg, var(--brand), var(--accent));
@@ -1093,7 +1093,7 @@ label.field > span {
 }
 
 /* ======================================================================== */
-/* WS5 — Professional UI: skeletons, toasts, help, dashboard, onboarding,   */
+/* Professional UI: skeletons, toasts, help, dashboard, onboarding,        */
 /* alert cards, policy simple mode, and responsive layout.                  */
 /* ======================================================================== */
 
@@ -2916,7 +2916,7 @@ label.field > span {
   color: var(--brand-strong);
 }
 
-/* --- WS5: AI risk review surface --------------------------------------- */
+/* --- AI risk review surface -------------------------------------------- */
 
 .risk-panel {
   display: flex;

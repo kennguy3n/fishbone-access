@@ -36,7 +36,7 @@ const campaignRevokeTimeout = 15 * time.Second
 
 // GrantRevoker is the subset of the provisioning service the certification
 // service needs to tear a grant down when a revoke decision is APPLIED at
-// campaign close. It is the same contract the 1C review service uses; reusing
+// campaign close. It is the same contract the access-review service uses; reusing
 // it keeps a single revoke path (idempotent, connector-side teardown + grant
 // state flip + audit) rather than a parallel one.
 //
@@ -56,7 +56,7 @@ type GrantRevoker interface {
 
 // CertificationService runs full certification campaigns: scoped, reviewer-
 // assigned, due-dated reviews whose per-grant decisions are STAGED and applied
-// only at close. It builds on the 1C review-service primitives (live-grant
+// only at close. It builds on the access-review-service primitives (live-grant
 // enumeration, FOR UPDATE decision locking, idempotent terminal-decision guard,
 // post-commit connector teardown) but adds scope, reviewers, due dates, overdue
 // handling, and the deferred two-phase revoke so the destructive teardown is

@@ -1,4 +1,4 @@
--- WS1: RBAC role assignments, TOTP secret store, and TOTP replay-prevention.
+-- RBAC role assignments, TOTP secret store, and TOTP replay-prevention.
 --
 -- Three tables, all workspace-scoped for tenant isolation:
 --
@@ -15,10 +15,10 @@
 --
 -- NOTE: the runner (internal/migrations/migrations.go) sorts embedded *.sql by
 -- their NNNN_ numeric prefix and keys schema_migrations by it, so each prefix
--- must be unique. WS1 originally shipped this as 0013, but other workstreams
--- merged 0013_connector_setup_suggestions (WS2) and 0014_jml_workflows (WS3)
--- first, so WS1 RBAC/TOTP continues at 0015 to keep prefixes unique and
--- strictly increasing.
+-- must be unique. This migration is numbered 0015 because 0013 and 0014 are
+-- already taken (0013_connector_setup_suggestions and 0014_jml_workflows), so
+-- RBAC/TOTP continues at 0015 to keep prefixes unique and strictly
+-- increasing.
 
 -- --- RBAC role assignments -------------------------------------------------
 CREATE TABLE IF NOT EXISTS workspace_members (

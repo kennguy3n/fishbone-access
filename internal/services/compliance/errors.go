@@ -11,7 +11,7 @@
 //     command, evidence exported) is already linked into the SHA-256 chain, so
 //     evidence inherits the chain's tamper-evidence instead of duplicating it.
 //
-//   - Certification campaigns are the full expansion of the 1C access-review
+//   - Certification campaigns are the full expansion of the access-review
 //     primitive: scoped (resource / role / connector), reviewer-assigned,
 //     due-dated reviews whose per-grant decisions are STAGED and only applied
 //     (grants torn down) at close — so the destructive effect can be previewed

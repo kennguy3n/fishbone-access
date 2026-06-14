@@ -91,24 +91,17 @@ This series is a critique, not a brochure. Five rules hold for every post:
    full layered result. The honest boundary is drawn at the *line* the demo can
    reach, not hidden.
 
-### What changed since the first cut of this series
+### What the evidence covers
 
-An earlier version of these posts flagged a recurring set of controls as
-**uncovered (0 records)** — privileged-session monitoring (SOC 2 **CC6.7** / ISO
-**A.8.2** / PCI-DSS **10.2**), the standing separation-of-duties anomaly (**CC7.3**),
-the tamper-evident-export evidence kind (**A.8.15**), and AI risk scoring that
-ran **degraded** because the agent was offline. Re-reading the code made one thing
-clear: **most of those were seed-harness gaps, not product gaps** — the
-control→evidence mapping already existed; the old seed simply never emitted the
-evidence. This cut closes them with capabilities the product already ships, and
+Across all six workspaces the seed exercises the full evidence surface, and
 nothing is faked:
 
-- **CC6.7 / A.8.2 / PCI-DSS 10.2** — every workspace now opens a **real recorded
+- **CC6.7 / A.8.2 / PCI-DSS 10.2** — every workspace opens a **real recorded
   privileged session**: a JIT lease is redeemed, the operator's commands are
   driven through the same `IORecorder` the live gateway uses, the framed
   transcript is persisted to the replay store, its SHA-256 is **anchored in the
   hash chain**, and it is **retrievable over `GET /pam/sessions/:id/replay`**.
-  `pam_sessions = 1` per workspace, and the coverage map flips these controls to
+  `pam_sessions = 1` per workspace, and the coverage map reads these controls as
   *covered*. The honest residual: the recorded commands are seeded representative
   I/O against a registered bastion target — the demo has no live SSH daemon — so
   this proves the **recording pipeline and the chained, replayable session
@@ -117,26 +110,26 @@ nothing is faked:
   toxic-combination rule** as live, approved grants, and the production anomaly
   sweep records the standing violation + disposition. `sod_anomalies = 1`,
   detected against live state — not a what-if.
-- **A.8.15 / PCI-DSS 10.2** — the evidence-pack export now runs **before** the
-  capture snapshots the chain (it was an ordering bug), so `evidence_exported` is
-  in-chain and the tamper-evident-logging control reads covered.
-- **AI risk scoring** — the agent is online over A2A mTLS, so risk verdicts now
-  show `source: ai_agent`, `degraded: false`, with a real recommendation — not the
-  fail-closed `needs_review` safety net.
+- **A.8.15 / PCI-DSS 10.2** — the evidence-pack export runs **before** the
+  capture snapshots the chain, so `evidence_exported` is in-chain and the
+  tamper-evident-logging control reads covered.
+- **AI risk scoring** — the agent is online over A2A mTLS, so risk verdicts
+  show `source: ai_agent`, `degraded: false`, with a real recommendation; the
+  fail-closed `needs_review` safety net fires only if the agent is unreachable.
 
-What this cut adds on top of closing those gaps is the **scale** answer for the
-evidence chain itself. The series' own benchmark (Post 7) is blunt that a full
-chain-verify is **O(n)** in chain length — the single worst-scaling endpoint at
-5,000-tenant SaaS scale, where workspaces accrete evidence for years. So the
-same `GET /compliance/chain/verify` route now also takes a trusted anchor
-(`?from_seq=&from_hash=`) and runs an **incremental consistency verify** that
-re-checks only the suffix appended since that anchor: an interactive dashboard
-pays the O(n) cost once to establish a baseline, then O(Δ) on every refresh
-thereafter. On this VM that is a **10.15 ms → 3.45 ms p50** drop on a ~100-row
-chain (Post 7); the gap widens without bound as the chain grows. The honest
-boundary is stated wherever it appears: the incremental call is a *consistency*
-proof of the suffix, **not** a fresh *integrity* proof of the whole chain — the
-periodic full sweep remains the root of trust.
+The evidence chain also answers the **scale** question. The series' own benchmark
+(Post 7) is blunt that a full chain-verify is **O(n)** in chain length — the
+single worst-scaling endpoint at 5,000-tenant SaaS scale, where workspaces
+accrete evidence for years. So `GET /compliance/chain/verify` also takes a
+trusted anchor (`?from_seq=&from_hash=`) and runs an **incremental consistency
+verify** that re-checks only the suffix appended since that anchor: an
+interactive dashboard pays the O(n) cost once to establish a baseline, then O(Δ)
+on every refresh thereafter. On this VM that is **10.15 ms (full) vs 3.45 ms
+(incremental) p50** on a ~100-row chain (Post 7); the gap widens without bound as
+the chain grows. The honest boundary is stated wherever it appears: the
+incremental call is a *consistency* proof of the suffix, **not** a fresh
+*integrity* proof of the whole chain — the periodic full sweep remains the root
+of trust.
 
 What stays honest (real hard limits a self-contained demo cannot close): killing
 a *real* Okta/Box session (no upstream credentials — Post 2); logging every read

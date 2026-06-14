@@ -42,16 +42,12 @@ import (
 // The linter reads the same embedded files the runner applies, so it lints
 // exactly what ships.
 
-// reservedVersions records version numbers that are intentionally absent from
-// the sequence so the contiguity check does not flag the gap they leave. The
-// 0006–0009 range was reserved while several workstreams were in flight and
-// their schema ultimately landed under later versions; the numbers were never
-// reused, so the gap is by design rather than a lost migration. 0018–0019 are
-// reserved for sibling workstreams that branched off the same main in parallel
-// (this branch owns the reserved 0020–0023 range); reserving them keeps each
-// workstream's branch lintable in isolation before they are merged together,
-// and a present-and-reserved version is harmless (the contiguity check treats
-// it as present). Any gap NOT listed here is treated as a real bug.
+// reservedVersions records version numbers that the contiguity check must not
+// flag. The 0006–0009 range is an intentional gap: those numbers were never
+// used by a shipped migration, so their absence is by design rather than a lost
+// migration. 0018–0019 are listed too even though migrations now occupy them —
+// a present-and-reserved version is harmless because the contiguity check
+// treats it as present. Any gap NOT listed here is treated as a real bug.
 var reservedVersions = map[int]bool{6: true, 7: true, 8: true, 9: true, 18: true, 19: true}
 
 // filenamePattern is the required migration filename shape: a 4-digit

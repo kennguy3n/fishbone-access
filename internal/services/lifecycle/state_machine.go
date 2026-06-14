@@ -1,11 +1,11 @@
-// Package lifecycle implements Session 1C of ShieldNet Access: the access
+// Package lifecycle implements the ShieldNet Access lifecycle domain: the access
 // request state machine, the request / workflow / policy / provisioning /
 // review / JML services, the six-layer leaver kill switch, orphan-account
 // reconciliation, and the grant-expiry enforcer.
 //
 // The package depends only on the AccessConnector interface contract from
-// internal/services/access (never on the concrete 1B connector packages) so
-// the two sessions coordinate through interfaces, and on internal/models for
+// internal/services/access (never on the concrete connector packages) so
+// the two layers coordinate through interfaces, and on internal/models for
 // persistence. Every tenant-scoped query is filtered by workspace_id; callers
 // reach these services through the tenant-scoped, RequireTenant-guarded REST
 // routes in internal/handlers.

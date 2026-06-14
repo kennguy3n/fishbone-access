@@ -28,7 +28,7 @@ import (
 // target, authenticating with a freshly minted short-lived CA certificate (no
 // static key on the target) or, when the target does not trust the CA, the
 // JIT-injected vault credential. Both directions of every channel are recorded;
-// exec commands and shell input lines are gated live against the 1C policy
+// exec commands and shell input lines are gated live against the policy
 // engine and appended to the workspace audit hash chain.
 type SSHProxy struct {
 	broker      *pam.Broker

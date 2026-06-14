@@ -1,4 +1,4 @@
--- 0019_tenant_resource_budgets: tiered per-tenant resource budgets (WS1).
+-- 0019_tenant_resource_budgets: tiered per-tenant resource budgets.
 --
 -- Bounds how much concurrent periodic work any one tenant may run so the
 -- dormant-trial majority — and any single noisy tenant — cannot consume the

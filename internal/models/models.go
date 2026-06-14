@@ -22,7 +22,7 @@ import (
 // delete: Delete emits UPDATE ... SET deleted_at = now() and every query is
 // implicitly scoped WHERE deleted_at IS NULL. With a plain *time.Time GORM
 // would hard-DELETE rows and return soft-deleted records, so the choice here is
-// load-bearing for the 1B–1E handlers that query these models. The underlying
+// load-bearing for the handlers that query these models. The underlying
 // column stays a nullable TIMESTAMPTZ (gorm.DeletedAt is sql.NullTime), matching
 // internal/migrations/0001_init.sql, and still marshals to null/omitted in JSON.
 type Base struct {
@@ -423,7 +423,7 @@ func All() []any {
 		&PAMTOTPUsedCode{},
 		&CertificationCampaign{},
 		&CertificationItem{},
-		// Workstream 2: SoD analytics, anomaly evidence, contractor lifecycle.
+		// SoD analytics, anomaly evidence, and contractor lifecycle.
 		&SodRule{},
 		&AccessAnomaly{},
 		&ContractorGrant{},

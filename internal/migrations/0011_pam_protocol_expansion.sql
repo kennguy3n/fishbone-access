@@ -1,4 +1,4 @@
--- Workstream 1: PAM gateway protocol expansion.
+-- PAM gateway protocol expansion.
 --
 -- The gateway grew from four proxied protocols (ssh, postgres, mysql, k8s-exec)
 -- to ten by adding rdp, vnc, mongodb, redis, mssql and http ConnHandlers. The
@@ -11,7 +11,7 @@
 --
 -- The constraints are (re)created idempotently: each is dropped if present and
 -- re-added, so the migration is safe to re-run and trivially extended when a
--- later workstream adds another protocol.
+-- later migration adds another protocol.
 
 ALTER TABLE pam_targets DROP CONSTRAINT IF EXISTS chk_pam_targets_protocol;
 ALTER TABLE pam_targets

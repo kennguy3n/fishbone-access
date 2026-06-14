@@ -11,7 +11,7 @@ Packages) can be targeted without editing `build.gradle.kts`.
 |-------|-------|
 | Group ID | `com.shieldnet.access` |
 | Artifact ID | `access-sdk` |
-| Current version | `0.1.0` |
+| Current version | `0.2.0` |
 | Repository (default) | `https://maven.pkg.github.com/kennguy3n/fishbone-access` |
 | Tag prefix | `sdk-android-v` |
 
@@ -35,7 +35,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.shieldnet.access:access-sdk:0.1.0")
+    implementation("com.shieldnet.access:access-sdk:0.2.0")
 }
 ```
 

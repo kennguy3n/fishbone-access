@@ -2,8 +2,8 @@
 // access-connector-worker binary. It is a generic, dependency-injected poll
 // loop: a Queue yields due jobs and a Processor handles them, with bounded
 // retries and exponential backoff. The Postgres-backed Queue (claiming
-// access_jobs rows with SELECT ... FOR UPDATE SKIP LOCKED) is added in
-// Session 1B; this package defines the contract and the drain/backoff loop so
+// access_jobs rows with SELECT ... FOR UPDATE SKIP LOCKED) is the concrete
+// implementation; this package defines the contract and the drain/backoff loop so
 // that work plugs straight in.
 package workers
 

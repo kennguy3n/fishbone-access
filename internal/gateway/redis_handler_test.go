@@ -127,7 +127,7 @@ func (m *mockRedisUpstream) serve(conn net.Conn) {
 
 func TestRedisProxyEndToEnd(t *testing.T) {
 	env := newProxyTestEnv(t)
-	// Deny FLUSHALL for everyone via the 1C policy engine.
+	// Deny FLUSHALL for everyone via the policy engine.
 	env.seedDeny(t, "no-flush", []string{"*"}, []string{"cmd:FLUSHALL"})
 
 	// Mock upstream.
