@@ -269,11 +269,17 @@ ztnaApi:
 pamGateway:
   enabled: true
   replicaCount: 2
+  # probePort is the published port name (or numeric containerPort) the TCP
+  # startup/liveness/readiness probes target. It MUST stay present in
+  # service.ports below — if you drop the ssh listener, repoint this at another
+  # protocol you still publish (e.g. postgres).
+  probePort: ssh
   service:
     type: ClusterIP
     # Protocol listeners the binary binds (cmd/pam-gateway/main.go). Keys are the
-    # Service/containerPort names (lowercase DNS labels); ssh is the readiness
-    # probe target. Remove an entry to stop publishing that protocol's port.
+    # Service/containerPort names (lowercase DNS labels). Remove an entry to stop
+    # publishing that protocol's port — but keep pamGateway.probePort pointing at
+    # one that remains.
     ports:
       ssh: 2222
       postgres: 5432

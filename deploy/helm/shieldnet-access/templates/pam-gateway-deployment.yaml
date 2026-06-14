@@ -50,21 +50,24 @@ spec:
             {{- . | nindent 12 }}
           {{- end }}
           # The gateway binds its protocol listeners only after Postgres is
-          # connected and migrations applied, so a TCP probe on the SSH listener
-          # is an accurate readiness/liveness signal (no HTTP health endpoint).
+          # connected and migrations applied, so a TCP probe on one listener is an
+          # accurate readiness/liveness signal (no HTTP health endpoint). The
+          # probed port is configurable (default ssh) so a deployment that drops
+          # the SSH listener can point the probes at another published port.
+          {{- $probePort := .Values.pamGateway.probePort }}
           startupProbe:
             tcpSocket:
-              port: ssh
+              port: {{ $probePort }}
             periodSeconds: 5
             failureThreshold: 30
           livenessProbe:
             tcpSocket:
-              port: ssh
+              port: {{ $probePort }}
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             tcpSocket:
-              port: ssh
+              port: {{ $probePort }}
             periodSeconds: 10
             failureThreshold: 3
           resources:
