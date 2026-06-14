@@ -1,0 +1,376 @@
+# Default values for the shieldnet-access chart.
+#
+# The defaults here are production-LEANING but safe to install into any cluster:
+# external Postgres is the expected posture (you supply the DSN via a Secret),
+# the bundled dev Postgres is OFF, and Ingress/HPA/ServiceMonitor are all gated
+# behind flags so a bare `helm install` produces a minimal, valid release.
+#
+# Every ACCESS_* value below maps 1:1 to an environment variable read by
+# internal/config/config.go (and the PAM_*/A2A_*/OTEL_* vars read by the
+# gateway and observability packages). Non-secret values flow through a
+# ConfigMap; secrets (DB DSN, KMS master key, credential DEK, ...) flow through
+# a Secret — see the `secrets:` block, which never bakes real values into the
+# ConfigMap.
+
+# -- Override the chart name / fullname used for resource names.
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  # repository is the single multi-binary image built from the repo Dockerfile.
+  # Build & push it yourself (the repo publishes no public image):
+  #   docker build -t <repo>:<tag> . && docker push <repo>:<tag>
+  # Each component overrides the container `command` to select its binary.
+  repository: ghcr.io/kennguy3n/fishbone-access
+  # tag defaults to .Chart.AppVersion when left empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# imagePullSecrets for pulling from a private registry, e.g.
+#   - name: regcred
+imagePullSecrets: []
+
+serviceAccount:
+  # create a dedicated ServiceAccount for the workloads (recommended).
+  create: true
+  # name overrides the generated ServiceAccount name; empty = chart fullname.
+  name: ""
+  annotations: {}
+  # automountServiceAccountToken: the control plane never calls the Kubernetes
+  # API, so the token is not mounted by default (least privilege).
+  automountServiceAccountToken: false
+
+# podAnnotations / podLabels are merged onto every component pod template.
+podAnnotations: {}
+podLabels: {}
+
+# podSecurityContext applies at the pod level (fsGroup etc).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+# securityContext applies at the container level. The image runs as the
+# non-root `shieldnet` user (uid 10001) and needs no write access to its root
+# filesystem — components that DO write (pam-gateway's local replay store) get
+# an explicit writable emptyDir instead, so read-only root stays on everywhere.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10001
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# config — non-secret ACCESS_* / OTEL_* environment surfaced via the ConfigMap.
+# These map directly to internal/config/config.go defaults; override per-env.
+# ---------------------------------------------------------------------------
+config:
+  # ACCESS_ENV — deployment label ("dev"/"staging"/"prod"). Production labels
+  # also disable the dev HMAC auth path (AUTH_JWT_SECRET) in the binary.
+  env: prod
+  # ACCESS_HTTP_ADDR — ztna-api listen address (host:port; host optional).
+  httpAddr: ":8080"
+  # ACCESS_DATABASE_DRIVER — "pgx" (default, lighter) or "gorm" (fallback).
+  databaseDriver: pgx
+  # ACCESS_KMS_KEY_VERSION — version new writes seal under; bump to rotate.
+  kmsKeyVersion: 1
+  # ACCESS_SHUTDOWN_TIMEOUT — graceful HTTP shutdown budget.
+  shutdownTimeout: 10s
+
+  # Database connection pool (per process). See deploy/SCALE_SIZING.md: the
+  # fleet peak that must fit under Postgres max_connections is
+  #   Σ replicas_p × (dbMaxOpenConns + dbPgxMaxConns_p).
+  dbMaxOpenConns: 25
+  dbPgxMaxConns: 8
+  dbMaxIdleConns: 5
+  dbConnMaxLifetime: 30m
+  # NoOps lever (API): closes connections idle past this so a quiet replica
+  # returns capacity to Postgres on nights/weekends.
+  dbConnMaxIdleTime: 5m
+
+  # Tenant hibernation — lets the control plane serve thousands of mostly-dormant
+  # SME trials at near-zero periodic cost. See deploy/SCALE_SIZING.md §3.
+  tenancy:
+    hibernationEnabled: true
+    dormantIdle: 336h          # 14 days — one trial-length of inactivity.
+    reconcileInterval: 15m
+    activityFlush: 60s
+    activityQueueSize: 8192
+    defaultTier: trial         # most-constrained tier for un-tiered tenants.
+
+  # Per-tenant inbound rate limiting on the authenticated API. The limiter is
+  # IN-MEMORY and therefore PER-REPLICA: with N ztna-api replicas a tenant's
+  # effective ceiling is N × rps. Account for ztnaApi.replicaCount (and HPA
+  # maxReplicas) when sizing these.
+  rateLimit:
+    enabled: true
+    rps: 50
+    burst: 100
+
+  # Outbound HTTP transport tuning for connector fan-out (deploy/SCALE_SIZING.md
+  # §2). Leave empty to use the in-code defaults; set to override.
+  http: {}
+    # maxIdleConns: 256
+    # maxIdleConnsPerHost: 32
+    # maxConnsPerHost: 64
+    # idleConnTimeout: 90s
+    # tlsHandshakeTimeout: 10s
+    # dialTimeout: 10s
+
+  # iam-core identity provider (non-secret fields only; client secret is a
+  # Secret). When issuer is empty, the authenticated API surface returns 503
+  # (fail closed) — set these to enable real auth.
+  iamCore:
+    issuer: ""
+    jwksUrl: ""        # defaults in-code to issuer + /oauth2/jwks
+    discoveryUrl: ""   # defaults in-code to issuer + /.well-known/openid-configuration
+    audience: ""
+    clientId: ""
+    managementBaseUrl: ""
+
+  # AI agent (lease risk scoring) — non-secret fields. URL empty ⇒ deterministic
+  # fallback (fail-open advisory). The API key is a Secret.
+  aiAgent:
+    url: ""
+    timeout: ""
+
+  # pam-gateway operational settings (non-secret). SSH host/CA keys and proxy
+  # TLS material are Secrets — see the secrets block and pamGateway.* below.
+  pam:
+    replayDir: /var/run/pam-replays   # writable emptyDir (read-only root fs).
+    replayS3Bucket: ""
+    replayS3Region: ""
+    replayS3Endpoint: ""
+    stepUpMaxAge: 5m
+    sshCertTtl: 5m
+
+# extraEnv lets you inject any additional raw env vars not modelled above
+# (applied to every component). Example:
+#   - name: ACCESS_HTTP_DIAL_TIMEOUT
+#     value: "10s"
+extraEnv: []
+
+# ---------------------------------------------------------------------------
+# observability — Prometheus /metrics (ztna-api) + opt-in OTLP tracing.
+# ---------------------------------------------------------------------------
+observability:
+  # OTEL_EXPORTER_OTLP_ENDPOINT — set to a collector (e.g. http://otel:4317) to
+  # enable distributed tracing. Empty = tracing disabled (zero overhead).
+  otelExporterOtlpEndpoint: ""
+  serviceMonitor:
+    # enabled requires the Prometheus Operator CRDs (monitoring.coreos.com).
+    enabled: false
+    # interval / scrapeTimeout for the ServiceMonitor endpoint.
+    interval: 30s
+    scrapeTimeout: 10s
+    # additionalLabels are merged onto the ServiceMonitor (e.g. release: kube-prometheus-stack).
+    additionalLabels: {}
+
+# ---------------------------------------------------------------------------
+# secrets — sensitive env. PREFER existingSecret in production so real values
+# are never templated into the release. The chart NEVER puts these in the
+# ConfigMap.
+#
+# Required keys (consumed as env by the binaries):
+#   ACCESS_DATABASE_URL    Postgres DSN (carries the DB password).
+#   ACCESS_KMS_MASTER_KEY  base64 32-byte master key (per-workspace DEK via HKDF), OR
+#   ACCESS_CREDENTIAL_DEK  base64 32-byte single shared DEK (legacy posture).
+# Optional keys:
+#   ACCESS_REDIS_URL, IAM_CORE_CLIENT_SECRET, ACCESS_AI_AGENT_API_KEY,
+#   AUTH_JWT_SECRET (non-prod only), PAM_SSH_HOST_KEY, PAM_SSH_CA_KEY,
+#   PAM_PROXY_TLS_CERT, PAM_PROXY_TLS_KEY.
+# ---------------------------------------------------------------------------
+secrets:
+  # existingSecret: name of a Secret you manage out-of-band (ExternalSecrets,
+  # SealedSecrets, sops, ...). When set, the values below are ignored and no
+  # Secret is rendered. This is the production posture.
+  existingSecret: ""
+
+  # The values below are ONLY used when existingSecret is empty. They are blank
+  # placeholders so `helm template` works; DO NOT commit real values to a chart
+  # — supply them at install time (--set / -f) or, better, use existingSecret.
+  databaseUrl: ""        # set automatically from the bundled Postgres when postgres.enabled=true and this is blank.
+  kmsMasterKey: ""       # `openssl rand -base64 32`
+  credentialDek: ""      # `openssl rand -base64 32`
+  redisUrl: ""
+  iamCoreClientSecret: ""
+  aiAgentApiKey: ""
+  authJwtSecret: ""
+  # pam-gateway key material (inline PEM). Set sshHostKey so the SSH listener's
+  # host-key fingerprint is STABLE across pam-gateway replicas/restarts (clients
+  # otherwise TOFU a different ephemeral key per pod).
+  sshHostKey: ""
+  sshCaKey: ""
+  # NOTE: pam-gateway's operator-facing DB/k8s proxy TLS keypair
+  # (PAM_PROXY_TLS_CERT / PAM_PROXY_TLS_KEY) is consumed as FILE PATHS by the
+  # binary, not inline PEM, so it is not modelled as a Secret key here. To use a
+  # verified keypair (instead of the per-boot self-signed default), mount a
+  # Secret volume and point those two env vars at the mount paths via extraEnv +
+  # a volume — see deploy/README.md. Left unset, each proxy mints an ephemeral
+  # self-signed cert (operator hop still encrypted).
+
+# ---------------------------------------------------------------------------
+# ztna-api — the REST API / control plane. HTTP on :8080 with /health, /readyz,
+# and the Prometheus /metrics endpoint.
+# ---------------------------------------------------------------------------
+ztnaApi:
+  # replicaCount: 6 is the 5,000-tenant reference (deploy/SCALE_SIZING.md).
+  # NOTE: drives the in-memory rate-limit ceiling (N × rps) — see config.rateLimit.
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    # targetMemoryUtilizationPercentage: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: access.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: access-tls
+    #    hosts:
+    #      - access.example.com
+  # Scheduling controls (applied to ztna-api; mirrored on other components).
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# pam-gateway — protocol-aware proxy. A Deployment (NOT a StatefulSet): it holds
+# no per-pod durable state — cross-process session control reconciles via
+# Postgres — and stable network identity comes from the Service plus a stable
+# SSH host key (secrets.sshHostKey), not a pod ordinal.
+# ---------------------------------------------------------------------------
+pamGateway:
+  enabled: true
+  replicaCount: 2
+  # probePort is the published port name (or numeric containerPort) the TCP
+  # startup/liveness/readiness probes target. It MUST stay present in
+  # service.ports below — if you drop the ssh listener, repoint this at another
+  # protocol you still publish (e.g. postgres).
+  probePort: ssh
+  service:
+    type: ClusterIP
+    # Protocol listeners the binary binds (cmd/pam-gateway/main.go). Keys are the
+    # Service/containerPort names (lowercase DNS labels). Remove an entry to stop
+    # publishing that protocol's port — but keep pamGateway.probePort pointing at
+    # one that remains.
+    ports:
+      ssh: 2222
+      postgres: 5432
+      mysql: 3306
+      k8s-exec: 8443
+      rdp: 3389
+      vnc: 5900
+      mongodb: 27017
+      redis: 6379
+      mssql: 1433
+      http: 8080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# access-connector-worker — drains identity-sync / provision / revoke jobs.
+# No HTTP surface, so no Service and no HTTP probes.
+# ---------------------------------------------------------------------------
+connectorWorker:
+  enabled: true
+  # 3 replicas at the 5,000-tenant reference.
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 192Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# access-workflow-engine — JML lifecycle, approvals, scheduled certifications.
+# Requires a credential key (kmsMasterKey or credentialDek) or it refuses to
+# boot. No HTTP surface.
+# ---------------------------------------------------------------------------
+workflowEngine:
+  # enabled gates the Deployment, but it is ALSO skipped automatically when no
+  # credential key is configured (secrets.existingSecret / kmsMasterKey /
+  # credentialDek) — the binary won't boot without one, so the chart omits it
+  # rather than leave a CrashLooping pod. Configure a key to bring it online.
+  enabled: true
+  # 2 replicas at the 5,000-tenant reference.
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 192Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ---------------------------------------------------------------------------
+# postgres — OPTIONAL bundled datastore for LOCAL/DEV ONLY. NOT FOR PRODUCTION:
+# single replica, in-cluster credentials, no backups/HA. Production must use an
+# external managed Postgres via secrets.databaseUrl / existingSecret and keep
+# this disabled.
+# ---------------------------------------------------------------------------
+postgres:
+  enabled: false
+  image: postgres:16-alpine
+  auth:
+    username: shieldnet
+    password: shieldnet        # dev-only; override or use external DB in prod.
+    database: shieldnet_access
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

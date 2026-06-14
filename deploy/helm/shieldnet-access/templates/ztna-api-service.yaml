@@ -1,0 +1,16 @@
+{{- $component := "ztna-api" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  type: {{ .Values.ztnaApi.service.type }}
+  selector:
+    {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.ztnaApi.service.port }}
+      targetPort: http
+      protocol: TCP

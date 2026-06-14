@@ -1,0 +1,81 @@
+# Example PRODUCTION override for the shieldnet-access chart.
+#
+#   helm template sa deploy/helm/shieldnet-access \
+#     -f deploy/helm/shieldnet-access/examples/production.values.yaml
+#
+# This is the 5,000-SME-tenant reference posture from deploy/SCALE_SIZING.md:
+# external managed Postgres, secrets supplied out-of-band via existingSecret,
+# autoscaling + ingress + Prometheus scraping + PodDisruptionBudgets on.
+
+image:
+  repository: ghcr.io/kennguy3n/fishbone-access
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+config:
+  env: prod
+  # iam-core must be configured in production or the authenticated API 503s.
+  iamCore:
+    issuer: https://iam.example.com
+    audience: shieldnet-access
+    clientId: shieldnet-access
+  # pam-gateway: store session recordings in S3 so they survive pod restarts.
+  pam:
+    replayS3Bucket: shieldnet-access-replays
+    replayS3Region: us-east-1
+
+observability:
+  otelExporterOtlpEndpoint: http://otel-collector.observability:4317
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: kube-prometheus-stack
+
+# Production secrets are managed out-of-band (ExternalSecrets / SealedSecrets /
+# sops) — the chart renders NO Secret. The referenced Secret must carry
+# ACCESS_DATABASE_URL, one of ACCESS_KMS_MASTER_KEY / ACCESS_CREDENTIAL_DEK,
+# IAM_CORE_CLIENT_SECRET, and (for stable SSH host-key fingerprints across
+# pam-gateway replicas) PAM_SSH_HOST_KEY.
+secrets:
+  existingSecret: shieldnet-access-prod
+
+# External managed Postgres — bundled dev Postgres stays OFF.
+postgres:
+  enabled: false
+
+ztnaApi:
+  replicaCount: 6
+  autoscaling:
+    enabled: true
+    minReplicas: 6
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 70
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: access.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: access-example-com-tls
+        hosts:
+          - access.example.com
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+pamGateway:
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+connectorWorker:
+  replicaCount: 3
+
+workflowEngine:
+  replicaCount: 2

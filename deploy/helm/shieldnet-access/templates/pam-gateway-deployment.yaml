@@ -1,0 +1,102 @@
+{{- if .Values.pamGateway.enabled -}}
+{{- $component := "pam-gateway" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  replicas: {{ .Values.pamGateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "shieldnet-access.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $component }}
+          image: {{ include "shieldnet-access.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["pam-gateway"]
+          ports:
+            {{- range $name, $port := .Values.pamGateway.service.ports }}
+            - name: {{ $name }}
+              containerPort: {{ $port }}
+              protocol: TCP
+            {{- end }}
+          envFrom:
+            {{- include "shieldnet-access.envFrom" . | nindent 12 }}
+          {{- with (include "shieldnet-access.extraEnv" .) }}
+          env:
+            {{- . | nindent 12 }}
+          {{- end }}
+          # The gateway binds its protocol listeners only after Postgres is
+          # connected and migrations applied, so a TCP probe on one listener is an
+          # accurate readiness/liveness signal (no HTTP health endpoint). The
+          # probed port is configurable (default ssh) so a deployment that drops
+          # the SSH listener can point the probes at another published port.
+          {{- $probePort := .Values.pamGateway.probePort }}
+          startupProbe:
+            tcpSocket:
+              port: {{ $probePort }}
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket:
+              port: {{ $probePort }}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: {{ $probePort }}
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.pamGateway.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # Writable session-replay store (read-only root fs). For production
+            # prefer the S3 store (config.pam.replayS3Bucket) so recordings
+            # survive pod restarts.
+            - name: replays
+              mountPath: {{ .Values.config.pam.replayDir | quote }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: replays
+          emptyDir: {}
+      {{- with .Values.pamGateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pamGateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pamGateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

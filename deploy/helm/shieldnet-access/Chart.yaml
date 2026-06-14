@@ -1,0 +1,26 @@
+apiVersion: v2
+name: shieldnet-access
+description: >-
+  ShieldNet Access — multi-tenant ZTNA/PAM control plane. Deploys the ztna-api
+  REST/control-plane, the pam-gateway protocol proxy, and the connector-worker
+  and workflow-engine background workers, all from a single image whose command
+  selects the binary.
+type: application
+
+# version is the chart version; bump on any chart change.
+version: 0.1.0
+
+# appVersion tracks the application image this chart defaults to. It is used as
+# the image tag when image.tag is left empty in values.yaml.
+appVersion: "0.1.0"
+
+home: https://github.com/kennguy3n/fishbone-access
+sources:
+  - https://github.com/kennguy3n/fishbone-access
+keywords:
+  - ztna
+  - pam
+  - zero-trust
+  - access
+maintainers:
+  - name: ShieldNet Access

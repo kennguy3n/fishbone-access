@@ -1,0 +1,49 @@
+ShieldNet Access has been deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Components:
+  - ztna-api               ({{ .Values.ztnaApi.replicaCount }} replica(s)) — REST/control plane, HTTP :{{ .Values.ztnaApi.service.port }} (/health, /readyz, /metrics)
+{{- if .Values.pamGateway.enabled }}
+  - pam-gateway            ({{ .Values.pamGateway.replicaCount }} replica(s)) — protocol proxy (ssh/postgres/mysql/k8s-exec/...)
+{{- end }}
+{{- if .Values.connectorWorker.enabled }}
+  - access-connector-worker ({{ .Values.connectorWorker.replicaCount }} replica(s)) — identity sync / provision / revoke jobs
+{{- end }}
+{{- if and .Values.workflowEngine.enabled (include "shieldnet-access.credentialKeyConfigured" .) }}
+  - access-workflow-engine  ({{ .Values.workflowEngine.replicaCount }} replica(s)) — JML lifecycle, approvals, certifications
+{{- else if .Values.workflowEngine.enabled }}
+  - access-workflow-engine  (SKIPPED — needs a credential key; see note below)
+{{- end }}
+
+Datastore:
+{{- if .Values.postgres.enabled }}
+  ⚠️  Using the BUNDLED dev Postgres ({{ include "shieldnet-access.postgresName" . }}). NOT FOR PRODUCTION.
+      Switch to an external managed Postgres (secrets.databaseUrl / secrets.existingSecret) and set postgres.enabled=false.
+{{- else }}
+  External Postgres (DSN supplied via {{ if .Values.secrets.existingSecret }}existingSecret "{{ .Values.secrets.existingSecret }}"{{ else }}the chart-managed Secret "{{ include "shieldnet-access.secretName" . }}"{{ end }}).
+{{- end }}
+
+{{- if not .Values.secrets.existingSecret }}
+{{- if not (or .Values.secrets.databaseUrl .Values.postgres.enabled) }}
+
+NOTE: No database configured. ztna-api will boot in DEGRADED mode (authenticated
+API returns 503). Set secrets.databaseUrl (or secrets.existingSecret), or enable
+the bundled dev Postgres with --set postgres.enabled=true.
+{{- end }}
+{{- if not (or .Values.secrets.kmsMasterKey .Values.secrets.credentialDek) }}
+
+NOTE: Neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK is set. Connector
+secrets fail closed, and the access-workflow-engine Deployment is SKIPPED (it
+refuses to boot without a key, so the chart omits it rather than CrashLoop). Set
+one to bring it online:
+  kubectl -n {{ .Release.Namespace }} create secret generic <name> \
+    --from-literal=ACCESS_KMS_MASTER_KEY=$(openssl rand -base64 32)
+and reference it via secrets.existingSecret, or pass --set secrets.kmsMasterKey=...
+{{- end }}
+{{- end }}
+
+Check rollout:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Reach the API (port-forward):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "shieldnet-access.componentName" (dict "ctx" . "component" "ztna-api") }} {{ .Values.ztnaApi.service.port }}:{{ .Values.ztnaApi.service.port }}
+  curl localhost:{{ .Values.ztnaApi.service.port }}/health

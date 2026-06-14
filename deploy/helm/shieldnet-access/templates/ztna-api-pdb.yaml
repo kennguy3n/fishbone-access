@@ -1,0 +1,14 @@
+{{- if .Values.ztnaApi.podDisruptionBudget.enabled -}}
+{{- $component := "ztna-api" -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.ztnaApi.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "shieldnet-access.componentSelectorLabels" (dict "ctx" . "component" $component) | nindent 6 }}
+{{- end }}
