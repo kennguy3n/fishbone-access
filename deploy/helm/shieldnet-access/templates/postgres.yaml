@@ -83,6 +83,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+  {{- /*
+    Storage for the data mount. Note the two different YAML levels:
+    - persistence ON  → volumeClaimTemplates, a sibling of `template` at the
+      StatefulSet spec level (2-space indent) for per-pod durable PVCs.
+    - persistence OFF → an ephemeral emptyDir `volumes` entry at the pod spec
+      level (6-space indent), a sibling of `containers` above.
+  */}}
   {{- if .Values.postgres.persistence.enabled }}
   volumeClaimTemplates:
     - metadata:
