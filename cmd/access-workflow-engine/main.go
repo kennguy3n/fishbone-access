@@ -184,6 +184,13 @@ func run() error {
 	}
 	joinMetrics := metrics.ServeMetrics(ctx, cfg.WorkerMetricsAddr)
 	defer joinMetrics()
+	// joinMetrics() blocks until ctx is cancelled, and the top-level defer stop()
+	// (which cancels ctx) runs AFTER it in LIFO order — so any early return below
+	// would otherwise deadlock shutdown. Registering stop() here, immediately
+	// after defer joinMetrics(), makes LIFO cancel ctx FIRST on every return path,
+	// so the invariant is self-enforcing rather than relying on each error site to
+	// remember an explicit stop(). signal.NotifyContext's stop is idempotent.
+	defer stop()
 
 	// Hibernation gate (scale-to-zero): the scheduler READS the gate to defer a
 	// dormant workspace's periodic certification sweep. ztna-api owns dormancy
@@ -211,10 +218,8 @@ func run() error {
 		workflow_engine.ReviewSchedulerConfig{},
 	)
 	if err != nil {
-		// joinMetrics() (deferred above) blocks on ctx.Done(), and the deferred
-		// stop() that cancels ctx runs AFTER it in LIFO order — so an early
-		// return here would deadlock shutdown. Cancel ctx explicitly first.
-		stop()
+		// Shutdown is safe here: the defer stop() registered after defer
+		// joinMetrics() cancels ctx before joinMetrics() joins (see above).
 		return err
 	}
 	reviewScheduler.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("review_sweep") })
