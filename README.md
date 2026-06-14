@@ -57,6 +57,9 @@ go run ./cmd/ztna-api
 | `ACCESS_CREDENTIAL_DEK` | base64 32-byte AES-256 key sealing connector secrets. Unset (and no `ACCESS_KMS_MASTER_KEY`) → secret persistence fails closed. |
 | `ACCESS_KMS_MASTER_KEY` | base64 32-byte master key for per-workspace keys. When set, a distinct DEK is derived per workspace (HKDF) and this takes precedence over `ACCESS_CREDENTIAL_DEK`. |
 | `ACCESS_KMS_KEY_VERSION` | Current key version new writes seal under (default `1`); bump to rotate while old rows still open under their recorded version. |
+| `ACCESS_TENANT_RATE_LIMIT_ENABLED` | Per-tenant inbound rate limiting on the authenticated API (default `true`). |
+| `ACCESS_TENANT_RATE_LIMIT_RPS` | Sustained requests/sec per tenant (default `50`). |
+| `ACCESS_TENANT_RATE_LIMIT_BURST` | Instantaneous per-tenant bucket depth (default `100`). |
 | `IAM_CORE_ISSUER` | iam-core base URL (derives JWKS + discovery). Unset → authenticated API returns 503. |
 | `IAM_CORE_CLIENT_ID` / `IAM_CORE_CLIENT_SECRET` | Confidential OAuth2 client for SSO + management. |
 | `IAM_CORE_AUDIENCE` | Expected `aud` claim on access tokens. |
@@ -88,6 +91,26 @@ swap — the binaries log a loud boot warning while both are present. To migrate
 
 If there is no existing sealed data, skip the overlap entirely: set only
 `ACCESS_KMS_MASTER_KEY` from the start.
+
+#### Per-tenant rate limiting
+
+The authenticated `/api/v1` surface caps the inbound request rate **per tenant**
+(keyed on the verified `tenant_id`, after tenant resolution), so one noisy or
+runaway tenant cannot monopolise the shared Postgres pool — or our bill — at the
+expense of the other tenants. Over-budget requests get `429 Too Many Requests`
+with a `Retry-After` header; throttle events are exported as
+`shieldnet_http_requests_throttled_total{route=...}` on `/metrics` (by route
+template, never by tenant id, to bound cardinality).
+
+The limiter is a token bucket per tenant: `ACCESS_TENANT_RATE_LIMIT_RPS` is the
+sustained refill rate and `ACCESS_TENANT_RATE_LIMIT_BURST` the instantaneous
+depth. It is **in-memory and therefore per-replica** — with `N` ztna-api
+replicas a tenant's effective ceiling is `N × RPS`. That is the deliberate
+local/dev posture (no extra infrastructure) and already bounds a single abusive
+tenant to a small multiple of the rate; a globally exact limit across replicas
+would use a shared store via `ACCESS_REDIS_URL`, which the limiter interface is
+designed to accept later without call-site changes. Set
+`ACCESS_TENANT_RATE_LIMIT_ENABLED=false` to disable it entirely.
 
 ## Development
 

@@ -116,6 +116,11 @@ type Config struct {
 	// dormant-trial fraction so they consume near-zero periodic compute.
 	Tenancy TenancyConfig
 
+	// RateLimit caps the inbound request rate PER TENANT on the authenticated
+	// API surface, so one noisy or runaway tenant cannot monopolise the shared
+	// Postgres pool (and our bill) at the expense of the other tenants.
+	RateLimit RateLimitConfig
+
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
 
@@ -175,6 +180,30 @@ type TenancyConfig struct {
 	// constrained tier) so an un-tiered tenant cannot consume an active
 	// tenant's share.
 	DefaultTier string
+}
+
+// RateLimitConfig tunes the per-tenant inbound request limiter. The limiter is
+// in-memory and therefore per-process: with N ztna-api replicas a tenant's
+// effective ceiling is N×RequestsPerSecond. This is the deliberate local/dev
+// posture (no extra infrastructure) and still bounds a single abusive tenant to
+// a small multiple of the configured rate; a globally exact limit would use the
+// ACCESS_REDIS_URL seam.
+type RateLimitConfig struct {
+	// Enabled gates the limiter. When false the API surface is not rate-limited
+	// (the pre-feature behaviour). Read from ACCESS_TENANT_RATE_LIMIT_ENABLED;
+	// defaults to true — protecting the shared pool is the safer default at
+	// 5,000 tenants, and the defaults below are generous enough not to shape
+	// normal SME usage.
+	Enabled bool
+	// RequestsPerSecond is the sustained per-tenant refill rate. Read from
+	// ACCESS_TENANT_RATE_LIMIT_RPS; defaults to 50.
+	RequestsPerSecond float64
+	// Burst is the per-tenant bucket depth — the most requests a tenant may
+	// make instantaneously before being shaped to RequestsPerSecond. A single
+	// dashboard page load fans out into several XHRs, so this is set well above
+	// RequestsPerSecond. Read from ACCESS_TENANT_RATE_LIMIT_BURST; defaults to
+	// 100.
+	Burst int
 }
 
 // DevAuthConfig configures the non-production shared-secret token validator.
@@ -290,6 +319,11 @@ func Load() Config {
 			ActivityQueueSize:     getInt("ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE", 8192),
 			DefaultTier:           getEnv("ACCESS_TENANCY_DEFAULT_TIER", "trial"),
 		},
+		RateLimit: RateLimitConfig{
+			Enabled:           getBool("ACCESS_TENANT_RATE_LIMIT_ENABLED", true),
+			RequestsPerSecond: getFloat("ACCESS_TENANT_RATE_LIMIT_RPS", 50),
+			Burst:             getInt("ACCESS_TENANT_RATE_LIMIT_BURST", 100),
+		},
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
 			JWKSURL:           os.Getenv("IAM_CORE_JWKS_URL"),
@@ -356,6 +390,18 @@ func (c Config) Validate() error {
 	// since the version is meaningless without it.
 	if c.KMSMasterKey != "" && c.KMSKeyVersion < 1 {
 		return fmt.Errorf("config: ACCESS_KMS_KEY_VERSION must be >= 1 when ACCESS_KMS_MASTER_KEY is set (got %d)", c.KMSKeyVersion)
+	}
+	// Reject a rate limiter that is enabled but cannot ever admit a request:
+	// fail the boot loudly here rather than silently shaping every tenant to a
+	// dead bucket. Only enforced when enabled, since the values are inert when
+	// the limiter is off.
+	if c.RateLimit.Enabled {
+		if c.RateLimit.RequestsPerSecond <= 0 {
+			return fmt.Errorf("config: ACCESS_TENANT_RATE_LIMIT_RPS must be > 0 when ACCESS_TENANT_RATE_LIMIT_ENABLED is true (got %g)", c.RateLimit.RequestsPerSecond)
+		}
+		if c.RateLimit.Burst < 1 {
+			return fmt.Errorf("config: ACCESS_TENANT_RATE_LIMIT_BURST must be >= 1 when ACCESS_TENANT_RATE_LIMIT_ENABLED is true (got %d)", c.RateLimit.Burst)
+		}
 	}
 	return nil
 }
@@ -456,6 +502,21 @@ func getInt(key string, def int) int {
 	return def
 }
 
+// getFloat reads a non-negative float env var, returning def when unset, empty,
+// unparseable, or negative (a negative rate is meaningless and would be a silent
+// misconfiguration). A parseable 0 is returned as-is so Validate can reject it
+// with a field-specific message rather than masking it as the default.
+func getFloat(key string, def float64) float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+		return f
+	}
+	return def
+}
+
 // getBool reads a boolean env var, returning def when unset, empty, or
 // unparseable. Accepts the strconv.ParseBool set ("1","t","true","0","f",…).
 func getBool(key string, def bool) bool {
@@ -489,9 +550,10 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
+		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }
