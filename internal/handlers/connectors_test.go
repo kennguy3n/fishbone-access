@@ -216,6 +216,76 @@ func TestConnectorSetupWizardUnknownProvider(t *testing.T) {
 	}
 }
 
+// TestConnectorSetupSchemaCurated asserts the setup-schema endpoint returns a
+// well-formed guided schema for a curated provider, with the display name
+// resolved from the registry and at least one auth method carrying fields.
+func TestConnectorSetupSchemaCurated(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+
+	w := do(t, r, http.MethodGet, "/api/v1/connectors/catalogue/okta/setup-schema", "tok-a", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("setup-schema status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Schema *access.ConnectorSetupSchema `json:"schema"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body.Schema == nil {
+		t.Fatal("expected a curated schema for okta, got null")
+	}
+	if body.Schema.Provider != "okta" {
+		t.Fatalf("schema provider = %q, want okta", body.Schema.Provider)
+	}
+	if body.Schema.DisplayName == "" {
+		t.Fatal("schema display name not resolved from the registry")
+	}
+	if len(body.Schema.AuthMethods) == 0 || len(body.Schema.AuthMethods[0].Fields) == 0 {
+		t.Fatalf("schema has no auth methods/fields: %+v", body.Schema)
+	}
+}
+
+// TestConnectorSetupSchemaNoCuratedSchema asserts a registered provider with no
+// curated schema returns 200 with {"schema": null} (not a 404), so the client
+// cleanly falls back to the manual editor.
+func TestConnectorSetupSchemaNoCuratedSchema(t *testing.T) {
+	// Find a registered provider that has no curated setup schema.
+	var provider string
+	for _, d := range access.ListCapabilityDescriptors() {
+		if !access.HasSetupSchema(d.Provider) {
+			provider = d.Provider
+			break
+		}
+	}
+	if provider == "" {
+		t.Skip("every registered provider has a curated schema")
+	}
+	r := NewRouter(lifecycleTestDeps(t))
+	w := do(t, r, http.MethodGet, "/api/v1/connectors/catalogue/"+provider+"/setup-schema", "tok-a", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("no-schema status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Schema *access.ConnectorSetupSchema `json:"schema"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body.Schema != nil {
+		t.Fatalf("expected null schema for %q, got %+v", provider, body.Schema)
+	}
+}
+
+// TestConnectorSetupSchemaUnknownProvider asserts an unknown provider is a 404.
+func TestConnectorSetupSchemaUnknownProvider(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+	w := do(t, r, http.MethodGet, "/api/v1/connectors/catalogue/not-a-real-provider/setup-schema", "tok-a", nil)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("unknown provider status = %d, want 404; body=%s", w.Code, w.Body.String())
+	}
+}
+
 // TestConnectorTestConnectivityMissingSerializesAsEmptyArray pins the OpenAPI
 // contract for the `missing` field: it is typed as a non-nullable array, so even
 // when no capabilities are probed (the service returns a nil Go slice) the JSON
