@@ -162,6 +162,84 @@ func TestRLSPgxPoolTenantIsolation(t *testing.T) {
 	}
 }
 
+// TestRLSGORMResetSessionUsesQueryContext is the airtight version of the GORM
+// path proof: it pins the database/sql pool to a SINGLE physical connection, so
+// every query after the first reuses that connection and therefore exercises
+// the pgx ResetSession hook (not just AfterConnect). It then interleaves
+// tenant-A, unscoped and tenant-B queries on that one connection.
+//
+// This directly disproves the worry that database/sql might invoke
+// ResetSession with context.Background() rather than the acquiring query's
+// context: were that true, every reuse would reset app.workspace_id to '' and
+// the tenant-B query below would see BOTH rows (2) instead of only B's (1). The
+// hook receiving the query context is what makes each assertion hold.
+func TestRLSGORMResetSessionUsesQueryContext(t *testing.T) {
+	superDSN := os.Getenv("ACCESS_TEST_DATABASE_URL")
+	if superDSN == "" {
+		t.Skip("ACCESS_TEST_DATABASE_URL not set; skipping RLS integration test")
+	}
+	ctx := context.Background()
+
+	super, err := database.Open(superDSN)
+	if err != nil {
+		t.Fatalf("open super: %v", err)
+	}
+	superSQL, err := super.DB()
+	if err != nil {
+		t.Fatalf("super sql handle: %v", err)
+	}
+	t.Cleanup(func() { _ = superSQL.Close() })
+
+	if _, err := superSQL.ExecContext(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`); err != nil {
+		t.Fatalf("reset schema: %v", err)
+	}
+	if _, err := migrations.Run(ctx, superSQL); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+	provisionAppRole(t, superSQL)
+
+	wsA := seedWorkspacePolicy(t, super, "reuse-tenant-a", "reuse-policy-a")
+	wsB := seedWorkspacePolicy(t, super, "reuse-tenant-b", "reuse-policy-b")
+
+	app, err := database.Open(appRoleDSN(t, superDSN))
+	if err != nil {
+		t.Fatalf("open app: %v", err)
+	}
+	appSQL, err := app.DB()
+	if err != nil {
+		t.Fatalf("app sql handle: %v", err)
+	}
+	t.Cleanup(func() { _ = appSQL.Close() })
+
+	// Force a single connection so every query but the first goes through the
+	// ResetSession reuse path on the SAME physical connection.
+	appSQL.SetMaxOpenConns(1)
+	appSQL.SetMaxIdleConns(1)
+	appSQL.SetConnMaxIdleTime(0)
+	appSQL.SetConnMaxLifetime(0)
+
+	ctxA := database.WithWorkspaceID(ctx, wsA)
+	ctxB := database.WithWorkspaceID(ctx, wsB)
+
+	// First use opens the connection (AfterConnect pins GUC=A).
+	if got := countPolicies(t, app, ctxA); got != 1 {
+		t.Fatalf("tenant A count = %d, want 1", got)
+	}
+	// Reuse #1 — the discriminating assertion: if ResetSession received
+	// context.Background() this would be 2 (GUC reset to '').
+	if got := countPolicies(t, app, ctxB); got != 1 {
+		t.Fatalf("tenant B count = %d, want 1 (reused conn must re-pin GUC to B, not '')", got)
+	}
+	// Reuse #2 — unscoped worker context: GUC re-pinned to '' so both rows show.
+	if got := countPolicies(t, app, ctx); got != 2 {
+		t.Fatalf("unscoped count = %d, want 2 (reused conn must reset GUC to '')", got)
+	}
+	// Reuse #3 — back to tenant A on the same connection.
+	if got := countPolicies(t, app, ctxA); got != 1 {
+		t.Fatalf("tenant A count (re-pinned) = %d, want 1", got)
+	}
+}
+
 // provisionAppRole creates (idempotently) a non-superuser login role and grants
 // it the table/function privileges the control plane uses, so the test can
 // exercise RLS as production does. Grants run after migrations because the
