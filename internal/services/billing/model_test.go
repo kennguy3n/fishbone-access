@@ -88,3 +88,36 @@ func TestUnknownPlanResolvesToDefault(t *testing.T) {
 		t.Errorf("resolved plan = %q, want default %q", p.Plan, DefaultPlanTier)
 	}
 }
+
+// TestValidateOverrides exercises the effective-plan guard on the admin
+// set-plan path: a resolved hard cap below the included allowance is rejected,
+// while inherited defaults, unlimited (zero) caps, and a sane explicit override
+// pass. The cases cover both a full override (both fields set) and the two
+// partial overrides (one field set, the other inherited), since those are
+// validated against the EFFECTIVE values, not just the request fields.
+func TestValidateOverrides(t *testing.T) {
+	cases := []struct {
+		name    string
+		row     TenantPlan
+		wantErr bool
+	}{
+		{"default trial (no override)", TenantPlan{Plan: tenancy.TierTrial}, false},
+		{"default enterprise unlimited cap", TenantPlan{Plan: tenancy.TierEnterprise}, false},
+		{"sane full override", TenantPlan{Plan: tenancy.TierBase, APIRequestsIncluded: 500_000, APIRequestsHardCap: 1_000_000}, false},
+		{"raise both above defaults", TenantPlan{Plan: tenancy.TierBase, APIRequestsIncluded: 5_000_000, APIRequestsHardCap: 8_000_000}, false},
+		{"inverted full override", TenantPlan{Plan: tenancy.TierBase, APIRequestsIncluded: 2_000_000, APIRequestsHardCap: 500_000}, true},
+		{"included raised past inherited cap", TenantPlan{Plan: tenancy.TierTrial, APIRequestsIncluded: 2_000_000}, true},
+		{"cap lowered below inherited included", TenantPlan{Plan: tenancy.TierBase, APIRequestsHardCap: 500_000}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateOverrides(tc.row)
+			if tc.wantErr && err == nil {
+				t.Fatalf("ValidateOverrides(%+v) = nil, want error", tc.row)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("ValidateOverrides(%+v) = %v, want nil", tc.row, err)
+			}
+		})
+	}
+}

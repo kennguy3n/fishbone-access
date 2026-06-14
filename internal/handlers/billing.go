@@ -126,12 +126,22 @@ func (h *billingHandlers) setPlan(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "quota overrides must be non-negative"})
 		return
 	}
-	if err := h.svc.SetPlan(c.Request.Context(), billing.TenantPlan{
+	plan := billing.TenantPlan{
 		WorkspaceID:         ws,
 		Plan:                req.Plan,
 		APIRequestsIncluded: req.APIRequestsIncluded,
 		APIRequestsHardCap:  req.APIRequestsHardCap,
-	}); err != nil {
+	}
+	// Reject an override whose effective hard cap would sit below the included
+	// allowance (e.g. raising Included past the inherited cap, or lowering the
+	// cap below the inherited Included): that would hard-deny the tenant before
+	// it consumes the quota it is entitled to, so it is an explicit 400 rather
+	// than a silently broken cap.
+	if err := billing.ValidateOverrides(plan); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.svc.SetPlan(c.Request.Context(), plan); err != nil {
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "plan update failed"})
 		return
 	}

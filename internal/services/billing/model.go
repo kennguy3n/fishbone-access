@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -197,3 +198,24 @@ func resolvePlan(row TenantPlan) Plan {
 // defaultPlan returns the resolved default plan (no overrides) for a tenant with
 // no tenant_plan row.
 func defaultPlan() Plan { return resolvePlan(TenantPlan{Plan: DefaultPlanTier}) }
+
+// ValidateOverrides rejects a plan assignment whose EFFECTIVE per-metric hard
+// ceiling would sit below its effective included allowance — a self-inflicted
+// misconfiguration that hard-denies a tenant before it ever consumes the
+// allowance it is entitled to. It resolves the row first (so a partial override
+// — e.g. raising Included while inheriting the default HardCap, or lowering
+// HardCap while inheriting the default Included — is checked against the values
+// that will actually be enforced, not just the two request fields). A zero
+// effective HardCap means UNLIMITED (the enterprise posture) and is always
+// valid. The built-in planDefaults always satisfy this, so only explicit
+// overrides can trip it; the admin set-plan path calls this to return a 400
+// rather than persisting a cap that denies the tenant's own included quota.
+func ValidateOverrides(row TenantPlan) error {
+	p := resolvePlan(row)
+	for metric, q := range p.Metrics {
+		if q.HardCap > 0 && q.HardCap < q.Included {
+			return fmt.Errorf("effective hard cap (%d) for %s is below the included allowance (%d); raise the hard cap or lower the included quota", q.HardCap, metric, q.Included)
+		}
+	}
+	return nil
+}

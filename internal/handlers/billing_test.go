@@ -175,6 +175,22 @@ func TestBillingSetPlanRejectsNegativeOverride(t *testing.T) {
 	}
 }
 
+// TestBillingSetPlanRejectsInvertedOverride proves an override whose effective
+// hard cap would fall below the included allowance is an explicit 400, so an
+// admin cannot persist a cap that hard-denies the tenant before it consumes the
+// quota it is entitled to.
+func TestBillingSetPlanRejectsInvertedOverride(t *testing.T) {
+	deps, _, _ := billingTestDeps(t)
+	r := NewRouter(deps)
+
+	w := do(t, r, http.MethodPut, "/api/v1/billing/plan", "tok-a", map[string]any{
+		"plan": "base", "api_requests_included": 2_000_000, "api_requests_hard_cap": 500_000,
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 for inverted override (cap < included); body=%s", w.Code, w.Body.String())
+	}
+}
+
 // TestBillingPlanCrossTenantIsolation proves setting tenant-a's plan never
 // changes tenant-b's: each tenant only ever reads/writes its OWN plan (workspace
 // derived from context, never the body).
