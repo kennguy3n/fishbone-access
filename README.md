@@ -54,7 +54,9 @@ go run ./cmd/ztna-api
 | `ACCESS_HTTP_ADDR` | API listen address (default `:8080`). |
 | `ACCESS_DATABASE_URL` | Postgres DSN. Unset → degraded mode. |
 | `ACCESS_REDIS_URL` | Redis URL for the worker queue. |
-| `ACCESS_CREDENTIAL_DEK` | base64 32-byte AES-256 key sealing connector secrets. Unset → secret persistence fails closed. |
+| `ACCESS_CREDENTIAL_DEK` | base64 32-byte AES-256 key sealing connector secrets. Unset (and no `ACCESS_KMS_MASTER_KEY`) → secret persistence fails closed. |
+| `ACCESS_KMS_MASTER_KEY` | base64 32-byte master key for per-workspace keys. When set, a distinct DEK is derived per workspace (HKDF) and this takes precedence over `ACCESS_CREDENTIAL_DEK`. |
+| `ACCESS_KMS_KEY_VERSION` | Current key version new writes seal under (default `1`); bump to rotate while old rows still open under their recorded version. |
 | `IAM_CORE_ISSUER` | iam-core base URL (derives JWKS + discovery). Unset → authenticated API returns 503. |
 | `IAM_CORE_CLIENT_ID` / `IAM_CORE_CLIENT_SECRET` | Confidential OAuth2 client for SSO + management. |
 | `IAM_CORE_AUDIENCE` | Expected `aud` claim on access tokens. |

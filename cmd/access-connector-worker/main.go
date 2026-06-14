@@ -62,7 +62,7 @@ func run() error {
 		}
 	}()
 
-	enc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	enc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
 		return err
 	}
@@ -74,11 +74,11 @@ func run() error {
 		stop()
 		return nil
 	}
-	if cfg.CredentialDEK == "" {
+	if !cfg.CredentialEncryptionConfigured() {
 		// The disabled (fail-closed) encryptor is wired: provisioning/revoke
 		// jobs that need to open secrets will error per-job. Log loudly so the
 		// misconfiguration is visible rather than surfacing only as job failures.
-		logger.Warnf(ctx, "access-connector-worker: ACCESS_CREDENTIAL_DEK unset; jobs needing connector secrets will fail closed")
+		logger.Warnf(ctx, "access-connector-worker: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; jobs needing connector secrets will fail closed")
 	}
 
 	// Filter the shared access_jobs queue to connector job types only, so this

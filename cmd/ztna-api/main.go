@@ -189,10 +189,13 @@ func run() error {
 
 	// Access-stack credential encryptor for the connector-management surface.
 	// It is the same encryptor the access-connector-worker builds from the
-	// same DEK, so a connector created through the API seals its secrets in a
-	// form the worker can open when it runs the sync — without it the two
+	// same config, so a connector created through the API seals its secrets in
+	// a form the worker can open when it runs the sync — without it the two
 	// stacks would diverge and a created connector could never be synced.
-	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	// FromConfig prefers the per-workspace KMS master key (deriving a distinct
+	// DEK per workspace) and falls back to the single static DEK, so both
+	// stacks must be configured identically for the seals to interoperate.
+	connEnc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
 	}
