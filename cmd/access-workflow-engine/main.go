@@ -32,8 +32,10 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 
@@ -170,6 +172,37 @@ func run() error {
 		return err
 	}
 
+	// Operational telemetry. Like the connector worker this binary serves no
+	// API, so it exposes its own minimal /metrics (+ /healthz); the aggregate
+	// review-sweep skip counter is scraped from here. Best-effort — a bind
+	// failure must not stop the engine.
+	metrics := observability.NewMetrics()
+	if sqlDB, derr := gdb.DB(); derr == nil {
+		if rerr := metrics.RegisterDBPool(sqlDB); rerr != nil {
+			logger.Warnf(ctx, "access-workflow-engine: db pool metrics not registered: %v", rerr)
+		}
+	}
+	joinMetrics := metrics.ServeMetrics(ctx, cfg.WorkerMetricsAddr)
+	defer joinMetrics()
+
+	// Hibernation gate (scale-to-zero): the scheduler READS the gate to defer a
+	// dormant workspace's periodic certification sweep. ztna-api owns dormancy
+	// classification and activity recording; this binary only consults the gate
+	// and records no activity of its own (scheduled work must not keep a tenant
+	// awake). DB-backed Service only when enabled, else AlwaysRun for clean
+	// degradation.
+	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
+	if cfg.Tenancy.HibernationEnabled {
+		gate = tenancy.NewService(gdb, tenancy.Config{
+			Enabled:       true,
+			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
+			DefaultTier:   cfg.Tenancy.DefaultTier,
+		})
+		logger.Infof(ctx, "access-workflow-engine: tenant hibernation enabled; dormant workspaces' periodic review sweeps are deferred")
+	} else {
+		logger.Infof(ctx, "access-workflow-engine: tenant hibernation DISABLED; every workspace is swept (AlwaysRun gate)")
+	}
+
 	reviewScheduler, err := workflow_engine.NewReviewScheduler(
 		engine,
 		workflow_engine.NewGormWorkspaceLister(gdb),
@@ -178,6 +211,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	reviewScheduler.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("review_sweep") })
 
 	w := workers.New(queue, processor, workers.Config{})
 

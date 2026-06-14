@@ -171,3 +171,131 @@ func TestJobProcessorUnknownConnectorRow(t *testing.T) {
 		t.Errorf("Process for missing row err = %v, want ErrConnectorRowNotFound", err)
 	}
 }
+
+// stubGate is a programmable HibernationGate for the gate-honouring tests.
+type stubGate struct {
+	run  bool
+	err  error
+	seen []uuid.UUID
+}
+
+func (g *stubGate) ShouldRunPeriodic(_ context.Context, ws uuid.UUID) (bool, error) {
+	g.seen = append(g.seen, ws)
+	return g.run, g.err
+}
+
+// TestJobProcessorSkipsDormantSync proves the connector worker DEFERS a periodic
+// identity sync for a confidently-dormant tenant: the connector is never
+// invoked, the skip observer fires once, and the job is acked (nil error) so it
+// is not retried.
+func TestJobProcessorSkipsDormantSync(t *testing.T) {
+	mock := &MockAccessConnector{}
+	SwapConnector(t, "test-provider", mock)
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, nil)
+	skips := 0
+	gate := &stubGate{run: false}
+	proc := NewConnectorJobProcessor(db, PassthroughEncryptor{}).
+		WithHibernationGate(gate, func() { skips++ })
+	ctx := context.Background()
+	ws := uuid.New()
+	row, _ := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider"})
+
+	if err := proc.Process(ctx, makeJob(t, svc, ws, row.ID, JobTypeSyncIdentities, nil, "")); err != nil {
+		t.Fatalf("Process (dormant) = %v, want nil (deferred, acked)", err)
+	}
+	if mock.SyncIdentitiesCalls != 0 {
+		t.Errorf("SyncIdentities called %d times for dormant tenant, want 0", mock.SyncIdentitiesCalls)
+	}
+	if skips != 1 {
+		t.Errorf("skip observer fired %d times, want 1", skips)
+	}
+	if len(gate.seen) != 1 || gate.seen[0] != ws {
+		t.Errorf("gate consulted with %v, want one call for %s", gate.seen, ws)
+	}
+}
+
+// TestJobProcessorRunsActiveSync proves an active (gate=run) tenant's sync runs
+// normally and the skip observer does NOT fire.
+func TestJobProcessorRunsActiveSync(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncSyncIdentities: func(_ context.Context, _, _ map[string]interface{}, _ string, handler func([]*Identity, string) error) error {
+			return handler([]*Identity{}, "delta")
+		},
+	}
+	SwapConnector(t, "test-provider", mock)
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, nil)
+	skips := 0
+	proc := NewConnectorJobProcessor(db, PassthroughEncryptor{}).
+		WithHibernationGate(&stubGate{run: true}, func() { skips++ })
+	ctx := context.Background()
+	ws := uuid.New()
+	row, _ := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider"})
+
+	if err := proc.Process(ctx, makeJob(t, svc, ws, row.ID, JobTypeSyncIdentities, nil, "")); err != nil {
+		t.Fatalf("Process (active) = %v", err)
+	}
+	if mock.SyncIdentitiesCalls != 1 {
+		t.Errorf("SyncIdentities called %d times for active tenant, want 1", mock.SyncIdentitiesCalls)
+	}
+	if skips != 0 {
+		t.Errorf("skip observer fired %d times for active tenant, want 0", skips)
+	}
+}
+
+// TestJobProcessorFailOpenOnGateError proves the FAIL-OPEN contract: a gate
+// error must NEVER defer real work — the sync runs and is not counted skipped.
+func TestJobProcessorFailOpenOnGateError(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncSyncIdentities: func(_ context.Context, _, _ map[string]interface{}, _ string, handler func([]*Identity, string) error) error {
+			return handler([]*Identity{}, "delta")
+		},
+	}
+	SwapConnector(t, "test-provider", mock)
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, nil)
+	skips := 0
+	proc := NewConnectorJobProcessor(db, PassthroughEncryptor{}).
+		WithHibernationGate(&stubGate{run: false, err: errors.New("classify boom")}, func() { skips++ })
+	ctx := context.Background()
+	ws := uuid.New()
+	row, _ := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider"})
+
+	if err := proc.Process(ctx, makeJob(t, svc, ws, row.ID, JobTypeSyncIdentities, nil, "")); err != nil {
+		t.Fatalf("Process (gate error) = %v, want nil (fail-open ran)", err)
+	}
+	if mock.SyncIdentitiesCalls != 1 {
+		t.Errorf("SyncIdentities called %d times on gate error, want 1 (fail-open)", mock.SyncIdentitiesCalls)
+	}
+	if skips != 0 {
+		t.Errorf("skip observer fired %d times on gate error, want 0", skips)
+	}
+}
+
+// TestJobProcessorGateIgnoresOnDemandJobs proves the gate is consulted ONLY for
+// periodic sync: provision/revoke are on-demand JML actions and must run even
+// for a dormant tenant.
+func TestJobProcessorGateIgnoresOnDemandJobs(t *testing.T) {
+	mock := &MockAccessConnector{}
+	SwapConnector(t, "test-provider", mock)
+	db := newTestDB(t)
+	svc := NewConnectorManagementService(db, PassthroughEncryptor{}, nil)
+	gate := &stubGate{run: false} // dormant: would skip a sync
+	proc := NewConnectorJobProcessor(db, PassthroughEncryptor{}).
+		WithHibernationGate(gate, func() {})
+	ctx := context.Background()
+	ws := uuid.New()
+	row, _ := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider"})
+	grant := &AccessGrant{UserExternalID: "u1", ResourceExternalID: "r1", Role: "viewer"}
+
+	if err := proc.Process(ctx, makeJob(t, svc, ws, row.ID, JobTypeProvision, grant, "")); err != nil {
+		t.Fatalf("provision (dormant) = %v, want it to run regardless of gate", err)
+	}
+	if mock.ProvisionAccessCalls != 1 {
+		t.Errorf("ProvisionAccess called %d times for dormant tenant, want 1 (on-demand never gated)", mock.ProvisionAccessCalls)
+	}
+	if len(gate.seen) != 0 {
+		t.Errorf("gate consulted %d times for provision, want 0 (on-demand never gated)", len(gate.seen))
+	}
+}

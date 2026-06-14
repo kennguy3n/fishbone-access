@@ -115,3 +115,31 @@ func TestIncThrottledByRouteTemplate(t *testing.T) {
 		t.Errorf("metrics missing %q", want)
 	}
 }
+
+func TestHibernationMetricsExposeAggregates(t *testing.T) {
+	m := NewMetrics()
+	r := newTestEngine(m)
+
+	m.SetDormantTenants(4200)
+	m.SetDormantTenants(-1) // negative is ignored: must not stomp the last good value
+	m.IncPeriodicJobSkipped("connector_sync")
+	m.IncPeriodicJobSkipped("connector_sync")
+	m.IncPeriodicJobSkipped("review_sweep")
+	m.IncPeriodicJobSkipped("") // empty worker collapses to "unknown"
+	m.IncWakeEvents()
+	m.IncWakeEvents()
+	m.IncWakeEvents()
+
+	body := do(t, r, http.MethodGet, "/metrics").Body.String()
+	for _, want := range []string{
+		`shieldnet_hibernation_tenants_dormant 4200`,
+		`shieldnet_hibernation_periodic_jobs_skipped_total{worker="connector_sync"} 2`,
+		`shieldnet_hibernation_periodic_jobs_skipped_total{worker="review_sweep"} 1`,
+		`shieldnet_hibernation_periodic_jobs_skipped_total{worker="unknown"} 1`,
+		`shieldnet_hibernation_wake_events_total 3`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("metrics missing %q\n--- scrape ---\n%s", want, body)
+		}
+	}
+}

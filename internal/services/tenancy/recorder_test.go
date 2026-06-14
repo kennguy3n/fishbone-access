@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -143,6 +144,52 @@ func TestAsyncRecorderFlushesBufferedOnShutdown(t *testing.T) {
 	if got := sink.cancelled(); got != 0 {
 		t.Fatalf("%d writes saw a cancelled context, want 0", got)
 	}
+}
+
+// TestAsyncRecorderOnWakeFiresPerWake proves the wake observer fires exactly
+// once for each event the sink reports as a wake (woke=true) and never when the
+// sink reports no transition — the seam that feeds the aggregate wake-events
+// counter without coupling the recorder to observability. Using the
+// shutdown-drain pattern makes the count deterministic: after join() every
+// buffered event has been persisted.
+func TestAsyncRecorderOnWakeFiresPerWake(t *testing.T) {
+	t.Run("fires when sink reports a wake", func(t *testing.T) {
+		sink := newFakeSink()
+		sink.woke = true // every persisted event is a dormant->active transition
+		var wakes int64
+		r := NewAsyncRecorder(sink, AsyncRecorderConfig{
+			OnWake: func() { atomic.AddInt64(&wakes, 1) },
+		})
+		const n = 8
+		for i := 0; i < n; i++ {
+			r.Record(uuid.New(), KindAPI)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		join := r.Run(ctx)
+		join()
+		if got := atomic.LoadInt64(&wakes); got != n {
+			t.Fatalf("OnWake fired %d times, want %d (once per wake)", got, n)
+		}
+	})
+
+	t.Run("silent when sink reports no transition", func(t *testing.T) {
+		sink := newFakeSink() // woke stays false
+		var wakes int64
+		r := NewAsyncRecorder(sink, AsyncRecorderConfig{
+			OnWake: func() { atomic.AddInt64(&wakes, 1) },
+		})
+		for i := 0; i < 8; i++ {
+			r.Record(uuid.New(), KindAPI)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		join := r.Run(ctx)
+		join()
+		if got := atomic.LoadInt64(&wakes); got != 0 {
+			t.Fatalf("OnWake fired %d times with no wake, want 0", got)
+		}
+	})
 }
 
 // TestAsyncRecorderPersistsWithLiveContextAfterCancel exercises the drain loop

@@ -151,6 +151,93 @@ durability granularity, not accuracy — a replica that crashes loses at most it
 last unflushed window. Set `ACCESS_USAGE_METERING_ENABLED=false` to disable it
 entirely (the pre-feature behaviour).
 
+#### Tenant hibernation (scale-to-zero per tenant)
+
+Most of a 5,000-tenant fleet are **dormant trials**. Hibernation makes that
+majority cost ~nothing in steady state by letting the periodic workers **skip**
+tenants that are confidently idle, while keeping the system safe for everyone
+else.
+
+End-to-end mechanism:
+
+1. **Record activity.** ztna-api's request-path middleware records per-tenant
+   activity (login / API / provisioning). Writes are coalesced
+   (`ACCESS_TENANCY_ACTIVITY_FLUSH`) so a busy tenant is a single periodic write,
+   not one per request. Activity is recorded **whenever a DB is present,
+   independent of whether hibernation is enabled**, so the feature can be turned
+   on later with accurate history.
+2. **Classify dormant on idle.** A set-based reconcile sweep
+   (`ACCESS_TENANCY_RECONCILE_INTERVAL`) marks any tenant whose last activity
+   predates `ACCESS_TENANCY_DORMANT_IDLE` as **dormant**, and seeds rows for
+   tenants provisioned before the subsystem existed. It is three SQL statements
+   in one transaction — cost is O(changed rows), not O(tenants) — so it stays
+   cheap at fleet scale and is safe to run on every replica (it converges the
+   same state).
+3. **Workers skip dormant tenants.** Before doing a tenant's **periodic** work,
+   each worker asks the gate `ShouldRunPeriodic(ctx, workspaceID)` and skips when
+   it returns false. Two loops gate today:
+   - `access-connector-worker` — the periodic **identity sync**
+     (`JobTypeSyncIdentities`) only. On-demand provision/revoke (JML actions) are
+     **never** gated.
+   - `access-workflow-engine` — the periodic **certification review sweep**, per
+     workspace, at enqueue time.
+   A skipped sync is **deferred, not dropped**: the job is acked and the
+   delta-sync cursor is untouched, so the next cycle after the tenant wakes
+   resumes exactly where it would have.
+4. **Wake on activity.** The next real activity from a dormant tenant flips it
+   back to active immediately (a single conditional `dormant→active` update on
+   the request path), so its very next periodic cycle runs — there is **no
+   missed-wake window**. The reconcile sweep is a secondary backstop wake.
+
+**Fail-open guarantee (sacrosanct).** The gate may only ever *defer* work for a
+tenant the system is **confident is dormant**. A never-classified tenant, a
+tenant with no activity row yet, or **any error** yields *run*. Hibernation can
+never silently drop or skip work for an active or unclassified tenant. Every
+gate check in the workers honours this, so adopting the gate is always safe.
+
+**What "scale-to-zero per tenant" does and does NOT mean here.** It **defers
+per-tenant periodic work** (connector syncs, scheduled review sweeps) for
+dormant tenants. It is **not** pod scale-to-zero: the worker processes keep
+running and keep serving every active tenant; we simply stop spending periodic
+compute on the dormant majority. On-demand, user-facing actions are never
+gated.
+
+**Worker context & RLS.** The periodic workers run in **worker context** — there
+is no per-request tenant bound on the context, so Postgres RLS is permissive
+rather than request-scoped. Consulting the gate is correct under that model: the
+gate read is a **workspace-scoped primary-key lookup** (`WHERE workspace_id = ?`)
+that binds the tenant explicitly and returns **no tenant data** — only an
+operational classification (`dormant`/`active`) and, for the gauge, an unscoped
+`COUNT` of the state column. It therefore cannot widen or break tenant
+isolation. The workers deliberately **record no activity of their own**: doing
+scheduled work for a tenant must not itself count as that tenant's activity, or a
+hibernated tenant could never stay dormant. ztna-api (the request path) owns
+activity recording and the reconcile sweep; the workers only *read* the gate.
+
+**Disabled mode.** `ACCESS_TENANCY_HIBERNATION_ENABLED=false` degrades cleanly to
+`AlwaysRun` **everywhere, including the workers** (each constructs the no-op gate
+instead of the DB-backed service, so there are no gate DB reads), while ztna-api
+still records activity. This is the pre-feature behaviour with history
+accumulating for a later enable.
+
+**Observability.** The savings are provable from aggregate, **never
+tenant-labelled** Prometheus series (preserving the cardinality discipline of the
+usage metering above):
+
+- `shieldnet_hibernation_tenants_dormant` (gauge) — fleet-wide dormant count,
+  refreshed every reconcile sweep from the authoritative state column (so it is
+  self-correcting). This is the headline scale-to-zero signal.
+- `shieldnet_hibernation_periodic_jobs_skipped_total{worker}` (counter) — periodic
+  jobs skipped because the tenant was dormant, by worker (`connector_sync`,
+  `review_sweep`). Every increment is realized work *not* done.
+- `shieldnet_hibernation_wake_events_total` (counter) — lazy `dormant→active`
+  wakes driven by real activity (once per transition, not per request).
+
+ztna-api exposes these on its existing `/metrics`; the background workers serve a
+minimal `/metrics` + `/healthz` of their own on `ACCESS_WORKER_METRICS_ADDR`
+(default `:9090`, set empty to disable) because the skip counter increments
+inside them.
+
 ## Deployment
 
 The single-server tier runs via [`docker-compose.yml`](docker-compose.yml)

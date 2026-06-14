@@ -52,6 +52,14 @@ type Config struct {
 	Env string
 	// HTTPAddr is the listen address for the ztna-api HTTP server.
 	HTTPAddr string
+	// WorkerMetricsAddr is the listen address for the background WORKER
+	// binaries' minimal /metrics + /healthz server (access-connector-worker,
+	// access-workflow-engine). Those binaries have no API server of their own,
+	// but the aggregate hibernation skip counter increments inside them, so
+	// they must be scrapable for the scale-to-zero saving to be observable.
+	// ztna-api ignores this (it serves /metrics on HTTPAddr). Read from
+	// ACCESS_WORKER_METRICS_ADDR; defaults to ":9090". Set empty to disable.
+	WorkerMetricsAddr string
 	// DatabaseURL is the Postgres DSN. When empty the binary boots in
 	// degraded mode (handlers that need the DB return 503) so `go run`
 	// works without provisioning Postgres.
@@ -333,6 +341,7 @@ func Load() Config {
 	return Config{
 		Env:               getEnv("ACCESS_ENV", "dev"),
 		HTTPAddr:          getEnv("ACCESS_HTTP_ADDR", ":8080"),
+		WorkerMetricsAddr: getEnv("ACCESS_WORKER_METRICS_ADDR", ":9090"),
 		DatabaseURL:       os.Getenv("ACCESS_DATABASE_URL"),
 		RedisURL:          os.Getenv("ACCESS_REDIS_URL"),
 		CredentialDEK:     os.Getenv("ACCESS_CREDENTIAL_DEK"),

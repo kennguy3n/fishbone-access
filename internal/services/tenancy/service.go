@@ -86,6 +86,12 @@ func (s *Service) Reconcile(ctx context.Context) (ReconcileResult, error) {
 	return s.store.Reconcile(ctx, s.cfg.IdleThreshold)
 }
 
+// CountDormant returns the current fleet-wide dormant tenant count (for the
+// scale-to-zero gauge).
+func (s *Service) CountDormant(ctx context.Context) (int64, error) {
+	return s.store.CountDormant(ctx)
+}
+
 // BudgetFor resolves the effective resource budget for a tenant.
 func (s *Service) BudgetFor(ctx context.Context, workspaceID uuid.UUID) (Budget, error) {
 	return s.store.BudgetFor(ctx, workspaceID, s.cfg.DefaultTier)
