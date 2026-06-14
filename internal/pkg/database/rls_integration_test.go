@@ -102,6 +102,66 @@ func TestRLSTenantIsolation(t *testing.T) {
 	}
 }
 
+// TestRLSPgxPoolTenantIsolation proves the same database-tier backstop holds on
+// the pgxpool path (OpenPool), not just the GORM pool: a query issued through a
+// *pgxpool.Pool with a workspace-scoped context sees only that tenant's rows,
+// and an unscoped (worker) context retains cross-tenant visibility. This guards
+// the path the workspace-config and audit repositories use, and any future
+// tenant-scoped query added on it.
+func TestRLSPgxPoolTenantIsolation(t *testing.T) {
+	superDSN := os.Getenv("ACCESS_TEST_DATABASE_URL")
+	if superDSN == "" {
+		t.Skip("ACCESS_TEST_DATABASE_URL not set; skipping RLS integration test")
+	}
+	ctx := context.Background()
+
+	super, err := database.Open(superDSN)
+	if err != nil {
+		t.Fatalf("open super: %v", err)
+	}
+	superSQL, err := super.DB()
+	if err != nil {
+		t.Fatalf("super sql handle: %v", err)
+	}
+	t.Cleanup(func() { _ = superSQL.Close() })
+
+	if _, err := superSQL.ExecContext(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`); err != nil {
+		t.Fatalf("reset schema: %v", err)
+	}
+	if _, err := migrations.Run(ctx, superSQL); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+	provisionAppRole(t, superSQL)
+
+	wsA := seedWorkspacePolicy(t, super, "pgx-tenant-a", "pgx-policy-a")
+	seedWorkspacePolicy(t, super, "pgx-tenant-b", "pgx-policy-b")
+
+	// Connect the pool as the non-superuser role so RLS is in force.
+	pool, err := database.OpenPool(ctx, appRoleDSN(t, superDSN), 0, 0, 0)
+	if err != nil {
+		t.Fatalf("open pgx pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	countPolicies := func(ctx context.Context) int64 {
+		t.Helper()
+		var n int64
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM policies`).Scan(&n); err != nil {
+			t.Fatalf("pgx count policies: %v", err)
+		}
+		return n
+	}
+
+	// Scoped to tenant A, an unscoped SELECT (no WHERE) sees only A's row.
+	if got := countPolicies(database.WithWorkspaceID(ctx, wsA)); got != 1 {
+		t.Fatalf("pgx tenant A unscoped count = %d, want 1 (RLS should hide tenant B)", got)
+	}
+	// An unscoped worker context still sees both tenants.
+	if got := countPolicies(ctx); got != 2 {
+		t.Fatalf("pgx unscoped worker count = %d, want 2 (both tenants visible)", got)
+	}
+}
+
 // provisionAppRole creates (idempotently) a non-superuser login role and grants
 // it the table/function privileges the control plane uses, so the test can
 // exercise RLS as production does. Grants run after migrations because the
