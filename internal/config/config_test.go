@@ -263,6 +263,64 @@ func TestValidateRateLimit(t *testing.T) {
 	}
 }
 
+func TestSharedStoreLoadAndWarnings(t *testing.T) {
+	// Defaults: shared store off, so neither feature is "active" and no
+	// shared-store warning is emitted even without a Redis URL.
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_SHARED_STORE", "")
+	t.Setenv("ACCESS_USAGE_METERING_SHARED_STORE", "")
+	t.Setenv("ACCESS_REDIS_URL", "")
+	def := Load()
+	if def.RateLimit.SharedStore || def.UsageMetering.SharedStore {
+		t.Fatal("shared-store flags default to true, want false")
+	}
+	if def.RateLimitSharedStoreActive() || def.UsageSharedStoreActive() {
+		t.Fatal("shared store reported active with no Redis URL and flags off")
+	}
+	for _, w := range def.Warnings() {
+		if containsAll(w, "SHARED_STORE") {
+			t.Fatalf("unexpected shared-store warning with flags off: %q", w)
+		}
+	}
+
+	// Flags on but no Redis URL: NOT active, and a fallback warning per feature.
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_SHARED_STORE", "true")
+	t.Setenv("ACCESS_USAGE_METERING_SHARED_STORE", "true")
+	noRedis := Load()
+	if noRedis.RateLimitSharedStoreActive() || noRedis.UsageSharedStoreActive() {
+		t.Fatal("shared store active without ACCESS_REDIS_URL, want inactive (fallback)")
+	}
+	var warns int
+	for _, w := range noRedis.Warnings() {
+		if containsAll(w, "SHARED_STORE", "ACCESS_REDIS_URL") {
+			warns++
+		}
+	}
+	if warns != 2 {
+		t.Fatalf("shared-store fallback warnings = %d, want 2 (rate limit + usage): %v", warns, noRedis.Warnings())
+	}
+
+	// Flags on WITH a Redis URL: both active, no fallback warning.
+	t.Setenv("ACCESS_REDIS_URL", "redis://localhost:6379/0")
+	withRedis := Load()
+	if !withRedis.RateLimitSharedStoreActive() || !withRedis.UsageSharedStoreActive() {
+		t.Fatal("shared store inactive with flags on and Redis URL set, want active")
+	}
+	for _, w := range withRedis.Warnings() {
+		if containsAll(w, "SHARED_STORE", "ACCESS_REDIS_URL") {
+			t.Fatalf("unexpected fallback warning when Redis URL is set: %q", w)
+		}
+	}
+}
+
+func containsAll(s string, subs ...string) bool {
+	for _, sub := range subs {
+		if !strings.Contains(s, sub) {
+			return false
+		}
+	}
+	return true
+}
+
 func TestGetFloatParsing(t *testing.T) {
 	// Unset → default.
 	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "")
