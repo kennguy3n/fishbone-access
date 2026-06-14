@@ -216,6 +216,42 @@ func TestRedisFlusherClaimsPreviousPeriod(t *testing.T) {
 	}
 }
 
+// TestRedisFlusherClaimsPreviousPeriodOnMonthEnd guards the AddDate
+// normalization trap: on a 31st (and other month-end days) a naive
+// now.AddDate(0,-1,0) overflows back into the current month, so prev == cur and
+// the previous month's accumulator is never claimed. Subtracting the
+// day-of-month must still claim the prior month here.
+func TestRedisFlusherClaimsPreviousPeriodOnMonthEnd(t *testing.T) {
+	// Each of these days, AddDate(0,-1,0) normalises into the same month.
+	for _, day := range []time.Time{
+		time.Date(2026, 3, 31, 12, 0, 0, 0, time.UTC), // -> "Feb 31" -> Mar 3
+		time.Date(2026, 5, 31, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC),
+		time.Date(2026, 12, 31, 12, 0, 0, 0, time.UTC), // crosses the year
+	} {
+		t.Run(day.Format("2006-01-02"), func(t *testing.T) {
+			_, c := newUsageRedis(t)
+			store := &fakeSink{}
+			sink := NewRedisSink(c, RedisSinkConfig{})
+			flusher := NewRedisFlusher(c, store, RedisFlusherConfig{Clock: fixedClock(day)})
+			ctx := context.Background()
+			ws := uuid.New()
+			prev := PeriodOf(day.AddDate(0, 0, -day.Day()))
+
+			if err := sink.AddUsage(ctx, []Delta{{WorkspaceID: ws, Period: prev, Metric: MetricAPIRequests, Count: 4}}); err != nil {
+				t.Fatalf("accumulate: %v", err)
+			}
+			if err := flusher.Flush(ctx); err != nil {
+				t.Fatalf("flush: %v", err)
+			}
+			if got := store.total(ws, MetricAPIRequests); got != 4 {
+				t.Fatalf("store total = %d, want 4 (previous period %s not claimed on month-end)", got, prev)
+			}
+		})
+	}
+}
+
 // TestRedisSinkPerDeltaLanding proves a partial Redis failure degrades only the
 // affected period to the fallback while the healthy period stays in Redis, so
 // every delta lands exactly once. It uses the malformed-period filter to assert

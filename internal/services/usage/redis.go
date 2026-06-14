@@ -338,10 +338,15 @@ func (f *RedisFlusher) periodKey(period string) string {
 // flush only needs the current month plus the one just rolled over — the
 // previous month catches counters written moments before a month boundary that
 // have not yet been flushed.
+//
+// The previous month is derived by subtracting the day-of-month (landing on the
+// last day of the prior month) rather than AddDate(0, -1, 0): the latter
+// normalises overflow (e.g. Mar 31 → "Feb 31" → Mar 3), which on month-end
+// days would make prev == cur and silently skip the previous month's claim.
 func (f *RedisFlusher) claimPeriods() []string {
 	now := f.clock().UTC()
 	cur := PeriodOf(now)
-	prev := PeriodOf(now.AddDate(0, -1, 0))
+	prev := PeriodOf(now.AddDate(0, 0, -now.Day()))
 	if prev == cur {
 		return []string{cur}
 	}
@@ -415,7 +420,16 @@ func (f *RedisFlusher) claim(ctx context.Context, period string) ([]Delta, error
 // period, so the next flush re-claims and retries it. Best-effort: if Redis is
 // now also unavailable the deltas are dropped (logged), the same best-effort
 // posture as RedisSink.
+//
+// It runs on a FRESH bounded context rather than the caller's: the incoming
+// flush context may already be at (or past) its deadline because the slow
+// Postgres write is what triggered the merge-back, and reusing it would leave
+// no budget to write the claimed counters back into Redis — silently dropping
+// data the claim already removed. WithoutCancel keeps the values but drops the
+// exhausted deadline, then a dedicated op timeout bounds the recovery.
 func (f *RedisFlusher) mergeBack(ctx context.Context, deltas []Delta) {
+	mctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultRedisOpTimeout)
+	defer cancel()
 	byPeriod := make(map[string][]Delta, 1)
 	for _, d := range deltas {
 		byPeriod[d.Period] = append(byPeriod[d.Period], d)
@@ -426,8 +440,8 @@ func (f *RedisFlusher) mergeBack(ctx context.Context, deltas []Delta) {
 		for _, d := range ds {
 			args = append(args, encodeField(d.WorkspaceID, d.Metric), d.Count)
 		}
-		if err := accumulateScript.Run(ctx, f.client, []string{f.periodKey(period)}, args...).Err(); err != nil {
-			logger.Warnf(ctx, "usage: redis merge-back for period %s failed; dropping %d deltas: %v", period, len(ds), err)
+		if err := accumulateScript.Run(mctx, f.client, []string{f.periodKey(period)}, args...).Err(); err != nil {
+			logger.Warnf(mctx, "usage: redis merge-back for period %s failed; dropping %d deltas: %v", period, len(ds), err)
 		}
 	}
 }
