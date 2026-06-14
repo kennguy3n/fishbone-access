@@ -29,13 +29,14 @@ import (
 // than the global default) avoids process-wide init singletons and makes the
 // collectors unit-testable in isolation.
 type Metrics struct {
-	reg         *prometheus.Registry
-	reqTotal    *prometheus.CounterVec
-	reqDuration *prometheus.HistogramVec
-	inFlight    prometheus.Gauge
-	throttled   *prometheus.CounterVec
-	usageEvents *prometheus.CounterVec
-	failOpen    *prometheus.CounterVec
+	reg           *prometheus.Registry
+	reqTotal      *prometheus.CounterVec
+	reqDuration   *prometheus.HistogramVec
+	inFlight      prometheus.Gauge
+	throttled     *prometheus.CounterVec
+	usageEvents   *prometheus.CounterVec
+	quotaBreaches *prometheus.CounterVec
+	failOpen      *prometheus.CounterVec
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -79,6 +80,12 @@ func NewMetrics() *Metrics {
 			Name:      "events_total",
 			Help:      "Metered usage events flushed to the per-tenant rollup, by metric (e.g. api_requests). This is the FLEET-WIDE aggregate: deliberately NOT labelled by tenant id (5,000 tenants would explode the series count) — per-tenant attribution lives in the tenant_usage table, read back through the authenticated usage endpoint.",
 		}, []string{"metric"}),
+		quotaBreaches: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "billing",
+			Name:      "quota_breaches_total",
+			Help:      "Over-quota billing-enforcement decisions, by state (soft_exceeded/hard_exceeded) and matched route template. Like the throttle counter this is the FLEET-WIDE aggregate: deliberately NOT labelled by tenant id (unbounded at 5,000 tenants) — per-tenant quota status is read back through the authenticated billing endpoint.",
+		}, []string{"state", "route"}),
 		failOpen: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "shieldnet",
 			Subsystem: "sharedstore",
@@ -86,7 +93,7 @@ func NewMetrics() *Metrics {
 			Help:      "Shared-store (Redis) operations that failed and were handled fail-open, by subsystem (ratelimit|usage). A non-zero rate means Redis is degraded: the rate limiter is admitting rather than enforcing, or usage is degrading to the Postgres path / dropping. Labelled by subsystem ONLY (never tenant id) to keep cardinality bounded; alert on its rate to catch a flapping Redis.",
 		}, []string{"subsystem"}),
 	}
-	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.failOpen)
+	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen)
 	return m
 }
 
@@ -110,6 +117,21 @@ func (m *Metrics) AddUsageEvents(metric string, n int64) {
 		return
 	}
 	m.usageEvents.WithLabelValues(metric).Add(float64(n))
+}
+
+// IncQuotaBreach records an over-quota billing-enforcement decision, labelled by
+// the state (soft_exceeded/hard_exceeded) and the matched route TEMPLATE only
+// (never the tenant id, to keep the series count bounded). Wire it as the quota
+// middleware's onDecision hook so both soft warnings and hard denials are
+// observable fleet-wide. Empty inputs collapse to "unmatched"/no-op.
+func (m *Metrics) IncQuotaBreach(state, route string) {
+	if state == "" {
+		return
+	}
+	if route == "" {
+		route = "unmatched"
+	}
+	m.quotaBreaches.WithLabelValues(state, route).Inc()
 }
 
 // IncSharedStoreFailOpen records one shared-store (Redis) operation that failed

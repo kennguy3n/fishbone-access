@@ -115,3 +115,29 @@ func TestIncThrottledByRouteTemplate(t *testing.T) {
 		t.Errorf("metrics missing %q", want)
 	}
 }
+
+func TestIncQuotaBreachByStateAndRoute(t *testing.T) {
+	m := NewMetrics()
+	r := newTestEngine(m)
+
+	m.IncQuotaBreach("soft_exceeded", "/things/:id")
+	m.IncQuotaBreach("soft_exceeded", "/things/:id")
+	m.IncQuotaBreach("hard_exceeded", "/things/:id")
+	m.IncQuotaBreach("hard_exceeded", "") // empty route collapses to "unmatched"
+	m.IncQuotaBreach("", "/things/:id")   // empty state is a no-op
+
+	body := do(t, r, http.MethodGet, "/metrics").Body.String()
+	if want := `shieldnet_billing_quota_breaches_total{route="/things/:id",state="soft_exceeded"} 2`; !strings.Contains(body, want) {
+		t.Errorf("metrics missing %q\n--- scrape ---\n%s", want, body)
+	}
+	if want := `shieldnet_billing_quota_breaches_total{route="/things/:id",state="hard_exceeded"} 1`; !strings.Contains(body, want) {
+		t.Errorf("metrics missing %q", want)
+	}
+	if want := `shieldnet_billing_quota_breaches_total{route="unmatched",state="hard_exceeded"} 1`; !strings.Contains(body, want) {
+		t.Errorf("metrics missing %q", want)
+	}
+	// The empty-state call must not have created a series.
+	if strings.Contains(body, `state=""`) {
+		t.Error("empty state should be a no-op, but a series was emitted")
+	}
+}
