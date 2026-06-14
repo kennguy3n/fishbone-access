@@ -44,7 +44,12 @@ type DerivedDEKKeyManager struct {
 // salt need not be secret; binding it to this application domain keeps DEKs
 // derived here from colliding with keys any other system might derive from the
 // same master bytes. It must never change or previously sealed data won't open.
-var hkdfSalt = []byte("shieldnet-access/kms/v1")
+//
+// It is a const string (not a []byte var) so the must-never-change invariant is
+// compiler-enforced: every use converts it with []byte(hkdfSalt), which yields a
+// fresh copy, so no caller can mutate the shared salt out from under key
+// derivation.
+const hkdfSalt = "shieldnet-access/kms/v1"
 
 // NewDerivedDEKKeyManager builds a DerivedDEKKeyManager from a base64-encoded
 // 32-byte master key (ACCESS_KMS_MASTER_KEY) and the current key version (the
@@ -113,8 +118,12 @@ func deriveServiceKey(base64Master, label string) ([]byte, error) {
 	if len(master) != 32 {
 		return nil, fmt.Errorf("access: deriveServiceKey: master key must be 32 bytes (got %d)", len(master))
 	}
+	// Zero the decoded master once HKDF has consumed it, matching the zeroing
+	// discipline in EnvelopeEncryptor (key_manager.go). The manager retains its
+	// own master copy; this is a transient decode local.
+	defer zeroBytes(master)
 	info := []byte("svc/v1/" + label)
-	r := hkdf.New(sha256.New, master, hkdfSalt, info)
+	r := hkdf.New(sha256.New, master, []byte(hkdfSalt), info)
 	key := make([]byte, 32)
 	if _, err := io.ReadFull(r, key); err != nil {
 		return nil, fmt.Errorf("access: deriveServiceKey(%s): %w", label, err)
@@ -144,6 +153,11 @@ func CryptoEncryptorFromConfig(masterKey, staticDEK string) (crypto.Encryptor, e
 		if err != nil {
 			return nil, err
 		}
+		// Zero the raw derived key once it's been handed to the AEAD as a base64
+		// string; NewAESGCMEncryptor retains its own decoded copy, so this just
+		// keeps the transient buffer from lingering (consistent with the
+		// EnvelopeEncryptor path).
+		defer zeroBytes(key)
 		return crypto.NewAESGCMEncryptor(base64.StdEncoding.EncodeToString(key))
 	}
 	return crypto.FromKey(staticDEK)
@@ -155,7 +169,7 @@ func CryptoEncryptorFromConfig(masterKey, staticDEK string) (crypto.Encryptor, e
 // key, which is exactly what gives per-tenant separation and clean rotation.
 func (m *DerivedDEKKeyManager) derive(workspaceID string, version int) ([]byte, error) {
 	info := []byte(fmt.Sprintf("dek/v%d/ws/%s", version, workspaceID))
-	r := hkdf.New(sha256.New, m.master, hkdfSalt, info)
+	r := hkdf.New(sha256.New, m.master, []byte(hkdfSalt), info)
 	dek := make([]byte, 32)
 	if _, err := io.ReadFull(r, dek); err != nil {
 		return nil, fmt.Errorf("access: DerivedDEKKeyManager: derive DEK (workspace=%s, version=%d): %w", workspaceID, version, err)
