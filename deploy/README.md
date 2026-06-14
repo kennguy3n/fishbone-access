@@ -135,6 +135,12 @@ kubectl apply -f deploy/k8s/
 - Secrets are referenced, never written into a ConfigMap, and the chart renders
   no Secret at all when `secrets.existingSecret` is set.
 
+> Pods carry `checksum/config` + `checksum/secret` annotations so a `helm upgrade`
+> rolls them when the chart-managed ConfigMap/Secret change. With
+> `secrets.existingSecret`, the chart can't see that Secret's contents, so after
+> rotating an external secret trigger a rollout yourself:
+> `kubectl -n <ns> rollout restart deploy -l app.kubernetes.io/part-of=shieldnet-access`.
+
 ## Local validation gates
 
 These run without a live cluster (used in development of these manifests):

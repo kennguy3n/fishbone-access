@@ -1,4 +1,4 @@
-# Single-server (Tier 1) ShieldNet Access stack: Postgres + Redis + the three
+# Single-server (Tier 1) ShieldNet Access stack: Postgres + Redis + the four
 # Go services. `docker compose up --build --wait` blocks until every service
 # with a healthcheck reports healthy, so this doubles as a CI smoke test.
 #
@@ -73,6 +73,18 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+
+  access-workflow-engine:
+    build: .
+    command: ["access-workflow-engine"]
+    environment:
+      ACCESS_ENV: dev
+      ACCESS_DATABASE_URL: "postgres://shieldnet:shieldnet@postgres:5432/shieldnet_access?sslmode=disable"
+      # Requires a credential key (DEK or KMS master) or it refuses to start.
+      ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-}"
+    depends_on:
+      postgres:
         condition: service_healthy
 
   pam-gateway:

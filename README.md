@@ -41,7 +41,7 @@ Internal packages:
 ## Quick start
 
 ```bash
-# Run the full single-server stack (Postgres + Redis + 3 services).
+# Run the full single-server stack (Postgres + Redis + 4 services).
 docker compose up --build --wait
 
 # Or run the API directly (degraded mode without Postgres/iam-core).
