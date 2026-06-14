@@ -54,10 +54,40 @@ go run ./cmd/ztna-api
 | `ACCESS_HTTP_ADDR` | API listen address (default `:8080`). |
 | `ACCESS_DATABASE_URL` | Postgres DSN. Unset → degraded mode. |
 | `ACCESS_REDIS_URL` | Redis URL for the worker queue. |
-| `ACCESS_CREDENTIAL_DEK` | base64 32-byte AES-256 key sealing connector secrets. Unset → secret persistence fails closed. |
+| `ACCESS_CREDENTIAL_DEK` | base64 32-byte AES-256 key sealing connector secrets. Unset (and no `ACCESS_KMS_MASTER_KEY`) → secret persistence fails closed. |
+| `ACCESS_KMS_MASTER_KEY` | base64 32-byte master key for per-workspace keys. When set, a distinct DEK is derived per workspace (HKDF) and this takes precedence over `ACCESS_CREDENTIAL_DEK`. |
+| `ACCESS_KMS_KEY_VERSION` | Current key version new writes seal under (default `1`); bump to rotate while old rows still open under their recorded version. |
 | `IAM_CORE_ISSUER` | iam-core base URL (derives JWKS + discovery). Unset → authenticated API returns 503. |
 | `IAM_CORE_CLIENT_ID` / `IAM_CORE_CLIENT_SECRET` | Confidential OAuth2 client for SSO + management. |
 | `IAM_CORE_AUDIENCE` | Expected `aud` claim on access tokens. |
+
+#### Credential encryption keys
+
+One key roots all at-rest secrets (connector credentials and TOTP step-up MFA).
+Precedence is: `ACCESS_KMS_MASTER_KEY` (per-workspace derived DEKs) → `ACCESS_CREDENTIAL_DEK`
+(single static DEK) → none (secret persistence + MFA fail closed). Pick exactly
+one for a steady-state deployment:
+
+- **New deployment:** set `ACCESS_KMS_MASTER_KEY` only. Every workspace gets a
+  distinct derived DEK (tenant key separation) and MFA secrets seal under a key
+  derived from the same master.
+- **Legacy deployment:** keep `ACCESS_CREDENTIAL_DEK` only (single shared DEK).
+
+**Migrating static DEK → per-workspace master key.** The master key takes
+precedence the moment it is set, and the two key hierarchies are independent, so
+secrets sealed under the static DEK do **not** transparently open under the
+master key. Setting **both** is therefore a re-seal migration, not a drop-in
+swap — the binaries log a loud boot warning while both are present. To migrate:
+
+1. Set `ACCESS_KMS_MASTER_KEY` alongside the existing `ACCESS_CREDENTIAL_DEK`.
+2. Re-save each connector's secret (and re-enrol TOTP MFA) so it is re-sealed
+   under the master-derived key. Until a secret is re-sealed it will fail to
+   open.
+3. Once everything is re-sealed, remove `ACCESS_CREDENTIAL_DEK` and the warning
+   clears.
+
+If there is no existing sealed data, skip the overlap entirely: set only
+`ACCESS_KMS_MASTER_KEY` from the start.
 
 ## Development
 

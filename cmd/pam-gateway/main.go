@@ -65,6 +65,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "pam-gateway: %s", warning)
+	}
 	logger.Infof(ctx, "pam-gateway: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {
@@ -136,10 +139,12 @@ func run() error {
 // buildListeners constructs the PAM services and the ten protocol
 // ConnHandlers, returning the supervisor listener set.
 func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, auditor database.AuditAppender) ([]gateway.Listener, error) {
-	// Credential encryptor seals/opens per-target upstream credentials. FromKey
-	// returns a fail-closed encryptor when no DEK is set, so a target with a
-	// sealed secret cannot be opened in a misconfigured boot.
-	enc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	// Credential encryptor seals/opens per-target upstream credentials.
+	// FromConfig prefers the per-workspace KMS master key (a distinct DEK per
+	// workspace) and falls back to the single static DEK; with neither set it
+	// returns a fail-closed encryptor, so a target with a sealed secret cannot
+	// be opened in a misconfigured boot.
+	enc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
 		return nil, fmt.Errorf("credential encryptor init: %w", err)
 	}

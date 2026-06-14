@@ -68,14 +68,16 @@ func run() error {
 	}
 	logger.Infof(ctx, "ztna-api: starting; %s", cfg.String())
 	logger.Infof(ctx, "ztna-api: registered connectors: %d", access.RegisteredCount())
-	// Surface tenancy knobs whose value will be silently overridden by a safe
-	// fallback. These are deliberately non-fatal (the dormant-trial fleet must
-	// boot even with a fat-fingered knob; see config.Config.Warnings), but
-	// logging them loudly here means a misconfiguration is caught at startup
-	// rather than only inferred from later behaviour. The tier-name check lives
-	// here because config is a leaf package that does not know the tier ladder.
+	// Surface config knobs whose value will be silently overridden by a safe
+	// fallback (or that carry an operational caveat, e.g. the credential
+	// key-overlap migration note). These are deliberately non-fatal (the
+	// dormant-trial fleet must boot even with a fat-fingered knob; see
+	// config.Config.Warnings), but logging them loudly here means a
+	// misconfiguration is caught at startup rather than only inferred from later
+	// behaviour. The tier-name check lives here because config is a leaf package
+	// that does not know the tier ladder.
 	for _, warning := range cfg.Warnings() {
-		logger.Warnf(ctx, "ztna-api: tenancy config: %s", warning)
+		logger.Warnf(ctx, "ztna-api: %s", warning)
 	}
 	if t := cfg.Tenancy.DefaultTier; !tenancy.IsKnownTier(t) {
 		logger.Warnf(ctx, "ztna-api: tenancy config: ACCESS_TENANCY_DEFAULT_TIER=%q is not a recognised tier; un-tiered tenants will fall back to the most-constrained (trial) budget", t)
@@ -212,11 +214,14 @@ func run() error {
 		logger.Warnf(ctx, "ztna-api: no token validator configured; authenticated API returns 503")
 	}
 
-	// Credential encryptor opens connector secret envelopes for the lifecycle
-	// provisioning / JML / reconciliation services. FromKey returns a
-	// passthrough (seal-refusing) encryptor when no DEK is set, so connectors
-	// without sealed secrets still resolve in degraded dev boots.
-	enc, err := crypto.FromKey(cfg.CredentialDEK)
+	// Encryptor for the process-wide (non-per-workspace) at-rest secrets — today
+	// the TOTP step-up MFA secrets. CryptoEncryptorFromConfig mirrors the
+	// connector path's precedence so one ACCESS_KMS_MASTER_KEY roots ALL at-rest
+	// encryption: with the master key set it derives a stable service key from it
+	// (so a fully KMS-migrated deployment keeps MFA working rather than silently
+	// degrading), else it uses the static DEK, else a passthrough that fails
+	// closed in degraded dev boots.
+	enc, err := access.CryptoEncryptorFromConfig(cfg.KMSMasterKey, cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("credential encryptor init: %w", err)
 	}
@@ -224,10 +229,13 @@ func run() error {
 
 	// Access-stack credential encryptor for the connector-management surface.
 	// It is the same encryptor the access-connector-worker builds from the
-	// same DEK, so a connector created through the API seals its secrets in a
-	// form the worker can open when it runs the sync — without it the two
+	// same config, so a connector created through the API seals its secrets in
+	// a form the worker can open when it runs the sync — without it the two
 	// stacks would diverge and a created connector could never be synced.
-	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	// FromConfig prefers the per-workspace KMS master key (deriving a distinct
+	// DEK per workspace) and falls back to the single static DEK, so both
+	// stacks must be configured identically for the seals to interoperate.
+	connEnc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
 	}
@@ -289,12 +297,12 @@ func run() error {
 		}()
 		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
 		if crypto.IsPassthrough(deps.Encryptor) {
-			// No DEK ⇒ the encryptor refuses to seal/open, so TOTP enrolment
-			// and every VerifyStepUp fail closed with ErrSecretsDisabled (503).
-			// The gate stays wired (fail-closed is correct), but make the
-			// degraded posture loud at boot rather than only surfacing on the
-			// first promote attempt.
-			logger.Warnf(ctx, "ztna-api: ACCESS_CREDENTIAL_DEK unset; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a DEK is configured)")
+			// No key at all ⇒ the encryptor refuses to seal/open, so TOTP
+			// enrolment and every VerifyStepUp fail closed with
+			// ErrSecretsDisabled (503). The gate stays wired (fail-closed is
+			// correct), but make the degraded posture loud at boot rather than
+			// only surfacing on the first promote attempt.
+			logger.Warnf(ctx, "ztna-api: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a key is configured)")
 		} else {
 			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
 		}

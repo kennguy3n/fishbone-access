@@ -58,6 +58,9 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	for _, warning := range cfg.Warnings() {
+		logger.Warnf(ctx, "access-workflow-engine: %s", warning)
+	}
 	logger.Infof(ctx, "access-workflow-engine: starting; %s", cfg.String())
 
 	if !cfg.DatabaseConfigured() {
@@ -80,12 +83,13 @@ func run() error {
 	}()
 
 	// This binary is an asynchronous executor of provisioning/JML jobs that MUST
-	// open real connector secrets, so it refuses to boot without a DEK (the
-	// fail-closed encryptor would degrade every job to a decrypt failure)
-	// rather than starting and failing per job. The DEK presence is the boot
-	// gate; an empty ACCESS_CREDENTIAL_DEK is the passthrough/disabled case.
-	if cfg.CredentialDEK == "" {
-		logger.Errorf(ctx, "access-workflow-engine: refusing to start without ACCESS_CREDENTIAL_DEK; provisioning/JML jobs cannot open connector secrets under the passthrough encryptor")
+	// open real connector secrets, so it refuses to boot without a credential
+	// key (the fail-closed encryptor would degrade every job to a decrypt
+	// failure) rather than starting and failing per job. Either the
+	// per-workspace KMS master key or the static DEK satisfies the gate; with
+	// neither set the encryptor is the disabled/passthrough case.
+	if !cfg.CredentialEncryptionConfigured() {
+		logger.Errorf(ctx, "access-workflow-engine: refusing to start without ACCESS_KMS_MASTER_KEY or ACCESS_CREDENTIAL_DEK; provisioning/JML jobs cannot open connector secrets under the passthrough encryptor")
 		stop()
 		return nil
 	}
@@ -94,9 +98,10 @@ func run() error {
 	// CredentialEncryptor the connector-management layer seals them with, so the
 	// engine recovers credentials under the identical AAD / workspace-DEK / key
 	// version (a plain crypto.Encryptor would use a different AAD and fail to
-	// open). CredentialEncryptorFromKey hard-errors on a non-empty but malformed
-	// key, so a typo'd DEK aborts boot rather than silently mis-decrypting.
-	connEnc, err := access.CredentialEncryptorFromKey(cfg.CredentialDEK)
+	// open). CredentialEncryptorFromConfig hard-errors on a non-empty but
+	// malformed key, so a typo'd DEK/master key aborts boot rather than
+	// silently mis-decrypting; it prefers the per-workspace KMS master key.
+	connEnc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -42,15 +43,32 @@ type pamHandlers struct {
 func newPAMHandlers(deps Deps) *pamHandlers {
 	db := deps.DB
 
-	// Prefer the shared access-stack encryptor the main binary already built
-	// from ACCESS_CREDENTIAL_DEK so the PAM vault seals/opens with the exact
-	// same key as the connector stack and a single construction point owns DEK
-	// loading (a future config-file override or DEK rotation then propagates
-	// here for free). Fall back to building it from the environment for the
-	// legacy/test callers that construct the handlers from a bare Deps.
+	// Prefer the shared access-stack encryptor the main binary already built so
+	// the PAM vault seals/opens with the exact same key as the connector stack
+	// and a single construction point owns key loading (a future config-file
+	// override or key rotation then propagates here for free). Fall back to
+	// building it from the environment for the legacy/test callers that
+	// construct the handlers from a bare Deps — honouring the same precedence
+	// (per-workspace KMS master key first, then the static DEK) so a bare-Deps
+	// boot can't silently downgrade an operator's per-workspace key posture.
 	enc := deps.ConnectorEncryptor
 	if enc == nil {
-		built, err := access.CredentialEncryptorFromKey(os.Getenv("ACCESS_CREDENTIAL_DEK"))
+		// Parse ACCESS_KMS_KEY_VERSION with the same semantics as
+		// config.getInt (accept only a non-negative integer, else keep the
+		// default 1) so this legacy/bare-Deps path and the main config path
+		// never disagree on the effective version. A negative value fails the
+		// n>=0 guard and keeps the default 1 (matching config.getInt); 0 passes
+		// the guard and is then rejected by NewDerivedDEKKeyManager, identical
+		// to the config path.
+		keyVersion := 1
+		if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
+			if n, perr := strconv.Atoi(v); perr == nil && n >= 0 {
+				keyVersion = n
+			}
+		}
+		built, err := access.CredentialEncryptorFromConfig(
+			os.Getenv("ACCESS_KMS_MASTER_KEY"), keyVersion, os.Getenv("ACCESS_CREDENTIAL_DEK"),
+		)
 		if err != nil {
 			logger.Errorf(context.Background(), "pam: credential encryptor init: %v (vault operations will fail closed)", err)
 			built = access.NewDisabledEncryptor()

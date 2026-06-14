@@ -97,6 +97,20 @@ type Config struct {
 	// secrets (fails closed) rather than storing plaintext.
 	CredentialDEK string
 
+	// KMSMasterKey is the base64-encoded 32-byte master key (KEK) for the
+	// per-workspace key manager. When set it is PREFERRED over CredentialDEK:
+	// the binary derives a distinct AES-256 DEK per workspace from this key
+	// (HKDF), giving tenant key separation without an external KMS — the
+	// local/dev posture, with the same KeyManager seam a real KMS plugs into.
+	// Read from ACCESS_KMS_MASTER_KEY.
+	KMSMasterKey string
+
+	// KMSKeyVersion is the current key version new writes seal under when
+	// KMSMasterKey is set; bumping it rotates the derived DEK while rows sealed
+	// under earlier versions still open. Read from ACCESS_KMS_KEY_VERSION;
+	// defaults to 1.
+	KMSKeyVersion int
+
 	// Tenancy holds the multi-tenant scale/dormancy knobs that let the control
 	// plane serve thousands of SME tenants under NoOps, hibernating the large
 	// dormant-trial fraction so they consume near-zero periodic compute.
@@ -259,6 +273,8 @@ func Load() Config {
 		DatabaseURL:       os.Getenv("ACCESS_DATABASE_URL"),
 		RedisURL:          os.Getenv("ACCESS_REDIS_URL"),
 		CredentialDEK:     os.Getenv("ACCESS_CREDENTIAL_DEK"),
+		KMSMasterKey:      os.Getenv("ACCESS_KMS_MASTER_KEY"),
+		KMSKeyVersion:     getInt("ACCESS_KMS_KEY_VERSION", 1),
 		DBMaxOpenConns:    getInt("ACCESS_DB_MAX_OPEN_CONNS", 25),
 		DBPgxMaxConns:     getInt("ACCESS_DB_PGX_MAX_CONNS", 8),
 		DBMaxIdleConns:    getInt("ACCESS_DB_MAX_IDLE_CONNS", 5),
@@ -294,6 +310,15 @@ func Load() Config {
 // DatabaseConfigured reports whether a Postgres DSN was supplied.
 func (c Config) DatabaseConfigured() bool { return c.DatabaseURL != "" }
 
+// CredentialEncryptionConfigured reports whether ANY at-rest credential
+// encryption key is configured — either the per-workspace KMS master key or the
+// single static DEK. When false the binary wires the fail-closed encryptor and
+// refuses to persist connector secrets. Binaries should gate their
+// secrets-enabled behaviour on this rather than CredentialDEK alone.
+func (c Config) CredentialEncryptionConfigured() bool {
+	return c.KMSMasterKey != "" || c.CredentialDEK != ""
+}
+
 // IsProductionEnv reports whether the configured Env label denotes a production
 // deployment. The dev HMAC auth path is refused for these labels even in a
 // non-production build, so an operator cannot accidentally enable shared-secret
@@ -324,6 +349,14 @@ func (c Config) Validate() error {
 		return fmt.Errorf("config: unknown ACCESS_DATABASE_DRIVER %q (want %q or %q)",
 			c.DatabaseDriver, DriverPgx, DriverGorm)
 	}
+	// Surface a bad key version with a clear, field-specific message at the
+	// config layer rather than letting the generic getInt (which permits 0) pass
+	// it through to the crypto layer, where NewDerivedDEKKeyManager would reject
+	// it with a lower-level error. Only enforced when the master key is set,
+	// since the version is meaningless without it.
+	if c.KMSMasterKey != "" && c.KMSKeyVersion < 1 {
+		return fmt.Errorf("config: ACCESS_KMS_KEY_VERSION must be >= 1 when ACCESS_KMS_MASTER_KEY is set (got %d)", c.KMSKeyVersion)
+	}
 	return nil
 }
 
@@ -339,7 +372,20 @@ func (c Config) Validate() error {
 // sacrificing the never-crash-on-config contract. Tier-name validation lives at
 // the wiring site, which knows the recognised tiers, rather than here.
 func (c Config) Warnings() []string {
-	return c.Tenancy.Warnings()
+	var w []string
+	// Both credential keys set: the per-workspace master key wins for new seals
+	// (see CredentialEncryptorFromConfig), so any secret previously sealed under
+	// the static DEK becomes unreadable until re-sealed. This is a deliberate
+	// precedence, not a bug, but it is a migration footgun worth flagging loudly
+	// so an operator who added the master key to an existing deployment knows
+	// they must re-seal (or remove ACCESS_CREDENTIAL_DEK once migration is done).
+	if c.KMSMasterKey != "" && c.CredentialDEK != "" {
+		w = append(w, "both ACCESS_KMS_MASTER_KEY and ACCESS_CREDENTIAL_DEK are set; "+
+			"the per-workspace master key takes precedence for new seals, so secrets "+
+			"sealed earlier under ACCESS_CREDENTIAL_DEK will NOT open until re-sealed "+
+			"under the master key (remove ACCESS_CREDENTIAL_DEK once migration is complete)")
+	}
+	return append(w, c.Tenancy.Warnings()...)
 }
 
 // Warnings reports tenancy knobs whose value will be silently overridden by a
@@ -439,11 +485,13 @@ func getDuration(key string, def time.Duration) time.Duration {
 }
 
 // String renders a redacted, log-safe summary of the configuration. Secrets
-// (ClientSecret, CredentialDEK) are never included.
+// (ClientSecret, CredentialDEK, KMSMasterKey) are never included — only whether
+// they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
-		c.CredentialDEK != "", c.IAMCore.Configured(), c.IAMCore.Issuer,
+		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
+		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }
