@@ -203,3 +203,80 @@ func TestTenancyWarnings(t *testing.T) {
 		t.Errorf("over-wide flush window warnings = %v, want exactly 1", got)
 	}
 }
+
+func TestRateLimitDefaults(t *testing.T) {
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_ENABLED", "")
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "")
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_BURST", "")
+	cfg := Load()
+	if !cfg.RateLimit.Enabled {
+		t.Error("RateLimit.Enabled = false, want true by default")
+	}
+	if cfg.RateLimit.RequestsPerSecond != 50 {
+		t.Errorf("RateLimit.RequestsPerSecond = %g, want 50", cfg.RateLimit.RequestsPerSecond)
+	}
+	if cfg.RateLimit.Burst != 100 {
+		t.Errorf("RateLimit.Burst = %d, want 100", cfg.RateLimit.Burst)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("default rate-limit config failed Validate: %v", err)
+	}
+}
+
+func TestRateLimitLoadOverrides(t *testing.T) {
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_ENABLED", "false")
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "12.5")
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_BURST", "30")
+	cfg := Load()
+	if cfg.RateLimit.Enabled {
+		t.Error("RateLimit.Enabled = true, want false when set to false")
+	}
+	if cfg.RateLimit.RequestsPerSecond != 12.5 {
+		t.Errorf("RateLimit.RequestsPerSecond = %g, want 12.5", cfg.RateLimit.RequestsPerSecond)
+	}
+	if cfg.RateLimit.Burst != 30 {
+		t.Errorf("RateLimit.Burst = %d, want 30", cfg.RateLimit.Burst)
+	}
+}
+
+func TestValidateRateLimit(t *testing.T) {
+	base := func() Config {
+		return Config{DatabaseDriver: DriverPgx, RateLimit: RateLimitConfig{Enabled: true, RequestsPerSecond: 50, Burst: 100}}
+	}
+	if err := base().Validate(); err != nil {
+		t.Fatalf("healthy enabled rate-limit config failed Validate: %v", err)
+	}
+	rpsZero := base()
+	rpsZero.RateLimit.RequestsPerSecond = 0
+	if err := rpsZero.Validate(); err == nil {
+		t.Error("Validate accepted RPS=0 while enabled, want rejection")
+	}
+	burstZero := base()
+	burstZero.RateLimit.Burst = 0
+	if err := burstZero.Validate(); err == nil {
+		t.Error("Validate accepted Burst=0 while enabled, want rejection")
+	}
+	// Disabled limiter: bad values are inert and must not fail the boot.
+	disabled := Config{DatabaseDriver: DriverPgx, RateLimit: RateLimitConfig{Enabled: false, RequestsPerSecond: 0, Burst: 0}}
+	if err := disabled.Validate(); err != nil {
+		t.Errorf("disabled limiter with zero values failed Validate: %v", err)
+	}
+}
+
+func TestGetFloatParsing(t *testing.T) {
+	// Unset → default.
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "")
+	if got := Load().RateLimit.RequestsPerSecond; got != 50 {
+		t.Errorf("unset RPS = %g, want default 50", got)
+	}
+	// Negative → default (silent, mirroring getInt).
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "-3")
+	if got := Load().RateLimit.RequestsPerSecond; got != 50 {
+		t.Errorf("negative RPS = %g, want default 50", got)
+	}
+	// Parseable 0 → returned as-is so Validate can reject it loudly.
+	t.Setenv("ACCESS_TENANT_RATE_LIMIT_RPS", "0")
+	if got := Load().RateLimit.RequestsPerSecond; got != 0 {
+		t.Errorf("zero RPS = %g, want 0 (passed through to Validate)", got)
+	}
+}

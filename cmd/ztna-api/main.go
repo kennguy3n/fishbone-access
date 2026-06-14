@@ -40,6 +40,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/ratelimit"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -110,6 +111,23 @@ func run() error {
 		deps.TracingServiceName = "ztna-api"
 		logger.Infof(ctx, "ztna-api: OpenTelemetry tracing enabled (OTLP endpoint configured)")
 	}
+
+	// Per-tenant inbound rate limiting: cap a single tenant's request rate so a
+	// noisy or runaway tenant cannot monopolise the shared Postgres pool (and
+	// our bill) at the expense of the other tenants. The limiter is in-memory
+	// (per replica — see config.RateLimitConfig) and opt-out via
+	// ACCESS_TENANT_RATE_LIMIT_ENABLED=false. Stop releases its janitor on
+	// shutdown.
+	if cfg.RateLimit.Enabled {
+		limiter := ratelimit.New(ratelimit.Config{
+			RPS:   cfg.RateLimit.RequestsPerSecond,
+			Burst: cfg.RateLimit.Burst,
+		})
+		defer limiter.Stop()
+		deps.RateLimiter = limiter
+		logger.Infof(ctx, "ztna-api: per-tenant rate limiting enabled (%g req/s, burst %d, per replica)", cfg.RateLimit.RequestsPerSecond, cfg.RateLimit.Burst)
+	}
+
 	if cfg.DatabaseConfigured() {
 		gdb, err := setupDatabase(ctx, cfg)
 		if err != nil {

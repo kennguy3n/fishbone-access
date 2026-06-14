@@ -96,6 +96,13 @@ type Deps struct {
 	// installed a real OTLP provider (operator set OTEL_EXPORTER_OTLP_ENDPOINT),
 	// so an un-traced deployment pays nothing.
 	TracingServiceName string
+	// RateLimiter, when set, caps the inbound request rate PER TENANT on the
+	// authenticated /api/v1 surface (mounted right after tenant resolution, so
+	// the limiter key is the authoritative tenant id). nil leaves the surface
+	// un-limited (tests/degraded boots), preserving the pre-feature behaviour.
+	// When Metrics is also set, throttled requests are counted on the same
+	// registry (by route template) for alerting.
+	RateLimiter middleware.RateLimiter
 }
 
 // NewRouter builds the Gin engine.
@@ -132,6 +139,17 @@ func NewRouter(deps Deps) *gin.Engine {
 	api := r.Group("/api/v1")
 	if deps.Validator != nil {
 		api.Use(middleware.Auth(deps.Validator), middleware.ResolveTenant())
+		// Per-tenant rate limiting sits AFTER tenant resolution so its key is
+		// the authoritative tenant id, and only on the authenticated path (the
+		// degraded branch already 503s). Throttle events feed the metrics
+		// registry by route template when observability is wired.
+		if deps.RateLimiter != nil {
+			var onThrottle func(string)
+			if deps.Metrics != nil {
+				onThrottle = deps.Metrics.IncThrottled
+			}
+			api.Use(middleware.RateLimit(deps.RateLimiter, onThrottle))
+		}
 	} else {
 		api.Use(degraded)
 	}

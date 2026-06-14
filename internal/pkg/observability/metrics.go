@@ -33,6 +33,7 @@ type Metrics struct {
 	reqTotal    *prometheus.CounterVec
 	reqDuration *prometheus.HistogramVec
 	inFlight    prometheus.Gauge
+	throttled   *prometheus.CounterVec
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -64,9 +65,25 @@ func NewMetrics() *Metrics {
 			Name:      "requests_in_flight",
 			Help:      "HTTP requests currently being served.",
 		}),
+		throttled: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "http",
+			Name:      "requests_throttled_total",
+			Help:      "Requests rejected by the per-tenant rate limiter (429), by matched route template. Deliberately NOT labelled by tenant id, which is unbounded at 5,000 tenants.",
+		}, []string{"route"}),
 	}
-	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight)
+	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled)
 	return m
+}
+
+// IncThrottled records a request rejected by the per-tenant rate limiter,
+// labelled by the matched route TEMPLATE only (never the tenant id, to keep the
+// series count bounded). Wire it as the rate-limit middleware's onThrottle hook.
+func (m *Metrics) IncThrottled(route string) {
+	if route == "" {
+		route = "unmatched"
+	}
+	m.throttled.WithLabelValues(route).Inc()
 }
 
 // Handler is the Prometheus scrape endpoint backed by this registry.

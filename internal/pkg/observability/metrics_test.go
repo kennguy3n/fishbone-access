@@ -98,3 +98,20 @@ func TestRegisterDBPoolNilIsNoOp(t *testing.T) {
 		t.Fatalf("RegisterDBPool(nil) = %v, want nil", err)
 	}
 }
+
+func TestIncThrottledByRouteTemplate(t *testing.T) {
+	m := NewMetrics()
+	r := newTestEngine(m)
+
+	m.IncThrottled("/things/:id")
+	m.IncThrottled("/things/:id")
+	m.IncThrottled("") // empty route collapses to "unmatched"
+
+	body := do(t, r, http.MethodGet, "/metrics").Body.String()
+	if want := `shieldnet_http_requests_throttled_total{route="/things/:id"} 2`; !strings.Contains(body, want) {
+		t.Errorf("metrics missing %q\n--- scrape ---\n%s", want, body)
+	}
+	if want := `shieldnet_http_requests_throttled_total{route="unmatched"} 1`; !strings.Contains(body, want) {
+		t.Errorf("metrics missing %q", want)
+	}
+}
