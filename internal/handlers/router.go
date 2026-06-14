@@ -18,6 +18,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -84,12 +85,39 @@ type Deps struct {
 	// cmd/ztna-api/main.go). It is nil only in a degraded (no-DB) boot, in which
 	// case no activity middleware is mounted (no-op).
 	ActivityRecorder tenancy.ActivityRecorder
+	// Metrics, when set, mounts the Prometheus instrumentation: a request
+	// middleware (rate/error/latency by route template) and the /metrics scrape
+	// endpoint. nil leaves the router un-instrumented (tests/degraded boots), so
+	// existing behavior is unchanged; the production ztna-api always wires it and
+	// registers the DB pool's saturation stats on the same registry.
+	Metrics *observability.Metrics
+	// TracingServiceName, when non-empty, mounts the OpenTelemetry request
+	// middleware under this service name. main sets it only when InitTracer
+	// installed a real OTLP provider (operator set OTEL_EXPORTER_OTLP_ENDPOINT),
+	// so an un-traced deployment pays nothing.
+	TracingServiceName string
 }
 
 // NewRouter builds the Gin engine.
 func NewRouter(deps Deps) *gin.Engine {
 	r := gin.New()
+	// Metrics instrumentation is mounted OUTSIDE Recovery so a panicked request
+	// is still counted with the 500 status Recovery writes: Recovery recovers
+	// and sets the status, then control unwinds back into the metrics
+	// middleware's deferred recording. Only mounted when a registry is wired.
+	if deps.Metrics != nil {
+		r.Use(deps.Metrics.Middleware())
+	}
 	r.Use(gin.Recovery())
+	// Tracing opens a span per request (named by route template); it sits inside
+	// Recovery so a panic still closes the span. Only mounted when InitTracer
+	// installed a real provider.
+	if deps.TracingServiceName != "" {
+		r.Use(observability.TracingMiddleware(deps.TracingServiceName))
+	}
+	if deps.Metrics != nil {
+		r.GET("/metrics", gin.WrapH(deps.Metrics.Handler()))
+	}
 
 	r.GET("/health", liveness)
 	r.GET("/readyz", readiness(deps.Ready))
