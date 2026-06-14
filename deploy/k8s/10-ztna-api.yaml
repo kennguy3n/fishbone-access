@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shieldnet-access-ztna-api
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: ztna-api
+    app.kubernetes.io/part-of: shieldnet-access
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shieldnet-access
+      app.kubernetes.io/component: ztna-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shieldnet-access
+        app.kubernetes.io/component: ztna-api
+    spec:
+      serviceAccountName: shieldnet-access
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ztna-api
+          image: ghcr.io/kennguy3n/fishbone-access:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["ztna-api"]
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: shieldnet-access-config
+            - secretRef:
+                name: shieldnet-access-secrets
+          # The HTTP listener opens only AFTER startup migrations finish; the
+          # startup probe gives a generous window so a slow first boot is not killed.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shieldnet-access-ztna-api
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: ztna-api
+    app.kubernetes.io/part-of: shieldnet-access
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: ztna-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

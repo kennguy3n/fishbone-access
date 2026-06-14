@@ -14,12 +14,13 @@ contract.
 
 ## Architecture
 
-Three Go binaries share one image:
+Four Go binaries share one image:
 
 | Binary | Role |
 | --- | --- |
 | `cmd/ztna-api` | HTTP API: workspaces, connectors, access requests, policies. iam-core bearer-token auth + tenant resolution. |
 | `cmd/access-connector-worker` | Background queue worker: identity sync, access provisioning/revocation. |
+| `cmd/access-workflow-engine` | Background workflow orchestrator: JML lifecycle, approval chains, scheduled access certifications. |
 | `cmd/pam-gateway` | Multi-protocol PAM proxy (SSH/PostgreSQL/MySQL/Kubernetes-exec) with session recording + audit hash chain. |
 
 Internal packages:
@@ -112,6 +113,28 @@ would use a shared store via `ACCESS_REDIS_URL`, which the limiter interface is
 designed to accept later without call-site changes. Set
 `ACCESS_TENANT_RATE_LIMIT_ENABLED=false` to disable it entirely.
 
+## Deployment
+
+The single-server tier runs via [`docker-compose.yml`](docker-compose.yml)
+(`docker compose up --build --wait`). For Kubernetes — the managed-K8s and full
+production tiers — use the Helm chart and plain manifests under
+[`deploy/`](deploy):
+
+```bash
+helm install sa deploy/helm/shieldnet-access -n shieldnet-access --create-namespace \
+  -f deploy/helm/shieldnet-access/examples/production.values.yaml
+# ...or, without Helm:
+kubectl apply -f deploy/k8s/
+```
+
+The chart surfaces the full `ACCESS_*` config via a ConfigMap, routes the DB
+DSN / KMS master key / credential DEK through a referenced Secret (or your own
+`existingSecret`), and gates Ingress, HPA, a Prometheus `ServiceMonitor`, and an
+optional bundled dev Postgres behind values flags. See
+[`deploy/README.md`](deploy/README.md) for the required secrets, the
+external-vs-bundled Postgres choice, and scaling guidance
+([`deploy/SCALE_SIZING.md`](deploy/SCALE_SIZING.md)).
+
 ## Development
 
 ```bash
@@ -127,5 +150,6 @@ This repository is built in sessions. 1A (this scaffold) ships the foundation:
 config, iam-core integration, models, migrations, middleware, the connector
 registry, and the worker/gateway supervisors. Subsequent sessions add the 200+
 connectors (1B), the access-request lifecycle and policy engine (1C), the full
-PAM implementation (1D), the AI agent and workflow engine (1E), and the client
-SDKs and deployment tooling (1F).
+PAM implementation (1D), and the AI agent and workflow engine (1E). The
+Kubernetes deployment artifacts (Helm chart + plain manifests) live under
+[`deploy/`](deploy); the client SDKs land in a later session (1F).

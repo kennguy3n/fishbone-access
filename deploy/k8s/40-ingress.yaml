@@ -1,0 +1,30 @@
+# OPTIONAL external ingress for the ztna-api. Edit the host (and add TLS) for
+# your environment, or delete this file if you expose the API another way.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shieldnet-access-ztna-api
+  namespace: shieldnet-access
+  labels:
+    app.kubernetes.io/name: shieldnet-access
+    app.kubernetes.io/component: ztna-api
+    app.kubernetes.io/part-of: shieldnet-access
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  # tls:
+  #   - secretName: access-example-com-tls
+  #     hosts:
+  #       - access.example.com
+  rules:
+    - host: access.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shieldnet-access-ztna-api
+                port:
+                  number: 8080

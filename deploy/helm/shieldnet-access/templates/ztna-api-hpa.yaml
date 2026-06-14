@@ -1,0 +1,33 @@
+{{- if .Values.ztnaApi.autoscaling.enabled -}}
+{{- $component := "ztna-api" -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  labels:
+    {{- include "shieldnet-access.componentLabels" (dict "ctx" . "component" $component) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "shieldnet-access.componentName" (dict "ctx" . "component" $component) }}
+  minReplicas: {{ .Values.ztnaApi.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.ztnaApi.autoscaling.maxReplicas }}
+  metrics:
+    {{- with .Values.ztnaApi.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ . }}
+    {{- end }}
+    {{- with .Values.ztnaApi.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ . }}
+    {{- end }}
+{{- end }}

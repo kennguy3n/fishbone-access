@@ -1,0 +1,3 @@
+{{- if .Values.workflowEngine.enabled -}}
+{{- include "shieldnet-access.workerDeployment" (dict "ctx" . "component" "access-workflow-engine" "values" .Values.workflowEngine) }}
+{{- end }}

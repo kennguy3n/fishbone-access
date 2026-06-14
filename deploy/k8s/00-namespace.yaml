@@ -1,0 +1,16 @@
+# Plain, apply-able Kubernetes manifests for a MINIMAL ShieldNet Access install
+# for users who don't use Helm. These mirror the Helm chart's default render
+# (deploy/helm/shieldnet-access) conceptually: same images, ports, env surface,
+# probes, and securityContext. Prefer the Helm chart for anything beyond a basic
+# install (autoscaling, ingress flags, ServiceMonitor, bundled dev Postgres).
+#
+# Apply order is encoded in the filename prefixes. Quick start:
+#   1. Edit 03-secret.example.yaml with real values (DB DSN + a credential key).
+#   2. kubectl apply -f deploy/k8s/
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shieldnet-access
+  labels:
+    app.kubernetes.io/part-of: shieldnet-access

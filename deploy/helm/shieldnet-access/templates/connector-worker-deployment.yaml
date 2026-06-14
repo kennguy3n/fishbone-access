@@ -1,0 +1,3 @@
+{{- if .Values.connectorWorker.enabled -}}
+{{- include "shieldnet-access.workerDeployment" (dict "ctx" . "component" "access-connector-worker" "values" .Values.connectorWorker) }}
+{{- end }}
