@@ -13,6 +13,10 @@ export interface NavItem {
   labelId: MessageKey;
   to: string;
   icon: IconName;
+  /** Only shown to workspace admins (day-1 setup surfaces). The server still
+   *  authorizes every action; this just keeps a plain operator from being shown
+   *  a setup flow whose mutations their role can't perform. */
+  adminOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -21,6 +25,13 @@ export interface NavGroup {
 }
 
 export const NAV: NavGroup[] = [
+  {
+    labelId: "nav.group.getStarted",
+    items: [
+      { labelId: "nav.onboarding", to: "/onboarding", icon: "rocket", adminOnly: true },
+      { labelId: "nav.selfService", to: "/self-service", icon: "key" },
+    ],
+  },
   {
     labelId: "nav.group.overview",
     items: [{ labelId: "nav.dashboard", to: "/", icon: "dashboard" }],

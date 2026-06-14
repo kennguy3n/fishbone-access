@@ -114,6 +114,12 @@ const WorkflowBuilder = lazyPage(() =>
 const JmlRuns = lazyPage(() =>
   import("@/routes/JmlRuns").then((m) => ({ default: m.JmlRuns })),
 );
+const Onboarding = lazyPage(() =>
+  import("@/routes/Onboarding").then((m) => ({ default: m.Onboarding })),
+);
+const SelfService = lazyPage(() =>
+  import("@/routes/SelfService").then((m) => ({ default: m.SelfService })),
+);
 
 const rootRoute = createRootRoute({ component: Outlet });
 
@@ -142,6 +148,8 @@ const page = <P extends string>(path: P, component: () => JSX.Element) =>
 
 const appRoutes = [
   page("/", Dashboard),
+  page("/onboarding", Onboarding),
+  page("/self-service", SelfService),
   page("/policies", Policies),
   page("/policies/new", PolicyEditor),
   page("/policies/$policyId", PolicyEditor),
