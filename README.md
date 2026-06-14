@@ -162,11 +162,14 @@ source of truth for consumption):
   returns a periodized, per-metric statement — included quota, usage, overage,
   and the integer amount that overage costs — plus the plan's base price and the
   period total. Generation is a **pure function** of `(workspace, period, plan,
-  rollup rows)` with **no wall-clock field**: re-generating a closed period
-  whose rollup rows are immutable yields a byte-identical statement (the
-  idempotency contract). All counts and amounts are **integers** (minor units),
-  so money never carries float drift.
-- **Quota enforcement.** A fail-open middleware, mounted right after the meter
+  rollup rows)` with **no wall-clock field**: for a **fixed plan** and the
+  period's immutable rollup rows it yields a byte-identical statement (the
+  idempotency contract). The plan is resolved **live** (there is no plan-history
+  snapshot), so re-pricing a closed period under a tenant's new plan after an
+  upgrade/downgrade is by design, not a determinism break. All counts and amounts
+  are **integers** (minor units), so money never carries float drift.
+- **Quota enforcement.** A fail-open middleware, mounted right *before* the meter
+  (so a hard-denied request is rejected before it is counted as billable usage)
   and keyed by the resolved workspace UUID, classifies each tenant against its
   plan: **soft** (over the included allowance — allowed, but flagged via
   `X-Quota-State`/`X-Quota-Metric` headers and metered, and billed as overage)

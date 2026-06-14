@@ -212,28 +212,35 @@ func NewRouter(deps Deps) *gin.Engine {
 		if deps.ActivityRecorder != nil {
 			scoped.Use(tenancy.ActivityMiddleware(deps.ActivityRecorder))
 		}
-		// Meter per-tenant usage on the same tenant-scoped surface, keyed by
-		// the authoritative workspace UUID (the rollup + RLS key), so
-		// cost-to-serve is attributable per tenant. Like activity recording it
-		// is fire-and-forget (a single in-memory increment) and a no-op
-		// pass-through when the meter is nil, so it adds no latency or failure
-		// mode to the request path.
-		if deps.UsageMeter != nil {
-			scoped.Use(usage.Middleware(deps.UsageMeter))
-		}
 		// Enforce per-tenant plan quotas on the same tenant-scoped surface,
-		// keyed by the authoritative workspace UUID. It is mounted after the
-		// meter so a request the meter will count is the request the enforcer
-		// judges, and it runs BEFORE the handlers so a hard-denied request is
-		// rejected before any expensive work. Fail-open and a no-op
-		// pass-through when the enforcer is nil; over-quota decisions feed the
-		// metrics registry by route template when observability is wired.
+		// keyed by the authoritative workspace UUID. It is mounted BEFORE the
+		// meter (and before the handlers) so a hard-denied request is rejected
+		// before any expensive work AND before it is counted as billable usage:
+		// a tenant is never invoiced for requests the platform refused to serve,
+		// and a hard-capped tenant cannot feed its own rejected requests back
+		// into the usage rollup. The denial is still observable — over-quota
+		// decisions feed the aggregate metrics registry by route template (never
+		// per tenant) when observability is wired — so dropping it from the
+		// per-tenant rollup loses no operational visibility. Fail-open and a
+		// no-op pass-through when the enforcer is nil.
 		if deps.BillingEnforcer != nil {
 			var onQuota func(state, route string)
 			if deps.Metrics != nil {
 				onQuota = deps.Metrics.IncQuotaBreach
 			}
 			scoped.Use(billing.QuotaMiddleware(deps.BillingEnforcer, onQuota))
+		}
+		// Meter per-tenant usage on the same tenant-scoped surface, keyed by
+		// the authoritative workspace UUID (the rollup + RLS key), so
+		// cost-to-serve is attributable per tenant. It runs AFTER quota
+		// enforcement so only admitted requests (within quota, soft-over, or
+		// hard-over in shadow mode) are counted — a hard-denied 402 aborts
+		// above this and is never recorded. Like activity recording it is
+		// fire-and-forget (a single in-memory increment) and a no-op
+		// pass-through when the meter is nil, so it adds no latency or failure
+		// mode to the request path.
+		if deps.UsageMeter != nil {
+			scoped.Use(usage.Middleware(deps.UsageMeter))
 		}
 		// Install the RBAC tier when an RBAC store is wired. It runs after
 		// RequireTenant (it needs the resolved workspace + verified subject) and

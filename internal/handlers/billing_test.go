@@ -4,13 +4,35 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/services/billing"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/services/usage"
 )
+
+// countingMeter is a usage.Meter that just counts Record calls, so a test can
+// assert exactly which requests were metered.
+type countingMeter struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (m *countingMeter) Record(_ uuid.UUID, _ string) {
+	m.mu.Lock()
+	m.calls++
+	m.mu.Unlock()
+}
+
+func (m *countingMeter) count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.calls
+}
 
 // billingTestDeps wires the billing read/admin surface end-to-end through the
 // real Auth + ResolveTenant + RequireTenant chain, backed by a billing plan
@@ -190,5 +212,45 @@ func TestBillingNotMountedWithoutReader(t *testing.T) {
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("GET %s status = %d, want 404 (route unmounted without a billing reader)", path, w.Code)
 		}
+	}
+}
+
+// TestBillingHardDenyIsNotMetered proves the enforcement middleware is mounted
+// BEFORE the usage meter in the tenant-scoped chain: a hard-denied 402 aborts
+// before the meter runs, so a tenant is never billed for requests the platform
+// refused — and a hard-capped tenant cannot feed its own rejected requests back
+// into the usage rollup. The control request (a different tenant within quota)
+// is admitted AND metered exactly once, proving the meter is still wired.
+func TestBillingHardDenyIsNotMetered(t *testing.T) {
+	deps, svc, usageStore := billingTestDeps(t)
+	meter := &countingMeter{}
+	deps.UsageMeter = meter    // write side of metering
+	deps.BillingEnforcer = svc // EnforceHardCap is true (see billingTestDeps)
+	r := NewRouter(deps)
+
+	// tenant-a stays on the default trial plan (hard cap 75k); seed its
+	// current-period usage above that ceiling so it is hard-exceeded.
+	wsA := workspaceIDForTenant(t, deps, "tenant-a")
+	if err := usageStore.AddUsage(context.Background(), []usage.Delta{
+		{WorkspaceID: wsA, Period: usage.PeriodOf(time.Now()), Metric: usage.MetricAPIRequests, Count: 80_000},
+	}); err != nil {
+		t.Fatalf("seed usage: %v", err)
+	}
+
+	w := do(t, r, http.MethodGet, "/api/v1/billing/plan", "tok-a", nil)
+	if w.Code != http.StatusPaymentRequired {
+		t.Fatalf("hard-capped request status = %d, want 402; body=%s", w.Code, w.Body.String())
+	}
+	if got := meter.count(); got != 0 {
+		t.Errorf("hard-denied request was metered %d time(s), want 0 (enforce-before-meter)", got)
+	}
+
+	// Control: tenant-b is within quota, so it is admitted and metered once.
+	w = do(t, r, http.MethodGet, "/api/v1/billing/plan", "tok-b", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("within-quota request status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if got := meter.count(); got != 1 {
+		t.Errorf("admitted request metered %d time(s), want 1", got)
 	}
 }

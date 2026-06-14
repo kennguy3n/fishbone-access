@@ -25,9 +25,11 @@
 //     per metric the included quota, the used count, the overage, and an
 //     integer amount in minor units (no float drift). It reads the SAME rollup
 //     the meter writes — there is no second source of truth for consumption —
-//     and is DETERMINISTIC and IDEMPOTENT: it carries no wall-clock field, so
-//     re-generating a closed period (whose rollup rows are immutable) yields a
-//     byte-identical statement.
+//     and is DETERMINISTIC: generation carries no wall-clock field, so for a
+//     FIXED plan and the period's immutable rollup rows it yields a
+//     byte-identical statement. The plan is resolved LIVE (there is no
+//     plan-history snapshot), so re-pricing a closed period under a tenant's new
+//     plan after an upgrade/downgrade is by design, not a determinism break.
 //
 //   - Quota enforcement. A fail-open, TTL-cached decision ("is this tenant over
 //     its included quota / hard ceiling?") consumed by an enforcement

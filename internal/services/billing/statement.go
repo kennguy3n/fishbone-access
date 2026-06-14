@@ -24,10 +24,18 @@ type LineItem struct {
 
 // Statement is a tenant's structured, periodized bill: the plan it was on, the
 // base charge, a line item per metric, and the integer totals. It carries NO
-// wall-clock field, so it is a pure function of (workspace, period, plan, usage
-// rows) — re-generating a closed period whose rollup rows are immutable yields a
-// byte-identical Statement. That determinism is the idempotency contract the
-// tests assert.
+// wall-clock field, so generateStatement is a pure function of (workspace,
+// period, plan, usage rows): for a FIXED plan and the period's immutable rollup
+// rows it yields a byte-identical Statement regardless of when it runs or the
+// order of the rows. That purity is the idempotency contract the tests assert.
+//
+// One caveat the tests do not (cannot) cover: StatementFor resolves the plan
+// LIVE from tenant_plan each time (there is no plan-history snapshot), so the
+// plan is an INPUT that can change between generations. Re-pricing a past period
+// under a tenant's NEW plan after an upgrade/downgrade is therefore by design,
+// not a determinism violation; a closed-period plan snapshot would be the
+// addition required if immutable historical invoices ever become a hard
+// requirement.
 type Statement struct {
 	WorkspaceID    uuid.UUID  `json:"workspace_id"`
 	Period         string     `json:"period"`

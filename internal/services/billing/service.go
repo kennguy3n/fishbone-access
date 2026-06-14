@@ -188,10 +188,13 @@ func (s *Service) CurrentStatement(ctx context.Context, workspaceID uuid.UUID) (
 	return s.StatementFor(ctx, workspaceID, usage.PeriodOf(s.now()))
 }
 
-// StatementFor generates the statement for a specific period. It is
-// deterministic and idempotent: it reads the immutable rollup rows for the
-// period and the tenant's plan and computes integer line items, so a closed
-// period always yields the same statement.
+// StatementFor generates the statement for a specific period. Generation is
+// deterministic: it reads the immutable rollup rows for the period plus the
+// tenant's plan and computes integer line items, so a closed period yields the
+// same statement on every call AS LONG AS the plan assignment is unchanged. The
+// plan is resolved LIVE from tenant_plan (there is no plan-history snapshot), so
+// re-pricing a past period under a tenant's new plan after an upgrade/downgrade
+// is by design rather than a determinism break — see the Statement doc.
 func (s *Service) StatementFor(ctx context.Context, workspaceID uuid.UUID, period string) (Statement, error) {
 	if workspaceID == uuid.Nil {
 		return Statement{}, errors.New("billing: StatementFor: empty workspace id")
