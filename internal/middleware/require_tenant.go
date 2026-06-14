@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 )
 
 // WorkspaceResolver maps a verified iam-core tenant id to its ShieldNet
@@ -61,6 +63,10 @@ func RequireTenant(ws WorkspaceResolver) gin.HandlerFunc {
 			return
 		}
 		c.Set(ctxKeyWorkspaceID, id)
+		// Carry the workspace id on the request context too, so the database
+		// pool can pin the RLS app.workspace_id GUC for every query this request
+		// makes — a database-tier backstop behind the explicit WHERE clauses.
+		c.Request = c.Request.WithContext(database.WithWorkspaceID(c.Request.Context(), id))
 		c.Next()
 	}
 }

@@ -58,6 +58,22 @@ func OpenPool(ctx context.Context, dsn string, maxConns int32, maxConnLifetime, 
 	if maxConnIdleTime > 0 {
 		cfg.MaxConnIdleTime = maxConnIdleTime
 	}
+	// Pin the RLS tenant GUC on the pgxpool path too, so the database-tier
+	// isolation backstop (migration 0024) holds no matter which DB path a query
+	// takes — not just the GORM pool (see rls.go). BeforeAcquire runs on every
+	// checkout (new and reused connections) with the acquiring operation's
+	// context, so app.workspace_id always reflects the current borrower and is
+	// overwritten before the next borrower can observe it — the same
+	// per-checkout semantics as the GORM ResetSession hook. Today the pgx repos
+	// only run pre-auth/worker queries (unscoped → GUC '' → policy permissive),
+	// so this is a no-op for them; it ensures any future tenant-scoped query
+	// added on this path is covered automatically rather than silently
+	// unprotected. A failed Exec returns false so the pool discards the
+	// connection and tries another rather than handing back an unpinned one.
+	cfg.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+		_, err := conn.Exec(ctx, setWorkspaceGUCSQL, workspaceGUCValue(ctx))
+		return err == nil
+	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("database: open pgx pool: %w", err)
