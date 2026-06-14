@@ -69,6 +69,8 @@ func (h *connectorHandlers) register(g *gin.RouterGroup) {
 	g.GET("/connectors", middleware.RequirePermission(authz.PermConnectorRead), h.listCatalogue)
 	g.GET("/connectors/catalogue/facets", middleware.RequirePermission(authz.PermConnectorRead), h.catalogueFacets)
 	g.GET("/connectors/catalogue/:provider", middleware.RequirePermission(authz.PermConnectorRead), h.catalogueDetail)
+	// Structured guided-setup schema for a provider (curated, deterministic).
+	g.GET("/connectors/catalogue/:provider/setup-schema", middleware.RequirePermission(authz.PermConnectorRead), h.catalogueSetupSchema)
 	// AI-assisted setup wizard for a provider (advisory, fail-OPEN).
 	g.POST("/connectors/catalogue/:provider/setup-wizard", middleware.RequirePermission(authz.PermConnectorManage), h.setupWizard)
 
@@ -137,6 +139,31 @@ func (h *connectorHandlers) catalogueDetail(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, entry)
+}
+
+// catalogueSetupSchema returns the curated, deterministic guided-setup schema
+// for a provider: the supported auth method(s) and, for each, the typed fields
+// to collect with inline "where do I find this?" help. It is what lets the
+// connect UI render a labelled form instead of a raw key/value editor.
+//
+// An unknown provider is a 404. A known provider with no curated schema yet is
+// a 200 with {"schema": null} (not a 404) so the client can cleanly fall back
+// to the manual editor without treating "no guided flow" as an error.
+func (h *connectorHandlers) catalogueSetupSchema(c *gin.Context) {
+	if _, ok := workspace(c); !ok {
+		return
+	}
+	provider := strings.TrimSpace(c.Param("provider"))
+	if _, ok := access.CapabilityDescriptorFor(provider); !ok {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "unknown connector provider"})
+		return
+	}
+	schema, ok := access.SetupSchemaFor(provider)
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{"schema": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"schema": schema})
 }
 
 // --- AI-assisted setup wizard ---

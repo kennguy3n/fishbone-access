@@ -257,6 +257,8 @@ export const qk = {
   connectors: (filter: ConnectorCatalogueFilter) =>
     ["connectors", filter] as const,
   connector: (provider: string) => ["connector", provider] as const,
+  connectorSetupSchema: (provider: string) =>
+    ["connector", provider, "setup-schema"] as const,
   connectorFacets: ["connector-facets"] as const,
   evidence: (filter: EvidenceFilter) =>
     ["compliance-evidence", filter] as const,
@@ -881,6 +883,52 @@ export interface AccessConnector {
   updated_at: string;
 }
 
+// Guided setup schema — curated, deterministic metadata describing exactly
+// which fields a provider needs, what kind of value each takes, and where in
+// the upstream console to find it. Mirrors internal/services/access
+// (ConnectorSetupSchema). Renders the connect form as a typed, labelled flow
+// instead of a raw key/value editor.
+
+export type ConnectorSetupFieldType =
+  | "text"
+  | "password"
+  | "textarea"
+  | "url"
+  | "email";
+
+export interface ConnectorSetupField {
+  key: string;
+  label: string;
+  type?: ConnectorSetupFieldType;
+  /** When true, the value is sent under `secrets` (sealed) rather than `config`. */
+  secret?: boolean;
+  required?: boolean;
+  placeholder?: string;
+  /** Plain-language "where do I find this / what is it?" help. */
+  help?: string;
+  /** Advisory JS-compatible regex for inline format hints; server is authoritative. */
+  pattern?: string;
+}
+
+export interface ConnectorSetupAuthMethod {
+  id: string;
+  label: string;
+  description?: string;
+  docs_url?: string;
+  recommended?: boolean;
+  /** Ordered "how to get these credentials" checklist. */
+  steps?: string[];
+  fields: ConnectorSetupField[];
+}
+
+export interface ConnectorSetupSchema {
+  provider: string;
+  display_name: string;
+  overview?: string;
+  docs_url?: string;
+  auth_methods: ConnectorSetupAuthMethod[];
+}
+
 export const listConnectors = (filter: ConnectorCatalogueFilter = {}) => {
   const params = new URLSearchParams();
   if (filter.capability) params.set("capability", filter.capability);
@@ -906,6 +954,14 @@ export const getConnectorFacets = () =>
     url: "/connectors/catalogue/facets",
     method: "GET",
   });
+
+/** Returns the curated guided-setup schema, or null when the provider has no
+ *  curated schema yet (the UI then falls back to the manual key/value editor). */
+export const getConnectorSetupSchema = (provider: string) =>
+  call<{ schema: ConnectorSetupSchema | null }>({
+    url: `/connectors/catalogue/${encodeURIComponent(provider)}/setup-schema`,
+    method: "GET",
+  }).then((r) => r.schema);
 
 export interface SetupWizardInput {
   admin_intent?: string;
@@ -945,6 +1001,15 @@ export function useConnectorCatalogueEntry(provider: string | undefined) {
     queryKey: qk.connector(provider ?? ""),
     queryFn: () => getConnectorCatalogueEntry(provider as string),
     enabled: !!provider,
+  });
+}
+
+export function useConnectorSetupSchema(provider: string | undefined) {
+  return useQuery<ConnectorSetupSchema | null, ApiError>({
+    queryKey: qk.connectorSetupSchema(provider ?? ""),
+    queryFn: () => getConnectorSetupSchema(provider as string),
+    enabled: !!provider,
+    staleTime: 5 * 60_000,
   });
 }
 
