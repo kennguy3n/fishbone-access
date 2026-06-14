@@ -98,6 +98,13 @@ func run() error {
 	}
 	joinMetrics := metrics.ServeMetrics(ctx, cfg.WorkerMetricsAddr)
 	defer joinMetrics()
+	// joinMetrics() blocks until ctx is cancelled, and the top-level defer stop()
+	// (which cancels ctx) runs AFTER it in LIFO order — so an early return or a
+	// panic below would otherwise deadlock shutdown. Registering stop() here,
+	// immediately after defer joinMetrics(), makes LIFO cancel ctx FIRST on every
+	// return path, so the invariant is self-enforcing rather than relying on the
+	// explicit stop() after Worker.Run. signal.NotifyContext's stop is idempotent.
+	defer stop()
 
 	// Hibernation gate (scale-to-zero): the worker only ever READS the gate to
 	// skip a dormant tenant's periodic sync; ztna-api owns classification (the
@@ -141,12 +148,10 @@ func run() error {
 	logger.Infof(ctx, "access-connector-worker: ready; draining access_jobs")
 	werr := w.Run(ctx)
 
-	// Worker has returned. Cancel the signal context explicitly before the
-	// deferred metrics-server join runs: joinMetrics() blocks on ctx.Done(), so
-	// calling stop() here keeps shutdown correct without depending on Worker.Run's
-	// internal "only returns ctx.Err()" contract. Mirrors access-workflow-engine.
-	stop()
-
+	// Worker has returned (context cancelled or fatal). The deferred stop()
+	// registered after defer joinMetrics() cancels ctx before the metrics join
+	// runs, so shutdown is correct without depending on Worker.Run's internal
+	// "only returns ctx.Err()" contract.
 	if werr != nil && !errors.Is(werr, context.Canceled) {
 		return werr
 	}
