@@ -34,6 +34,7 @@ type Metrics struct {
 	reqDuration *prometheus.HistogramVec
 	inFlight    prometheus.Gauge
 	throttled   *prometheus.CounterVec
+	usageEvents *prometheus.CounterVec
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -71,8 +72,14 @@ func NewMetrics() *Metrics {
 			Name:      "requests_throttled_total",
 			Help:      "Requests rejected by the per-tenant rate limiter (429), by matched route template. Deliberately NOT labelled by tenant id, which is unbounded at 5,000 tenants.",
 		}, []string{"route"}),
+		usageEvents: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "usage",
+			Name:      "events_total",
+			Help:      "Metered usage events flushed to the per-tenant rollup, by metric (e.g. api_requests). This is the FLEET-WIDE aggregate: deliberately NOT labelled by tenant id (5,000 tenants would explode the series count) — per-tenant attribution lives in the tenant_usage table, read back through the authenticated usage endpoint.",
+		}, []string{"metric"}),
 	}
-	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled)
+	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents)
 	return m
 }
 
@@ -84,6 +91,18 @@ func (m *Metrics) IncThrottled(route string) {
 		route = "unmatched"
 	}
 	m.throttled.WithLabelValues(route).Inc()
+}
+
+// AddUsageEvents records n metered usage events for the given metric, labelled
+// by the metric name ONLY (a small fixed set such as "api_requests"), never the
+// tenant id — keeping the series count bounded at 5,000 tenants. Wire it as the
+// usage aggregator's flush observer so the fleet-wide counter advances by each
+// successful flush's summed-across-tenants delta. A negative n is ignored.
+func (m *Metrics) AddUsageEvents(metric string, n int64) {
+	if metric == "" || n <= 0 {
+		return
+	}
+	m.usageEvents.WithLabelValues(metric).Add(float64(n))
 }
 
 // Handler is the Prometheus scrape endpoint backed by this registry.

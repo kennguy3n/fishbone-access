@@ -46,6 +46,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
+	"github.com/kennguy3n/fishbone-access/internal/services/usage"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -421,6 +422,44 @@ func run() error {
 		} else {
 			logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active, but activity is still recorded so the feature can be enabled later with accurate history")
 		}
+	}
+
+	// Per-tenant usage metering (WS billing foundation): accumulate per-tenant
+	// usage counts on the request path and flush them to the tenant_usage
+	// rollup so cost-to-serve is attributable per tenant — the "who is using
+	// what" half of the cost story (the rate limiter above is the "cap the
+	// abuser" half). Like the rate limiter it is in-memory and PER REPLICA:
+	// each replica flushes its own deltas with an additive UPSERT, so N
+	// replicas sum into one row rather than overwriting. Per-tenant attribution
+	// lives in Postgres (cardinality is cheap there); only AGGREGATE counters
+	// reach /metrics, fed by the flush observer below. Wired only when a DB is
+	// present (the rollup needs Postgres) and metering is enabled.
+	//
+	// Shutdown ordering matters: the flush loop must NOT stop when the signal
+	// context is cancelled, because srv.Shutdown then drains in-flight requests
+	// that are still calling Record — counts that would be stranded if the loop
+	// had already done its final flush. So usageCtx keeps the signal context's
+	// values (logging/tracing) but drops its cancellation (WithoutCancel), and
+	// the loop is stopped solely by this defer. The defer is registered after
+	// the DB-pool-close defer, so LIFO runs it BEFORE the pool closes; and it
+	// runs only after run() returns, i.e. after srv.Shutdown has finished
+	// draining — so the final flush captures the drain window and still can't
+	// touch a closed pool.
+	if deps.DB != nil && cfg.UsageMetering.Enabled {
+		usageStore := usage.NewStore(deps.DB)
+		aggregator := usage.New(usageStore, usage.Config{
+			FlushInterval: cfg.UsageMetering.FlushInterval,
+			Observe:       metrics.AddUsageEvents,
+		})
+		usageCtx, usageCancel := context.WithCancel(context.WithoutCancel(ctx))
+		joinUsage := aggregator.Run(usageCtx)
+		defer func() {
+			usageCancel()
+			joinUsage()
+		}()
+		deps.UsageMeter = aggregator
+		deps.UsageReader = usageStore
+		logger.Infof(ctx, "ztna-api: per-tenant usage metering enabled (flush every %s, per replica); per-tenant counts roll up to tenant_usage, only aggregate counters on /metrics", cfg.UsageMetering.FlushInterval)
 	}
 
 	srv := &http.Server{

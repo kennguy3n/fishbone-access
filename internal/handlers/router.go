@@ -24,6 +24,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
+	"github.com/kennguy3n/fishbone-access/internal/services/usage"
 	"github.com/kennguy3n/fishbone-access/internal/webui"
 )
 
@@ -103,6 +104,19 @@ type Deps struct {
 	// When Metrics is also set, throttled requests are counted on the same
 	// registry (by route template) for alerting.
 	RateLimiter middleware.RateLimiter
+	// UsageMeter, when set, accumulates one per-tenant usage count per
+	// authenticated, tenant-scoped request — the write side of usage metering.
+	// It is mounted on the tenant-scoped group (after RequireTenant, so it is
+	// keyed by the authoritative workspace UUID) and is fire-and-forget, so it
+	// adds no latency or failure mode. nil leaves the surface un-metered
+	// (tests/degraded boots). Wired whenever metering is enabled and a DB is
+	// present (see cmd/ztna-api/main.go).
+	UsageMeter usage.Meter
+	// UsageReader, when set, backs the authenticated GET /api/v1/usage read
+	// endpoint so a tenant can see its own current-period consumption. nil
+	// leaves the route unmounted (tests/degraded boots). It reads the same
+	// rollup the meter flushes to.
+	UsageReader usage.Reader
 }
 
 // NewRouter builds the Gin engine.
@@ -182,6 +196,15 @@ func NewRouter(deps Deps) *gin.Engine {
 		if deps.ActivityRecorder != nil {
 			scoped.Use(tenancy.ActivityMiddleware(deps.ActivityRecorder))
 		}
+		// Meter per-tenant usage on the same tenant-scoped surface, keyed by
+		// the authoritative workspace UUID (the rollup + RLS key), so
+		// cost-to-serve is attributable per tenant. Like activity recording it
+		// is fire-and-forget (a single in-memory increment) and a no-op
+		// pass-through when the meter is nil, so it adds no latency or failure
+		// mode to the request path.
+		if deps.UsageMeter != nil {
+			scoped.Use(usage.Middleware(deps.UsageMeter))
+		}
 		// Install the RBAC tier when an RBAC store is wired. It runs after
 		// RequireTenant (it needs the resolved workspace + verified subject) and
 		// resolves the caller's role into a permission set for the per-route
@@ -196,6 +219,9 @@ func NewRouter(deps Deps) *gin.Engine {
 		newPAMHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
+		if deps.UsageReader != nil {
+			newUsageHandlers(deps.UsageReader).register(scoped)
+		}
 	}
 
 	// Serve the embedded Access console (SPA) when the binary was built with
