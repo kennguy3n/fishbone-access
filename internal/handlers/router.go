@@ -101,15 +101,21 @@ type Deps struct {
 // NewRouter builds the Gin engine.
 func NewRouter(deps Deps) *gin.Engine {
 	r := gin.New()
+	// Metrics instrumentation is mounted OUTSIDE Recovery so a panicked request
+	// is still counted with the 500 status Recovery writes: Recovery recovers
+	// and sets the status, then control unwinds back into the metrics
+	// middleware's deferred recording. Only mounted when a registry is wired.
+	if deps.Metrics != nil {
+		r.Use(deps.Metrics.Middleware())
+	}
 	r.Use(gin.Recovery())
-	// Instrument every route (including /health and the authenticated surface)
-	// before the handlers run, so the golden signals cover the whole engine.
-	// Only mounted when a registry is wired.
+	// Tracing opens a span per request (named by route template); it sits inside
+	// Recovery so a panic still closes the span. Only mounted when InitTracer
+	// installed a real provider.
 	if deps.TracingServiceName != "" {
 		r.Use(observability.TracingMiddleware(deps.TracingServiceName))
 	}
 	if deps.Metrics != nil {
-		r.Use(deps.Metrics.Middleware())
 		r.GET("/metrics", gin.WrapH(deps.Metrics.Handler()))
 	}
 

@@ -48,6 +48,9 @@ func InitTracer(ctx context.Context, serviceName string) (shutdown func(context.
 		resource.WithTelemetrySDK(),
 	)
 	if err != nil {
+		// Close the exporter's gRPC connection before bailing — we own it from
+		// the point New succeeded, and the returned noop shutdown won't.
+		_ = exp.Shutdown(ctx)
 		return noop, false, fmt.Errorf("observability: otel resource: %w", err)
 	}
 	tp := sdktrace.NewTracerProvider(

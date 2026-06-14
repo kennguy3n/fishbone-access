@@ -118,6 +118,11 @@ func run() error {
 			if err := metrics.RegisterDBPool(sqlDB); err != nil {
 				return fmt.Errorf("register db pool metrics: %w", err)
 			}
+		} else {
+			// gdb.DB() effectively never fails for the postgres driver (see
+			// setupDatabase), but if it did we'd silently lose pool-saturation
+			// visibility; log it so the gap is observable rather than invisible.
+			logger.Warnf(ctx, "ztna-api: db pool metrics not registered: %v", err)
 		}
 		// Own the pool: close it on the way out so we don't leak idle Postgres
 		// connections (the pool outlives setupDatabase because the 1B-1E

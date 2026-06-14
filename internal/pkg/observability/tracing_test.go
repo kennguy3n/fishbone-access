@@ -3,6 +3,8 @@ package observability
 import (
 	"context"
 	"testing"
+
+	"go.opentelemetry.io/otel"
 )
 
 func TestInitTracerDisabledByDefault(t *testing.T) {
@@ -24,6 +26,10 @@ func TestInitTracerEnabledWithEndpoint(t *testing.T) {
 	// The OTLP/gRPC exporter connects lazily, so InitTracer succeeds without a
 	// live collector; this verifies the opt-in path installs a provider.
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	// InitTracer mutates the global tracer provider; restore it afterwards so
+	// this test can't interfere with others sharing the process default.
+	prev := otel.GetTracerProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
 	shutdown, enabled, err := InitTracer(context.Background(), "test")
 	if err != nil {
 		t.Fatalf("InitTracer err = %v, want nil", err)

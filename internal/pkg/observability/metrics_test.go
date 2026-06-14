@@ -71,6 +71,28 @@ func TestMiddlewareUnmatchedRouteLabel(t *testing.T) {
 	}
 }
 
+// TestMiddlewareCountsPanicRecoveredRequests mirrors NewRouter's ordering —
+// metrics middleware OUTSIDE gin.Recovery — and proves a handler panic is still
+// recorded with the 500 status Recovery writes, so a burst of panics shows up
+// in the error-rate golden signal instead of vanishing.
+func TestMiddlewareCountsPanicRecoveredRequests(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	m := NewMetrics()
+	r := gin.New()
+	r.Use(m.Middleware()) // outermost, exactly as NewRouter mounts it
+	r.Use(gin.Recovery())
+	r.GET("/metrics", gin.WrapH(m.Handler()))
+	r.GET("/panic", func(c *gin.Context) { panic("boom") })
+
+	do(t, r, http.MethodGet, "/panic")
+	body := do(t, r, http.MethodGet, "/metrics").Body.String()
+
+	want := `shieldnet_http_requests_total{method="GET",route="/panic",status="500"} 1`
+	if !strings.Contains(body, want) {
+		t.Errorf("panic-recovered request not counted; missing %q\n--- scrape ---\n%s", want, body)
+	}
+}
+
 func TestRegisterDBPoolNilIsNoOp(t *testing.T) {
 	if err := NewMetrics().RegisterDBPool(nil); err != nil {
 		t.Fatalf("RegisterDBPool(nil) = %v, want nil", err)

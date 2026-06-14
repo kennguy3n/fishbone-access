@@ -77,22 +77,28 @@ func (m *Metrics) Handler() http.Handler {
 // Middleware records request count, latency and the in-flight gauge for every
 // request. It labels by the matched route TEMPLATE (c.FullPath()), so an id in
 // the URL never spawns a new series; unmatched routes collapse to "unmatched".
+//
+// The recording runs in a deferred closure so a request that panics is still
+// counted. For the recorded status to reflect the 500 that gin.Recovery writes,
+// this middleware must be mounted OUTSIDE Recovery (see NewRouter): Recovery
+// then recovers and writes the status before control unwinds back here.
 func (m *Metrics) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		m.inFlight.Inc()
-		defer m.inFlight.Dec()
+		defer func() {
+			m.inFlight.Dec()
+			route := c.FullPath()
+			if route == "" {
+				route = "unmatched"
+			}
+			status := strconv.Itoa(c.Writer.Status())
+			m.reqTotal.WithLabelValues(c.Request.Method, route, status).Inc()
+			m.reqDuration.WithLabelValues(c.Request.Method, route, status).
+				Observe(time.Since(start).Seconds())
+		}()
 
 		c.Next()
-
-		route := c.FullPath()
-		if route == "" {
-			route = "unmatched"
-		}
-		status := strconv.Itoa(c.Writer.Status())
-		m.reqTotal.WithLabelValues(c.Request.Method, route, status).Inc()
-		m.reqDuration.WithLabelValues(c.Request.Method, route, status).
-			Observe(time.Since(start).Seconds())
 	}
 }
 
