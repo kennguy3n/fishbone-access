@@ -608,11 +608,12 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s hibernation=%t/idle=%s workermetrics=%q iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
 		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst,
 		c.UsageMetering.Enabled, c.UsageMetering.FlushInterval,
+		c.Tenancy.HibernationEnabled, c.Tenancy.DormantIdleThreshold, c.WorkerMetricsAddr,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }
