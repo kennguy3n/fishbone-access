@@ -16,12 +16,18 @@ import {
 } from "@/api/access";
 import { formatRelative, formatDateTime } from "@/lib/format";
 
-// Request states that mean the user can use the access right now. Everything
-// else is either still in flight (requested/approved) or closed
-// (denied/cancelled/expired).
+// Request states that mean the user can use the access right now: the grant has
+// been provisioned (or activated) on the target.
 const ACTIVE_STATES = new Set(["provisioned", "active"]);
-// States the user is still waiting on a decision/provisioning for.
-const PENDING_STATES = new Set(["requested", "approved"]);
+// Closed/terminal states — neither usable nor in flight (no outgoing edges in
+// the lifecycle FSM): the request was denied, cancelled, revoked, or expired.
+const CLOSED_STATES = new Set(["denied", "cancelled", "revoked", "expired"]);
+// "Waiting" is everything still in flight — requested, ai_reviewed, approved,
+// provisioning, provision_failed — i.e. not yet usable and not closed. Deriving
+// it by exclusion keeps the count correct as the request walks the FSM (e.g. a
+// request parked in ai_reviewed by the AI risk gate still counts as waiting).
+const isPending = (state: string) =>
+  !ACTIVE_STATES.has(state) && !CLOSED_STATES.has(state);
 
 export function SelfService() {
   const me = useMe();
@@ -42,7 +48,7 @@ export function SelfService() {
   }, [requests.data, me.data?.user_id]);
 
   const active = myRequests.filter((r) => ACTIVE_STATES.has(r.state));
-  const pending = myRequests.filter((r) => PENDING_STATES.has(r.state));
+  const pending = myRequests.filter((r) => isPending(r.state));
 
   return (
     <>
@@ -142,6 +148,12 @@ export function SelfService() {
 // RequestAccessCard is the plain-language "ask for access" form. It reuses the
 // same POST /access-requests endpoint (and inline AI risk panel) as the
 // operator console, but framed for an end user who just wants to get to a tool.
+// Least-privilege default: the server requires a role on every request, but an
+// end user shouldn't have to know access-level vocabulary to ask for something.
+// When they leave "Level of access" blank we request read-only (viewer) — the
+// safest grant — and power users can raise it under More options.
+const DEFAULT_REQUEST_ROLE = "viewer";
+
 function RequestAccessCard() {
   const toast = useToast();
   const createMut = useCreateRequest();
@@ -160,7 +172,7 @@ function RequestAccessCard() {
       const res = await createMut.mutateAsync({
         resource_ref: resource.trim(),
         justification: justification.trim(),
-        ...(role.trim() ? { role: role.trim() } : {}),
+        role: role.trim() || DEFAULT_REQUEST_ROLE,
         ...(durationHours.trim() && Number.isFinite(hours) && hours > 0
           ? { duration_hours: hours }
           : {}),
@@ -230,8 +242,9 @@ function RequestAccessCard() {
               Level of access (optional){" "}
               <HelpTooltip title="Access level">
                 The role you need on the target, like <code>viewer</code> or{" "}
-                <code>editor</code>. Leave blank if you're not sure — approvers
-                can pick an appropriate level.
+                <code>editor</code>. Leave blank and we'll request read-only{" "}
+                (<code>viewer</code>) access — the safest default. Ask for more
+                here only if you know you need it.
               </HelpTooltip>
             </span>
             <input
