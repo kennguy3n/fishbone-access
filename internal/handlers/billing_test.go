@@ -220,12 +220,16 @@ func TestBillingNotMountedWithoutReader(t *testing.T) {
 // before the meter runs, so a tenant is never billed for requests the platform
 // refused — and a hard-capped tenant cannot feed its own rejected requests back
 // into the usage rollup. The control request (a different tenant within quota)
-// is admitted AND metered exactly once, proving the meter is still wired.
+// is admitted AND metered exactly once, proving the meter is still wired. The
+// probed route (GET /api/v1/usage) is deliberately a NON-exempt, enforced route
+// — the billing self-service surface is exempt from the cap (see
+// TestBillingSelfServiceExemptFromHardCap).
 func TestBillingHardDenyIsNotMetered(t *testing.T) {
 	deps, svc, usageStore := billingTestDeps(t)
 	meter := &countingMeter{}
-	deps.UsageMeter = meter    // write side of metering
-	deps.BillingEnforcer = svc // EnforceHardCap is true (see billingTestDeps)
+	deps.UsageMeter = meter       // write side of metering
+	deps.UsageReader = usageStore // mounts the enforced GET /api/v1/usage route
+	deps.BillingEnforcer = svc    // EnforceHardCap is true (see billingTestDeps)
 	r := NewRouter(deps)
 
 	// tenant-a stays on the default trial plan (hard cap 75k); seed its
@@ -237,7 +241,7 @@ func TestBillingHardDenyIsNotMetered(t *testing.T) {
 		t.Fatalf("seed usage: %v", err)
 	}
 
-	w := do(t, r, http.MethodGet, "/api/v1/billing/plan", "tok-a", nil)
+	w := do(t, r, http.MethodGet, "/api/v1/usage", "tok-a", nil)
 	if w.Code != http.StatusPaymentRequired {
 		t.Fatalf("hard-capped request status = %d, want 402; body=%s", w.Code, w.Body.String())
 	}
@@ -246,11 +250,50 @@ func TestBillingHardDenyIsNotMetered(t *testing.T) {
 	}
 
 	// Control: tenant-b is within quota, so it is admitted and metered once.
-	w = do(t, r, http.MethodGet, "/api/v1/billing/plan", "tok-b", nil)
+	w = do(t, r, http.MethodGet, "/api/v1/usage", "tok-b", nil)
 	if w.Code != http.StatusOK {
 		t.Fatalf("within-quota request status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
 	if got := meter.count(); got != 1 {
 		t.Errorf("admitted request metered %d time(s), want 1", got)
+	}
+}
+
+// TestBillingSelfServiceExemptFromHardCap proves the self-service billing
+// surface stays reachable for a HARD-CAPPED tenant: the 402 body tells the
+// tenant to "upgrade the plan", so the statement/plan reads and the plan
+// upgrade must not themselves be capped (otherwise there is no API-side escape).
+// A genuinely enforced route (GET /api/v1/usage) still 402s for the same tenant,
+// proving enforcement is active and only the billing surface is exempt.
+func TestBillingSelfServiceExemptFromHardCap(t *testing.T) {
+	deps, svc, usageStore := billingTestDeps(t)
+	deps.UsageReader = usageStore // mounts the enforced GET /api/v1/usage route
+	deps.BillingEnforcer = svc    // EnforceHardCap is true (see billingTestDeps)
+	r := NewRouter(deps)
+
+	// Put tenant-a far over its hard cap on the current period.
+	wsA := workspaceIDForTenant(t, deps, "tenant-a")
+	if err := usageStore.AddUsage(context.Background(), []usage.Delta{
+		{WorkspaceID: wsA, Period: usage.PeriodOf(time.Now()), Metric: usage.MetricAPIRequests, Count: 5_000_000},
+	}); err != nil {
+		t.Fatalf("seed usage: %v", err)
+	}
+
+	// A non-billing enforced route must be hard-denied — enforcement is live.
+	if w := do(t, r, http.MethodGet, "/api/v1/usage", "tok-a", nil); w.Code != http.StatusPaymentRequired {
+		t.Fatalf("enforced route status = %d, want 402 (cap is active); body=%s", w.Code, w.Body.String())
+	}
+
+	// The self-service billing surface must remain reachable so the tenant can
+	// see what it owes and upgrade out of the cap.
+	if w := do(t, r, http.MethodGet, "/api/v1/billing/plan", "tok-a", nil); w.Code != http.StatusOK {
+		t.Errorf("GET /billing/plan status = %d, want 200 (exempt from cap); body=%s", w.Code, w.Body.String())
+	}
+	if w := do(t, r, http.MethodGet, "/api/v1/billing/statement", "tok-a", nil); w.Code != http.StatusOK {
+		t.Errorf("GET /billing/statement status = %d, want 200 (exempt from cap); body=%s", w.Code, w.Body.String())
+	}
+	// The upgrade path itself — the one the 402 body points at — must work.
+	if w := do(t, r, http.MethodPut, "/api/v1/billing/plan", "tok-a", map[string]any{"plan": "pro"}); w.Code != http.StatusOK {
+		t.Errorf("PUT /billing/plan status = %d, want 200 (self-remediation must not be capped); body=%s", w.Code, w.Body.String())
 	}
 }

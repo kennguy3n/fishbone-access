@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -58,9 +59,22 @@ type QuotaEnforcer interface {
 // state string and the matched route TEMPLATE (never the tenant id, which is
 // unbounded at 5,000 tenants), so the breach can be metered on the aggregate
 // registry. It mirrors the rate limiter's onThrottle hook.
-func QuotaMiddleware(enforcer QuotaEnforcer, onDecision func(state, route string)) gin.HandlerFunc {
+//
+// exemptPrefixes name route TEMPLATES (matched by c.FullPath prefix) that are
+// NEVER capped, even for a hard-exceeded tenant. The self-service billing
+// surface is passed here: a hard-denied 402 tells the tenant to "upgrade the
+// plan", so capping the very endpoints that show the bill and change the plan
+// would be a Catch-22 with no API-side escape. Those endpoints are lightweight
+// reads/writes, not the expensive shared work the hard cap exists to protect,
+// so exempting them keeps self-remediation reachable without weakening the cap
+// on the resource-consuming surface.
+func QuotaMiddleware(enforcer QuotaEnforcer, onDecision func(state, route string), exemptPrefixes ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if enforcer == nil {
+			c.Next()
+			return
+		}
+		if isExemptRoute(c, exemptPrefixes) {
 			c.Next()
 			return
 		}
@@ -94,6 +108,23 @@ func QuotaMiddleware(enforcer QuotaEnforcer, onDecision func(state, route string
 		}
 		c.Next()
 	}
+}
+
+// isExemptRoute reports whether the matched route template is one the quota cap
+// must never block (the self-service billing surface). It matches on the route
+// TEMPLATE (c.FullPath, e.g. "/api/v1/billing/plan"), never the raw URL, so an
+// id in the path can never widen or evade the exemption.
+func isExemptRoute(c *gin.Context, prefixes []string) bool {
+	p := c.FullPath()
+	if p == "" {
+		return false
+	}
+	for _, pre := range prefixes {
+		if pre != "" && strings.HasPrefix(p, pre) {
+			return true
+		}
+	}
+	return false
 }
 
 // routeTemplate returns the matched route template for metric labelling,

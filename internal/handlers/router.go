@@ -223,12 +223,18 @@ func NewRouter(deps Deps) *gin.Engine {
 		// per tenant) when observability is wired — so dropping it from the
 		// per-tenant rollup loses no operational visibility. Fail-open and a
 		// no-op pass-through when the enforcer is nil.
+		//
+		// The self-service billing surface (scoped.BasePath()+"/billing/": the
+		// statement/plan reads and the owner-only plan upgrade) is exempted so a
+		// hard-capped tenant can still see what it owes and upgrade — the 402
+		// body points there, so capping it would be a dead end. Those endpoints
+		// are lightweight self-remediation, not the shared work the cap protects.
 		if deps.BillingEnforcer != nil {
 			var onQuota func(state, route string)
 			if deps.Metrics != nil {
 				onQuota = deps.Metrics.IncQuotaBreach
 			}
-			scoped.Use(billing.QuotaMiddleware(deps.BillingEnforcer, onQuota))
+			scoped.Use(billing.QuotaMiddleware(deps.BillingEnforcer, onQuota, scoped.BasePath()+"/billing/"))
 		}
 		// Meter per-tenant usage on the same tenant-scoped surface, keyed by
 		// the authoritative workspace UUID (the rollup + RLS key), so
