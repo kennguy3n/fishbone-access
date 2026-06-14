@@ -96,7 +96,6 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   const stepIndex = Math.max(0, ONBOARDING_STEPS.indexOf(progress.lastStep));
   const step = ONBOARDING_STEPS[stepIndex];
 
-  const goto = (next: OnboardingStepId) => update({ lastStep: next });
   // Derive the next step + completed list from the latest state inside the
   // updater so rapid advances can't clobber each other's `completed` entries.
   const advance = () =>
@@ -109,10 +108,13 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
         completed: withCompleted(prev.completed, ONBOARDING_STEPS[idx]),
       };
     });
-  const back = () => {
-    if (stepIndex === 0) return;
-    goto(ONBOARDING_STEPS[stepIndex - 1]);
-  };
+  // Derive the previous step from the latest state inside the updater (matching
+  // advance()) so the two stay symmetric and back() can't act on a stale index.
+  const back = () =>
+    update((prev) => {
+      const idx = Math.max(0, ONBOARDING_STEPS.indexOf(prev.lastStep));
+      return { lastStep: ONBOARDING_STEPS[Math.max(idx - 1, 0)] };
+    });
 
   return (
     <>
@@ -750,14 +752,20 @@ function DoneStep({
           ? `Created ${policyCount} access rule${policyCount === 1 ? "" : "s"}`
           : "Write your first access rule",
     },
-    {
+  ];
+  // Only summarize membership when this admin can actually manage it — the
+  // member count query is gated on the same permission, so for an admin without
+  // it the count would always read 0 and falsely show "Invite a teammate" as
+  // unfinished. InviteStep already steers those admins to their owner.
+  if (canManage) {
+    items.push({
       done: memberCount > 1,
       label:
         memberCount > 1
           ? `${memberCount} people in the workspace`
           : "Invite a teammate",
-    },
-  ];
+    });
+  }
 
   const hello = progress.workspaceName ? ` for ${progress.workspaceName}` : "";
 
