@@ -16,26 +16,25 @@ import (
 	"time"
 
 	gormsqlite "github.com/glebarez/sqlite"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 )
 
-// Open connects to Postgres using a GORM dialector built from dsn.
+// Open connects to Postgres using a GORM dialector built from dsn. The pool is
+// wired for Row-Level Security tenant isolation: each operation's connection has
+// its app.workspace_id GUC set from the request context (see rls.go), which the
+// tenant_isolation policies from migration 0024 enforce against. Callers that
+// pass an unscoped context (workers, migrations) are unaffected.
 func Open(dsn string) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	return openPostgresRLS(dsn, &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
 		// Translate driver-specific errors (e.g. unique violations) to GORM's
 		// portable sentinels so callers can detect them with errors.Is across
 		// the Postgres and SQLite backends — used by the PAM command-seq retry.
 		TranslateError: true,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("database: open postgres: %w", err)
-	}
-	return db, nil
 }
 
 // ApplyPoolLimits configures the underlying *sql.DB connection pool. Each
