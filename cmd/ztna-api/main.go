@@ -433,16 +433,25 @@ func run() error {
 	// replicas sum into one row rather than overwriting. Per-tenant attribution
 	// lives in Postgres (cardinality is cheap there); only AGGREGATE counters
 	// reach /metrics, fed by the flush observer below. Wired only when a DB is
-	// present (the rollup needs Postgres) and metering is enabled. The flush
-	// loop is tied to the signal context and joined on the way out (LIFO,
-	// before the DB-pool close) so the final flush cannot touch a closed pool.
+	// present (the rollup needs Postgres) and metering is enabled.
+	//
+	// Shutdown ordering matters: the flush loop must NOT stop when the signal
+	// context is cancelled, because srv.Shutdown then drains in-flight requests
+	// that are still calling Record — counts that would be stranded if the loop
+	// had already done its final flush. So usageCtx keeps the signal context's
+	// values (logging/tracing) but drops its cancellation (WithoutCancel), and
+	// the loop is stopped solely by this defer. The defer is registered after
+	// the DB-pool-close defer, so LIFO runs it BEFORE the pool closes; and it
+	// runs only after run() returns, i.e. after srv.Shutdown has finished
+	// draining — so the final flush captures the drain window and still can't
+	// touch a closed pool.
 	if deps.DB != nil && cfg.UsageMetering.Enabled {
 		usageStore := usage.NewStore(deps.DB)
 		aggregator := usage.New(usageStore, usage.Config{
 			FlushInterval: cfg.UsageMetering.FlushInterval,
 			Observe:       metrics.AddUsageEvents,
 		})
-		usageCtx, usageCancel := context.WithCancel(ctx)
+		usageCtx, usageCancel := context.WithCancel(context.WithoutCancel(ctx))
 		joinUsage := aggregator.Run(usageCtx)
 		defer func() {
 			usageCancel()

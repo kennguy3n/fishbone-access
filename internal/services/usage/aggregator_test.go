@@ -278,6 +278,37 @@ func TestAggregatorRunFlushesOnShutdown(t *testing.T) {
 	}
 }
 
+// TestAggregatorJoinFlushesRecordsArrivingAfterRun proves the join flush
+// captures records that arrive AFTER the loop is already running — the shutdown
+// "drain window". This is the contract main.go relies on: the loop must stay
+// alive (its context must NOT be cancelled at signal time) until after the HTTP
+// server has drained, so requests still in flight during srv.Shutdown are still
+// metered by the final join flush rather than stranded in pending.
+func TestAggregatorJoinFlushesRecordsArrivingAfterRun(t *testing.T) {
+	sink := &fakeSink{}
+	// A long interval guarantees the join flush — not a tick — persists these.
+	a := New(sink, Config{FlushInterval: time.Hour, Clock: fixedClock(time.Date(2026, 6, 14, 0, 0, 0, 0, time.UTC))})
+	ws := uuid.New()
+
+	// ctx is a stand-in for main's usageCtx: it is NOT cancelled here, modelling
+	// the WithoutCancel wiring that keeps the loop alive across the drain.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	join := a.Run(ctx)
+
+	// These mimic in-flight requests recorded during graceful drain, i.e. after
+	// the signal already fired but before the loop is stopped.
+	for i := 0; i < 3; i++ {
+		a.Record(ws, MetricAPIRequests)
+	}
+
+	join() // final flush must include the post-Run records
+
+	if got := sink.total(ws, MetricAPIRequests); got != 3 {
+		t.Fatalf("count after shutdown flush = %d, want 3 (drain-window records must not be stranded)", got)
+	}
+}
+
 // TestAggregatorRunIsIdempotent proves a second Run is a safe no-op: the
 // startOnce guards the goroutine launch, so the single-loop contract is
 // self-enforcing and a stray second call cannot panic on a double close(done).
