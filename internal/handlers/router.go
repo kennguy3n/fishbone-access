@@ -21,6 +21,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
+	"github.com/kennguy3n/fishbone-access/internal/services/billing"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -117,6 +118,21 @@ type Deps struct {
 	// leaves the route unmounted (tests/degraded boots). It reads the same
 	// rollup the meter flushes to.
 	UsageReader usage.Reader
+	// BillingEnforcer, when set, enforces per-tenant plan quotas on the
+	// tenant-scoped surface: a quota middleware mounted right after
+	// RequireTenant (so it is keyed by the authoritative workspace UUID) that
+	// soft-flags over-quota requests and hard-denies (402) those over the hard
+	// ceiling BEFORE they reach Postgres. It is fail-open and reads a per-replica
+	// TTL cache, so it adds no per-request DB load and a billing outage degrades
+	// to "no enforcement". nil leaves the surface un-enforced (tests/degraded
+	// boots). Wired from the same *billing.Service as BillingReader.
+	BillingEnforcer billing.QuotaEnforcer
+	// BillingReader, when set, backs the authenticated billing read/admin
+	// endpoints (GET /api/v1/billing/statement, /billing/plan and the owner-only
+	// PUT /billing/plan) so a tenant can see its statement/plan and an owner can
+	// assign its plan. It derives statements from the SAME usage rollup the meter
+	// writes. nil leaves the routes unmounted (tests/degraded boots).
+	BillingReader billingService
 }
 
 // NewRouter builds the Gin engine.
@@ -205,6 +221,20 @@ func NewRouter(deps Deps) *gin.Engine {
 		if deps.UsageMeter != nil {
 			scoped.Use(usage.Middleware(deps.UsageMeter))
 		}
+		// Enforce per-tenant plan quotas on the same tenant-scoped surface,
+		// keyed by the authoritative workspace UUID. It is mounted after the
+		// meter so a request the meter will count is the request the enforcer
+		// judges, and it runs BEFORE the handlers so a hard-denied request is
+		// rejected before any expensive work. Fail-open and a no-op
+		// pass-through when the enforcer is nil; over-quota decisions feed the
+		// metrics registry by route template when observability is wired.
+		if deps.BillingEnforcer != nil {
+			var onQuota func(state, route string)
+			if deps.Metrics != nil {
+				onQuota = deps.Metrics.IncQuotaBreach
+			}
+			scoped.Use(billing.QuotaMiddleware(deps.BillingEnforcer, onQuota))
+		}
 		// Install the RBAC tier when an RBAC store is wired. It runs after
 		// RequireTenant (it needs the resolved workspace + verified subject) and
 		// resolves the caller's role into a permission set for the per-route
@@ -221,6 +251,9 @@ func NewRouter(deps Deps) *gin.Engine {
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {
 			newUsageHandlers(deps.UsageReader).register(scoped)
+		}
+		if deps.BillingReader != nil {
+			newBillingHandlers(deps.BillingReader).register(scoped)
 		}
 	}
 

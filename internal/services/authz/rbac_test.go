@@ -114,6 +114,48 @@ func TestRoleSeparationOfDuties(t *testing.T) {
 	}
 }
 
+// TestBillingPermissionBoundaries pins the authority boundaries for the billing
+// permissions: billing.read is account/cost data held by the governance roles
+// (owner/admin) exactly like usage.read, and billing.manage — assigning a
+// tenant's plan/quota ceilings — is owner-only like workspace.manage. This
+// guards against an accidental broadening that would let a non-owner change what
+// a tenant owes or hand a bounded role the cost data.
+func TestBillingPermissionBoundaries(t *testing.T) {
+	cases := []struct {
+		role WorkspaceRole
+		perm Permission
+		want bool
+	}{
+		// billing.read tracks usage.read: owner + admin only.
+		{RoleOwner, PermBillingRead, true},
+		{RoleAdmin, PermBillingRead, true},
+		{RoleSecurityAdmin, PermBillingRead, false},
+		{RoleOperator, PermBillingRead, false},
+		{RoleAuditor, PermBillingRead, false},
+		// billing.manage is owner-only, like workspace.manage.
+		{RoleOwner, PermBillingManage, true},
+		{RoleAdmin, PermBillingManage, false},
+		{RoleSecurityAdmin, PermBillingManage, false},
+		{RoleOperator, PermBillingManage, false},
+		{RoleAuditor, PermBillingManage, false},
+	}
+	for _, tc := range cases {
+		if got := PermissionsForRole(tc.role).Has(tc.perm); got != tc.want {
+			t.Errorf("PermissionsForRole(%q).Has(%q) = %v, want %v", tc.role, tc.perm, got, tc.want)
+		}
+	}
+	// billing.read and usage.read must have identical role coverage (they are
+	// the same class of account/cost data) — a divergence is almost certainly a
+	// mistake in one of the slices.
+	for _, role := range AllWorkspaceRoles {
+		perms := PermissionsForRole(role)
+		if perms.Has(PermBillingRead) != perms.Has(PermUsageRead) {
+			t.Errorf("role %q: billing.read (%v) and usage.read (%v) coverage diverge",
+				role, perms.Has(PermBillingRead), perms.Has(PermUsageRead))
+		}
+	}
+}
+
 // TestPermissionSetAddHas exercises the set primitive, including the nil-set Has
 // path callers rely on.
 func TestPermissionSetAddHas(t *testing.T) {

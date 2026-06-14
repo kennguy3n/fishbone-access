@@ -280,3 +280,82 @@ func TestGetFloatParsing(t *testing.T) {
 		t.Errorf("zero RPS = %g, want 0 (passed through to Validate)", got)
 	}
 }
+
+func TestBillingDefaults(t *testing.T) {
+	t.Setenv("ACCESS_BILLING_ENABLED", "")
+	t.Setenv("ACCESS_BILLING_ENFORCE_HARD_CAP", "")
+	t.Setenv("ACCESS_BILLING_CACHE_TTL", "")
+	cfg := Load()
+	if cfg.Billing.Enabled {
+		t.Error("Billing.Enabled = true, want false by default (enforcement is opt-in)")
+	}
+	if cfg.Billing.EnforceHardCap {
+		t.Error("Billing.EnforceHardCap = true, want false by default (shadow rollout)")
+	}
+	if cfg.Billing.CacheTTL != 30*time.Second {
+		t.Errorf("Billing.CacheTTL = %s, want 30s default", cfg.Billing.CacheTTL)
+	}
+}
+
+func TestBillingLoadOverrides(t *testing.T) {
+	t.Setenv("ACCESS_BILLING_ENABLED", "true")
+	t.Setenv("ACCESS_BILLING_ENFORCE_HARD_CAP", "true")
+	t.Setenv("ACCESS_BILLING_CACHE_TTL", "2m")
+	cfg := Load()
+	if !cfg.Billing.Enabled {
+		t.Error("Billing.Enabled = false, want true")
+	}
+	if !cfg.Billing.EnforceHardCap {
+		t.Error("Billing.EnforceHardCap = false, want true")
+	}
+	if cfg.Billing.CacheTTL != 2*time.Minute {
+		t.Errorf("Billing.CacheTTL = %s, want 2m", cfg.Billing.CacheTTL)
+	}
+}
+
+func TestBillingWarnings(t *testing.T) {
+	has := func(ws []string, sub string) bool {
+		for _, w := range ws {
+			if strings.Contains(w, sub) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Billing on with metering on and a positive TTL: no billing warnings.
+	healthy := Config{
+		Billing:       BillingConfig{Enabled: true, CacheTTL: 30 * time.Second},
+		UsageMetering: UsageMeteringConfig{Enabled: true},
+	}
+	if has(healthy.Warnings(), "ACCESS_BILLING_ENABLED is true but") || has(healthy.Warnings(), "ACCESS_BILLING_CACHE_TTL") {
+		t.Errorf("healthy billing config produced a warning: %v", healthy.Warnings())
+	}
+
+	// Billing on but metering off: warn that the rollup never advances.
+	meterOff := Config{
+		Billing:       BillingConfig{Enabled: true, CacheTTL: 30 * time.Second},
+		UsageMetering: UsageMeteringConfig{Enabled: false},
+	}
+	if !has(meterOff.Warnings(), "ACCESS_BILLING_ENABLED is true but") {
+		t.Errorf("expected metering-off warning, got %v", meterOff.Warnings())
+	}
+
+	// Billing on with a non-positive TTL: warn about the silent fallback.
+	badTTL := Config{
+		Billing:       BillingConfig{Enabled: true, CacheTTL: 0},
+		UsageMetering: UsageMeteringConfig{Enabled: true},
+	}
+	if !has(badTTL.Warnings(), "ACCESS_BILLING_CACHE_TTL") {
+		t.Errorf("expected non-positive TTL warning, got %v", badTTL.Warnings())
+	}
+
+	// Billing disabled: even with nonsense values it must not warn (inert).
+	disabled := Config{
+		Billing:       BillingConfig{Enabled: false, CacheTTL: 0},
+		UsageMetering: UsageMeteringConfig{Enabled: false},
+	}
+	if has(disabled.Warnings(), "ACCESS_BILLING") {
+		t.Errorf("disabled billing must not warn, got %v", disabled.Warnings())
+	}
+}

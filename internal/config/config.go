@@ -127,6 +127,13 @@ type Config struct {
 	// rate limiter above is the "cap the abuser" half.
 	UsageMetering UsageMeteringConfig
 
+	// Billing turns the usage rollup into per-tenant statements and enforces
+	// per-tenant plan quotas (soft warnings + hard caps). It is the economics
+	// layer ON TOP of UsageMetering: statements derive from the same rollup, and
+	// enforcement caps a runaway tenant before it burns shared resources (and the
+	// bill).
+	Billing BillingConfig
+
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
 
@@ -238,6 +245,38 @@ type UsageMeteringConfig struct {
 	// since counts coalesce in memory between flushes. Read from
 	// ACCESS_USAGE_METERING_FLUSH_INTERVAL; defaults to 30s.
 	FlushInterval time.Duration
+}
+
+// BillingConfig tunes the per-tenant billing economics layer: statement
+// generation and quota enforcement. Plans reuse the tenancy tier ladder
+// (trial/base/pro/enterprise); the quota ladders and pricing live in code
+// (internal/services/billing), so this config only gates the feature, chooses
+// whether hard caps actually deny, and tunes the per-replica decision cache.
+//
+// The enforcement cache is in-memory and therefore per-replica, exactly like
+// the rate limiter and the usage aggregator: each replica caches a tenant's
+// decision for CacheTTL, so the fleet converges within that TTL without a
+// per-request DB read or any shared infrastructure.
+type BillingConfig struct {
+	// Enabled gates the whole subsystem (the billing read/admin endpoints AND
+	// the quota-enforcement middleware). It defaults to FALSE — unlike metering,
+	// enforcement can reject requests, so it is opt-in: an operator turns it on
+	// deliberately (typically first in shadow mode, see EnforceHardCap). Read
+	// from ACCESS_BILLING_ENABLED.
+	Enabled bool
+	// EnforceHardCap controls whether an over-hard-ceiling tenant is actually
+	// denied (402) or merely flagged. It defaults to FALSE: the safe rollout at
+	// 5,000 tenants is "shadow mode" — detect and surface breaches (headers +
+	// metrics) without rejecting — so an operator can see who WOULD be capped
+	// before flipping enforcement on and risking a surprise mass-rejection. Read
+	// from ACCESS_BILLING_ENFORCE_HARD_CAP.
+	EnforceHardCap bool
+	// CacheTTL is how long a per-workspace quota decision is reused before a
+	// refresh — the window over which a replica's enforcement lags fresh usage,
+	// and (with the meter's flush interval) the bound on cross-replica
+	// convergence. Read from ACCESS_BILLING_CACHE_TTL; defaults to 30s. A
+	// non-positive value falls back to the service's built-in default.
+	CacheTTL time.Duration
 }
 
 // DevAuthConfig configures the non-production shared-secret token validator.
@@ -362,6 +401,11 @@ func Load() Config {
 			Enabled:       getBool("ACCESS_USAGE_METERING_ENABLED", true),
 			FlushInterval: getDuration("ACCESS_USAGE_METERING_FLUSH_INTERVAL", 30*time.Second),
 		},
+		Billing: BillingConfig{
+			Enabled:        getBool("ACCESS_BILLING_ENABLED", false),
+			EnforceHardCap: getBool("ACCESS_BILLING_ENFORCE_HARD_CAP", false),
+			CacheTTL:       getDuration("ACCESS_BILLING_CACHE_TTL", 30*time.Second),
+		},
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
 			JWKSURL:           os.Getenv("IAM_CORE_JWKS_URL"),
@@ -479,6 +523,23 @@ func (c Config) Warnings() []string {
 		w = append(w, fmt.Sprintf(
 			"ACCESS_USAGE_METERING_FLUSH_INTERVAL=%s is non-positive; the usage aggregator will use its built-in default flush interval",
 			c.UsageMetering.FlushInterval))
+	}
+	// Billing derives statements and enforcement from the usage rollup, so with
+	// metering off the rollup never advances: statements show only the base
+	// price and no tenant can ever cross a quota. That is a defensible "billing
+	// without usage" posture, but it is almost always a misconfiguration, so
+	// surface it loudly rather than silently under-billing.
+	if c.Billing.Enabled && !c.UsageMetering.Enabled {
+		w = append(w, "ACCESS_BILLING_ENABLED is true but ACCESS_USAGE_METERING_ENABLED is false; "+
+			"statements will show no usage and no quota can ever be exceeded because the tenant_usage rollup never advances")
+	}
+	// A non-positive cache TTL has a safe runtime fallback (the service
+	// substitutes its built-in default), mirroring the metering flush-interval
+	// warning above; flag it so the silent fallback does not hide operator intent.
+	if c.Billing.Enabled && c.Billing.CacheTTL <= 0 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_BILLING_CACHE_TTL=%s is non-positive; the billing service will use its built-in default cache TTL",
+			c.Billing.CacheTTL))
 	}
 	return w
 }
@@ -599,11 +660,12 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s billing=%t/hardcap=%t/%s iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
 		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst,
 		c.UsageMetering.Enabled, c.UsageMetering.FlushInterval,
+		c.Billing.Enabled, c.Billing.EnforceHardCap, c.Billing.CacheTTL,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }
