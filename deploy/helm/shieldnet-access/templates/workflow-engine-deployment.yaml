@@ -1,3 +1,12 @@
+{{- /*
+  access-workflow-engine refuses to boot without a credential key (KMS master
+  key or DEK), so deploying it with none configured would just CrashLoop. Gate
+  the Deployment on a key being available — a bare `helm install` (no secrets)
+  therefore omits it cleanly, and NOTES.txt tells the operator why. Set
+  secrets.existingSecret / kmsMasterKey / credentialDek to bring it online.
+*/ -}}
 {{- if .Values.workflowEngine.enabled -}}
+{{- if include "shieldnet-access.credentialKeyConfigured" . -}}
 {{- include "shieldnet-access.workerDeployment" (dict "ctx" . "component" "access-workflow-engine" "values" .Values.workflowEngine) }}
+{{- end }}
 {{- end }}

@@ -330,6 +330,10 @@ connectorWorker:
 # boot. No HTTP surface.
 # ---------------------------------------------------------------------------
 workflowEngine:
+  # enabled gates the Deployment, but it is ALSO skipped automatically when no
+  # credential key is configured (secrets.existingSecret / kmsMasterKey /
+  # credentialDek) — the binary won't boot without one, so the chart omits it
+  # rather than leave a CrashLooping pod. Configure a key to bring it online.
   enabled: true
   # 2 replicas at the 5,000-tenant reference.
   replicaCount: 1

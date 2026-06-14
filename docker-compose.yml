@@ -81,6 +81,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # ztna-api owns the schema migrations; wait for it so the worker doesn't
+      # poll access_jobs before the tables exist on a fresh stack.
+      ztna-api:
+        condition: service_healthy
 
   access-workflow-engine:
     build: .
@@ -93,6 +97,10 @@ services:
       ACCESS_CREDENTIAL_DEK: "${ACCESS_CREDENTIAL_DEK:-QTw6wycdVC/eucyv4tPXzAb6NM2McLIM/w8OFFl8UeY=}"
     depends_on:
       postgres:
+        condition: service_healthy
+      # ztna-api is authoritative for schema migrations; wait for it so the
+      # engine doesn't poll access_jobs before the tables exist.
+      ztna-api:
         condition: service_healthy
 
   pam-gateway:

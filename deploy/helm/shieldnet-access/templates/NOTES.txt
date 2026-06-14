@@ -8,8 +8,10 @@ Components:
 {{- if .Values.connectorWorker.enabled }}
   - access-connector-worker ({{ .Values.connectorWorker.replicaCount }} replica(s)) — identity sync / provision / revoke jobs
 {{- end }}
-{{- if .Values.workflowEngine.enabled }}
+{{- if and .Values.workflowEngine.enabled (include "shieldnet-access.credentialKeyConfigured" .) }}
   - access-workflow-engine  ({{ .Values.workflowEngine.replicaCount }} replica(s)) — JML lifecycle, approvals, certifications
+{{- else if .Values.workflowEngine.enabled }}
+  - access-workflow-engine  (SKIPPED — needs a credential key; see note below)
 {{- end }}
 
 Datastore:
@@ -30,7 +32,9 @@ the bundled dev Postgres with --set postgres.enabled=true.
 {{- if not (or .Values.secrets.kmsMasterKey .Values.secrets.credentialDek) }}
 
 NOTE: Neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK is set. Connector
-secrets fail closed, and access-workflow-engine refuses to start. Set one:
+secrets fail closed, and the access-workflow-engine Deployment is SKIPPED (it
+refuses to boot without a key, so the chart omits it rather than CrashLoop). Set
+one to bring it online:
   kubectl -n {{ .Release.Namespace }} create secret generic <name> \
     --from-literal=ACCESS_KMS_MASTER_KEY=$(openssl rand -base64 32)
 and reference it via secrets.existingSecret, or pass --set secrets.kmsMasterKey=...

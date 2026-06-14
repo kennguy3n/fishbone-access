@@ -91,6 +91,19 @@ otherwise it is the chart-managed Secret.
 {{- end -}}
 {{- end -}}
 
+{{/*
+Reports whether a credential-encryption key is available to the workloads:
+either an operator-managed existingSecret (assumed to carry the key) or an
+inline kmsMasterKey/credentialDek value. Emits "true" when configured, empty
+otherwise, so it can gate an `if`. access-workflow-engine refuses to boot
+without one, so its Deployment is skipped unless this is true.
+*/}}
+{{- define "shieldnet-access.credentialKeyConfigured" -}}
+{{- if or .Values.secrets.existingSecret .Values.secrets.kmsMasterKey .Values.secrets.credentialDek -}}
+true
+{{- end -}}
+{{- end -}}
+
 {{/* Name of the non-secret ConfigMap. */}}
 {{- define "shieldnet-access.configMapName" -}}
 {{- printf "%s-config" (include "shieldnet-access.fullname" .) -}}
