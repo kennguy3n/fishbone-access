@@ -110,7 +110,7 @@ type ConnectorSetupSchema struct {
 
 const (
 	uuidPattern      = `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
-	awsRegionPattern = `^[a-z]{2}-[a-z]+-\d$`
+	awsRegionPattern = `^[a-z]{2}(-[a-z]+)+-\d$`
 )
 
 // connectorSetupSchemas is the curated guided-setup metadata, keyed by the
