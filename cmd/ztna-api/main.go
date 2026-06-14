@@ -39,6 +39,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
@@ -83,12 +84,41 @@ func run() error {
 	ready := &atomic.Bool{}
 
 	var deps handlers.Deps
+	// Operational telemetry: one Prometheus registry shared by the request
+	// instrumentation and the /metrics scrape endpoint (wired in NewRouter). The
+	// DB pool's saturation stats are registered on it once the pool is open.
+	metrics := observability.NewMetrics()
+	deps.Metrics = metrics
+
+	// Distributed tracing is opt-in via the standard OTEL_EXPORTER_OTLP_ENDPOINT.
+	// When unset this is a no-op and the request middleware is not mounted, so
+	// the default (SME) deployment carries no tracing overhead.
+	traceShutdown, traceEnabled, err := observability.InitTracer(ctx, "ztna-api")
+	if err != nil {
+		return fmt.Errorf("init tracing: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := traceShutdown(shutdownCtx); err != nil {
+			logger.Warnf(context.Background(), "ztna-api: trace exporter shutdown: %v", err)
+		}
+	}()
+	if traceEnabled {
+		deps.TracingServiceName = "ztna-api"
+		logger.Infof(ctx, "ztna-api: OpenTelemetry tracing enabled (OTLP endpoint configured)")
+	}
 	if cfg.DatabaseConfigured() {
 		gdb, err := setupDatabase(ctx, cfg)
 		if err != nil {
 			return fmt.Errorf("database setup: %w", err)
 		}
 		deps.DB = gdb
+		if sqlDB, err := gdb.DB(); err == nil {
+			if err := metrics.RegisterDBPool(sqlDB); err != nil {
+				return fmt.Errorf("register db pool metrics: %w", err)
+			}
+		}
 		// Own the pool: close it on the way out so we don't leak idle Postgres
 		// connections (the pool outlives setupDatabase because the 1B-1E
 		// handlers query through it).
