@@ -46,6 +46,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
+	"github.com/kennguy3n/fishbone-access/internal/services/usage"
 
 	// Blank-import the connector aggregator so every provider's init()
 	// registers it with the access registry.
@@ -421,6 +422,35 @@ func run() error {
 		} else {
 			logger.Infof(ctx, "ztna-api: tenant hibernation DISABLED (ACCESS_TENANCY_HIBERNATION_ENABLED=false); all tenants treated as active, but activity is still recorded so the feature can be enabled later with accurate history")
 		}
+	}
+
+	// Per-tenant usage metering (WS billing foundation): accumulate per-tenant
+	// usage counts on the request path and flush them to the tenant_usage
+	// rollup so cost-to-serve is attributable per tenant — the "who is using
+	// what" half of the cost story (the rate limiter above is the "cap the
+	// abuser" half). Like the rate limiter it is in-memory and PER REPLICA:
+	// each replica flushes its own deltas with an additive UPSERT, so N
+	// replicas sum into one row rather than overwriting. Per-tenant attribution
+	// lives in Postgres (cardinality is cheap there); only AGGREGATE counters
+	// reach /metrics, fed by the flush observer below. Wired only when a DB is
+	// present (the rollup needs Postgres) and metering is enabled. The flush
+	// loop is tied to the signal context and joined on the way out (LIFO,
+	// before the DB-pool close) so the final flush cannot touch a closed pool.
+	if deps.DB != nil && cfg.UsageMetering.Enabled {
+		usageStore := usage.NewStore(deps.DB)
+		aggregator := usage.New(usageStore, usage.Config{
+			FlushInterval: cfg.UsageMetering.FlushInterval,
+			Observe:       metrics.AddUsageEvents,
+		})
+		usageCtx, usageCancel := context.WithCancel(ctx)
+		joinUsage := aggregator.Run(usageCtx)
+		defer func() {
+			usageCancel()
+			joinUsage()
+		}()
+		deps.UsageMeter = aggregator
+		deps.UsageReader = usageStore
+		logger.Infof(ctx, "ztna-api: per-tenant usage metering enabled (flush every %s, per replica); per-tenant counts roll up to tenant_usage, only aggregate counters on /metrics", cfg.UsageMetering.FlushInterval)
 	}
 
 	srv := &http.Server{

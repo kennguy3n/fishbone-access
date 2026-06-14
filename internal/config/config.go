@@ -121,6 +121,12 @@ type Config struct {
 	// Postgres pool (and our bill) at the expense of the other tenants.
 	RateLimit RateLimitConfig
 
+	// UsageMetering accumulates per-tenant usage counts (API calls today) and
+	// flushes them to the tenant_usage rollup so cost-to-serve is attributable
+	// per tenant. It is the "who is using what" half of the cost story; the
+	// rate limiter above is the "cap the abuser" half.
+	UsageMetering UsageMeteringConfig
+
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
 
@@ -204,6 +210,34 @@ type RateLimitConfig struct {
 	// RequestsPerSecond. Read from ACCESS_TENANT_RATE_LIMIT_BURST; defaults to
 	// 100.
 	Burst int
+}
+
+// UsageMeteringConfig tunes the per-tenant usage-metering rollup. Per-tenant
+// usage counts (API calls today) are accumulated in-process and flushed to the
+// tenant_usage table on an interval so cost-to-serve is attributable per
+// tenant. Unlike the Prometheus instruments — which are deliberately NOT
+// labelled by tenant id (5,000 tenants × routes would explode the series
+// count) — the rollup is keyed by workspace_id in Postgres, where per-tenant
+// cardinality is cheap; only AGGREGATE (non-tenant) counters reach /metrics.
+//
+// The aggregator is in-memory and therefore per-replica: each replica flushes
+// its own deltas with an additive UPSERT (count = count + delta), so N replicas
+// sum correctly into one row rather than overwriting each other. This mirrors
+// the rate limiter's per-replica posture and needs no extra infrastructure.
+type UsageMeteringConfig struct {
+	// Enabled gates the subsystem. When false no usage is accumulated or
+	// persisted (the pre-feature behaviour). Read from
+	// ACCESS_USAGE_METERING_ENABLED; defaults to true — attributing
+	// cost-to-serve is the safer default at 5,000 tenants, and the hot-path
+	// cost is a single in-memory counter increment.
+	Enabled bool
+	// FlushInterval is how often accumulated per-tenant deltas are flushed to
+	// the tenant_usage table (and the bound on how stale the read endpoint /
+	// operator dashboards are). It also bounds write volume: at most one row
+	// per (active tenant × metric) per interval, regardless of request rate,
+	// since counts coalesce in memory between flushes. Read from
+	// ACCESS_USAGE_METERING_FLUSH_INTERVAL; defaults to 30s.
+	FlushInterval time.Duration
 }
 
 // DevAuthConfig configures the non-production shared-secret token validator.
@@ -324,6 +358,10 @@ func Load() Config {
 			RequestsPerSecond: getFloat("ACCESS_TENANT_RATE_LIMIT_RPS", 50),
 			Burst:             getInt("ACCESS_TENANT_RATE_LIMIT_BURST", 100),
 		},
+		UsageMetering: UsageMeteringConfig{
+			Enabled:       getBool("ACCESS_USAGE_METERING_ENABLED", true),
+			FlushInterval: getDuration("ACCESS_USAGE_METERING_FLUSH_INTERVAL", 30*time.Second),
+		},
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),
 			JWKSURL:           os.Getenv("IAM_CORE_JWKS_URL"),
@@ -431,7 +469,18 @@ func (c Config) Warnings() []string {
 			"sealed earlier under ACCESS_CREDENTIAL_DEK will NOT open until re-sealed "+
 			"under the master key (remove ACCESS_CREDENTIAL_DEK once migration is complete)")
 	}
-	return append(w, c.Tenancy.Warnings()...)
+	w = append(w, c.Tenancy.Warnings()...)
+	// A non-positive usage-metering flush interval has a safe runtime fallback
+	// (the aggregator substitutes its built-in default), so this is a warning
+	// rather than a fatal Validate error — a 5,000-tenant fleet must boot even
+	// with a fat-fingered interval. But a silent fallback hides operator
+	// intent, so surface it (mirroring the tenancy knobs above).
+	if c.UsageMetering.Enabled && c.UsageMetering.FlushInterval <= 0 {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_USAGE_METERING_FLUSH_INTERVAL=%s is non-positive; the usage aggregator will use its built-in default flush interval",
+			c.UsageMetering.FlushInterval))
+	}
+	return w
 }
 
 // Warnings reports tenancy knobs whose value will be silently overridden by a
@@ -550,10 +599,11 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst usagemetering=%t/%s iamcore=%t issuer=%q}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
 		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst,
+		c.UsageMetering.Enabled, c.UsageMetering.FlushInterval,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
 	)
 }

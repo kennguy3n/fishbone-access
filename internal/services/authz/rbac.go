@@ -238,6 +238,16 @@ const (
 	// (rename, plan/residency changes, deletion). Held only by RoleOwner so
 	// it is the marker permission distinguishing owner from admin.
 	PermWorkspaceManage Permission = "workspace.manage"
+
+	// --- Usage / billing ----------------------------------------------
+	//
+	// PermUsageRead gates reading the workspace's own usage rollup (the
+	// per-tenant metering counters behind GET /api/v1/usage). It is a
+	// billing/account-administration surface, so it is held by the governance
+	// roles (owner/admin) but not by the operational or read-only-audit seats —
+	// a tenant's consumption/cost is account data, not part of the access-review
+	// or audit surface.
+	PermUsageRead Permission = "usage.read"
 )
 
 // AllPermissions is the canonical catalogue of every defined Permission.
@@ -263,6 +273,7 @@ var AllPermissions = []Permission{
 	PermDirectoryRead, PermTeamRead, PermTeamWrite,
 	PermRBACRead, PermRBACManage,
 	PermWorkspaceManage,
+	PermUsageRead,
 }
 
 // PermissionSet is an unordered, hash-backed set of Permission values,
@@ -336,6 +347,7 @@ var rolePermissionSlices = map[WorkspaceRole][]Permission{
 		PermAuditRead,
 		PermDirectoryRead, PermTeamRead, PermTeamWrite,
 		PermRBACRead, PermRBACManage,
+		PermUsageRead,
 	},
 	RoleSecurityAdmin: {
 		// Access-governance + PAM administration. No member management
