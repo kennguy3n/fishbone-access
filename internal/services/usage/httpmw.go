@@ -31,17 +31,23 @@ type Meter interface {
 // requests. Recording is a single in-memory increment, so it adds no latency
 // and no database failure mode to the request path.
 //
-// Metering happens after the handler runs (c.Next) so the request is counted
-// once it has been served, but the count is unconditional — a 4xx/5xx still
-// consumes control-plane resources, so it still attributes cost-to-serve.
+// Metering happens after the handler runs so the request is counted once it has
+// been served, and the count is genuinely unconditional: the Record is deferred,
+// so it runs even if a downstream handler panics (the panic still propagates to
+// the Recovery middleware mounted earlier — we only observe, we do not swallow
+// it). A 4xx/5xx — or a panic — still consumes control-plane resources, so it
+// still attributes cost-to-serve. Deferring before c.Next() also means the
+// workspace is read at the same authoritative point regardless of how the chain
+// unwinds.
 func Middleware(m Meter) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if m != nil {
+			defer func() {
+				if workspaceID, ok := middleware.WorkspaceFromContext(c); ok {
+					m.Record(workspaceID, MetricAPIRequests)
+				}
+			}()
+		}
 		c.Next()
-		if m == nil {
-			return
-		}
-		if workspaceID, ok := middleware.WorkspaceFromContext(c); ok {
-			m.Record(workspaceID, MetricAPIRequests)
-		}
 	}
 }
