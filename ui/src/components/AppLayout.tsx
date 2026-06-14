@@ -4,7 +4,7 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NAV } from "./nav";
 import { Icon } from "./Icon";
@@ -36,11 +36,16 @@ function Sidebar() {
   const path = location.pathname;
   const isAdmin = useIsWorkspaceAdmin();
   // Hide admin-only setup surfaces from a plain operator, then drop any group
-  // left with no visible items so an empty header never renders.
-  const groups = NAV.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !item.adminOnly || isAdmin),
-  })).filter((group) => group.items.length > 0);
+  // left with no visible items so an empty header never renders. Derived only
+  // from `isAdmin`, so memoize it rather than rebuild on every route change.
+  const groups = useMemo(
+    () =>
+      NAV.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !item.adminOnly || isAdmin),
+      })).filter((group) => group.items.length > 0),
+    [isAdmin],
+  );
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">

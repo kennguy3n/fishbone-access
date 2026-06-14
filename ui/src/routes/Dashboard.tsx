@@ -49,6 +49,10 @@ function OnboardingNudgeBody({
   const connectors = useConnectors({});
   const policies = usePolicies();
 
+  // Wait for both reads before deciding: otherwise an already-set-up workspace
+  // would flash the "finish setup" banner for a frame (data undefined → looks
+  // unconfigured) until the queries resolve and we hide it.
+  if (connectors.isLoading || policies.isLoading) return null;
   const connected = (connectors.data ?? []).some((c) => c.connected);
   const hasPolicies = (policies.data?.length ?? 0) > 0;
   if (connected && hasPolicies) return null;
