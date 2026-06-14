@@ -44,6 +44,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/ratelimit"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
+	"github.com/kennguy3n/fishbone-access/internal/services/billing"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -532,6 +533,30 @@ func run() error {
 		deps.UsageMeter = aggregator
 		deps.UsageReader = usageStore
 		logger.Infof(ctx, "ztna-api: per-tenant usage metering enabled (flush every %s, shared-store=%t); per-tenant counts roll up to tenant_usage, only aggregate counters on /metrics", cfg.UsageMetering.FlushInterval, cfg.UsageSharedStoreActive())
+	}
+
+	// Billing economics layer: per-tenant statements + quota enforcement, ON TOP
+	// of the usage rollup above. It reads the SAME tenant_usage the meter writes
+	// (a fresh usage.Store reader — billing only reads), so it introduces no
+	// second source of truth for consumption. The service runs a per-replica,
+	// TTL-bounded decision cache with a background janitor; its Stop is deferred
+	// so the goroutine is reaped on shutdown. Enabled independently of metering
+	// (config.Warnings flags the metering-off footgun), and disabled by default
+	// since enforcement can reject requests.
+	if deps.DB != nil && cfg.Billing.Enabled {
+		planStore := billing.NewStore(deps.DB)
+		billingSvc := billing.NewService(planStore, usage.NewStore(deps.DB), billing.Config{
+			EnforceHardCap: cfg.Billing.EnforceHardCap,
+			CacheTTL:       cfg.Billing.CacheTTL,
+		})
+		defer billingSvc.Stop()
+		deps.BillingEnforcer = billingSvc
+		deps.BillingReader = billingSvc
+		mode := "shadow (over-hard-cap requests are flagged but ALLOWED)"
+		if cfg.Billing.EnforceHardCap {
+			mode = "enforcing (over-hard-cap requests are denied 402 before expensive work)"
+		}
+		logger.Infof(ctx, "ztna-api: per-tenant billing enabled (decision cache TTL %s, per replica; hard-cap %s); statements derive from tenant_usage, fail-open", cfg.Billing.CacheTTL, mode)
 	}
 
 	srv := &http.Server{

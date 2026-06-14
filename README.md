@@ -167,6 +167,72 @@ durability granularity, not accuracy — a replica that crashes loses at most it
 last unflushed window. Set `ACCESS_USAGE_METERING_ENABLED=false` to disable it
 entirely (the pre-feature behaviour).
 
+#### Per-tenant billing: statements + quota enforcement
+
+Metering answers "who is using what"; billing is the **economics layer on top**:
+"what may a tenant consume, and what does it owe". It adds two things, both
+derived from the **same** `tenant_usage` rollup the meter writes (no second
+source of truth for consumption):
+
+- **Statements.** `GET /api/v1/billing/statement` (optionally `?period=YYYY-MM`)
+  returns a periodized, per-metric statement — included quota, usage, overage,
+  and the integer amount that overage costs — plus the plan's base price and the
+  period total. Generation is a **pure function** of `(workspace, period, plan,
+  rollup rows)` with **no wall-clock field**: for a **fixed plan** and the
+  period's immutable rollup rows it yields a byte-identical statement (the
+  idempotency contract). The plan is resolved **live** (there is no plan-history
+  snapshot), so re-pricing a closed period under a tenant's new plan after an
+  upgrade/downgrade is by design, not a determinism break. All counts and amounts
+  are **integers** (minor units), so money never carries float drift.
+- **Quota enforcement.** A fail-open middleware, mounted right *before* the meter
+  (so a hard-denied request is rejected before it is counted as billable usage)
+  and keyed by the resolved workspace UUID, classifies each tenant against its
+  plan: **soft** (over the included allowance — allowed, but flagged via
+  `X-Quota-State`/`X-Quota-Metric` headers and metered, and billed as overage)
+  and **hard** (at/over the plan's ceiling). A hard breach is rejected with
+  **HTTP 402 Payment Required** — chosen over 429 because the breach is a
+  plan/period allowance, not a per-second rate (429 is the rate limiter's
+  status), so a client can distinguish "slow down" from "your plan's allowance
+  for the period is exhausted, upgrade to continue". The check runs **before**
+  the handler, so a denied request never reaches Postgres or other expensive
+  shared work — the whole point is protecting shared resources and the bill.
+
+**Plans reuse the tenancy tier ladder** (`trial`/`base`/`pro`/`enterprise`)
+rather than inventing a parallel billing taxonomy. The assignment lives in a
+separate `tenant_plan` table keyed by `workspace_id` (workspace-scoped, under
+the same RLS regime as the rest of the tenant data): it stays distinct from
+`tenant_resource_budgets` because that table bounds *internal* background-work
+concurrency while `tenant_plan` bounds *external* request consumption and
+carries the billing overrides — the shared tier string ties them to one ladder
+without coupling two concerns behind one row. Like the budgets, **absence of a
+row means the tenant takes its plan's built-in quota ladder** (the quota ladders
+and integer pricing live in code, `internal/services/billing`), so the table
+stays near-empty for the dormant-trial majority; a zero override column means
+"inherit the plan default". An owner assigns its own plan via
+`PUT /api/v1/billing/plan`. The reads are gated by `billing.read` (owner/admin,
+exactly like `usage.read`); the plan write by `billing.manage` (owner-only, like
+`workspace.manage`) — selecting a plan sets what a tenant owes, an
+account-lifecycle decision.
+
+The enforcement decision is **cached per workspace for `ACCESS_BILLING_CACHE_TTL`**
+(default 30s), so the common path is a pure in-memory map read — enforcement adds
+**no per-request DB load**. The cache is in-memory and therefore **per-replica**,
+like the limiter and the meter; combined with the meter's flush interval, the TTL
+is the bounded window over which replicas converge on fresh usage. An idle
+tenant's entry is evicted by a background janitor, bounding memory to the
+active-tenant set. The whole subsystem is **fail-open** at every step — a nil
+service, an unresolved tenant, or a lookup error proceeds untouched — so a
+billing outage degrades to "no enforcement", never an API outage.
+
+Billing is **disabled by default** (`ACCESS_BILLING_ENABLED`): unlike metering it
+can reject requests, so it is opt-in, and it requires metering to be on (with it
+off the rollup never advances and statements show only the base price). Hard
+enforcement is **separately gated** by `ACCESS_BILLING_ENFORCE_HARD_CAP`, also
+off by default: the safe rollout at 5,000 tenants is **shadow mode** — detect and
+surface breaches (headers + the `shieldnet_billing_quota_breaches_total{state,route}`
+aggregate counter) without rejecting — so an operator can observe who *would* be
+capped before flipping enforcement on.
+
 Setting `ACCESS_REDIS_URL` and `ACCESS_USAGE_METERING_SHARED_STORE=true`
 **consolidates** the rollup through a shared Redis accumulator: instead of every
 replica writing the same `(workspace, period, metric)` row each window, the

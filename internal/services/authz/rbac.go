@@ -248,6 +248,19 @@ const (
 	// a tenant's consumption/cost is account data, not part of the access-review
 	// or audit surface.
 	PermUsageRead Permission = "usage.read"
+
+	// PermBillingRead gates reading the workspace's own billing statement and
+	// plan/quota status (GET /api/v1/billing/statement and /billing/plan). Like
+	// PermUsageRead it is account/cost data, so it is held by the governance
+	// roles (owner/admin) and withheld from the operational and audit seats.
+	PermBillingRead Permission = "billing.read"
+
+	// PermBillingManage gates changing the workspace's plan assignment
+	// (PUT /api/v1/billing/plan). It is OWNER-ONLY, like PermWorkspaceManage:
+	// selecting a plan sets the tenant's quota ceilings and what it owes, so it
+	// is an account-lifecycle decision reserved for the owner, not delegated to
+	// the admin governance seat.
+	PermBillingManage Permission = "billing.manage"
 )
 
 // AllPermissions is the canonical catalogue of every defined Permission.
@@ -274,6 +287,7 @@ var AllPermissions = []Permission{
 	PermRBACRead, PermRBACManage,
 	PermWorkspaceManage,
 	PermUsageRead,
+	PermBillingRead, PermBillingManage,
 }
 
 // PermissionSet is an unordered, hash-backed set of Permission values,
@@ -348,6 +362,9 @@ var rolePermissionSlices = map[WorkspaceRole][]Permission{
 		PermDirectoryRead, PermTeamRead, PermTeamWrite,
 		PermRBACRead, PermRBACManage,
 		PermUsageRead,
+		// Admin reads billing/cost data but does NOT change the plan:
+		// PermBillingManage is owner-only, like PermWorkspaceManage.
+		PermBillingRead,
 	},
 	RoleSecurityAdmin: {
 		// Access-governance + PAM administration. No member management

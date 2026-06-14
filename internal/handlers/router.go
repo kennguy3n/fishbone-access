@@ -21,6 +21,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
+	"github.com/kennguy3n/fishbone-access/internal/services/billing"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -117,6 +118,21 @@ type Deps struct {
 	// leaves the route unmounted (tests/degraded boots). It reads the same
 	// rollup the meter flushes to.
 	UsageReader usage.Reader
+	// BillingEnforcer, when set, enforces per-tenant plan quotas on the
+	// tenant-scoped surface: a quota middleware mounted right after
+	// RequireTenant (so it is keyed by the authoritative workspace UUID) that
+	// soft-flags over-quota requests and hard-denies (402) those over the hard
+	// ceiling BEFORE they reach Postgres. It is fail-open and reads a per-replica
+	// TTL cache, so it adds no per-request DB load and a billing outage degrades
+	// to "no enforcement". nil leaves the surface un-enforced (tests/degraded
+	// boots). Wired from the same *billing.Service as BillingReader.
+	BillingEnforcer billing.QuotaEnforcer
+	// BillingReader, when set, backs the authenticated billing read/admin
+	// endpoints (GET /api/v1/billing/statement, /billing/plan and the owner-only
+	// PUT /billing/plan) so a tenant can see its statement/plan and an owner can
+	// assign its plan. It derives statements from the SAME usage rollup the meter
+	// writes. nil leaves the routes unmounted (tests/degraded boots).
+	BillingReader billingService
 }
 
 // NewRouter builds the Gin engine.
@@ -196,10 +212,37 @@ func NewRouter(deps Deps) *gin.Engine {
 		if deps.ActivityRecorder != nil {
 			scoped.Use(tenancy.ActivityMiddleware(deps.ActivityRecorder))
 		}
+		// Enforce per-tenant plan quotas on the same tenant-scoped surface,
+		// keyed by the authoritative workspace UUID. It is mounted BEFORE the
+		// meter (and before the handlers) so a hard-denied request is rejected
+		// before any expensive work AND before it is counted as billable usage:
+		// a tenant is never invoiced for requests the platform refused to serve,
+		// and a hard-capped tenant cannot feed its own rejected requests back
+		// into the usage rollup. The denial is still observable — over-quota
+		// decisions feed the aggregate metrics registry by route template (never
+		// per tenant) when observability is wired — so dropping it from the
+		// per-tenant rollup loses no operational visibility. Fail-open and a
+		// no-op pass-through when the enforcer is nil.
+		//
+		// The self-service billing surface (scoped.BasePath()+"/billing/": the
+		// statement/plan reads and the owner-only plan upgrade) is exempted so a
+		// hard-capped tenant can still see what it owes and upgrade — the 402
+		// body points there, so capping it would be a dead end. Those endpoints
+		// are lightweight self-remediation, not the shared work the cap protects.
+		if deps.BillingEnforcer != nil {
+			var onQuota func(state, route string)
+			if deps.Metrics != nil {
+				onQuota = deps.Metrics.IncQuotaBreach
+			}
+			scoped.Use(billing.QuotaMiddleware(deps.BillingEnforcer, onQuota, scoped.BasePath()+"/billing/"))
+		}
 		// Meter per-tenant usage on the same tenant-scoped surface, keyed by
 		// the authoritative workspace UUID (the rollup + RLS key), so
-		// cost-to-serve is attributable per tenant. Like activity recording it
-		// is fire-and-forget (a single in-memory increment) and a no-op
+		// cost-to-serve is attributable per tenant. It runs AFTER quota
+		// enforcement so only admitted requests (within quota, soft-over, or
+		// hard-over in shadow mode) are counted — a hard-denied 402 aborts
+		// above this and is never recorded. Like activity recording it is
+		// fire-and-forget (a single in-memory increment) and a no-op
 		// pass-through when the meter is nil, so it adds no latency or failure
 		// mode to the request path.
 		if deps.UsageMeter != nil {
@@ -221,6 +264,9 @@ func NewRouter(deps Deps) *gin.Engine {
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {
 			newUsageHandlers(deps.UsageReader).register(scoped)
+		}
+		if deps.BillingReader != nil {
+			newBillingHandlers(deps.BillingReader).register(scoped)
 		}
 	}
 
