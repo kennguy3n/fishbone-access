@@ -52,7 +52,12 @@ export function Onboarding() {
   // unenforced RBAC tier → fail-open to the wizard, matching the server.)
   if (perms.data && !isWorkspaceAdmin(perms.data.permissions))
     return <SetupNotAvailable />;
-  return <OnboardingWizard tenantId={me.data?.tenant_id ?? ""} />;
+  // key on tenant id so a (hypothetical) tenant change remounts the wizard and
+  // its progress store re-hydrates for the new tenant — the store keys its
+  // localStorage on tenant id and hydrates lazily, so it must never outlive the
+  // tenant it was mounted for.
+  const tenantId = me.data?.tenant_id ?? "";
+  return <OnboardingWizard key={tenantId} tenantId={tenantId} />;
 }
 
 // Shown when a non-admin lands on /onboarding directly: day-1 setup is an admin

@@ -26,7 +26,11 @@ import {
 function OnboardingNudge() {
   const me = useMe();
   if (!me.data) return null;
-  return <OnboardingNudgeGate tenantId={me.data.tenant_id} />;
+  // key on tenant id so the progress store (keyed + lazily hydrated per tenant)
+  // re-hydrates if the bound tenant ever changes, instead of outliving it.
+  return (
+    <OnboardingNudgeGate key={me.data.tenant_id} tenantId={me.data.tenant_id} />
+  );
 }
 
 // Resolve admin status and dismissal *before* mounting the body that fires the
