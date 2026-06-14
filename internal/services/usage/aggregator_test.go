@@ -278,6 +278,27 @@ func TestAggregatorRunFlushesOnShutdown(t *testing.T) {
 	}
 }
 
+// TestAggregatorRunIsIdempotent proves a second Run is a safe no-op: the
+// startOnce guards the goroutine launch, so the single-loop contract is
+// self-enforcing and a stray second call cannot panic on a double close(done).
+// Each returned join still stops the one loop and persists the final window.
+func TestAggregatorRunIsIdempotent(t *testing.T) {
+	sink := &fakeSink{}
+	a := New(sink, Config{FlushInterval: time.Hour, Clock: fixedClock(time.Date(2026, 6, 14, 0, 0, 0, 0, time.UTC))})
+	ws := uuid.New()
+	a.Record(ws, MetricAPIRequests)
+
+	join1 := a.Run(context.Background())
+	join2 := a.Run(context.Background()) // second call must not start a second loop
+
+	join1() // stops the single loop, triggers the final flush
+	join2() // must not panic on a double close(done); returns once stopped
+
+	if got := sink.total(ws, MetricAPIRequests); got != 1 {
+		t.Fatalf("count after shutdown flush = %d, want 1", got)
+	}
+}
+
 // TestAggregatorConcurrentRecord is the race-detector exercise: many goroutines
 // record concurrently while flushes interleave; the total persisted must equal
 // the total recorded (no lost or duplicated increments).

@@ -80,9 +80,10 @@ type Aggregator struct {
 	mu      sync.Mutex
 	pending map[counterKey]int64
 
-	stopOnce sync.Once
-	stop     chan struct{}
-	done     chan struct{}
+	startOnce sync.Once
+	stopOnce  sync.Once
+	stop      chan struct{}
+	done      chan struct{}
 }
 
 // Config tunes an Aggregator.
@@ -214,25 +215,33 @@ func (a *Aggregator) mergeBack(drained map[counterKey]int64) {
 // so the shutdown flush still runs to its own bounded deadline after ctx is
 // cancelled, rather than starting already-cancelled and losing the final
 // window's counts. ctx's values (logging/tracing) are preserved.
+//
+// Run is safe to call more than once: a startOnce guards the goroutine launch
+// so only the first call starts the loop (and binds its context), and every
+// call returns a join that stops that single loop. This makes the single-loop
+// contract self-enforcing rather than relying on the caller, so a stray second
+// call degrades to a no-op instead of panicking on a double close(done).
 func (a *Aggregator) Run(ctx context.Context) (join func()) {
-	writeCtx := context.WithoutCancel(ctx)
-	go func() {
-		defer close(a.done)
-		ticker := time.NewTicker(a.flushInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-a.stop:
-				a.flushBounded(writeCtx)
-				return
-			case <-ctx.Done():
-				a.flushBounded(writeCtx)
-				return
-			case <-ticker.C:
-				a.flushBounded(writeCtx)
+	a.startOnce.Do(func() {
+		writeCtx := context.WithoutCancel(ctx)
+		go func() {
+			defer close(a.done)
+			ticker := time.NewTicker(a.flushInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-a.stop:
+					a.flushBounded(writeCtx)
+					return
+				case <-ctx.Done():
+					a.flushBounded(writeCtx)
+					return
+				case <-ticker.C:
+					a.flushBounded(writeCtx)
+				}
 			}
-		}
-	}()
+		}()
+	})
 	return func() {
 		a.stopOnce.Do(func() { close(a.stop) })
 		<-a.done
