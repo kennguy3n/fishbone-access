@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -342,6 +343,42 @@ func mustCreateTarget(t *testing.T, db *gorm.DB, ws uuid.UUID, name, proto, addr
 		t.Fatalf("seed target %q: %v", name, err)
 	}
 	return tgt
+}
+
+// TestReRegisterHardDeletesStaleReachRows proves a frequently reconnecting
+// agent does not bloat agent_reachable_targets with soft-deleted tombstones:
+// the per-registration replace is a hard delete, so only the latest advertised
+// set remains even counting soft-deleted rows.
+func TestReRegisterHardDeletesStaleReachRows(t *testing.T) {
+	ctx := context.Background()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	store := NewGormStore(db)
+
+	agentID := uuid.New()
+	if err := db.Create(&models.TargetAgent{
+		Base: models.Base{ID: agentID}, WorkspaceID: ws, Name: "a1",
+		CertFingerprint: "fp", CertSerial: "1",
+		CertNotAfter: time.Now().Add(time.Hour), Status: models.AgentStatusOnline,
+	}).Error; err != nil {
+		t.Fatalf("seed agent: %v", err)
+	}
+	for i := 0; i < 5; i++ {
+		reg := RegisterPayload{Reachable: []ReachableSpec{
+			{Pattern: fmt.Sprintf("10.0.%d.0/24", i), Kind: models.AgentReachKindCIDR},
+		}}
+		if err := store.OnRegister(ctx, ws, agentID, reg); err != nil {
+			t.Fatalf("register %d: %v", i, err)
+		}
+	}
+	var total int64
+	if err := db.Unscoped().Model(&models.AgentReachableTarget{}).
+		Where("workspace_id = ? AND agent_id = ?", ws, agentID).Count(&total).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("want 1 reachable row after 5 re-registrations (no tombstones), got %d", total)
+	}
 }
 
 func TestAuthorizeConnectRejectsRevoked(t *testing.T) {

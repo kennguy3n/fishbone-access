@@ -119,8 +119,13 @@ func (s *GormStore) OnRegister(ctx context.Context, workspaceID, agentID uuid.UU
 		if res.RowsAffected == 0 {
 			return errors.New("broker: agent not found or revoked")
 		}
-		// Replace the agent's self-reported reachable bindings.
-		if err := tx.Where("workspace_id = ? AND agent_id = ?", workspaceID, agentID).
+		// Replace the agent's self-reported reachable bindings. These rows are
+		// ephemeral advertisement, rewritten in full on every (re)registration
+		// and carrying no historical value (the audit chain records the online
+		// event separately), so the delete is Unscoped: a hard delete that keeps
+		// the table from accumulating soft-deleted tombstones as a frequently
+		// reconnecting agent re-registers — important at 5k-tenant scale.
+		if err := tx.Unscoped().Where("workspace_id = ? AND agent_id = ?", workspaceID, agentID).
 			Delete(&models.AgentReachableTarget{}).Error; err != nil {
 			return err
 		}
