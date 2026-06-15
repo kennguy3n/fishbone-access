@@ -16,6 +16,8 @@ import {
 } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { apiDownload, apiRequest } from "./http-client";
+import { runtimeConfig } from "@/lib/runtime-config";
+import { getAccessToken } from "@/auth/token-store";
 
 // ---------------------------------------------------------------------------
 // Domain types (mirror internal/models + internal/services/lifecycle)
@@ -1340,6 +1342,89 @@ export function useTerminatePamSession(id: string) {
   return useMutation<{ status: string }, ApiError, void>({
     mutationFn: () => terminatePamSession(id),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Clientless web access — connect-token mint + WebSocket bridge address
+//
+// The browser opens a privileged session entirely in-page: it mints a one-shot
+// PAM connect token (POST /pam/connect-tokens, the same broker the native CLI
+// uses), then opens a WebSocket to the web-access bridge and presents the raw
+// token in its first frame. The bridge redeems it, validates the lease, opens
+// the upstream, and streams bytes — with command policy, recording and audit
+// firing identically to the native gateway. See internal/webaccess.
+// ---------------------------------------------------------------------------
+
+/** The persisted connect-token record returned alongside the one-shot secret. */
+export interface PamConnectToken {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  subject: string;
+  state: string;
+  expires_at: string;
+  lease_id?: string;
+}
+
+export interface MintConnectTokenInput {
+  target_id: string;
+  /** Binds the token to a JIT lease so the broker re-validates it is live. */
+  lease_id?: string;
+  /** Step-up MFA assertion, when the target or lease requires it. */
+  step_up_token?: string;
+}
+
+export interface MintConnectTokenResult {
+  raw_token: string;
+  token: PamConnectToken;
+}
+
+export const mintConnectToken = (body: MintConnectTokenInput) =>
+  call<MintConnectTokenResult>({
+    url: "/pam/connect-tokens",
+    method: "POST",
+    data: body,
+  });
+
+export function useMintConnectToken() {
+  return useMutation<MintConnectTokenResult, ApiError, MintConnectTokenInput>({
+    mutationFn: mintConnectToken,
+  });
+}
+
+/** Which clientless protocol class a web-access socket drives. */
+export type WebAccessKind = "ssh" | "db";
+
+/**
+ * webAccessSocketURL builds the absolute ws(s) URL for a web-access endpoint
+ * from the configured API base, upgrading the scheme to WebSocket and resolving
+ * a relative base ("/api/v1") against the current origin.
+ */
+export function webAccessSocketURL(kind: WebAccessKind): string {
+  const base = runtimeConfig().apiBaseUrl.replace(/\/+$/, "");
+  const path = `/webaccess/${kind}`;
+  const abs = /^https?:\/\//i.test(base)
+    ? new URL(base + path)
+    : new URL(
+        base + path,
+        typeof window !== "undefined" ? window.location.origin : "http://localhost",
+      );
+  abs.protocol = abs.protocol === "https:" ? "wss:" : "ws:";
+  return abs.toString();
+}
+
+/**
+ * webAccessSubprotocols carries the iam-core bearer through the WebSocket
+ * handshake. A browser cannot set an Authorization header on a WebSocket, so
+ * the token rides as a subprotocol token ("shieldnet.bearer.<jwt>") next to the
+ * negotiated protocol the server echoes back. Returns just the negotiated
+ * protocol when no token is present (the server then rejects the handshake).
+ */
+export function webAccessSubprotocols(): string[] {
+  const protocols = ["shieldnet.access.v1"];
+  const token = getAccessToken();
+  if (token) protocols.push(`shieldnet.bearer.${token}`);
+  return protocols;
 }
 
 // ---------------------------------------------------------------------------
