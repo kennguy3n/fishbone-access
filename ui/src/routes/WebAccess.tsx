@@ -56,8 +56,11 @@ export function WebAccess() {
   const me = useMe();
   const targets = usePamTargets();
   // Poll leases so a freshly approved lease appears (and an expired one drops
-  // out) without a manual refresh.
-  const leases = usePamLeases({ active_only: true });
+  // out) without a manual refresh while the operator is on this page.
+  const leases = usePamLeases(
+    { active_only: true },
+    { refetchInterval: 15_000 },
+  );
   const mint = useMintConnectToken();
   const [active, setActive] = useState<ActiveSession | null>(null);
 

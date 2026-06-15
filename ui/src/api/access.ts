@@ -1257,10 +1257,14 @@ export function useCreatePamTarget() {
   });
 }
 
-export function usePamLeases(f: PamSessionFilters = {}) {
+export function usePamLeases(
+  f: PamSessionFilters = {},
+  options?: Partial<UseQueryOptions<PamLease[], ApiError>>,
+) {
   return useQuery<PamLease[], ApiError>({
     queryKey: pamQk.leases(f),
     queryFn: () => listPamLeases(f),
+    ...options,
   });
 }
 
