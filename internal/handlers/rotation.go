@@ -36,13 +36,21 @@ func newRotationHandlers(deps Deps, vault *pam.Vault, leases *pam.PAMLeaseServic
 	if deps.DB == nil || vault == nil {
 		return nil
 	}
-	registry := pam.NewExecutorRegistry(10 * time.Second)
+	// Honour ACCESS_ROTATION_DIAL_TIMEOUT (threaded through Deps) so an
+	// API-initiated "rotate now" / mint uses the SAME upstream dial timeout as
+	// the scheduled sweep in access-workflow-engine. Zero means main did not
+	// wire it (tests/degraded boots) — fall back to the shared 10s default.
+	dialTimeout := deps.RotationDialTimeout
+	if dialTimeout <= 0 {
+		dialTimeout = 10 * time.Second
+	}
+	registry := pam.NewExecutorRegistry(dialTimeout)
 	engine := pam.NewRotationEngine(deps.DB, vault, registry)
 	return &rotationHandlers{
 		vault:    vault,
 		policies: pam.NewRotationPolicyService(deps.DB, vault, registry),
 		engine:   engine,
-		dynamic:  pam.NewDynamicCredentialService(deps.DB, vault, 10*time.Second),
+		dynamic:  pam.NewDynamicCredentialService(deps.DB, vault, dialTimeout),
 		leases:   leases,
 	}
 }

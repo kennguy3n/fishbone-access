@@ -124,25 +124,31 @@ func (s *RotationPolicyService) UpsertPolicy(ctx context.Context, workspaceID, t
 		policy.NextRotationAt = nil
 	}
 
-	if existing == nil {
-		if err := s.db.WithContext(ctx).Create(policy).Error; err != nil {
-			return nil, fmt.Errorf("pam: create rotation policy: %w", err)
-		}
-	} else {
+	if existing != nil {
 		policy.ID = existing.ID
-		if err := s.db.WithContext(ctx).Save(policy).Error; err != nil {
-			return nil, fmt.Errorf("pam: update rotation policy: %w", err)
-		}
 	}
 
-	if aerr := s.vault.audit(ctx, workspaceID, actor, "pam.rotation_policy.updated", targetID.String(), map[string]any{
-		"mode":              policy.Mode,
-		"interval_seconds":  policy.IntervalSeconds,
-		"rotate_on_checkin": policy.RotateOnCheckin,
-		"dynamic_enabled":   policy.DynamicEnabled,
-		"enabled":           policy.Enabled,
-	}); aerr != nil {
-		return nil, fmt.Errorf("pam: audit rotation policy update: %w", aerr)
+	// Persist the policy and append its audit record in one transaction so a
+	// privileged configuration change can never take effect without its
+	// tamper-evident chain row (and vice versa) — the same atomicity contract
+	// CreateTarget and RotateSecret use in vault.go.
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if existing == nil {
+			if err := tx.Create(policy).Error; err != nil {
+				return fmt.Errorf("pam: create rotation policy: %w", err)
+			}
+		} else if err := tx.Save(policy).Error; err != nil {
+			return fmt.Errorf("pam: update rotation policy: %w", err)
+		}
+		return s.vault.auditTx(ctx, tx, workspaceID, actor, "pam.rotation_policy.updated", targetID.String(), map[string]any{
+			"mode":              policy.Mode,
+			"interval_seconds":  policy.IntervalSeconds,
+			"rotate_on_checkin": policy.RotateOnCheckin,
+			"dynamic_enabled":   policy.DynamicEnabled,
+			"enabled":           policy.Enabled,
+		})
+	}); err != nil {
+		return nil, err
 	}
 	return policy, nil
 }
@@ -157,15 +163,14 @@ func (s *RotationPolicyService) DeletePolicy(ctx context.Context, workspaceID, t
 	if existing == nil {
 		return nil
 	}
-	if err := s.db.WithContext(ctx).
-		Where("workspace_id = ? AND id = ?", workspaceID, existing.ID).
-		Delete(&models.RotationPolicy{}).Error; err != nil {
-		return fmt.Errorf("pam: delete rotation policy: %w", err)
-	}
-	if aerr := s.vault.audit(ctx, workspaceID, actor, "pam.rotation_policy.deleted", targetID.String(), nil); aerr != nil {
-		return fmt.Errorf("pam: audit rotation policy delete: %w", aerr)
-	}
-	return nil
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.
+			Where("workspace_id = ? AND id = ?", workspaceID, existing.ID).
+			Delete(&models.RotationPolicy{}).Error; err != nil {
+			return fmt.Errorf("pam: delete rotation policy: %w", err)
+		}
+		return s.vault.auditTx(ctx, tx, workspaceID, actor, "pam.rotation_policy.deleted", targetID.String(), nil)
+	})
 }
 
 // ListEvents returns the most recent rotation events for a target, newest first.
