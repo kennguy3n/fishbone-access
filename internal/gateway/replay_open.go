@@ -22,6 +22,12 @@ type ReplayBackend interface {
 	ReplayDeleter
 }
 
+// Compile-time proof that the encrypting decorator satisfies the FULL backend
+// contract in one place, so a future narrowing of WrapWithEncryption's return
+// type cannot silently drop the write/read/delete guarantee. The concrete
+// filesystem/S3/memory stores are asserted at their own definitions.
+var _ ReplayBackend = (*EncryptingReplayStore)(nil)
+
 // OpenReplayStoreFromEnv selects the replay backend from the environment: an
 // S3 bucket when PAM_REPLAY_S3_BUCKET is set, otherwise a filesystem store
 // under PAM_REPLAY_DIR (default ./pam-replays). This is the single source of

@@ -8,6 +8,7 @@
 import {
   useMutation,
   useQuery,
+  useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { apiRequest } from "@/api/http-client";
@@ -203,7 +204,15 @@ export function useRetentionPolicy(
 }
 
 export function useSetRetentionPolicy() {
+  const queryClient = useQueryClient();
   return useMutation<RetentionPolicy, ApiError, number>({
     mutationFn: setRetentionPolicy,
+    // The PUT returns the updated policy, so prime the cache with it directly
+    // (the read-only view re-renders immediately with the new value) and then
+    // invalidate so any other observer refetches the authoritative row.
+    onSuccess: (policy) => {
+      queryClient.setQueryData(recordingsQk.retention, policy);
+      void queryClient.invalidateQueries({ queryKey: recordingsQk.retention });
+    },
   });
 }

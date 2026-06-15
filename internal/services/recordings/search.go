@@ -97,6 +97,18 @@ func (s *Service) Search(ctx context.Context, workspaceID uuid.UUID, q SearchQue
 	return SearchResult{Recordings: rows, Total: total, Limit: q.Limit, Offset: q.Offset}, nil
 }
 
+// escapeLike escapes the SQL LIKE wildcards so a user-supplied facet term is
+// matched literally: a target of "prod_db" must not match "prodXdb". It escapes
+// the backslash first (the escape char itself), then % and _. Both the Postgres
+// and SQLite LIKE clauses that use it declare ESCAPE '\' so the backslash is the
+// recognised escape on both dialects (SQLite has no default escape char).
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "%", `\%`)
+	s = strings.ReplaceAll(s, "_", `\_`)
+	return s
+}
+
 // applyFilters layers the query's facets and full-text term onto the base query.
 // It is split out (and dialect-aware) so the Count and the Find share EXACTLY
 // the same predicate — otherwise the pagination total would not match the rows.
@@ -108,7 +120,7 @@ func applyFilters(db *gorm.DB, q SearchQuery, postgres bool) *gorm.DB {
 		db = db.Where("protocol = ?", q.Protocol)
 	}
 	if q.Target != "" {
-		db = db.Where("target_name LIKE ?", "%"+q.Target+"%")
+		db = db.Where(`target_name LIKE ? ESCAPE '\'`, "%"+escapeLike(q.Target)+"%")
 	}
 	if q.From != nil {
 		db = db.Where("started_at >= ?", q.From.UTC())
@@ -128,7 +140,7 @@ func applyFilters(db *gorm.DB, q SearchQuery, postgres bool) *gorm.DB {
 		} else {
 			// SQLite test path: no tsvector, so fall back to a case-insensitive
 			// substring match over the same indexed text.
-			db = db.Where("LOWER(search_text) LIKE LOWER(?)", "%"+q.Text+"%")
+			db = db.Where(`LOWER(search_text) LIKE LOWER(?) ESCAPE '\'`, "%"+escapeLike(q.Text)+"%")
 		}
 	}
 	return db

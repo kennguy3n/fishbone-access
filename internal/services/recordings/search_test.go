@@ -84,6 +84,29 @@ func TestSearchFacetsAndFullText(t *testing.T) {
 		}
 	})
 
+	t.Run("target facet matches substring", func(t *testing.T) {
+		res, err := svc.Search(context.Background(), ws, SearchQuery{Target: "prod-db"})
+		if err != nil {
+			t.Fatalf("search: %v", err)
+		}
+		if res.Total != 1 || res.Recordings[0].SessionID != sshSession {
+			t.Fatalf("target facet total=%d, want the ssh session", res.Total)
+		}
+	})
+
+	t.Run("target facet escapes LIKE wildcards", func(t *testing.T) {
+		// "prod_db" must be matched literally: the underscore is a LIKE wildcard
+		// that would otherwise match the dash in "prod-db". Escaping it means no
+		// recording matches.
+		res, err := svc.Search(context.Background(), ws, SearchQuery{Target: "prod_db"})
+		if err != nil {
+			t.Fatalf("search: %v", err)
+		}
+		if res.Total != 0 {
+			t.Fatalf("target facet total=%d, want 0 (underscore must not act as a wildcard)", res.Total)
+		}
+	})
+
 	t.Run("time range excludes earlier session", func(t *testing.T) {
 		from := base.Add(30 * time.Minute)
 		res, err := svc.Search(context.Background(), ws, SearchQuery{From: &from})

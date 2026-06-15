@@ -39,7 +39,16 @@ func buildRecordingReplayStore(ctx context.Context, gdb *gorm.DB) recordingRepla
 		logger.Warnf(ctx, "access-workflow-engine: recordings: replay store init: %v (prune disabled)", err)
 		return nil
 	}
-	sealer := recordingReplaySealer()
+	sealer, serr := recordingReplaySealer()
+	if serr != nil {
+		// A KMS master key IS configured but could not be parsed. Falling back to
+		// the plaintext store would read encrypted blobs as plaintext and record a
+		// fleet-wide false tamper verdict, so disable the store instead: the sweep
+		// still indexes from DB facts and simply skips integrity enrichment +
+		// pruning until the key is fixed.
+		logger.Warnf(ctx, "access-workflow-engine: recordings: replay at-rest key init: %v (integrity enrichment + prune disabled)", serr)
+		return nil
+	}
 	if sealer == nil {
 		return base
 	}
@@ -53,12 +62,15 @@ func buildRecordingReplayStore(ctx context.Context, gdb *gorm.DB) recordingRepla
 
 // recordingReplaySealer builds the per-workspace credential encryptor used to
 // open at-rest-encrypted recording blobs, from the same ACCESS_KMS_* env the
-// gateway and API read. Returns nil when no KMS master key is set (plaintext
-// blobs), matching the gateway's write-side gate.
-func recordingReplaySealer() access.CredentialEncryptor {
+// gateway and API read. Returns (nil, nil) when no KMS master key is set
+// (plaintext blobs), matching the gateway's write-side gate, and a non-nil error
+// when a key IS configured but cannot be built — the caller must not silently
+// fall back to plaintext, or it would misread encrypted blobs and raise false
+// tamper alarms.
+func recordingReplaySealer() (access.CredentialEncryptor, error) {
 	master := os.Getenv("ACCESS_KMS_MASTER_KEY")
 	if master == "" {
-		return nil
+		return nil, nil
 	}
 	keyVersion := 1
 	if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
@@ -68,9 +80,9 @@ func recordingReplaySealer() access.CredentialEncryptor {
 	}
 	enc, err := access.CredentialEncryptorFromConfig(master, keyVersion, os.Getenv("ACCESS_CREDENTIAL_DEK"))
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return enc
+	return enc, nil
 }
 
 // newRecordingSweeper assembles the background index + retention-prune sweep for
