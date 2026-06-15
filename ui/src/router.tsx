@@ -92,6 +92,9 @@ const RecordingDetail = lazyPage(() =>
     default: m.RecordingDetail,
   })),
 );
+const WebAccess = lazyPage(() =>
+  import("@/routes/WebAccess").then((m) => ({ default: m.WebAccess })),
+);
 const RotationPolicies = lazyPage(() =>
   import("@/routes/RotationPolicies").then((m) => ({
     default: m.RotationPolicies,
@@ -182,6 +185,7 @@ const appRoutes = [
   page("/pam/sessions", PamSessions),
   page("/pam/recordings", SessionReplay),
   page("/pam/recordings/$recordingId", RecordingDetail),
+  page("/pam/web-access", WebAccess),
   page("/pam/rotation", RotationPolicies),
   page("/compliance/campaigns", Campaigns),
   page("/compliance/campaigns/$campaignId", CampaignDetail),

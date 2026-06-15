@@ -44,6 +44,7 @@ export type MessageKey =
   | "nav.rolesPermissions"
   | "nav.pam.targets"
   | "nav.pam.leases"
+  | "nav.pam.webAccess"
   | "nav.pam.sessions"
   | "nav.pam.recordings"
   | "nav.pam.rotation"
@@ -98,6 +99,7 @@ const en: Catalog = {
   "nav.rolesPermissions": "Roles & permissions",
   "nav.pam.targets": "PAM targets",
   "nav.pam.leases": "JIT leases",
+  "nav.pam.webAccess": "Web access",
   "nav.pam.sessions": "Live sessions",
   "nav.pam.recordings": "Session recordings",
   "nav.pam.rotation": "Credential rotation",
