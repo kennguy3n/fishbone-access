@@ -50,6 +50,12 @@ export function usePlayback(frames: ReplayFrame[]): Playback {
 
   // Cumulative input text per frame boundary, built lazily for command seek.
   const inputCumRef = useRef<{ idx: number; text: string }[] | null>(null);
+  // Drop the lazily-built command-seek index whenever the frames identity
+  // changes (a refetch or a re-mount with a different recording), so a stale
+  // cumulative text can never outlive the frames it was derived from.
+  useEffect(() => {
+    inputCumRef.current = null;
+  }, [frames]);
 
   const clampMs = useCallback(
     (ms: number) => Math.min(Math.max(0, ms), totalMs),

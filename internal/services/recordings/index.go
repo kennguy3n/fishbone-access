@@ -251,11 +251,18 @@ func (s *Service) anchoredRecording(ctx context.Context, workspaceID, sessionID 
 }
 
 // IndexClosedSessions indexes up to limit finished sessions in the workspace
-// that have no recording row yet (or whose row predates the session's last
-// update), newest first. It is the unit of work the background sweep runs per
-// workspace; it returns the number of sessions indexed so the sweep can report
-// an aggregate. Only non-active sessions are indexed — an active session is
-// still being recorded, so its projection would be incomplete.
+// that have no recording row yet, newest first. It is the unit of work the
+// background sweep runs per workspace; it returns the number of sessions
+// indexed so the sweep can report an aggregate. Only non-active sessions are
+// indexed — an active session is still being recorded, so its projection would
+// be incomplete.
+//
+// A closed session is terminal: its command rows and recording blob no longer
+// change, so a once-indexed session never needs re-indexing and the discovery
+// query intentionally selects only never-indexed sessions (id NOT IN the
+// recording rows). A targeted re-index after a manual correction is still
+// possible via IndexSession (idempotent upsert); the sweep just does not seek
+// such rows out.
 func (s *Service) IndexClosedSessions(ctx context.Context, workspaceID uuid.UUID, limit int) (int, error) {
 	if workspaceID == uuid.Nil {
 		return 0, fmt.Errorf("%w: workspace id is required", ErrValidation)
