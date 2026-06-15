@@ -144,6 +144,11 @@ func ExtractKeystrokeText(frames []ReplayFrame, maxLen int) string {
 			case c == '\r' || c == '\n':
 				flush()
 				i++
+				// Coalesce a CRLF (or LFCR) pair into a single line break so a
+				// terminal's "\r\n" does not emit a blank line in the indexed text.
+				if i < len(p) && (p[i] == '\r' || p[i] == '\n') && p[i] != c {
+					i++
+				}
 				continue
 			case c == '\t':
 				line = append(line, ' ')

@@ -203,8 +203,11 @@ func (h *recordingsHandlers) fail(c *gin.Context, err error) {
 	case errors.Is(err, recordings.ErrBlobUnavailable):
 		// The metadata + timeline are still available; only the byte-level
 		// replay is gone (tiered out or no reader). 409 tells the player to show
-		// the "blob expired" state rather than treating it as a hard error.
-		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
+		// the "blob expired" state rather than treating it as a hard error. Use a
+		// fixed message rather than err.Error(): the wrapped cause can carry the
+		// backend's file path / S3 key, which must not be echoed to a client even
+		// an authenticated one (parity with the generic 500 below).
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "recording replay is unavailable"})
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 	}

@@ -214,6 +214,13 @@ func TestExtractKeystrokeText(t *testing.T) {
 			},
 			want: "a b",
 		},
+		{
+			name: "CRLF coalesces into a single line break",
+			frames: []ReplayFrame{
+				{Direction: "input", Payload: []byte("echo hi\r\nls\r\n")},
+			},
+			want: "echo hi\nls",
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
