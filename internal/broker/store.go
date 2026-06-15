@@ -153,12 +153,24 @@ func (s *GormStore) OnRegister(ctx context.Context, workspaceID, agentID uuid.UU
 	})
 }
 
-// OnHeartbeat refreshes last-seen and keeps the agent marked online.
+// OnHeartbeat refreshes last-seen and keeps the agent marked online. When no row
+// matches — the agent was revoked (or deleted) out from under its live tunnel —
+// it returns ErrAgentUnavailable so the relay tears the tunnel down on the next
+// heartbeat, bounding how long a revoked agent's existing sessions can outlive
+// the revoke without any cross-process signalling between ztna-api and the
+// pam-gateway relay (they share only the database).
 func (s *GormStore) OnHeartbeat(ctx context.Context, workspaceID, agentID uuid.UUID) error {
 	now := s.now()
-	return s.db.WithContext(ctx).Model(&models.TargetAgent{}).
+	res := s.db.WithContext(ctx).Model(&models.TargetAgent{}).
 		Where("id = ? AND workspace_id = ? AND status <> ?", agentID, workspaceID, models.AgentStatusRevoked).
-		Updates(map[string]any{"last_seen_at": now, "status": models.AgentStatusOnline, "updated_at": now}).Error
+		Updates(map[string]any{"last_seen_at": now, "status": models.AgentStatusOnline, "updated_at": now})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return ErrAgentUnavailable
+	}
+	return nil
 }
 
 // OnDisconnect marks the agent offline (unless it was revoked) and appends an

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -197,6 +198,14 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 			registered = true
 		case ControlTypeHeartbeat:
 			if err := r.store.OnHeartbeat(ctx, id.WorkspaceID, id.AgentID); err != nil {
+				if errors.Is(err, ErrAgentUnavailable) {
+					// The agent was revoked while connected: drop its tunnel now
+					// (returning runs the deferred deregister + session close), so
+					// any in-progress brokered sessions cannot outlive the revoke
+					// beyond a single heartbeat interval.
+					logger.Infof(ctx, "broker: dropping revoked agent tunnel workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
+					return
+				}
 				logger.Warnf(ctx, "broker: heartbeat agent=%s: %v", id.AgentID, err)
 			}
 		default:

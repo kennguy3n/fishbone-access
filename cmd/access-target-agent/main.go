@@ -271,21 +271,60 @@ func persistIdentity(dir string, id *identity, notAfter time.Time) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
-	// 0600: the key and certificate are sensitive.
-	if err := os.WriteFile(filepath.Join(dir, keyFile), id.keyPEM, 0o600); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(dir, certFile), id.certPEM, 0o600); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(dir, caFile), id.caPEM, 0o600); err != nil {
-		return err
-	}
 	m, err := json.MarshalIndent(meta{AgentID: id.agentID, RelayAddr: id.relayAddr, NotAfter: notAfter}, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, metaFile), m, 0o600)
+	// Each file is written atomically (temp + rename) and the key is written
+	// LAST. Rename is atomic on a POSIX filesystem and loadIdentity keys off the
+	// key file's presence, so a crash mid-persist leaves either a complete,
+	// loadable identity or no key at all (a clean re-enroll on next boot) — never
+	// the half-written state that would otherwise wedge the agent until an
+	// operator manually clears the state directory. 0600: key/cert are sensitive.
+	writes := []struct {
+		name string
+		data []byte
+	}{
+		{certFile, id.certPEM},
+		{caFile, id.caPEM},
+		{metaFile, m},
+		{keyFile, id.keyPEM},
+	}
+	for _, w := range writes {
+		if err := atomicWriteFile(filepath.Join(dir, w.name), w.data, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// atomicWriteFile writes data to a temp file in the same directory, fsyncs it,
+// and renames it into place, so a reader never observes a partial file and a
+// crash leaves the prior contents (or nothing) rather than a truncated one.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	// Best-effort cleanup if we fail before the rename; a no-op once renamed.
+	defer func() { _ = os.Remove(tmpName) }()
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 func parseReachable(csv string) []broker.ReachableSpec {

@@ -323,6 +323,25 @@ func TestRevokedAgentCannotBroker(t *testing.T) {
 	}
 }
 
+// TestRevokeDropsLiveTunnel proves a revoke does not merely fail NEW dials but
+// proactively tears down the revoked agent's already-established tunnel: the
+// next heartbeat finds no live row and the relay drops the connection, so any
+// in-progress brokered sessions cannot outlive the revoke beyond one heartbeat.
+func TestRevokeDropsLiveTunnel(t *testing.T) {
+	upstream, stop := echoServer(t)
+	defer stop()
+	host, _, _ := net.SplitHostPort(upstream)
+	ctx, st := setupStack(t, []ReachableSpec{{Pattern: host + "/32", Kind: models.AgentReachKindCIDR}})
+
+	// The agent is online with a live tunnel; revoke it out from under the relay.
+	if err := st.enroll.Revoke(ctx, st.workspace, st.agentID, "admin"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	// The relay must observe the revoke on the next heartbeat and deregister the
+	// tunnel (the harness heartbeats every 200ms).
+	waitOnline(t, st.relay, st.workspace, st.agentID, false)
+}
+
 // TestBindTargetRejectsUnbrokerableProtocol fails closed when a target's
 // protocol has no dialer-wired proxy, so binding can never silently bypass the
 // tunnel by dialing the upstream directly.
