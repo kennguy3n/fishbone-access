@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +13,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/ratelimit"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 )
 
@@ -63,7 +66,13 @@ func registerAgentEnrollment(r *gin.Engine, enroll *broker.EnrollmentService) {
 	if enroll == nil {
 		return
 	}
-	r.POST("/api/v1/agents/enroll", func(c *gin.Context) {
+	// The endpoint is public (no tenant session to key the per-tenant limiter
+	// on), so guard it with a small per-client-IP token bucket. Brute force is
+	// already infeasible (256-bit secrets, stored hashed), but this caps the
+	// anonymous request volume so the per-request DB lookup can't be used for
+	// resource exhaustion. In-memory and fail-open, matching the house limiter.
+	ipLimiter := ratelimit.New(ratelimit.Config{RPS: 5, Burst: 20})
+	r.POST("/api/v1/agents/enroll", enrollIPThrottle(ipLimiter), func(c *gin.Context) {
 		var body broker.EnrollHTTPRequest
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -94,6 +103,32 @@ func registerAgentEnrollment(r *gin.Engine, enroll *broker.EnrollmentService) {
 			NotAfter:   res.NotAfter,
 		})
 	})
+}
+
+// ipThrottler is the slice of a rate limiter the enrollment throttle needs.
+type ipThrottler interface {
+	Allow(key string) (bool, time.Duration)
+}
+
+// enrollIPThrottle caps the public enrollment endpoint per client IP. It fails
+// open (nil limiter admits) and advertises Retry-After on a throttle, mirroring
+// the authenticated rate-limit middleware's posture.
+func enrollIPThrottle(limiter ipThrottler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if limiter == nil {
+			c.Next()
+			return
+		}
+		ok, retry := limiter.Allow(c.ClientIP())
+		if ok {
+			c.Next()
+			return
+		}
+		if secs := int(math.Ceil(retry.Seconds())); secs > 0 {
+			c.Header("Retry-After", strconv.Itoa(secs))
+		}
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many enrollment attempts; retry later"})
+	}
 }
 
 // --- reads ---

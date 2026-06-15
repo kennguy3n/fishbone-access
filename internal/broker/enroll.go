@@ -31,6 +31,11 @@ const (
 	// stays redeemable. Short by design: an enrollment secret should be used
 	// within minutes of an operator generating it, not days later.
 	defaultEnrollTokenTTL = 15 * time.Minute
+	// maxEnrollTokenTTL is the hard server-side ceiling on a token lifetime. A
+	// caller-supplied TTL is clamped to this so an operator can never mint a
+	// long-lived (effectively non-expiring) enrollment secret that would defeat
+	// the one-shot, short-lived posture, regardless of the requested value.
+	maxEnrollTokenTTL = 1 * time.Hour
 	// enrollTokenBytes is the entropy of an enrollment token before base64url.
 	enrollTokenBytes = 32
 )
@@ -101,6 +106,9 @@ func (s *EnrollmentService) MintToken(ctx context.Context, in MintTokenInput) (s
 	ttl := s.tokenTTL
 	if in.TTL > 0 {
 		ttl = in.TTL
+	}
+	if ttl > maxEnrollTokenTTL {
+		ttl = maxEnrollTokenTTL
 	}
 	now := s.now()
 	row := &models.AgentEnrollmentToken{

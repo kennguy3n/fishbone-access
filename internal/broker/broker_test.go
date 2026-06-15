@@ -218,6 +218,29 @@ func TestEnrollRejectsExpiredToken(t *testing.T) {
 	}
 }
 
+// TestMintTokenClampsTTL proves a caller cannot mint an effectively
+// non-expiring enrollment token: an oversized requested TTL is clamped to the
+// server-side ceiling regardless of the requested value.
+func TestMintTokenClampsTTL(t *testing.T) {
+	ctx := context.Background()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	ca, _ := NewEphemeralCA()
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	enroll := NewEnrollmentService(db, ca, "relay:7443")
+	enroll.SetClock(func() time.Time { return now })
+
+	_, tok, err := enroll.MintToken(ctx, MintTokenInput{
+		WorkspaceID: ws, Name: "a", Actor: "admin", TTL: 365 * 24 * time.Hour, // ~1 year
+	})
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	if got := tok.ExpiresAt.Sub(now); got != maxEnrollTokenTTL {
+		t.Fatalf("ttl clamped to %v, want server ceiling %v", got, maxEnrollTokenTTL)
+	}
+}
+
 func TestDialThroughAgentEndToEnd(t *testing.T) {
 	upstream, stop := echoServer(t)
 	defer stop()

@@ -3,9 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/broker"
@@ -13,8 +15,31 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/ratelimit"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// TestEnrollIPThrottle proves the public enrollment endpoint is rate-limited per
+// client IP: a second request from the same IP after the bucket is spent is
+// rejected with 429 rather than hitting the handler (resource-exhaustion guard).
+func TestEnrollIPThrottle(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/x", enrollIPThrottle(ratelimit.New(ratelimit.Config{RPS: 1, Burst: 1})), func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	first := httptest.NewRecorder()
+	r.ServeHTTP(first, httptest.NewRequest(http.MethodPost, "/x", nil))
+	if first.Code != http.StatusOK {
+		t.Fatalf("first request: want 200, got %d", first.Code)
+	}
+	second := httptest.NewRecorder()
+	r.ServeHTTP(second, httptest.NewRequest(http.MethodPost, "/x", nil))
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("second request from same IP: want 429, got %d", second.Code)
+	}
+}
 
 // agentTestDeps builds router-ready Deps with two tenants and a wired agent
 // enrollment service backed by an ephemeral CA, so the full enroll → list →
