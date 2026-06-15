@@ -66,6 +66,19 @@ func TestBrokerDialerFailsClosedWithoutRelay(t *testing.T) {
 	}
 }
 
+// TestResolveDialerDefaultFailsClosedForViaAgent proves the default dialer a
+// proxy falls back to (no dialer injected, e.g. pam-gateway with no relay
+// configured) still fails closed for a via-agent target rather than silently
+// dialing it directly around the tunnel.
+func TestResolveDialerDefaultFailsClosedForViaAgent(t *testing.T) {
+	d := resolveDialer(nil, time.Second)
+	agent := uuid.New()
+	target := &models.PAMTarget{WorkspaceID: uuid.New(), Address: "10.9.9.9:5432", ViaAgentID: &agent}
+	if _, err := d.DialTarget(context.Background(), target); err == nil {
+		t.Fatal("default dialer dialed a via-agent target directly; want fail closed")
+	}
+}
+
 // TestBrokerDialerDialsDirectWhenUnbound proves an unbound target bypasses the
 // relay entirely and dials its address directly.
 func TestBrokerDialerDialsDirectWhenUnbound(t *testing.T) {

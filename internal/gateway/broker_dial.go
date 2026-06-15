@@ -95,11 +95,16 @@ func (b brokerDialer) DialTarget(ctx context.Context, target *models.PAMTarget) 
 	return conn, nil
 }
 
-// resolveDialer returns the configured dialer or a direct one as the default,
-// so a proxy constructed without a dialer behaves exactly as before.
+// resolveDialer returns the configured dialer, or a relay-less broker dialer as
+// the default. The default still dials unbound targets directly (unchanged
+// behaviour) but fails closed for a target bound to an agent (ViaAgentID != nil)
+// instead of silently dialing it directly: a proxy constructed without a dialer
+// — or a pam-gateway with no relay configured — must never reach a via-agent
+// target around its tunnel, so the operator's "only via the agent" decision
+// holds even when the relay is absent.
 func resolveDialer(d TargetDialer, timeout time.Duration) TargetDialer {
 	if d != nil {
 		return d
 	}
-	return NewDirectDialer(timeout)
+	return NewBrokerDialer(nil, timeout)
 }

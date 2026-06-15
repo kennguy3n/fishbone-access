@@ -222,11 +222,13 @@ func (p *SSHProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) 
 		return nil, errors.New("gateway: no usable upstream auth method")
 	}
 
+	// ClientConfig.Timeout is intentionally unset: it only bounds ssh.Dial's TCP
+	// dial, which we no longer use. The dial timeout is enforced by the dialer
+	// seam, and the handshake timeout by the explicit SetDeadline below.
 	clientCfg := &ssh.ClientConfig{
 		User:            user,
 		Auth:            auths,
 		HostKeyCallback: hostKeyCallback(target),
-		Timeout:         p.dialTimeout,
 	}
 	// Obtain the raw transport via the dialer seam (direct or brokered through
 	// an agent tunnel) and run the SSH handshake over it, instead of ssh.Dial
