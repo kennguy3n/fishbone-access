@@ -271,13 +271,20 @@ func (h *rotationHandlers) mintDynamic(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	// The lease must be live and bound to this actor + target before we mint a
-	// credential against it — reuse the same guard the connect-token broker uses.
-	if h.leases != nil {
-		if err := h.leases.ValidateActiveLease(ctx, ws, body.LeaseID, actor(c), id); err != nil {
-			h.fail(c, err)
-			return
-		}
+	// Minting an ephemeral DB credential is privilege-sensitive, so this gate is
+	// fail-CLOSED: the lease must be live and bound to this actor + target before
+	// we mint against it (the same guard the connect-token broker uses). If the
+	// lease validator is somehow unwired we refuse rather than mint blind —
+	// unlike the availability subsystems (metering/billing/hibernation) which
+	// fail open, a security control must never silently skip validation.
+	if h.leases == nil {
+		logger.Errorf(ctx, "rotation: mintDynamic called without a lease validator; refusing to mint")
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "lease validation unavailable"})
+		return
+	}
+	if err := h.leases.ValidateActiveLease(ctx, ws, body.LeaseID, actor(c), id); err != nil {
+		h.fail(c, err)
+		return
 	}
 	cred, err := h.dynamic.MintForLease(ctx, ws, id, body.LeaseID, actor(c))
 	if err != nil {
