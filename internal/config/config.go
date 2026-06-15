@@ -151,6 +151,14 @@ type Config struct {
 	// bill).
 	Billing BillingConfig
 
+	// WebAccess holds the clientless browser-access bridge settings: the
+	// in-browser web-SSH terminal and the web database console served over a
+	// WebSocket on ztna-api. It reuses the PAM gateway's leasing,
+	// command-policy, recording, and audit machinery; these knobs only tune the
+	// bridge's resource envelope (idle timeout, recording cap, upstream dial
+	// timeout) so it stays cheap and safe-by-default across the dormant fleet.
+	WebAccess WebAccessConfig
+
 	// IAMCore holds the iam-core identity-provider integration settings.
 	IAMCore IAMCoreConfig
 
@@ -340,6 +348,43 @@ type BillingConfig struct {
 	CacheTTL time.Duration
 }
 
+// WebAccessConfig tunes the clientless browser-access bridge (web SSH terminal
+// and web database console). The feature is safe-by-default and fail-open at
+// the resource layer: when disabled the WebSocket routes are not mounted at all
+// (the native gateway path is unaffected), and every governance control
+// (lease validation, command policy, recording, audit, admin takeover) is
+// inherited from the shared PAM services rather than re-implemented here, so a
+// browser session can never be less governed than a native one.
+type WebAccessConfig struct {
+	// Enabled gates whether the WebSocket bridge routes are mounted. It
+	// defaults to TRUE so the headline SME feature is available out of the box;
+	// an operator can disable it (ACCESS_WEBACCESS_ENABLED=false) to remove the
+	// browser entry-point entirely while keeping the native gateway listeners.
+	Enabled bool
+	// IdleTimeout severs a browser session that has exchanged no bytes in
+	// either direction for this long, so an abandoned tab does not hold an
+	// upstream connection (and its lease window) open indefinitely. Read from
+	// ACCESS_WEBACCESS_IDLE_TIMEOUT; defaults to 15m. Non-positive disables the
+	// idle sweep (the lease expiry still bounds the session).
+	IdleTimeout time.Duration
+	// DialTimeout bounds the upstream connect (SSH handshake / DB connect) the
+	// bridge performs after redeeming the connect token. Read from
+	// ACCESS_WEBACCESS_DIAL_TIMEOUT; defaults to 15s, matching the gateway
+	// proxies. Non-positive falls back to that default.
+	DialTimeout time.Duration
+	// RecMaxBytes caps the per-session recording size (framed transcript) the
+	// bridge buffers before truncating, identical in meaning to the gateway's
+	// PAM_REPLAY_MAX_BYTES. Read from ACCESS_WEBACCESS_REC_MAX_BYTES; defaults
+	// to 8 MiB. Non-positive disables the cap (unbounded recording).
+	RecMaxBytes int
+	// MaxResultRows caps how many rows the web database console returns for a
+	// single query, so a `SELECT *` against a huge table cannot exhaust the
+	// API replica's memory or flood the browser. Read from
+	// ACCESS_WEBACCESS_MAX_RESULT_ROWS; defaults to 1000. Non-positive falls
+	// back to that default (the cap is a safety rail, never off).
+	MaxResultRows int
+}
+
 // DevAuthConfig configures the non-production shared-secret token validator.
 type DevAuthConfig struct {
 	// Secret is the HMAC-SHA256 signing secret (AUTH_JWT_SECRET). When empty
@@ -474,6 +519,13 @@ func Load() Config {
 			Enabled:        getBool("ACCESS_BILLING_ENABLED", false),
 			EnforceHardCap: getBool("ACCESS_BILLING_ENFORCE_HARD_CAP", false),
 			CacheTTL:       getDuration("ACCESS_BILLING_CACHE_TTL", 30*time.Second),
+		},
+		WebAccess: WebAccessConfig{
+			Enabled:       getBool("ACCESS_WEBACCESS_ENABLED", true),
+			IdleTimeout:   getDuration("ACCESS_WEBACCESS_IDLE_TIMEOUT", 15*time.Minute),
+			DialTimeout:   getDuration("ACCESS_WEBACCESS_DIAL_TIMEOUT", 15*time.Second),
+			RecMaxBytes:   getInt("ACCESS_WEBACCESS_REC_MAX_BYTES", 8*1024*1024),
+			MaxResultRows: getInt("ACCESS_WEBACCESS_MAX_RESULT_ROWS", 1000),
 		},
 		IAMCore: IAMCoreConfig{
 			Issuer:            os.Getenv("IAM_CORE_ISSUER"),

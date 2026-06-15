@@ -90,6 +90,14 @@ func run() error {
 	ready := &atomic.Bool{}
 
 	var deps handlers.Deps
+	// Clientless browser-access bridge (web SSH terminal + web database
+	// console). Enabled by default; reuses the same PAM leasing/policy/
+	// recording/audit machinery as the native gateway. Mounted in NewRouter
+	// only when a validator + workspace resolver + DB are present.
+	deps.WebAccess = cfg.WebAccess
+	// Bind the bridge's background SessionReconciler to the signal-cancelled
+	// root context so it shuts down with every other background loop.
+	deps.WebAccessContext = ctx
 	// API-initiated "rotate now" / ephemeral-credential mints dial upstreams
 	// with the SAME timeout the scheduled sweep uses in access-workflow-engine,
 	// so an operator who raises ACCESS_ROTATION_DIAL_TIMEOUT for slow upstreams

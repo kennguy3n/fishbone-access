@@ -8,6 +8,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
@@ -134,6 +136,19 @@ type Deps struct {
 	// assign its plan. It derives statements from the SAME usage rollup the meter
 	// writes. nil leaves the routes unmounted (tests/degraded boots).
 	BillingReader billingService
+	// WebAccess configures the clientless browser-access bridge (web SSH
+	// terminal + web database console). When WebAccess.Enabled is false the
+	// WebSocket routes are not mounted (the zero value disables the feature, so
+	// a bare-Deps test router does not expose it). Wired from cfg.WebAccess in
+	// cmd/ztna-api/main.go.
+	WebAccess config.WebAccessConfig
+	// WebAccessContext is the process-lifetime context (the signal-cancelled
+	// root context in cmd/ztna-api/main.go). The web-access bridge binds its
+	// background SessionReconciler to it so that, like every other background
+	// loop, the goroutine is cancelled on shutdown rather than leaked. nil
+	// falls back to context.Background() (tests/degraded boots), preserving the
+	// previous behaviour.
+	WebAccessContext context.Context
 	// RotationDialTimeout bounds every upstream connection an API-initiated
 	// rotation or ephemeral-credential mint makes. main sets it from
 	// cfg.Rotation.DialTimeout (ACCESS_ROTATION_DIAL_TIMEOUT) so "rotate now"
@@ -281,6 +296,16 @@ func NewRouter(deps Deps) *gin.Engine {
 		}
 		if deps.BillingReader != nil {
 			newBillingHandlers(deps.BillingReader).register(scoped)
+		}
+		// Clientless browser access (web SSH terminal + web database console).
+		// Its WebSocket handshake cannot pass the Auth + RequireTenant
+		// middleware (a browser WebSocket carries no Authorization /
+		// X-Tenant-ID header), so the routes mount on the ROOT engine and
+		// authenticate the handshake themselves; they still resolve the
+		// workspace and reuse the same PAM leasing/policy/recording/audit
+		// machinery as the native gateway.
+		if deps.WebAccess.Enabled {
+			newWebAccessHandlers(deps, resolver).register(r)
 		}
 	}
 
