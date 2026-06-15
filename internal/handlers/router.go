@@ -10,6 +10,7 @@ package handlers
 import (
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -143,6 +144,12 @@ type Deps struct {
 	// through. nil falls back to the per-handler env builder (plaintext), so the
 	// pre-feature behaviour and the SQLite/degraded boots are unchanged.
 	ReplayReader gateway.ReplayReader
+	// RotationDialTimeout bounds every upstream connection an API-initiated
+	// rotation or ephemeral-credential mint makes. main sets it from
+	// cfg.Rotation.DialTimeout (ACCESS_ROTATION_DIAL_TIMEOUT) so "rotate now"
+	// honours the SAME timeout as the scheduled sweep in access-workflow-engine;
+	// a zero value falls back to the 10s default inside newRotationHandlers.
+	RotationDialTimeout time.Duration
 }
 
 // NewRouter builds the Gin engine.
@@ -269,11 +276,18 @@ func NewRouter(deps Deps) *gin.Engine {
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
-		newPAMHandlers(deps).register(scoped)
+		pamH := newPAMHandlers(deps)
+		pamH.register(scoped)
 		// Session D: searchable session-recording forensic store (full-text
 		// search, replay player frame stream, retention policy). Additive — one
 		// constructor + register, mounted on the same tenant-scoped group.
 		newRecordingsHandlers(deps).register(scoped)
+		// Credential rotation reuses the PAM vault + lease service so it
+		// re-seals with the same per-workspace key path and validates leases
+		// against the same state machine (Session C).
+		if rh := newRotationHandlers(deps, pamH.vault, pamH.leases); rh != nil {
+			rh.register(scoped)
+		}
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {

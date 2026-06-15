@@ -1343,6 +1343,185 @@ export function useTerminatePamSession(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Credential rotation — per-target rotation policy, history, "rotate now", and
+// ephemeral DB credentials (mirror internal/handlers/rotation.go +
+// internal/services/pam rotation_*.go).
+// ---------------------------------------------------------------------------
+
+/** Interval rotation mode. "disabled" still allows on-checkin / dynamic creds. */
+export type RotationMode = "disabled" | "interval";
+export type RotationTrigger = "manual" | "scheduled" | "checkin";
+export type RotationStatus = "success" | "failed";
+export type DynamicCredentialState =
+  | "active"
+  | "revoked"
+  | "expired"
+  | "failed";
+
+/** Smallest interval the server accepts for interval rotation (1 hour). */
+export const MIN_ROTATION_INTERVAL_SECONDS = 3600;
+
+export interface RotationPolicy {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  mode: RotationMode;
+  interval_seconds: number;
+  rotate_on_checkin: boolean;
+  dynamic_enabled: boolean;
+  dynamic_ttl_seconds: number;
+  enabled: boolean;
+  last_rotation_at?: string | null;
+  next_rotation_at?: string | null;
+  last_status?: RotationStatus | "";
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RotationEvent {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  policy_id?: string | null;
+  trigger: RotationTrigger;
+  status: RotationStatus;
+  protocol?: string;
+  actor?: string;
+  lease_id?: string | null;
+  key_version: number;
+  detail?: string;
+  error?: string;
+  created_at: string;
+}
+
+export interface DynamicCredential {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  lease_id?: string | null;
+  protocol: string;
+  db_username: string;
+  state: DynamicCredentialState;
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Per-target rotation view: policy + recent history + live ephemeral creds. */
+export interface RotationStatusView {
+  target_id: string;
+  protocol: string;
+  rotatable: boolean;
+  policy: RotationPolicy | null;
+  events: RotationEvent[];
+  dynamic_credentials: DynamicCredential[];
+}
+
+export interface RotationPolicyInput {
+  mode: RotationMode;
+  interval_seconds: number;
+  rotate_on_checkin: boolean;
+  dynamic_enabled: boolean;
+  dynamic_ttl_seconds: number;
+  enabled: boolean;
+}
+
+export const listRotationPolicies = () =>
+  call<{ policies: RotationPolicy[] }>({
+    url: "/pam/rotation/policies",
+    method: "GET",
+  }).then((r) => r.policies ?? []);
+
+export const getRotationStatus = (targetId: string) =>
+  call<RotationStatusView>({
+    url: `/pam/targets/${targetId}/rotation`,
+    method: "GET",
+  });
+
+export const listRotationEvents = (targetId: string) =>
+  call<{ events: RotationEvent[] }>({
+    url: `/pam/targets/${targetId}/rotation/events`,
+    method: "GET",
+  }).then((r) => r.events ?? []);
+
+export const upsertRotationPolicy = (
+  targetId: string,
+  body: RotationPolicyInput,
+) =>
+  call<RotationPolicy>({
+    url: `/pam/targets/${targetId}/rotation`,
+    method: "PUT",
+    data: body,
+  });
+
+export const deleteRotationPolicy = (targetId: string) =>
+  call<void>({ url: `/pam/targets/${targetId}/rotation`, method: "DELETE" });
+
+export const rotateTargetNow = (targetId: string) =>
+  call<RotationEvent>({
+    url: `/pam/targets/${targetId}/rotate`,
+    method: "POST",
+  });
+
+export const rotationQk = {
+  policies: ["rotation-policies"] as const,
+  status: (id: string) => ["rotation-status", id] as const,
+  events: (id: string) => ["rotation-events", id] as const,
+};
+
+export function useRotationPolicies() {
+  return useQuery<RotationPolicy[], ApiError>({
+    queryKey: rotationQk.policies,
+    queryFn: listRotationPolicies,
+  });
+}
+
+export function useRotationStatus(
+  targetId: string | undefined,
+  options?: Partial<UseQueryOptions<RotationStatusView, ApiError>>,
+) {
+  return useQuery<RotationStatusView, ApiError>({
+    queryKey: rotationQk.status(targetId ?? ""),
+    queryFn: () => getRotationStatus(targetId as string),
+    enabled: !!targetId,
+    ...options,
+  });
+}
+
+export function useRotationEvents(
+  targetId: string | undefined,
+  options?: Partial<UseQueryOptions<RotationEvent[], ApiError>>,
+) {
+  return useQuery<RotationEvent[], ApiError>({
+    queryKey: rotationQk.events(targetId ?? ""),
+    queryFn: () => listRotationEvents(targetId as string),
+    enabled: !!targetId,
+    ...options,
+  });
+}
+
+export function useUpsertRotationPolicy(targetId: string) {
+  return useMutation<RotationPolicy, ApiError, RotationPolicyInput>({
+    mutationFn: (body) => upsertRotationPolicy(targetId, body),
+  });
+}
+
+export function useDeleteRotationPolicy(targetId: string) {
+  return useMutation<void, ApiError, void>({
+    mutationFn: () => deleteRotationPolicy(targetId),
+  });
+}
+
+export function useRotateTargetNow(targetId: string) {
+  return useMutation<RotationEvent, ApiError, void>({
+    mutationFn: () => rotateTargetNow(targetId),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Compliance — evidence stream, certification campaigns, evidence-pack export
 // (mirror internal/services/compliance + internal/handlers/compliance.go)
 // ---------------------------------------------------------------------------

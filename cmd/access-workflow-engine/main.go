@@ -35,6 +35,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
+	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 	"github.com/kennguy3n/fishbone-access/internal/services/workflow"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
@@ -234,6 +235,32 @@ func run() error {
 		return err
 	}
 
+	// Credential-rotation sweep (Session C). It rotates due target credentials
+	// (interval + rotate-on-checkin) and reaps expired ephemeral DB credentials,
+	// re-sealing through the same PAM vault / per-workspace DEK path the API
+	// uses (connEnc). The sweep is set-based and hibernation-gated, so dormant
+	// tenants cost nothing; on-demand "rotate now" goes through the API and is
+	// never gated here. Disabled cleanly when ACCESS_ROTATION_ENABLED=false.
+	var rotationScheduler *pam.RotationScheduler
+	if cfg.Rotation.Enabled {
+		rotVault := pam.NewVault(gdb, connEnc, nil)
+		rotRegistry := pam.NewExecutorRegistry(cfg.Rotation.DialTimeout)
+		rotEngine := pam.NewRotationEngine(gdb, rotVault, rotRegistry)
+		rotReaper := pam.NewDynamicCredentialService(gdb, rotVault, cfg.Rotation.DialTimeout)
+		rotationScheduler, err = pam.NewRotationScheduler(gdb, rotEngine, pam.RotationSchedulerConfig{
+			Interval: cfg.Rotation.SweepInterval,
+		})
+		if err != nil {
+			return err
+		}
+		rotationScheduler.
+			WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("rotation_sweep") }).
+			WithReaper(rotReaper)
+		logger.Infof(ctx, "access-workflow-engine: credential rotation sweep enabled (interval=%s)", cfg.Rotation.SweepInterval)
+	} else {
+		logger.Infof(ctx, "access-workflow-engine: credential rotation sweep DISABLED (ACCESS_ROTATION_ENABLED=false)")
+	}
+
 	w := workers.New(queue, processor, workers.Config{})
 
 	logger.Infof(ctx, "access-workflow-engine: ready; draining workflow jobs + scheduling reviews")
@@ -252,6 +279,16 @@ func run() error {
 			defer wg.Done()
 			if rerr := recordingSweeper.Run(ctx); rerr != nil && !errors.Is(rerr, context.Canceled) {
 				logger.Errorf(context.Background(), "access-workflow-engine: recordings sweep exited: %v", rerr)
+			}
+		}()
+	}
+
+	if rotationScheduler != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if rerr := rotationScheduler.Run(ctx); rerr != nil && !errors.Is(rerr, context.Canceled) {
+				logger.Errorf(context.Background(), "access-workflow-engine: rotation scheduler exited: %v", rerr)
 			}
 		}()
 	}

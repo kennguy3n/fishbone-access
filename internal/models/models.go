@@ -431,5 +431,9 @@ func All() []any {
 		// Searchable session-recording forensic index + retention policy.
 		&SessionRecording{},
 		&RecordingRetentionPolicy{},
+		// Credential rotation (Session C).
+		&RotationPolicy{},
+		&RotationEvent{},
+		&DynamicCredential{},
 	}
 }
