@@ -658,13 +658,19 @@ func quoteSQLLiteral(s string) string {
 // escape character inside string literals; a literal backslash must therefore
 // be doubled in addition to the single quote (otherwise a value ending in `\`
 // would escape the closing quote and produce malformed SQL). The backslash must
-// be escaped first so the backslashes introduced by quote-doubling are not
-// themselves doubled. Generated passwords use a quote/backslash-free alphabet,
-// so this matters in practice only for an operator-set admin password on the
-// rollback / Restore path.
+// be escaped first so the backslashes introduced by the other rules are not
+// themselves doubled. A raw NUL byte is escaped as `\0` last (its leading
+// backslash is a genuine escape we must not re-double) because an embedded NUL
+// can otherwise truncate the statement in the wire protocol. Other C-style
+// escapes (\n, \r, \t, \Z) need no special handling: a literal newline/tab byte
+// is valid inside a quoted string, and any backslash that precedes such a letter
+// has already been doubled into a literal backslash. Generated passwords use a
+// quote/backslash/NUL-free alphabet, so this matters in practice only for an
+// operator-set admin password on the rollback / Restore path.
 func mysqlQuoteLiteral(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "'", "''")
+	s = strings.ReplaceAll(s, "\x00", "\\0")
 	return "'" + s + "'"
 }
 

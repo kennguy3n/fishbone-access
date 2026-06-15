@@ -704,11 +704,13 @@ func TestSQLLiteralQuoting(t *testing.T) {
 	// ending in a backslash is the case the rollback/Restore path must survive:
 	// it must not escape the closing quote.
 	mysqlCases := map[string]string{
-		`abc`:   `'abc'`,
-		`a'b`:   `'a''b'`,
-		`a\b`:   `'a\\b'`,
-		`back\`: `'back\\'`,
-		`a\'b`:  `'a\\''b'`,
+		`abc`:     `'abc'`,
+		`a'b`:     `'a''b'`,
+		`a\b`:     `'a\\b'`,
+		`back\`:   `'back\\'`,
+		`a\'b`:    `'a\\''b'`,
+		"a\x00b":  `'a\0b'`,  // raw NUL escaped as \0
+		"a\\\x00": `'a\\\0'`, // trailing backslash then NUL: backslash doubled, NUL -> \0
 	}
 	for in, want := range mysqlCases {
 		if got := mysqlQuoteLiteral(in); got != want {
