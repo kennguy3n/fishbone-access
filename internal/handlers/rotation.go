@@ -152,7 +152,12 @@ type upsertPolicyBody struct {
 	RotateOnCheckin   bool   `json:"rotate_on_checkin"`
 	DynamicEnabled    bool   `json:"dynamic_enabled"`
 	DynamicTTLSeconds int64  `json:"dynamic_ttl_seconds"`
-	Enabled           bool   `json:"enabled"`
+	// Enabled is a pointer so we can tell "omitted" apart from an explicit
+	// false. Setting a rotation policy implies the operator wants it active, so
+	// an omitted value defaults to true — otherwise an API consumer (script,
+	// terraform) that posts only {mode, interval_seconds} would silently create
+	// a disabled policy. The console always sends this field explicitly.
+	Enabled *bool `json:"enabled"`
 }
 
 func (h *rotationHandlers) upsertPolicy(c *gin.Context) {
@@ -169,13 +174,17 @@ func (h *rotationHandlers) upsertPolicy(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	enabled := true
+	if body.Enabled != nil {
+		enabled = *body.Enabled
+	}
 	policy, err := h.policies.UpsertPolicy(c.Request.Context(), ws, id, pam.PolicyInput{
 		Mode:              body.Mode,
 		IntervalSeconds:   body.IntervalSeconds,
 		RotateOnCheckin:   body.RotateOnCheckin,
 		DynamicEnabled:    body.DynamicEnabled,
 		DynamicTTLSeconds: body.DynamicTTLSeconds,
-		Enabled:           body.Enabled,
+		Enabled:           enabled,
 	}, actor(c))
 	if err != nil {
 		h.fail(c, err)
