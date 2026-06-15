@@ -60,6 +60,12 @@ func (b *Bridge) runDB(ctx context.Context, cancel context.CancelFunc, conn wsCo
 		if json.Unmarshal(data, &msg) != nil {
 			continue
 		}
+		if msg.Type == msgPing {
+			// Heartbeat: echo the client timestamp for an RTT reading without
+			// touching the idle clock.
+			_ = sender.json(pongMessage{Type: msgPong, TS: msg.TS})
+			continue
+		}
 		if msg.Type != msgQuery {
 			continue
 		}

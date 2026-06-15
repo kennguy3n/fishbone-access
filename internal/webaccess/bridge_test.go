@@ -381,6 +381,33 @@ func TestServeSSHEndToEnd(t *testing.T) {
 	}
 }
 
+func TestServeSSHHeartbeat(t *testing.T) {
+	e := newTestEnv(t)
+	addr, cleanup := startEchoSSHServer(t)
+	defer cleanup()
+
+	target := e.createTarget(t, models.PAMProtocolSSH, addr, pam.Secret{Username: "ops", Password: "pw"})
+	token := e.mintToken(t, target.ID, "alice")
+
+	conn := newFakeConn()
+	conn.pushJSON(clientMessage{Type: msgHello, Token: token})
+	done := make(chan struct{})
+	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+
+	conn.waitFor(t, "ready frame", func(m map[string]any) bool { return m["type"] == msgReady })
+
+	// A heartbeat must be answered with a pong echoing the same timestamp, so
+	// the UI can derive a live round-trip latency reading.
+	conn.pushJSON(clientMessage{Type: msgPing, TS: 1234567})
+	pong := conn.waitFor(t, "pong frame", func(m map[string]any) bool { return m["type"] == msgPong })
+	if pong["ts"] != float64(1234567) {
+		t.Fatalf("pong echoed ts = %v, want 1234567", pong["ts"])
+	}
+
+	conn.Close()
+	<-done
+}
+
 func TestServeSSHPolicyDenyTearsDown(t *testing.T) {
 	e := newTestEnv(t)
 	e.seedDeny(t, "deny-all", []string{"*"}, []string{"cmd:*"})

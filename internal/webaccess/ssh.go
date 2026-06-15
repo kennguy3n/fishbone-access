@@ -179,6 +179,12 @@ func (b *Bridge) pumpSSHInput(ctx context.Context, cancel context.CancelFunc, co
 				if !b.forwardKeystrokes(rec, scanner, stdin, raw, activity) {
 					return
 				}
+			case msgPing:
+				// Heartbeat: echo the client timestamp for an RTT reading. It is
+				// deliberately not gated by the pause state and does not touch
+				// the idle clock (so a heartbeat cannot keep an idle session
+				// alive).
+				_ = sender.json(pongMessage{Type: msgPong, TS: msg.TS})
 			}
 		}
 		if ctx.Err() != nil {

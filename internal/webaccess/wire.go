@@ -36,6 +36,15 @@ const (
 	// msgStatus is a session lifecycle/state banner (paused, resumed, closed,
 	// terminated) so the UI can reflect admin takeover and teardown.
 	msgStatus = "status"
+	// msgPing is a client heartbeat carrying the client's monotonic timestamp;
+	// the server echoes it back unchanged in a msgPong so the UI can measure the
+	// live round-trip latency of the governed link. A ping deliberately does NOT
+	// refresh the idle clock, so a backgrounded tab's heartbeat cannot keep an
+	// abandoned session alive past its idle timeout.
+	msgPing = "ping"
+	// msgPong is the server's immediate reply to a msgPing, echoing the client
+	// timestamp so the browser computes RTT without a server clock dependency.
+	msgPong = "pong"
 )
 
 // clientMessage is the union of every control frame the browser sends. Only the
@@ -51,6 +60,16 @@ type clientMessage struct {
 	Data string `json:"data,omitempty"`
 	// SQL is the statement text for the database console (msgQuery).
 	SQL string `json:"sql,omitempty"`
+	// TS is the client's monotonic timestamp (ms) for a heartbeat (msgPing); the
+	// server echoes it back so the browser computes round-trip latency.
+	TS int64 `json:"ts,omitempty"`
+}
+
+// pongMessage echoes a heartbeat's client timestamp back so the UI can derive a
+// live latency reading for the governed link.
+type pongMessage struct {
+	Type string `json:"type"`
+	TS   int64  `json:"ts"`
 }
 
 // readyMessage describes the governed session to the UI once it is live.
