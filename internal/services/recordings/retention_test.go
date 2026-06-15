@@ -57,6 +57,20 @@ func TestRetentionPolicyCRUDAndEffectiveDays(t *testing.T) {
 	if _, err := svc.SetRetentionPolicy(context.Background(), ws, -1, "x"); err == nil {
 		t.Error("negative retention should be rejected")
 	}
+
+	// An absurd retention window (past the time.Duration overflow bound) is
+	// rejected on write so it can never reach the cutoff arithmetic.
+	if _, err := svc.SetRetentionPolicy(context.Background(), ws, MaxRetentionDays+1, "x"); err == nil {
+		t.Error("over-cap retention should be rejected")
+	}
+	if _, err := svc.SetRetentionPolicy(context.Background(), ws, MaxRetentionDays, "admin@acme.io"); err != nil {
+		t.Fatalf("at-cap retention should be accepted: %v", err)
+	}
+	// Defense in depth: a config default beyond the cap is clamped on read so the
+	// cutoff math cannot overflow regardless of the value's source.
+	if days, err := svc.EffectiveRetentionDays(context.Background(), uuid.New(), MaxRetentionDays*1000); err != nil || days != MaxRetentionDays {
+		t.Fatalf("effective default clamp = %d (err %v), want %d", days, err, MaxRetentionDays)
+	}
 }
 
 func TestPruneExpiredBlobsTiersAndPreservesAudit(t *testing.T) {

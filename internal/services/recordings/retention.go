@@ -30,6 +30,14 @@ const recordingPrunedAuditAction = "pam.session.recording.pruned"
 // attributes the tiering to the system retention job.
 const retentionPruneActor = "retention-sweep"
 
+// MaxRetentionDays caps a retention window at 100 years. This is a sanity bound,
+// not a product limit: the cutoff is computed as now - days*24h using a
+// time.Duration (int64 nanoseconds), which overflows past ~292 years and would
+// wrap to a FUTURE cutoff that matches — and prunes — every recording. Bounding
+// the value (rejected on write, clamped on read) removes that hazard on every
+// path while staying far above any real retention need.
+const MaxRetentionDays = 36500
+
 // GetRetentionPolicy returns the workspace's recording retention override and
 // whether one is set. When none is set the caller falls back to the
 // plan/global default (config). RetentionDays == 0 means "retain indefinitely".
@@ -61,6 +69,9 @@ func (s *Service) SetRetentionPolicy(ctx context.Context, workspaceID uuid.UUID,
 	if retentionDays < 0 {
 		return models.RecordingRetentionPolicy{}, fmt.Errorf("%w: retention days must be >= 0", ErrValidation)
 	}
+	if retentionDays > MaxRetentionDays {
+		return models.RecordingRetentionPolicy{}, fmt.Errorf("%w: retention days must be <= %d", ErrValidation, MaxRetentionDays)
+	}
 	now := s.now().UTC()
 	p := models.RecordingRetentionPolicy{
 		WorkspaceID:   workspaceID,
@@ -83,18 +94,30 @@ func (s *Service) SetRetentionPolicy(ctx context.Context, workspaceID uuid.UUID,
 // EffectiveRetentionDays resolves the retention window the sweep enforces for a
 // workspace: the per-workspace override when set, else the supplied
 // plan/global default. A result <= 0 means "retain indefinitely" (no pruning).
+// The result is clamped to MaxRetentionDays so an absurd config default can
+// never overflow the cutoff arithmetic, independent of the write-side cap.
 func (s *Service) EffectiveRetentionDays(ctx context.Context, workspaceID uuid.UUID, defaultDays int) (int, error) {
 	p, ok, err := s.GetRetentionPolicy(ctx, workspaceID)
 	if err != nil {
 		return 0, err
 	}
 	if ok {
-		return p.RetentionDays, nil
+		return clampRetentionDays(p.RetentionDays), nil
 	}
 	if defaultDays < 0 {
 		return 0, nil
 	}
-	return defaultDays, nil
+	return clampRetentionDays(defaultDays), nil
+}
+
+// clampRetentionDays bounds a retention window to MaxRetentionDays so the cutoff
+// math (now - days*24h) cannot overflow time.Duration regardless of the value's
+// source (persisted override or config default).
+func clampRetentionDays(days int) int {
+	if days > MaxRetentionDays {
+		return MaxRetentionDays
+	}
+	return days
 }
 
 // PruneExpiredBlobs tiers out the replay blobs of recordings in the workspace
