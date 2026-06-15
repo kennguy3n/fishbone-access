@@ -133,6 +133,11 @@ type Config struct {
 	// Postgres pool (and our bill) at the expense of the other tenants.
 	RateLimit RateLimitConfig
 
+	// Rotation tunes the credential-rotation sweep the workflow engine runs:
+	// how often it scans for due rotations and the actor it records. The sweep
+	// is set-based and hibernation-gated, so it stays cheap at 5k tenants.
+	Rotation RotationConfig
+
 	// UsageMetering accumulates per-tenant usage counts (API calls today) and
 	// flushes them to the tenant_usage rollup so cost-to-serve is attributable
 	// per tenant. It is the "who is using what" half of the cost story; the
@@ -205,6 +210,28 @@ type TenancyConfig struct {
 	// constrained tier) so an un-tiered tenant cannot consume an active
 	// tenant's share.
 	DefaultTier string
+}
+
+// RotationConfig tunes the credential-rotation sweep run inside the workflow
+// engine. It is safe-by-default: rotation only happens for targets an operator
+// has explicitly given a policy, so enabling the sweep cannot rotate anything
+// unexpectedly.
+type RotationConfig struct {
+	// Enabled gates the periodic sweep. When false the workflow engine does not
+	// start the rotation scheduler at all (on-demand "rotate now" via the API is
+	// unaffected — it is never gated). Read from ACCESS_ROTATION_ENABLED;
+	// defaults to true so a configured policy actually rotates.
+	Enabled bool
+	// SweepInterval is how often the scheduler scans for due rotations and reaps
+	// expired dynamic credentials. The scan is set-based (O(due rows)), so a
+	// short cadence stays cheap at 5k tenants; it should be short enough that
+	// rotate-on-checkin fires promptly after a lease ends. Read from
+	// ACCESS_ROTATION_SWEEP_INTERVAL; defaults to 60s (matches the lease sweep).
+	SweepInterval time.Duration
+	// DialTimeout bounds every upstream connection a rotation or ephemeral-cred
+	// mint/drop makes (SSH/Postgres/MySQL). Read from
+	// ACCESS_ROTATION_DIAL_TIMEOUT; defaults to 10s.
+	DialTimeout time.Duration
 }
 
 // RateLimitConfig tunes the per-tenant inbound request limiter. The limiter is
@@ -432,6 +459,11 @@ func Load() Config {
 			RequestsPerSecond: getFloat("ACCESS_TENANT_RATE_LIMIT_RPS", 50),
 			Burst:             getInt("ACCESS_TENANT_RATE_LIMIT_BURST", 100),
 			SharedStore:       getBool("ACCESS_TENANT_RATE_LIMIT_SHARED_STORE", false),
+		},
+		Rotation: RotationConfig{
+			Enabled:       getBool("ACCESS_ROTATION_ENABLED", true),
+			SweepInterval: getDuration("ACCESS_ROTATION_SWEEP_INTERVAL", 60*time.Second),
+			DialTimeout:   getDuration("ACCESS_ROTATION_DIAL_TIMEOUT", 10*time.Second),
 		},
 		UsageMetering: UsageMeteringConfig{
 			Enabled:       getBool("ACCESS_USAGE_METERING_ENABLED", true),

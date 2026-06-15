@@ -259,7 +259,14 @@ func NewRouter(deps Deps) *gin.Engine {
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
-		newPAMHandlers(deps).register(scoped)
+		pamH := newPAMHandlers(deps)
+		pamH.register(scoped)
+		// Credential rotation reuses the PAM vault + lease service so it
+		// re-seals with the same per-workspace key path and validates leases
+		// against the same state machine (Session C).
+		if rh := newRotationHandlers(deps, pamH.vault, pamH.leases); rh != nil {
+			rh.register(scoped)
+		}
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {

@@ -428,5 +428,9 @@ func All() []any {
 		&AccessAnomaly{},
 		&ContractorGrant{},
 		&ContractorGrantExtension{},
+		// Credential rotation (Session C).
+		&RotationPolicy{},
+		&RotationEvent{},
+		&DynamicCredential{},
 	}
 }
