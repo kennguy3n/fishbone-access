@@ -58,20 +58,29 @@ func (h *agentHandlers) register(g *gin.RouterGroup) {
 	ag.DELETE("/:id/targets/:targetId", middleware.RequirePermission(authz.PermPAMTargetWrite), h.unbindTarget)
 }
 
+// NewAgentEnrollIPLimiter builds the per-client-IP token bucket that guards the
+// public enrollment endpoint. It is the single source of the bucket's tuning so
+// the server owner (which Stop()s it on shutdown) and the test/fallback path
+// agree. Brute force is already infeasible (256-bit secrets, stored hashed);
+// this caps anonymous request volume so the per-request DB lookup can't be used
+// for resource exhaustion. In-memory and fail-open, matching the house limiter.
+func NewAgentEnrollIPLimiter() *ratelimit.TenantLimiter {
+	return ratelimit.New(ratelimit.Config{RPS: 5, Burst: 20})
+}
+
 // registerAgentEnrollment mounts the public, token-gated enrollment endpoint on
 // the engine (outside the authenticated /api/v1 group). It is a no-op when no
 // enrollment service is configured, so the route only exists where the agent CA
-// is wired.
-func registerAgentEnrollment(r *gin.Engine, enroll *broker.EnrollmentService) {
+// is wired. ipLimiter guards the endpoint per client IP; the caller owns its
+// lifecycle (Stop on shutdown). When nil, a process-lifetime fallback is built
+// so the endpoint is never left unthrottled.
+func registerAgentEnrollment(r *gin.Engine, enroll *broker.EnrollmentService, ipLimiter *ratelimit.TenantLimiter) {
 	if enroll == nil {
 		return
 	}
-	// The endpoint is public (no tenant session to key the per-tenant limiter
-	// on), so guard it with a small per-client-IP token bucket. Brute force is
-	// already infeasible (256-bit secrets, stored hashed), but this caps the
-	// anonymous request volume so the per-request DB lookup can't be used for
-	// resource exhaustion. In-memory and fail-open, matching the house limiter.
-	ipLimiter := ratelimit.New(ratelimit.Config{RPS: 5, Burst: 20})
+	if ipLimiter == nil {
+		ipLimiter = NewAgentEnrollIPLimiter()
+	}
 	r.POST("/api/v1/agents/enroll", enrollIPThrottle(ipLimiter), func(c *gin.Context) {
 		var body broker.EnrollHTTPRequest
 		if err := c.ShouldBindJSON(&body); err != nil {

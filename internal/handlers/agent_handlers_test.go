@@ -64,16 +64,19 @@ func agentTestDeps(t *testing.T) Deps {
 	}
 	ready := &atomic.Bool{}
 	ready.Store(true)
+	enrollLimiter := NewAgentEnrollIPLimiter()
+	t.Cleanup(enrollLimiter.Stop)
 	return Deps{
 		Validator: mapValidator{byToken: map[string]*iamcore.Claims{
 			"tok-a": {Subject: "user-a", TenantID: "tenant-a"},
 			"tok-b": {Subject: "user-b", TenantID: "tenant-b"},
 		}},
-		DB:                 db,
-		Encryptor:          crypto.PassthroughEncryptor{},
-		ConnectorEncryptor: access.PassthroughEncryptor{},
-		AgentEnrollment:    broker.NewEnrollmentService(db, ca, "relay.example:7443"),
-		Ready:              ready,
+		DB:                   db,
+		Encryptor:            crypto.PassthroughEncryptor{},
+		ConnectorEncryptor:   access.PassthroughEncryptor{},
+		AgentEnrollment:      broker.NewEnrollmentService(db, ca, "relay.example:7443"),
+		AgentEnrollIPLimiter: enrollLimiter,
+		Ready:                ready,
 	}
 }
 

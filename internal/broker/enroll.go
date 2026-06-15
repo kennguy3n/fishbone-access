@@ -216,8 +216,12 @@ func (s *EnrollmentService) Enroll(ctx context.Context, in EnrollInput) (*Enroll
 		if err := tx.Create(agent).Error; err != nil {
 			return fmt.Errorf("broker: create agent: %w", err)
 		}
+		// The conditional UPDATE re-checks expiry (expires_at > now) as well as
+		// the pending state, inside the transaction, so a token that lapses
+		// between the pre-read and here cannot be redeemed — closing the
+		// read-then-act window rather than relying on the pre-read alone.
 		res := tx.Model(&models.AgentEnrollmentToken{}).
-			Where("id = ? AND state = ?", token.ID, models.AgentEnrollTokenPending).
+			Where("id = ? AND state = ? AND expires_at > ?", token.ID, models.AgentEnrollTokenPending, now).
 			Updates(map[string]any{
 				"state":       models.AgentEnrollTokenConsumed,
 				"consumed_at": now,

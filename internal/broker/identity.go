@@ -122,7 +122,7 @@ func resolvePEMValue(valueOrPath string) ([]byte, error) {
 	if strings.HasPrefix(trimmed, "-----BEGIN") {
 		return []byte(valueOrPath), nil
 	}
-	b, err := os.ReadFile(valueOrPath) // #nosec G304 -- operator-supplied trusted path, same posture as the SSH CA loader
+	b, err := os.ReadFile(trimmed) // #nosec G304 -- operator-supplied trusted path, same posture as the SSH CA loader
 	if err != nil {
 		return nil, err
 	}

@@ -200,6 +200,11 @@ func run() error {
 				relayAddr = cfg.AgentBroker.RelayListen
 			}
 			deps.AgentEnrollment = broker.NewEnrollmentService(gdb, ca, relayAddr)
+			// Own the public-enrollment IP limiter here so its janitor goroutine
+			// is stopped on shutdown, matching the per-tenant limiter above.
+			enrollLimiter := handlers.NewAgentEnrollIPLimiter()
+			defer enrollLimiter.Stop()
+			deps.AgentEnrollIPLimiter = enrollLimiter
 			logger.Infof(ctx, "ztna-api: outbound agent enrollment enabled (relay=%s)", relayAddr)
 		} else {
 			logger.Infof(ctx, "ztna-api: outbound agent CA not configured; agent enrollment disabled")

@@ -20,6 +20,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/ratelimit"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/billing"
@@ -141,6 +142,12 @@ type Deps struct {
 	// the public route is absent and the management mutations return 503, while
 	// the read/bind surface still works off the DB.
 	AgentEnrollment *broker.EnrollmentService
+	// AgentEnrollIPLimiter, when set, is the per-client-IP token bucket guarding
+	// the public enrollment endpoint. The server owner constructs it (via
+	// NewAgentEnrollIPLimiter) and Stop()s it on shutdown so its janitor
+	// goroutine does not outlive the process. When nil but AgentEnrollment is
+	// set, registerAgentEnrollment builds a process-lifetime fallback.
+	AgentEnrollIPLimiter *ratelimit.TenantLimiter
 }
 
 // NewRouter builds the Gin engine.
@@ -174,7 +181,7 @@ func NewRouter(deps Deps) *gin.Engine {
 	// the iam-core session auth (an agent has no user session — it proves itself
 	// with the one-shot enrollment token), so it is mounted on the engine
 	// directly. No-op when no agent CA is configured.
-	registerAgentEnrollment(r, deps.AgentEnrollment)
+	registerAgentEnrollment(r, deps.AgentEnrollment, deps.AgentEnrollIPLimiter)
 
 	// Tenant-scoped API. With iam-core configured the group is guarded by the
 	// auth + tenant-resolution middleware; without it the group fails closed
