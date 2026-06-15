@@ -144,9 +144,10 @@ func (s *DynamicCredentialService) MintForLease(ctx context.Context, workspaceID
 
 	// Record the credential as active BEFORE creating it upstream so a crash
 	// between the upstream create and the DB insert can never orphan a role the
-	// reaper doesn't know about. If the upstream create then fails we mark the
-	// row failed (the reaper will attempt a drop anyway, which is a harmless
-	// no-op when the role was never created).
+	// reaper doesn't know about: a row that stays 'active' is swept and dropped
+	// by ReapDue. If instead the upstream create returns an error we mark the
+	// row 'failed' — the reaper deliberately skips 'failed' rows because the
+	// role was never created upstream, so there is nothing to drop.
 	cred := &models.DynamicCredential{
 		WorkspaceID: workspaceID,
 		TargetID:    targetID,
