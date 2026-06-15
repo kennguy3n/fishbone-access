@@ -98,6 +98,11 @@ func run() error {
 	// Bind the bridge's background SessionReconciler to the signal-cancelled
 	// root context so it shuts down with every other background loop.
 	deps.WebAccessContext = ctx
+	// API-initiated "rotate now" / ephemeral-credential mints dial upstreams
+	// with the SAME timeout the scheduled sweep uses in access-workflow-engine,
+	// so an operator who raises ACCESS_ROTATION_DIAL_TIMEOUT for slow upstreams
+	// sees it honoured on both paths.
+	deps.RotationDialTimeout = cfg.Rotation.DialTimeout
 	// Operational telemetry: one Prometheus registry shared by the request
 	// instrumentation and the /metrics scrape endpoint (wired in NewRouter). The
 	// DB pool's saturation stats are registered on it once the pool is open.

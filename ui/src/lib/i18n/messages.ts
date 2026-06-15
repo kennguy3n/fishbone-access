@@ -46,6 +46,7 @@ export type MessageKey =
   | "nav.pam.leases"
   | "nav.pam.webAccess"
   | "nav.pam.sessions"
+  | "nav.pam.rotation"
   | "nav.campaigns"
   | "nav.evidence"
   | "nav.settings"
@@ -99,6 +100,7 @@ const en: Catalog = {
   "nav.pam.leases": "JIT leases",
   "nav.pam.webAccess": "Web access",
   "nav.pam.sessions": "Live sessions",
+  "nav.pam.rotation": "Credential rotation",
   "nav.campaigns": "Certification campaigns",
   "nav.evidence": "Compliance evidence",
   "nav.settings": "Settings",

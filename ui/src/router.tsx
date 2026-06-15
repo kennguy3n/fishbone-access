@@ -87,6 +87,11 @@ const PamSessions = lazyPage(() =>
 const WebAccess = lazyPage(() =>
   import("@/routes/WebAccess").then((m) => ({ default: m.WebAccess })),
 );
+const RotationPolicies = lazyPage(() =>
+  import("@/routes/RotationPolicies").then((m) => ({
+    default: m.RotationPolicies,
+  })),
+);
 const Campaigns = lazyPage(() =>
   import("@/routes/Campaigns").then((m) => ({ default: m.Campaigns })),
 );
@@ -171,6 +176,7 @@ const appRoutes = [
   page("/pam/leases", PamLeases),
   page("/pam/sessions", PamSessions),
   page("/pam/web-access", WebAccess),
+  page("/pam/rotation", RotationPolicies),
   page("/compliance/campaigns", Campaigns),
   page("/compliance/campaigns/$campaignId", CampaignDetail),
   page("/compliance/evidence", ComplianceEvidence),
