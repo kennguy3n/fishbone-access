@@ -29,7 +29,14 @@ const (
 	KindSync        = "sync"
 	KindAdmin       = "admin"
 	KindProvisioned = "provisioned"
-	KindUnknown     = "unknown"
+	// KindSession labels activity from a clientless browser-access session
+	// (web SSH terminal / web database console). These sessions are long-lived
+	// WebSockets that bypass the tenant-scoped /api/v1 middleware chain, so
+	// without an explicit record a tenant interacting only through them would
+	// look idle to the dormancy reconciler; recording on the authenticated
+	// handshake keeps such a tenant correctly classified active.
+	KindSession = "session"
+	KindUnknown = "unknown"
 )
 
 // TenantActivity is the per-tenant activity + dormancy record. Exactly one row
