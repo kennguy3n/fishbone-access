@@ -5,6 +5,7 @@
 *.test
 *.out
 /ztna-api
+/access-target-agent
 
 # PAM replay store written by the seed harness / live gateway (runtime data)
 /pam-replays/

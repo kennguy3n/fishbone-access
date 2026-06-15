@@ -48,7 +48,18 @@ import (
 // migration. 0018–0019 are listed too even though migrations now occupy them —
 // a present-and-reserved version is harmless because the contiguity check
 // treats it as present. Any gap NOT listed here is treated as a real bug.
-var reservedVersions = map[int]bool{6: true, 7: true, 8: true, 9: true, 18: true, 19: true}
+// 0027–0029 are an intentional gap reserved across the four parallel feature
+// workstreams (the migration numbers ahead of the 0030 band were left free for
+// sibling features), and 0031–0039 reserve the tail of this feature's own
+// 0030–0039 band so a later migration landing above 0030 does not retroactively
+// flag the unused numbers between them. A reserved-and-absent version is by
+// design; a reserved-and-present one is harmless (the contiguity check treats
+// it as present), so reserving the whole band is safe.
+var reservedVersions = map[int]bool{
+	6: true, 7: true, 8: true, 9: true, 18: true, 19: true,
+	27: true, 28: true, 29: true,
+	31: true, 32: true, 33: true, 34: true, 35: true, 36: true, 37: true, 38: true, 39: true,
+}
 
 // filenamePattern is the required migration filename shape: a 4-digit
 // zero-padded version, an underscore, then a lower-snake-case name.

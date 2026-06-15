@@ -54,6 +54,7 @@ type MySQLProxy struct {
 	store       ReplayStore
 	tlsConfig   *tls.Config
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -65,6 +66,9 @@ type MySQLProxyConfig struct {
 	Store       ReplayStore
 	TLSConfig   *tls.Config
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -97,6 +101,7 @@ func NewMySQLProxy(cfg MySQLProxyConfig) (*MySQLProxy, error) {
 		store:       cfg.Store,
 		tlsConfig:   tlsCfg,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -241,8 +246,7 @@ func clientCapabilities(resp []byte) uint32 {
 // dialUpstream opens a TCP connection to the target and authenticates with
 // mysql_native_password using the injected credential.
 func (p *MySQLProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (net.Conn, error) {
-	d := net.Dialer{Timeout: p.dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	conn, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", leased.Target.Address, err)
 	}

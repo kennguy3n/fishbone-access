@@ -78,6 +78,9 @@ const Directory = lazyPage(() =>
 const PamTargets = lazyPage(() =>
   import("@/routes/PamTargets").then((m) => ({ default: m.PamTargets })),
 );
+const Agents = lazyPage(() =>
+  import("@/routes/Agents").then((m) => ({ default: m.Agents })),
+);
 const PamLeases = lazyPage(() =>
   import("@/routes/PamLeases").then((m) => ({ default: m.PamLeases })),
 );
@@ -165,6 +168,7 @@ const appRoutes = [
   page("/jml-runs", JmlRuns),
   page("/directory", Directory),
   page("/pam/targets", PamTargets),
+  page("/pam/agents", Agents),
   page("/pam/leases", PamLeases),
   page("/pam/sessions", PamSessions),
   page("/compliance/campaigns", Campaigns),

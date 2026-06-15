@@ -43,6 +43,7 @@ export type MessageKey =
   | "nav.directory"
   | "nav.rolesPermissions"
   | "nav.pam.targets"
+  | "nav.pam.agents"
   | "nav.pam.leases"
   | "nav.pam.sessions"
   | "nav.campaigns"
@@ -95,6 +96,7 @@ const en: Catalog = {
   "nav.directory": "Directory",
   "nav.rolesPermissions": "Roles & permissions",
   "nav.pam.targets": "PAM targets",
+  "nav.pam.agents": "Connector agents",
   "nav.pam.leases": "JIT leases",
   "nav.pam.sessions": "Live sessions",
   "nav.campaigns": "Certification campaigns",

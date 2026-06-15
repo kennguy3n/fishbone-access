@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/gateway"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
@@ -33,6 +34,14 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+)
+
+// Agent relay timeouts. The server certificate is long-lived (the relay
+// reissues it each boot from the CA) and the dial timeout bounds opening a
+// brokered stream + handshaking the upstream through the agent tunnel.
+const (
+	agentRelayServerCertTTL = 365 * 24 * time.Hour
+	agentRelayDialTimeout   = 15 * time.Second
 )
 
 // protocolPlan documents the listener addresses pam-gateway binds. Kept here so
@@ -212,7 +221,19 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		return nil, err
 	}
 
-	sshProxy, err := buildSSHProxy(ctx, broker, sessions, hub, store)
+	// Outbound connector agent relay. When an agent CA is configured this builds
+	// the relay (the control-plane end of the agents' outbound mTLS tunnels) and
+	// a broker dialer that routes "via agent" targets through it; the protocol
+	// proxies take the dialer so a target marked via-agent is reached over the
+	// agent's tunnel while every other target still dials directly. When no CA is
+	// configured the dialer is nil (proxies default to direct) and no relay
+	// listener is added — the feature stays entirely off.
+	agentDialer, relayListener, err := buildAgentRelay(ctx, cfg, gdb)
+	if err != nil {
+		return nil, err
+	}
+
+	sshProxy, err := buildSSHProxy(ctx, broker, sessions, hub, store, agentDialer)
 	if err != nil {
 		return nil, err
 	}
@@ -223,11 +244,11 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	if err != nil {
 		return nil, err
 	}
-	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
+	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	myProxy, err := gateway.NewMySQLProxy(gateway.MySQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
+	myProxy, err := gateway.NewMySQLProxy(gateway.MySQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +288,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		return nil, err
 	}
 
-	return []gateway.Listener{
+	listeners := []gateway.Listener{
 		{Name: "ssh", Addr: ":2222", Handler: sshProxy},
 		{Name: "postgres", Addr: ":5432", Handler: pgProxy},
 		{Name: "mysql", Addr: ":3306", Handler: myProxy},
@@ -278,12 +299,46 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		{Name: "redis", Addr: ":6379", Handler: redisProxy},
 		{Name: "mssql", Addr: ":1433", Handler: mssqlProxy},
 		{Name: "http", Addr: ":8080", Handler: webProxy},
-	}, nil
+	}
+	if relayListener != nil {
+		listeners = append(listeners, *relayListener)
+	}
+	return listeners, nil
+}
+
+// buildAgentRelay constructs the outbound connector agent relay and a broker
+// dialer when an agent CA is configured. It returns (nil, nil, nil) when the
+// feature is off, so the proxies fall back to direct dialing and no relay
+// listener is bound. The relay verifies agent client certificates against the
+// configured CA and presents a server certificate the same CA issued, so it
+// shares trust with the ztna-api enrollment signer across processes.
+func buildAgentRelay(ctx context.Context, cfg config.Config, gdb *gorm.DB) (gateway.TargetDialer, *gateway.Listener, error) {
+	if !cfg.AgentBroker.Configured() {
+		logger.Warnf(ctx, "pam-gateway: outbound agent CA not configured; via-agent targets cannot be brokered")
+		return nil, nil, nil
+	}
+	ca, err := broker.LoadCAFromValues(cfg.AgentBroker.CACert, cfg.AgentBroker.CAKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("agent CA load: %w", err)
+	}
+	// Issue the relay's TLS server certificate from the agent CA so agents (which
+	// were handed the CA at enrollment) verify it, valid for the configured SANs.
+	serverCert, err := ca.IssueServerCert(cfg.AgentBroker.RelayHosts, agentRelayServerCertTTL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("agent relay server cert: %w", err)
+	}
+	serverTLS := broker.NewRelayServerTLS(serverCert, ca)
+	relay := broker.NewRelay(broker.NewGormStore(gdb), serverTLS)
+	dialer := gateway.NewBrokerDialer(relay, agentRelayDialTimeout)
+	listener := &gateway.Listener{Name: "agent-relay", Addr: cfg.AgentBroker.RelayListen, Handler: relay}
+	logger.Infof(ctx, "pam-gateway: outbound agent relay enabled on %s (advertise=%s, SANs=%v)",
+		cfg.AgentBroker.RelayListen, cfg.AgentBroker.RelayAddr, cfg.AgentBroker.RelayHosts)
+	return dialer, listener, nil
 }
 
 // buildSSHProxy assembles the SSH proxy, loading the SSH CA (when configured)
 // and a stable host key (or generating an ephemeral one).
-func buildSSHProxy(ctx context.Context, broker *pam.Broker, sessions *pam.SessionManager, hub *gateway.SessionHub, store gateway.ReplayStore) (*gateway.SSHProxy, error) {
+func buildSSHProxy(ctx context.Context, broker *pam.Broker, sessions *pam.SessionManager, hub *gateway.SessionHub, store gateway.ReplayStore, dialer gateway.TargetDialer) (*gateway.SSHProxy, error) {
 	var ca *gateway.SSHCertificateAuthority
 	if v := os.Getenv("PAM_SSH_CA_KEY"); v != "" {
 		loaded, err := gateway.LoadSSHCAFromValue(v, sshCertValidity())
@@ -324,6 +379,7 @@ func buildSSHProxy(ctx context.Context, broker *pam.Broker, sessions *pam.Sessio
 		Store:    store,
 		CA:       ca,
 		HostKey:  hostKey,
+		Dialer:   dialer,
 	})
 }
 

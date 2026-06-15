@@ -32,6 +32,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
@@ -182,6 +183,26 @@ func run() error {
 			// setupDatabase), but if it did we'd silently lose pool-saturation
 			// visibility; log it so the gap is observable rather than invisible.
 			logger.Warnf(ctx, "ztna-api: db pool metrics not registered: %v", err)
+		}
+
+		// Outbound connector agent enrollment. Wired only when an agent CA is
+		// configured; otherwise the public enrollment endpoint stays absent and
+		// the agent management mutations return 503 (the read/bind surface still
+		// works off the DB). The SAME CA must be configured on pam-gateway, which
+		// runs the relay and verifies the certificates this service signs.
+		if cfg.AgentBroker.Configured() {
+			ca, caErr := broker.LoadCAFromValues(cfg.AgentBroker.CACert, cfg.AgentBroker.CAKey)
+			if caErr != nil {
+				return fmt.Errorf("agent CA load: %w", caErr)
+			}
+			relayAddr := cfg.AgentBroker.RelayAddr
+			if relayAddr == "" {
+				relayAddr = cfg.AgentBroker.RelayListen
+			}
+			deps.AgentEnrollment = broker.NewEnrollmentService(gdb, ca, relayAddr)
+			logger.Infof(ctx, "ztna-api: outbound agent enrollment enabled (relay=%s)", relayAddr)
+		} else {
+			logger.Infof(ctx, "ztna-api: outbound agent CA not configured; agent enrollment disabled")
 		}
 		// Own the pool: close it on the way out so we don't leak idle Postgres
 		// connections (the pool outlives setupDatabase because the

@@ -1072,6 +1072,9 @@ export interface PamTarget {
   require_mfa: boolean;
   lease_ttl_seconds: number;
   secret_rotated_at?: string | null;
+  /** When set, the gateway reaches this target through the named connector
+   *  agent's outbound tunnel rather than dialing it directly. */
+  via_agent_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1339,6 +1342,176 @@ export function useResumePamSession(id: string) {
 export function useTerminatePamSession(id: string) {
   return useMutation<{ status: string }, ApiError, void>({
     mutationFn: () => terminatePamSession(id),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Outbound connector agents — enrollment, health, reachable targets, binding
+// (mirror internal/broker + internal/handlers/agent_handlers.go)
+// ---------------------------------------------------------------------------
+
+/** Derived liveness of an agent (broker.AgentHealth). */
+export type AgentHealth = "online" | "stale" | "offline" | "revoked";
+
+/** Durable lifecycle status persisted on the agent row (models.AgentStatus*). */
+export type AgentStatus = "enrolled" | "online" | "offline" | "revoked";
+
+/** A connector agent registration (models.TargetAgent). */
+export interface TargetAgent {
+  id: string;
+  workspace_id: string;
+  name: string;
+  cert_fingerprint: string;
+  cert_serial: string;
+  cert_not_after: string;
+  status: AgentStatus;
+  last_seen_at?: string | null;
+  agent_version?: string;
+  platform?: string;
+  revoked_at?: string | null;
+  revoked_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** An agent enriched with its derived health (broker.AgentView). */
+export interface AgentView {
+  agent: TargetAgent;
+  health: AgentHealth;
+}
+
+/** Kind of reachable-target binding (models.AgentReachKind*). */
+export type AgentReachKind = "cidr" | "host" | "hostname";
+
+/** One network destination an agent advertises it can reach. */
+export interface AgentReachableTarget {
+  id: string;
+  workspace_id: string;
+  agent_id: string;
+  pattern: string;
+  kind: AgentReachKind;
+  target_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MintAgentTokenInput {
+  name: string;
+  ttl_seconds?: number;
+}
+
+/** The one-shot enrollment token, returned exactly once at mint time. */
+export interface MintAgentTokenResult {
+  token: string;
+  token_id: string;
+  name: string;
+  expires_at: string;
+}
+
+export const listAgents = () =>
+  call<{ agents: AgentView[] }>({ url: "/agents", method: "GET" }).then(
+    (r) => r.agents ?? [],
+  );
+
+export const getAgent = (id: string) =>
+  call<AgentView>({ url: `/agents/${id}`, method: "GET" });
+
+export const listAgentReachable = (id: string) =>
+  call<{ reachable: AgentReachableTarget[] }>({
+    url: `/agents/${id}/reachable`,
+    method: "GET",
+  }).then((r) => r.reachable ?? []);
+
+export const listAgentBoundTargets = (id: string) =>
+  call<{ targets: PamTarget[] }>({
+    url: `/agents/${id}/targets`,
+    method: "GET",
+  }).then((r) => r.targets ?? []);
+
+export const mintAgentToken = (body: MintAgentTokenInput) =>
+  call<MintAgentTokenResult>({ url: "/agents", method: "POST", data: body });
+
+export const revokeAgent = (id: string) =>
+  call<{ status: string; agent_id: string }>({
+    url: `/agents/${id}/revoke`,
+    method: "POST",
+  });
+
+export const bindAgentTarget = (agentId: string, targetId: string) =>
+  call<{ status: string }>({
+    url: `/agents/${agentId}/targets`,
+    method: "POST",
+    data: { target_id: targetId },
+  });
+
+export const unbindAgentTarget = (agentId: string, targetId: string) =>
+  call<{ status: string }>({
+    url: `/agents/${agentId}/targets/${targetId}`,
+    method: "DELETE",
+  });
+
+export const agentQk = {
+  agents: ["agents"] as const,
+  agent: (id: string) => ["agent", id] as const,
+  reachable: (id: string) => ["agent", id, "reachable"] as const,
+  bound: (id: string) => ["agent", id, "bound-targets"] as const,
+};
+
+export function useAgents(
+  options?: Partial<UseQueryOptions<AgentView[], ApiError>>,
+) {
+  return useQuery<AgentView[], ApiError>({
+    queryKey: agentQk.agents,
+    queryFn: listAgents,
+    ...options,
+  });
+}
+
+export function useAgent(id: string | undefined) {
+  return useQuery<AgentView, ApiError>({
+    queryKey: agentQk.agent(id ?? ""),
+    queryFn: () => getAgent(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useAgentReachable(id: string | undefined) {
+  return useQuery<AgentReachableTarget[], ApiError>({
+    queryKey: agentQk.reachable(id ?? ""),
+    queryFn: () => listAgentReachable(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useAgentBoundTargets(id: string | undefined) {
+  return useQuery<PamTarget[], ApiError>({
+    queryKey: agentQk.bound(id ?? ""),
+    queryFn: () => listAgentBoundTargets(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useMintAgentToken() {
+  return useMutation<MintAgentTokenResult, ApiError, MintAgentTokenInput>({
+    mutationFn: mintAgentToken,
+  });
+}
+
+export function useRevokeAgent() {
+  return useMutation<{ status: string; agent_id: string }, ApiError, string>({
+    mutationFn: revokeAgent,
+  });
+}
+
+export function useBindAgentTarget(agentId: string) {
+  return useMutation<{ status: string }, ApiError, string>({
+    mutationFn: (targetId) => bindAgentTarget(agentId, targetId),
+  });
+}
+
+export function useUnbindAgentTarget(agentId: string) {
+  return useMutation<{ status: string }, ApiError, string>({
+    mutationFn: (targetId) => unbindAgentTarget(agentId, targetId),
   });
 }
 

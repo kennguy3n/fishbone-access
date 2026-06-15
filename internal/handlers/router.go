@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
@@ -133,6 +134,13 @@ type Deps struct {
 	// assign its plan. It derives statements from the SAME usage rollup the meter
 	// writes. nil leaves the routes unmounted (tests/degraded boots).
 	BillingReader billingService
+	// AgentEnrollment, when set, backs the outbound connector agent enrollment:
+	// the public token-gated POST /api/v1/agents/enroll endpoint and the
+	// authenticated mint-token / revoke management routes. It is wired only when
+	// the deployment configured an agent CA (see cmd/ztna-api/main.go); when nil
+	// the public route is absent and the management mutations return 503, while
+	// the read/bind surface still works off the DB.
+	AgentEnrollment *broker.EnrollmentService
 }
 
 // NewRouter builds the Gin engine.
@@ -161,6 +169,12 @@ func NewRouter(deps Deps) *gin.Engine {
 	// Unauthenticated diagnostics: the registered connector provider keys
 	// (drives the connector-count CI guard).
 	r.GET("/api/v1/connectors/providers", listProviders)
+
+	// Public, token-gated outbound-agent enrollment endpoint. It is NOT behind
+	// the iam-core session auth (an agent has no user session — it proves itself
+	// with the one-shot enrollment token), so it is mounted on the engine
+	// directly. No-op when no agent CA is configured.
+	registerAgentEnrollment(r, deps.AgentEnrollment)
 
 	// Tenant-scoped API. With iam-core configured the group is guarded by the
 	// auth + tenant-resolution middleware; without it the group fails closed
@@ -260,6 +274,7 @@ func NewRouter(deps Deps) *gin.Engine {
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
 		newPAMHandlers(deps).register(scoped)
+		newAgentHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {
