@@ -228,8 +228,17 @@ func (h *rotationHandlers) rotateNow(c *gin.Context) {
 	}
 	event, err := h.engine.RotateTarget(c.Request.Context(), ws, id, models.RotationTriggerManual, actor(c), nil)
 	if err != nil {
-		h.fail(c, err)
-		return
+		// Two failure shapes come back here. A PREFLIGHT failure (validation,
+		// target-not-found, or a protocol with no executor) never touched the
+		// upstream and recorded no event (event == nil) — map it to an HTTP
+		// status. An OPERATIONAL failure (upstream unreachable, auth/verify/
+		// reseal failed) DID run and is recorded as a RotationEvent with
+		// status=failed and a descriptive Error; return it 200 so the console
+		// shows the specific reason instead of a generic "internal error".
+		if event == nil || errors.Is(err, pam.ErrRotationUnsupported) {
+			h.fail(c, err)
+			return
+		}
 	}
 	c.JSON(http.StatusOK, event)
 }
