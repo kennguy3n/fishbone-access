@@ -403,13 +403,13 @@ func (s *liveDBProvisioner) createMySQL(ctx context.Context, target *models.PAMT
 	defer func() { _ = db.Close() }()
 	host := mysqlAccountHost(target)
 	if _, err := db.ExecContext(ctx, fmt.Sprintf("CREATE USER %s@%s IDENTIFIED BY %s",
-		quoteSQLLiteral(username), quoteSQLLiteral(host), quoteSQLLiteral(password))); err != nil {
+		mysqlQuoteLiteral(username), mysqlQuoteLiteral(host), mysqlQuoteLiteral(password))); err != nil {
 		return fmt.Errorf("pam: mysql create ephemeral user: %w", err)
 	}
 	if grant := strings.TrimSpace(decodeConfig(target.Config)["dynamic_grant"]); grant != "" {
 		// grant is an operator-configured privilege spec, e.g. "SELECT ON app.*".
 		if _, err := db.ExecContext(ctx, fmt.Sprintf("GRANT %s TO %s@%s",
-			grant, quoteSQLLiteral(username), quoteSQLLiteral(host))); err != nil {
+			grant, mysqlQuoteLiteral(username), mysqlQuoteLiteral(host))); err != nil {
 			return fmt.Errorf("pam: mysql grant: %w", err)
 		}
 	}
@@ -428,7 +428,7 @@ func (s *liveDBProvisioner) dropMySQL(ctx context.Context, target *models.PAMTar
 	defer func() { _ = db.Close() }()
 	host := mysqlAccountHost(target)
 	if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP USER IF EXISTS %s@%s",
-		quoteSQLLiteral(username), quoteSQLLiteral(host))); err != nil {
+		mysqlQuoteLiteral(username), mysqlQuoteLiteral(host))); err != nil {
 		return fmt.Errorf("pam: mysql drop ephemeral user: %w", err)
 	}
 	return nil

@@ -166,6 +166,12 @@ func (e *RotationEngine) fail(ctx context.Context, workspaceID uuid.UUID, target
 	}
 	if werr := e.writeOutcome(ctx, event, policy, now, truncateError(cause.Error())); werr != nil {
 		logger.Errorf(ctx, "pam: record rotation failure for target %s: %v", target.ID, werr)
+		// The outcome row was rolled back, so the event's BeforeCreate-assigned
+		// ID points at nothing durable. Return a nil event (still with the
+		// triggering cause) so a caller never hands a client an event it cannot
+		// look up — the "rotate now" handler treats a nil event as a hard
+		// failure and maps it to an HTTP error instead of a 200.
+		return nil, cause
 	}
 	return event, cause
 }

@@ -364,7 +364,7 @@ func (e *MySQLExecutor) Rotate(ctx context.Context, target *models.PAMTarget, cu
 
 	host := mysqlAccountHost(target)
 	stmt := fmt.Sprintf("ALTER USER %s@%s IDENTIFIED BY %s",
-		quoteSQLLiteral(ep.user), quoteSQLLiteral(host), quoteSQLLiteral(newPassword))
+		mysqlQuoteLiteral(ep.user), mysqlQuoteLiteral(host), mysqlQuoteLiteral(newPassword))
 	if _, err := db.ExecContext(ctx, stmt); err != nil {
 		return Secret{}, fmt.Errorf("pam: mysql alter user: %w", err)
 	}
@@ -372,7 +372,7 @@ func (e *MySQLExecutor) Rotate(ctx context.Context, target *models.PAMTarget, cu
 	if err := e.verify(ctx, ep, newPassword); err != nil {
 		// Roll the password back so the upstream still matches the vault.
 		_, _ = db.ExecContext(context.Background(), fmt.Sprintf("ALTER USER %s@%s IDENTIFIED BY %s",
-			quoteSQLLiteral(ep.user), quoteSQLLiteral(host), quoteSQLLiteral(current.Password)))
+			mysqlQuoteLiteral(ep.user), mysqlQuoteLiteral(host), mysqlQuoteLiteral(current.Password)))
 		return Secret{}, fmt.Errorf("pam: mysql verify rotated credential: %w", err)
 	}
 
@@ -408,7 +408,7 @@ func (e *MySQLExecutor) Restore(ctx context.Context, target *models.PAMTarget, l
 	defer func() { _ = db.Close() }()
 	host := mysqlAccountHost(target)
 	stmt := fmt.Sprintf("ALTER USER %s@%s IDENTIFIED BY %s",
-		quoteSQLLiteral(ep.user), quoteSQLLiteral(host), quoteSQLLiteral(restore.Password))
+		mysqlQuoteLiteral(ep.user), mysqlQuoteLiteral(host), mysqlQuoteLiteral(restore.Password))
 	if _, err := db.ExecContext(ctx, stmt); err != nil {
 		return fmt.Errorf("pam: mysql restore user: %w", err)
 	}
@@ -644,11 +644,28 @@ func sshHostKeyCallback(target *models.PAMTarget) ssh.HostKeyCallback {
 	}
 }
 
-// quoteSQLLiteral renders s as a single-quoted SQL string literal, doubling any
-// embedded single quote. Generated passwords use a quote-free alphabet, so this
-// is defence-in-depth rather than the primary safety mechanism.
+// quoteSQLLiteral renders s as a single-quoted PostgreSQL string literal,
+// doubling any embedded single quote. It is safe for PostgreSQL because
+// standard_conforming_strings is on by default (since 9.1), so a backslash is a
+// literal backslash rather than an escape character. Do NOT use it for MySQL —
+// use mysqlQuoteLiteral, which also escapes backslashes.
 func quoteSQLLiteral(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+// mysqlQuoteLiteral renders s as a single-quoted MySQL string literal. MySQL's
+// default sql_mode does NOT set NO_BACKSLASH_ESCAPES, so a backslash is an
+// escape character inside string literals; a literal backslash must therefore
+// be doubled in addition to the single quote (otherwise a value ending in `\`
+// would escape the closing quote and produce malformed SQL). The backslash must
+// be escaped first so the backslashes introduced by quote-doubling are not
+// themselves doubled. Generated passwords use a quote/backslash-free alphabet,
+// so this matters in practice only for an operator-set admin password on the
+// rollback / Restore path.
+func mysqlQuoteLiteral(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "'", "''")
+	return "'" + s + "'"
 }
 
 // shellQuote single-quotes s for safe interpolation into a POSIX shell command,

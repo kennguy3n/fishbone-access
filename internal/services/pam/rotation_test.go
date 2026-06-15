@@ -684,6 +684,39 @@ func TestDynamicCredential_MintRejections(t *testing.T) {
 	}
 }
 
+func TestSQLLiteralQuoting(t *testing.T) {
+	// quoteSQLLiteral (PostgreSQL, standard_conforming_strings=on) only doubles
+	// single quotes; a backslash is a literal and must be left untouched.
+	pgCases := map[string]string{
+		`abc`:   `'abc'`,
+		`a'b`:   `'a''b'`,
+		`a\b`:   `'a\b'`,
+		`back\`: `'back\'`,
+	}
+	for in, want := range pgCases {
+		if got := quoteSQLLiteral(in); got != want {
+			t.Errorf("quoteSQLLiteral(%q) = %q, want %q", in, got, want)
+		}
+	}
+
+	// mysqlQuoteLiteral must escape BOTH backslashes and single quotes, since
+	// MySQL's default sql_mode treats backslash as an escape character. A value
+	// ending in a backslash is the case the rollback/Restore path must survive:
+	// it must not escape the closing quote.
+	mysqlCases := map[string]string{
+		`abc`:   `'abc'`,
+		`a'b`:   `'a''b'`,
+		`a\b`:   `'a\\b'`,
+		`back\`: `'back\\'`,
+		`a\'b`:  `'a\\''b'`,
+	}
+	for in, want := range mysqlCases {
+		if got := mysqlQuoteLiteral(in); got != want {
+			t.Errorf("mysqlQuoteLiteral(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 // openPassword decrypts a target's current sealed password (test helper).
 func openPassword(t *testing.T, v *Vault, ws, target uuid.UUID) string {
 	t.Helper()
