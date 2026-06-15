@@ -40,8 +40,10 @@ type ControlMessage struct {
 }
 
 // RegisterPayload is the agent's self-description sent on connect: its build and
-// host platform (health/inventory) and the network destinations it can reach,
-// which the relay unions with operator-created bindings to route dials.
+// host platform (health/inventory) and the network destinations it advertises it
+// can reach. The reachable set is advertisement only — shown to operators when
+// they choose what to bind — and does NOT drive routing; dials route strictly by
+// the bound target's ViaAgentID.
 type RegisterPayload struct {
 	AgentVersion string          `json:"agent_version"`
 	Platform     string          `json:"platform"`
