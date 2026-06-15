@@ -57,7 +57,7 @@ export function ReplayPlayer({
         className="replay-terminal"
         tabIndex={0}
         role="log"
-        aria-label={intl.formatMessage({
+        aria-label={intl.formatMessage({ id: "replay.player.1",
           defaultMessage: "Session transcript",
         })}
         style={{
@@ -79,7 +79,7 @@ export function ReplayPlayer({
       >
         {visible.length === 0 ? (
           <span style={{ opacity: 0.6 }}>
-            {intl.formatMessage({
+            {intl.formatMessage({ id: "replay.player.2",
               defaultMessage: "Press play to start the replay.",
             })}
           </span>
@@ -107,14 +107,14 @@ export function ReplayPlayer({
           onClick={playback.toggle}
           aria-label={
             playing
-              ? intl.formatMessage({ defaultMessage: "Pause" })
-              : intl.formatMessage({ defaultMessage: "Play" })
+              ? intl.formatMessage({ id: "replay.player.3", defaultMessage: "Pause" })
+              : intl.formatMessage({ id: "replay.player.4", defaultMessage: "Play" })
           }
         >
           {playing ? (
-            <FormattedMessage defaultMessage="Pause" />
+            <FormattedMessage id="replay.player.7" defaultMessage="Pause" />
           ) : (
-            <FormattedMessage defaultMessage="Play" />
+            <FormattedMessage id="replay.player.8" defaultMessage="Play" />
           )}
         </button>
         <button
@@ -122,7 +122,7 @@ export function ReplayPlayer({
           className="btn btn--ghost btn--sm"
           onClick={playback.restart}
         >
-          <FormattedMessage defaultMessage="Restart" />
+          <FormattedMessage id="replay.player.9" defaultMessage="Restart" />
         </button>
 
         <input
@@ -132,7 +132,7 @@ export function ReplayPlayer({
           value={Math.round(posMs)}
           step={1}
           onChange={(e) => playback.seekMs(Number(e.target.value))}
-          aria-label={intl.formatMessage({
+          aria-label={intl.formatMessage({ id: "replay.player.5",
             defaultMessage: "Seek through the recording",
           })}
           style={{ flex: 1, minWidth: 160, cursor: "pointer" }}
@@ -154,13 +154,13 @@ export function ReplayPlayer({
           style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
         >
           <span className="muted" style={{ fontSize: 12 }}>
-            <FormattedMessage defaultMessage="Speed" />
+            <FormattedMessage id="replay.player.10" defaultMessage="Speed" />
           </span>
           <select
             value={speed}
             onChange={(e) => playback.setSpeed(Number(e.target.value))}
             style={{ width: "auto" }}
-            aria-label={intl.formatMessage({
+            aria-label={intl.formatMessage({ id: "replay.player.6",
               defaultMessage: "Playback speed",
             })}
           >

@@ -36,8 +36,8 @@ export function CommandTimeline({
   if (timeline.length === 0) {
     return (
       <EmptyState
-        title={intl.formatMessage({ defaultMessage: "No commands" })}
-        description={intl.formatMessage({
+        title={intl.formatMessage({ id: "replay.timeline.1", defaultMessage: "No commands" })}
+        description={intl.formatMessage({ id: "replay.timeline.2",
           defaultMessage:
             "This session has no reconstructed commands. Output-only sessions still replay in the transcript.",
         })}
@@ -49,7 +49,7 @@ export function CommandTimeline({
     <ul
       className="replay-timeline"
       style={{ listStyle: "none", margin: 0, padding: 0 }}
-      aria-label={intl.formatMessage({ defaultMessage: "Command timeline" })}
+      aria-label={intl.formatMessage({ id: "replay.timeline.3", defaultMessage: "Command timeline" })}
     >
       {timeline.map((entry, i) => {
         const offset = offsetsMs[i];
@@ -64,10 +64,10 @@ export function CommandTimeline({
               aria-current={active ? "true" : undefined}
               title={
                 locatable
-                  ? intl.formatMessage({
+                  ? intl.formatMessage({ id: "replay.timeline.4",
                       defaultMessage: "Jump to this command in the replay",
                     })
-                  : intl.formatMessage({
+                  : intl.formatMessage({ id: "replay.timeline.5",
                       defaultMessage:
                         "This command could not be located in the recorded keystrokes",
                     })
@@ -118,7 +118,7 @@ export function CommandTimeline({
               </code>
               {entry.denied ? (
                 <Badge tone="danger">
-                  <FormattedMessage defaultMessage="Denied" />
+                  <FormattedMessage id="replay.timeline.6" defaultMessage="Denied" />
                 </Badge>
               ) : (
                 entry.decision &&

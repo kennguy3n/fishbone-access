@@ -90,7 +90,7 @@ export function SessionReplay() {
 
   const columns: Column<RecordingSummary>[] = [
     {
-      header: intl.formatMessage({ defaultMessage: "Operator" }),
+      header: intl.formatMessage({ id: "recordings.1", defaultMessage: "Operator" }),
       cell: (r) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <b>{r.operator || "—"}</b>
@@ -102,11 +102,11 @@ export function SessionReplay() {
       ),
     },
     {
-      header: intl.formatMessage({ defaultMessage: "Target" }),
+      header: intl.formatMessage({ id: "recordings.2", defaultMessage: "Target" }),
       cell: (r) => r.target_name || "—",
     },
     {
-      header: intl.formatMessage({ defaultMessage: "Started" }),
+      header: intl.formatMessage({ id: "recordings.3", defaultMessage: "Started" }),
       cell: (r) => (
         <span className="muted" title={formatDateTime(r.started_at)}>
           {formatRelative(r.started_at)}
@@ -114,17 +114,17 @@ export function SessionReplay() {
       ),
     },
     {
-      header: intl.formatMessage({ defaultMessage: "Duration" }),
+      header: intl.formatMessage({ id: "recordings.4", defaultMessage: "Duration" }),
       cell: (r) => formatDurationMs(r.duration_ms),
     },
     {
-      header: intl.formatMessage({ defaultMessage: "Commands" }),
+      header: intl.formatMessage({ id: "recordings.5", defaultMessage: "Commands" }),
       cell: (r) => (
         <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
           {r.command_count}
           {r.deny_count > 0 && (
             <Badge tone="danger">
-              <FormattedMessage
+              <FormattedMessage id="recordings.19"
                 defaultMessage="{n} denied"
                 values={{ n: r.deny_count }}
               />
@@ -134,28 +134,28 @@ export function SessionReplay() {
       ),
     },
     {
-      header: intl.formatMessage({ defaultMessage: "Integrity" }),
+      header: intl.formatMessage({ id: "recordings.6", defaultMessage: "Integrity" }),
       cell: (r) =>
         r.blob_pruned ? (
           <Badge tone="neutral">
-            <FormattedMessage defaultMessage="Tiered out" />
+            <FormattedMessage id="recordings.20" defaultMessage="Tiered out" />
           </Badge>
         ) : !r.sha256 ? (
           <Badge tone="neutral">
-            <FormattedMessage defaultMessage="Not attested" />
+            <FormattedMessage id="recordings.21" defaultMessage="Not attested" />
           </Badge>
         ) : r.sha256_verified ? (
           <Badge tone="ok" dot>
-            <FormattedMessage defaultMessage="Verified" />
+            <FormattedMessage id="recordings.22" defaultMessage="Verified" />
           </Badge>
         ) : (
           <Badge tone="warn">
-            <FormattedMessage defaultMessage="Unverified" />
+            <FormattedMessage id="recordings.23" defaultMessage="Unverified" />
           </Badge>
         ),
     },
     {
-      header: intl.formatMessage({ defaultMessage: "State" }),
+      header: intl.formatMessage({ id: "recordings.7", defaultMessage: "State" }),
       cell: (r) => <StatusBadge status={r.state} />,
     },
   ];
@@ -166,8 +166,8 @@ export function SessionReplay() {
   return (
     <>
       <PageHeader
-        title={intl.formatMessage({ defaultMessage: "Session recordings" })}
-        subtitle={intl.formatMessage({
+        title={intl.formatMessage({ id: "recordings.8", defaultMessage: "Session recordings" })}
+        subtitle={intl.formatMessage({ id: "recordings.9",
           defaultMessage:
             "Search every recorded privileged session by the commands that were run, then open the replay player to review it.",
         })}
@@ -184,15 +184,15 @@ export function SessionReplay() {
         >
           <label className="field">
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <FormattedMessage defaultMessage="Search commands" />
+              <FormattedMessage id="recordings.24" defaultMessage="Search commands" />
               <HelpTooltip>
-                <FormattedMessage defaultMessage="Full-text search over the commands and queries executed during each session (e.g. a table name, a sudo command, a hostname). Powered by Postgres full-text search." />
+                <FormattedMessage id="recordings.25" defaultMessage="Full-text search over the commands and queries executed during each session (e.g. a table name, a sudo command, a hostname). Powered by Postgres full-text search." />
               </HelpTooltip>
             </span>
             <input
               type="search"
               value={draft.q}
-              placeholder={intl.formatMessage({
+              placeholder={intl.formatMessage({ id: "recordings.10",
                 defaultMessage: "e.g. DROP TABLE, sudo, SELECT * FROM users",
               })}
               onChange={(e) => setDraft({ ...draft, q: e.target.value })}
@@ -208,7 +208,7 @@ export function SessionReplay() {
           >
             <label className="field">
               <span>
-                <FormattedMessage defaultMessage="Operator" />
+                <FormattedMessage id="recordings.26" defaultMessage="Operator" />
               </span>
               <input
                 value={draft.operator}
@@ -219,7 +219,7 @@ export function SessionReplay() {
             </label>
             <label className="field">
               <span>
-                <FormattedMessage defaultMessage="Protocol" />
+                <FormattedMessage id="recordings.27" defaultMessage="Protocol" />
               </span>
               <select
                 value={draft.protocol}
@@ -228,7 +228,7 @@ export function SessionReplay() {
                 }
               >
                 <option value="">
-                  {intl.formatMessage({ defaultMessage: "Any" })}
+                  {intl.formatMessage({ id: "recordings.11", defaultMessage: "Any" })}
                 </option>
                 <option value="ssh">SSH</option>
                 <option value="postgres">PostgreSQL</option>
@@ -237,7 +237,7 @@ export function SessionReplay() {
             </label>
             <label className="field">
               <span>
-                <FormattedMessage defaultMessage="Target" />
+                <FormattedMessage id="recordings.28" defaultMessage="Target" />
               </span>
               <input
                 value={draft.target}
@@ -246,7 +246,7 @@ export function SessionReplay() {
             </label>
             <label className="field">
               <span>
-                <FormattedMessage defaultMessage="From" />
+                <FormattedMessage id="recordings.29" defaultMessage="From" />
               </span>
               <input
                 type="datetime-local"
@@ -256,7 +256,7 @@ export function SessionReplay() {
             </label>
             <label className="field">
               <span>
-                <FormattedMessage defaultMessage="To" />
+                <FormattedMessage id="recordings.30" defaultMessage="To" />
               </span>
               <input
                 type="datetime-local"
@@ -287,15 +287,15 @@ export function SessionReplay() {
                 }
               />
               <span>
-                <FormattedMessage defaultMessage="Include tiered-out recordings" />
+                <FormattedMessage id="recordings.31" defaultMessage="Include tiered-out recordings" />
               </span>
             </label>
             <div style={{ flex: 1 }} />
             <button type="button" className="btn btn--ghost" onClick={reset}>
-              <FormattedMessage defaultMessage="Reset" />
+              <FormattedMessage id="recordings.32" defaultMessage="Reset" />
             </button>
             <button type="submit" className="btn btn--primary">
-              <FormattedMessage defaultMessage="Search" />
+              <FormattedMessage id="recordings.33" defaultMessage="Search" />
             </button>
           </div>
         </form>
@@ -309,10 +309,10 @@ export function SessionReplay() {
         isEmpty={(d) => d.recordings.length === 0}
         empty={
           <EmptyState
-            title={intl.formatMessage({
+            title={intl.formatMessage({ id: "recordings.12",
               defaultMessage: "No recordings match",
             })}
-            description={intl.formatMessage({
+            description={intl.formatMessage({ id: "recordings.13",
               defaultMessage:
                 "Try a broader search, clear the filters, or widen the time range. Recordings appear here as privileged sessions are captured and indexed.",
             })}
@@ -341,7 +341,7 @@ export function SessionReplay() {
               }}
             >
               <span className="muted" style={{ fontSize: 13 }}>
-                <FormattedMessage
+                <FormattedMessage id="recordings.34"
                   defaultMessage="{from}–{to} of {total}"
                   values={{
                     from: total === 0 ? 0 : page * PAGE_SIZE + 1,
@@ -356,14 +356,14 @@ export function SessionReplay() {
                   disabled={page === 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
-                  <FormattedMessage defaultMessage="Previous" />
+                  <FormattedMessage id="recordings.35" defaultMessage="Previous" />
                 </button>
                 <button
                   className="btn btn--ghost btn--sm"
                   disabled={!hasNext}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  <FormattedMessage defaultMessage="Next" />
+                  <FormattedMessage id="recordings.36" defaultMessage="Next" />
                 </button>
               </div>
             </div>
@@ -399,16 +399,16 @@ function RetentionPolicyControl() {
   if (isLoading || !data) {
     return (
       <Badge tone="neutral">
-        <FormattedMessage defaultMessage="Retention…" />
+        <FormattedMessage id="recordings.37" defaultMessage="Retention…" />
       </Badge>
     );
   }
 
   const label =
     data.retention_days === 0
-      ? intl.formatMessage({ defaultMessage: "Retention: indefinite" })
+      ? intl.formatMessage({ id: "recordings.14", defaultMessage: "Retention: indefinite" })
       : intl.formatMessage(
-          { defaultMessage: "Retention: {days} days" },
+          { id: "recordings.retentionDays", defaultMessage: "Retention: {days} days" },
           { days: data.retention_days },
         );
 
@@ -417,7 +417,7 @@ function RetentionPolicyControl() {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Badge tone={data.is_default ? "neutral" : "info"}>{label}</Badge>
         <HelpTooltip align="right">
-          <FormattedMessage defaultMessage="How long a recording's replayable bytes are kept before being tiered out to control storage cost. The searchable metadata, command timeline, and tamper-evident audit record are always preserved. Set to 0 to retain recordings indefinitely." />
+          <FormattedMessage id="recordings.38" defaultMessage="How long a recording's replayable bytes are kept before being tiered out to control storage cost. The searchable metadata, command timeline, and tamper-evident audit record are always preserved. Set to 0 to retain recordings indefinitely." />
         </HelpTooltip>
         {canEdit && (
           <button
@@ -427,7 +427,7 @@ function RetentionPolicyControl() {
               setEditing(true);
             }}
           >
-            <FormattedMessage defaultMessage="Edit" />
+            <FormattedMessage id="recordings.39" defaultMessage="Edit" />
           </button>
         )}
       </div>
@@ -438,17 +438,17 @@ function RetentionPolicyControl() {
     const n = Number(days);
     if (!Number.isInteger(n) || n < 0) {
       toast.error(
-        intl.formatMessage({ defaultMessage: "Enter a whole number of days (0 = indefinite)." }),
+        intl.formatMessage({ id: "recordings.15", defaultMessage: "Enter a whole number of days (0 = indefinite)." }),
       );
       return;
     }
     try {
       await setMut.mutateAsync(n);
-      toast.success(intl.formatMessage({ defaultMessage: "Retention policy updated" }));
+      toast.success(intl.formatMessage({ id: "recordings.16", defaultMessage: "Retention policy updated" }));
       setEditing(false);
     } catch (err) {
       toast.error(
-        intl.formatMessage({ defaultMessage: "Could not update retention policy" }),
+        intl.formatMessage({ id: "recordings.17", defaultMessage: "Could not update retention policy" }),
         err instanceof Error ? err.message : undefined,
       );
     }
@@ -462,7 +462,7 @@ function RetentionPolicyControl() {
         value={days}
         onChange={(e) => setDays(e.target.value)}
         style={{ width: 90 }}
-        aria-label={intl.formatMessage({
+        aria-label={intl.formatMessage({ id: "recordings.18",
           defaultMessage: "Retention days (0 = indefinite)",
         })}
       />
@@ -471,13 +471,13 @@ function RetentionPolicyControl() {
         disabled={setMut.isPending}
         onClick={save}
       >
-        <FormattedMessage defaultMessage="Save" />
+        <FormattedMessage id="recordings.40" defaultMessage="Save" />
       </button>
       <button
         className="btn btn--ghost btn--sm"
         onClick={() => setEditing(false)}
       >
-        <FormattedMessage defaultMessage="Cancel" />
+        <FormattedMessage id="recordings.41" defaultMessage="Cancel" />
       </button>
     </div>
   );

@@ -29,13 +29,13 @@ export function ReplayLaunch({
         className="btn btn--link btn--sm"
         onClick={open}
       >
-        <FormattedMessage defaultMessage="Open replay" />
+        <FormattedMessage id="replay.launch.link" defaultMessage="Open replay" />
       </button>
     );
   }
   return (
     <button type="button" className="btn btn--ghost" onClick={open}>
-      <FormattedMessage defaultMessage="Open replay player" />
+      <FormattedMessage id="replay.launch.ghost" defaultMessage="Open replay player" />
     </button>
   );
 }

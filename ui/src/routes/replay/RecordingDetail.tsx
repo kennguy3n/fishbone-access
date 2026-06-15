@@ -67,8 +67,8 @@ export function RecordingDetail() {
   return (
     <>
       <PageHeader
-        title={intl.formatMessage({ defaultMessage: "Session replay" })}
-        subtitle={intl.formatMessage({
+        title={intl.formatMessage({ id: "replay.detail.1", defaultMessage: "Session replay" })}
+        subtitle={intl.formatMessage({ id: "replay.detail.2",
           defaultMessage:
             "Watch the time-ordered transcript with a synchronized command timeline and a verified tamper badge.",
         })}
@@ -77,7 +77,7 @@ export function RecordingDetail() {
             className="btn btn--ghost"
             onClick={() => navigate({ to: "/pam/recordings" })}
           >
-            <FormattedMessage defaultMessage="Back to search" />
+            <FormattedMessage id="replay.detail.23" defaultMessage="Back to search" />
           </button>
         }
       />
@@ -88,7 +88,7 @@ export function RecordingDetail() {
         <ErrorState error={detailQ.error} onRetry={() => detailQ.refetch()} />
       ) : !detailQ.data ? (
         <EmptyState
-          title={intl.formatMessage({ defaultMessage: "Recording not found" })}
+          title={intl.formatMessage({ id: "replay.detail.3", defaultMessage: "Recording not found" })}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -98,8 +98,8 @@ export function RecordingDetail() {
             return (
               <>
                 <Card
-                  title={`${r.operator || intl.formatMessage({ defaultMessage: "Unknown operator" })} · ${r.target_name || intl.formatMessage({ defaultMessage: "Unknown target" })}`}
-                  subtitle={intl.formatMessage({
+                  title={`${r.operator || intl.formatMessage({ id: "replay.detail.4", defaultMessage: "Unknown operator" })} · ${r.target_name || intl.formatMessage({ id: "replay.detail.5", defaultMessage: "Unknown target" })}`}
+                  subtitle={intl.formatMessage({ id: "replay.detail.6",
                     defaultMessage: "Recorded privileged session",
                   })}
                   actions={
@@ -110,7 +110,7 @@ export function RecordingDetail() {
                       />
                     ) : r.sha256 ? (
                       <Badge tone="neutral">
-                        <FormattedMessage defaultMessage="Integrity: checking…" />
+                        <FormattedMessage id="replay.detail.24" defaultMessage="Integrity: checking…" />
                       </Badge>
                     ) : null
                   }
@@ -124,15 +124,15 @@ export function RecordingDetail() {
                     }}
                   >
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Protocol" })}
+                      label={intl.formatMessage({ id: "replay.detail.7", defaultMessage: "Protocol" })}
                       value={<Badge tone="info">{r.protocol || "—"}</Badge>}
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "State" })}
+                      label={intl.formatMessage({ id: "replay.detail.8", defaultMessage: "State" })}
                       value={<StatusBadge status={r.state} />}
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Started" })}
+                      label={intl.formatMessage({ id: "replay.detail.9", defaultMessage: "Started" })}
                       value={
                         <span style={{ fontSize: 14 }}>
                           {formatDateTime(r.started_at)}
@@ -140,15 +140,15 @@ export function RecordingDetail() {
                       }
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Duration" })}
+                      label={intl.formatMessage({ id: "replay.detail.10", defaultMessage: "Duration" })}
                       value={formatDurationMs(r.duration_ms)}
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Commands" })}
+                      label={intl.formatMessage({ id: "replay.detail.11", defaultMessage: "Commands" })}
                       value={r.command_count}
                     />
                     <Stat
-                      label={intl.formatMessage({
+                      label={intl.formatMessage({ id: "replay.detail.12",
                         defaultMessage: "Policy denies",
                       })}
                       value={
@@ -162,11 +162,11 @@ export function RecordingDetail() {
                       }
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Size" })}
+                      label={intl.formatMessage({ id: "replay.detail.13", defaultMessage: "Size" })}
                       value={formatBytes(r.bytes)}
                     />
                     <Stat
-                      label={intl.formatMessage({ defaultMessage: "Client" })}
+                      label={intl.formatMessage({ id: "replay.detail.14", defaultMessage: "Client" })}
                       value={
                         <span style={{ fontSize: 14 }}>
                           {r.client_addr || "—"}
@@ -177,9 +177,9 @@ export function RecordingDetail() {
                   {r.truncated && (
                     <p className="muted" style={{ marginTop: 12 }}>
                       <Badge tone="warn">
-                        <FormattedMessage defaultMessage="Truncated" />
+                        <FormattedMessage id="replay.detail.25" defaultMessage="Truncated" />
                       </Badge>{" "}
-                      <FormattedMessage defaultMessage="The gateway size cap dropped trailing payload from this recording." />
+                      <FormattedMessage id="replay.detail.26" defaultMessage="The gateway size cap dropped trailing payload from this recording." />
                     </p>
                   )}
                 </Card>
@@ -193,19 +193,19 @@ export function RecordingDetail() {
                     alignItems: "start",
                   }}
                 >
-                  <Card title={intl.formatMessage({ defaultMessage: "Replay" })}>
+                  <Card title={intl.formatMessage({ id: "replay.detail.15", defaultMessage: "Replay" })}>
                     {framesQ.isLoading ? (
                       <LoadingState
-                        label={intl.formatMessage({
+                        label={intl.formatMessage({ id: "replay.detail.16",
                           defaultMessage: "Loading transcript…",
                         })}
                       />
                     ) : blobUnavailable || r.blob_pruned ? (
                       <EmptyState
-                        title={intl.formatMessage({
+                        title={intl.formatMessage({ id: "replay.detail.17",
                           defaultMessage: "Replay tiered out",
                         })}
-                        description={intl.formatMessage({
+                        description={intl.formatMessage({ id: "replay.detail.18",
                           defaultMessage:
                             "This recording's bytes were removed by the retention policy to control storage cost. Its searchable metadata, command timeline, and audit-chain integrity record are preserved.",
                         })}
@@ -217,10 +217,10 @@ export function RecordingDetail() {
                       />
                     ) : frames.length === 0 ? (
                       <EmptyState
-                        title={intl.formatMessage({
+                        title={intl.formatMessage({ id: "replay.detail.19",
                           defaultMessage: "No transcript",
                         })}
-                        description={intl.formatMessage({
+                        description={intl.formatMessage({ id: "replay.detail.20",
                           defaultMessage:
                             "This recording contains no replayable frames.",
                         })}
@@ -231,10 +231,10 @@ export function RecordingDetail() {
                   </Card>
 
                   <Card
-                    title={intl.formatMessage({
+                    title={intl.formatMessage({ id: "replay.detail.21",
                       defaultMessage: "Command timeline",
                     })}
-                    subtitle={intl.formatMessage({
+                    subtitle={intl.formatMessage({ id: "replay.detail.22",
                       defaultMessage:
                         "Click a command to jump to it. Denied commands are highlighted.",
                     })}
