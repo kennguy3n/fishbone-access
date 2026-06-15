@@ -99,6 +99,7 @@ type RDPProxy struct {
 	hub         *SessionHub
 	store       ReplayStore
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 	serverTLS   *tls.Config
 }
@@ -110,6 +111,9 @@ type RDPProxyConfig struct {
 	Hub         *SessionHub
 	Store       ReplayStore
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 	// TLSConfig is the server-side TLS config presented to the operator when the
 	// target uses Enhanced RDP Security ("tls"/"nla"). When nil an ephemeral
@@ -140,6 +144,7 @@ func NewRDPProxy(cfg RDPProxyConfig) (*RDPProxy, error) {
 		hub:         cfg.Hub,
 		store:       cfg.Store,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 		serverTLS:   tlsCfg,
 	}, nil
@@ -327,8 +332,7 @@ func (p *RDPProxy) readOperatorConnectionRequest(conn net.Conn) ([]byte, string,
 //     client exchange (credssp.go) delivering the vault credential as
 //     TSCredentials before relaying over TLS.
 func (p *RDPProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession, mode string) (net.Conn, error) {
-	d := net.Dialer{Timeout: p.dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	conn, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, fmt.Errorf("dial rdp: %w", err)
 	}

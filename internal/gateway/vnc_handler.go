@@ -88,6 +88,7 @@ type VNCProxy struct {
 	hub         *SessionHub
 	store       ReplayStore
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -98,6 +99,9 @@ type VNCProxyConfig struct {
 	Hub         *SessionHub
 	Store       ReplayStore
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -116,6 +120,7 @@ func NewVNCProxy(cfg VNCProxyConfig) (*VNCProxy, error) {
 		hub:         cfg.Hub,
 		store:       cfg.Store,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -309,8 +314,7 @@ func (p *VNCProxy) bridgeInit(operator, upstream net.Conn) ([]byte, error) {
 // ClientInit/ServerInit exchange and returns the connection plus the raw
 // ServerInit to relay to the operator.
 func (p *VNCProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (net.Conn, error) {
-	d := net.Dialer{Timeout: p.dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	conn, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, fmt.Errorf("dial vnc: %w", err)
 	}

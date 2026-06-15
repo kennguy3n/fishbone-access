@@ -34,6 +34,7 @@ type PostgresProxy struct {
 	store       ReplayStore
 	tlsConfig   *tls.Config
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -45,6 +46,9 @@ type PostgresProxyConfig struct {
 	Store       ReplayStore
 	TLSConfig   *tls.Config
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -76,6 +80,7 @@ func NewPostgresProxy(cfg PostgresProxyConfig) (*PostgresProxy, error) {
 		store:       cfg.Store,
 		tlsConfig:   tlsCfg,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -268,6 +273,12 @@ func (p *PostgresProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSess
 	cfg.Password = leased.Secret.Password
 	cfg.Database = database
 	cfg.ConnectTimeout = p.dialTimeout
+	// Route the upstream transport through the dialer seam so a via-agent target
+	// is reached over the agent tunnel; pgconn then negotiates the protocol over
+	// the returned net.Conn exactly as over a direct dial.
+	cfg.DialFunc = func(dialCtx context.Context, _, _ string) (net.Conn, error) {
+		return p.dialer.DialTarget(dialCtx, leased.Target)
+	}
 	// pgconn negotiates TLS per the server's capabilities; leave TLSConfig at
 	// the parsed default (sslmode=prefer) so an encrypted upstream is used when
 	// available without failing a plaintext-only target.

@@ -85,6 +85,7 @@ type MSSQLProxy struct {
 	hub         *SessionHub
 	store       ReplayStore
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -95,6 +96,9 @@ type MSSQLProxyConfig struct {
 	Hub         *SessionHub
 	Store       ReplayStore
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -113,6 +117,7 @@ func NewMSSQLProxy(cfg MSSQLProxyConfig) (*MSSQLProxy, error) {
 		hub:         cfg.Hub,
 		store:       cfg.Store,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -225,8 +230,7 @@ func (p *MSSQLProxy) authenticateOperator(ctx context.Context, conn net.Conn) (s
 // PRELOGIN packets) before LOGIN7, so the injected credential is never sent in
 // clear text to the upstream.
 func (p *MSSQLProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (net.Conn, []byte, error) {
-	d := net.Dialer{Timeout: p.dialTimeout}
-	raw, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	raw, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial sqlserver: %w", err)
 	}

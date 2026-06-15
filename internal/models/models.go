@@ -428,6 +428,10 @@ func All() []any {
 		&AccessAnomaly{},
 		&ContractorGrant{},
 		&ContractorGrantExtension{},
+		// Outbound connector agents + brokered dial.
+		&TargetAgent{},
+		&AgentEnrollmentToken{},
+		&AgentReachableTarget{},
 		// Credential rotation (Session C).
 		&RotationPolicy{},
 		&RotationEvent{},
