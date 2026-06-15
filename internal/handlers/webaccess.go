@@ -18,6 +18,8 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
+	"github.com/kennguy3n/fishbone-access/internal/services/usage"
 	"github.com/kennguy3n/fishbone-access/internal/webaccess"
 )
 
@@ -44,6 +46,15 @@ type webAccessHandlers struct {
 	validator middleware.TokenValidator
 	resolver  middleware.WorkspaceResolver
 	upgrader  websocket.Upgrader
+	// recorder and meter restore the tenant-activity and usage-metering signals
+	// that the tenant-scoped /api/v1 middleware chain emits for every other
+	// authenticated request. A browser WebSocket cannot carry the headers that
+	// chain requires, so these routes mount on the root engine and bypass it;
+	// recording here keeps a web-access-only tenant from looking idle to the
+	// dormancy reconciler and attributes the session's cost-to-serve. Both are
+	// fire-and-forget and may be nil (degraded/no-DB boot), so callers guard.
+	recorder tenancy.ActivityRecorder
+	meter    usage.Meter
 }
 
 // newWebAccessHandlers wires the bridge to a PAM service bundle built the same
@@ -144,6 +155,8 @@ func newWebAccessHandlers(deps Deps, resolver middleware.WorkspaceResolver) *web
 		bridge:    bridge,
 		validator: deps.Validator,
 		resolver:  resolver,
+		recorder:  deps.ActivityRecorder,
+		meter:     deps.UsageMeter,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  4096,
 			WriteBufferSize: 4096,
@@ -264,6 +277,16 @@ func (h *webAccessHandlers) serve(c *gin.Context, k webKind) {
 		return
 	}
 
+	// The handshake is authenticated and the workspace is resolved and
+	// authoritative — the same point at which the tenant-scoped middleware
+	// chain (tenancy.ActivityMiddleware + usage.Middleware) emits its signals.
+	// Mirror it here so a web-access-only tenant is not invisible to the
+	// platform: record activity (keeps it out of / wakes it from dormancy) and
+	// meter the session as its own cost driver. Both are fire-and-forget and,
+	// like the middleware, fire on the authenticated request regardless of
+	// whether the upgrade below then succeeds.
+	h.recordSession(workspaceID)
+
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// Upgrade already wrote the error response; nothing more to do.
@@ -284,6 +307,22 @@ func (h *webAccessHandlers) serve(c *gin.Context, k webKind) {
 		h.bridge.ServeSSH(ctx, conn, params)
 	case kindWebDB:
 		h.bridge.ServeDB(ctx, conn, params)
+	}
+}
+
+// recordSession emits the tenant-activity and usage-metering signals for an
+// authenticated web-access handshake, restoring on this bypassed root-mounted
+// route the two signals the tenant-scoped /api/v1 middleware emits for every
+// other request. Both dependencies are optional (nil in a degraded/no-DB boot),
+// fail-open, and fire-and-forget — never adding latency or a failure mode to
+// the handshake. The workspace UUID is the authoritative, server-resolved id,
+// never a client-supplied value.
+func (h *webAccessHandlers) recordSession(workspaceID uuid.UUID) {
+	if h.recorder != nil {
+		h.recorder.Record(workspaceID, tenancy.KindSession)
+	}
+	if h.meter != nil {
+		h.meter.Record(workspaceID, usage.MetricWebAccessSessions)
 	}
 }
 

@@ -34,6 +34,15 @@ const (
 	// MetricAPIRequests counts authenticated, tenant-scoped API requests — the
 	// primary cost-to-serve signal and the must-have meter.
 	MetricAPIRequests = "api_requests"
+	// MetricWebAccessSessions counts clientless browser-access sessions (web
+	// SSH terminal / web database console). A web-access session is a
+	// long-lived streaming WebSocket that bypasses the tenant-scoped /api/v1
+	// middleware chain (a browser WebSocket cannot carry the required headers),
+	// so it is not captured by MetricAPIRequests. It is a materially different
+	// cost-to-serve profile from a one-shot API call — a single hours-long
+	// streamed session — so it gets its own meter rather than being folded into
+	// api_requests, keeping the rollup legible per cost driver.
+	MetricWebAccessSessions = "webaccess_sessions"
 )
 
 // TenantUsage is one usage rollup row: the running count of a single metric for
