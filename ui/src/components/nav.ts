@@ -60,6 +60,7 @@ export const NAV: NavGroup[] = [
       { labelId: "nav.pam.agents", to: "/pam/agents", icon: "integrations" },
       { labelId: "nav.pam.leases", to: "/pam/leases", icon: "playbooks" },
       { labelId: "nav.pam.sessions", to: "/pam/sessions", icon: "troubleshoot" },
+      { labelId: "nav.pam.rotation", to: "/pam/rotation", icon: "audit" },
     ],
   },
   {

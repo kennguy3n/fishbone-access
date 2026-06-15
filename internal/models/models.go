@@ -432,5 +432,9 @@ func All() []any {
 		&TargetAgent{},
 		&AgentEnrollmentToken{},
 		&AgentReachableTarget{},
+		// Credential rotation (Session C).
+		&RotationPolicy{},
+		&RotationEvent{},
+		&DynamicCredential{},
 	}
 }

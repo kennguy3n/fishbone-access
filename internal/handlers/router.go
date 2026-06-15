@@ -10,6 +10,7 @@ package handlers
 import (
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -148,6 +149,12 @@ type Deps struct {
 	// goroutine does not outlive the process. When nil but AgentEnrollment is
 	// set, registerAgentEnrollment builds a process-lifetime fallback.
 	AgentEnrollIPLimiter *ratelimit.TenantLimiter
+	// RotationDialTimeout bounds every upstream connection an API-initiated
+	// rotation or ephemeral-credential mint makes. main sets it from
+	// cfg.Rotation.DialTimeout (ACCESS_ROTATION_DIAL_TIMEOUT) so "rotate now"
+	// honours the SAME timeout as the scheduled sweep in access-workflow-engine;
+	// a zero value falls back to the 10s default inside newRotationHandlers.
+	RotationDialTimeout time.Duration
 }
 
 // NewRouter builds the Gin engine.
@@ -280,7 +287,14 @@ func NewRouter(deps Deps) *gin.Engine {
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
 		newConnectorHandlers(deps).register(scoped)
-		newPAMHandlers(deps).register(scoped)
+		pamH := newPAMHandlers(deps)
+		pamH.register(scoped)
+		// Credential rotation reuses the PAM vault + lease service so it
+		// re-seals with the same per-workspace key path and validates leases
+		// against the same state machine (Session C).
+		if rh := newRotationHandlers(deps, pamH.vault, pamH.leases); rh != nil {
+			rh.register(scoped)
+		}
 		newAgentHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
