@@ -90,6 +90,11 @@ func run() error {
 	ready := &atomic.Bool{}
 
 	var deps handlers.Deps
+	// Clientless browser-access bridge (web SSH terminal + web database
+	// console). Enabled by default; reuses the same PAM leasing/policy/
+	// recording/audit machinery as the native gateway. Mounted in NewRouter
+	// only when a validator + workspace resolver + DB are present.
+	deps.WebAccess = cfg.WebAccess
 	// Operational telemetry: one Prometheus registry shared by the request
 	// instrumentation and the /metrics scrape endpoint (wired in NewRouter). The
 	// DB pool's saturation stats are registered on it once the pool is open.
