@@ -30,6 +30,8 @@ export function TerminalSession({ rawToken, onExit }: TerminalSessionProps) {
         termRef.current?.writeln(
           `\r\n\u001b[31m■ Session terminated: ${s.reason ?? "ended by policy"}\u001b[0m`,
         );
+      } else if (s.state === "closed" && s.reason) {
+        termRef.current?.writeln(`\r\n\u001b[33m■ ${s.reason}\u001b[0m`);
       }
     },
     onError: (e) => {

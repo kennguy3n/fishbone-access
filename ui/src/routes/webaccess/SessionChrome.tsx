@@ -204,6 +204,15 @@ export function SessionChrome({
           )}
         </div>
       )}
+      {phase === "closed" && !terminated && !paused && closeReason && (
+        <div className="webaccess-session__notice webaccess-session__notice--warn" role="status">
+          <FormattedMessage
+            id="webaccess.session.endedReason"
+            defaultMessage="Session ended: {reason}"
+            values={{ reason: closeReason }}
+          />
+        </div>
+      )}
 
       <div className="webaccess-session__body">{children}</div>
     </div>
