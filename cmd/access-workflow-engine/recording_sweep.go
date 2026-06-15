@@ -113,7 +113,13 @@ func newRecordingSweeper(
 	if err != nil {
 		return nil, err
 	}
-	sweeper.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("recording_sweep") })
+	// metrics is optional (guarded above); only observe dormant-skips when it is
+	// wired, so the skip closure never dereferences a nil Metrics at runtime.
+	var onSkipDormant func()
+	if metrics != nil {
+		onSkipDormant = func() { metrics.IncPeriodicJobSkipped("recording_sweep") }
+	}
+	sweeper.WithHibernationGate(gate, onSkipDormant)
 	logger.Infof(ctx, "access-workflow-engine: recordings sweep enabled (interval=%s default_retention_days=%d)",
 		cfg.SweepInterval, cfg.DefaultRetentionDays)
 	return sweeper, nil
