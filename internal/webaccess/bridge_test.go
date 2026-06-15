@@ -501,6 +501,49 @@ func TestRunStatementGatesAndStreams(t *testing.T) {
 	}
 }
 
+// TestRunStatementInfraErrorNotDenied verifies that when LogCommand fails for
+// an infrastructure reason (here, the audit DB is unavailable) rather than a
+// policy denial, the statement is still refused (fail-closed, upstream never
+// reached) but the error frame is NOT flagged Denied — so the UI shows a
+// generic error instead of misleading the operator with a "Policy denied" badge
+// for a statement policy would actually have allowed.
+func TestRunStatementInfraErrorNotDenied(t *testing.T) {
+	e := newTestEnv(t)
+	target := e.createTarget(t, models.PAMProtocolPostgres, "127.0.0.1:5432", pam.Secret{Username: "pg", Password: "pw"})
+	token := e.mintToken(t, target.ID, "alice")
+	leased, err := e.broker.RedeemConnectToken(context.Background(), token, "127.0.0.1")
+	if err != nil {
+		t.Fatalf("redeem: %v", err)
+	}
+
+	conn := newFakeConn()
+	sender := newWSSender(conn, time.Second)
+	rec := gateway.NewIORecorder(context.Background(), leased.Session.ID.String(), 0)
+	console := &fakeConsole{result: resultMessage{Type: msgResult}}
+
+	// Take the audit datastore offline so LogCommand's audited write fails: an
+	// infrastructure error, not a policy decision.
+	sqlDB, err := e.db.DB()
+	if err != nil {
+		t.Fatalf("raw db: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	e.bridge.runStatement(context.Background(), console, sender, leased.Session, rec, "SELECT 1")
+	frame := conn.waitFor(t, "error frame", func(m map[string]any) bool { return m["type"] == msgError })
+	if frame["denied"] == true {
+		t.Fatalf("infra error must not be flagged Denied: %v", frame)
+	}
+	if frame["message"] == "" {
+		t.Fatalf("error frame must carry a reason: %v", frame)
+	}
+	if console.calls != 0 {
+		t.Fatalf("statement must be refused without reaching the upstream (calls=%d)", console.calls)
+	}
+}
+
 func strptr(s string) *string { return &s }
 
 // fakeConsole is a dbConsole double for the gating test (a real Postgres is not

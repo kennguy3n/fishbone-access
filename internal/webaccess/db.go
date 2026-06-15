@@ -93,15 +93,24 @@ func (b *Bridge) runStatement(ctx context.Context, console dbConsole, sender *ws
 	rec.Record(gateway.DirInput, []byte(statement+"\n"))
 	decision, err := b.sessions.LogCommand(ctx, session, statement)
 	if err != nil || !decision.Allowed() {
+		// A LogCommand error is an audit/policy-evaluation infrastructure
+		// failure, not a policy denial: the statement is still refused
+		// (fail-closed), but it is surfaced as a generic error rather than a
+		// "Policy denied", so the operator is not misled into rewriting a
+		// statement that policy would actually have allowed. A genuine deny
+		// (err == nil, decision not allowed) keeps Denied=true.
+		denied := err == nil
 		reason := decision.Reason
 		if reason == "" {
 			reason = "denied by command policy"
 		}
+		outcome := models.PAMDecisionDeny
 		if err != nil {
 			reason = "command policy unavailable"
+			outcome = "error"
 		}
-		rec.Annotate(fmt.Sprintf("[query %s: %s]", models.PAMDecisionDeny, reason))
-		_ = sender.json(errorMessage{Type: msgError, Message: reason, Denied: true})
+		rec.Annotate(fmt.Sprintf("[query %s: %s]", outcome, reason))
+		_ = sender.json(errorMessage{Type: msgError, Message: reason, Denied: denied})
 		return
 	}
 
