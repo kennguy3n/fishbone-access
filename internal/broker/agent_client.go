@@ -234,7 +234,12 @@ func pipe(a, b net.Conn) {
 	done := make(chan struct{}, 2)
 	cp := func(dst, src net.Conn) {
 		_, _ = io.Copy(dst, src)
-		// Half-close the write side if supported so the peer sees EOF.
+		// Half-close the write side so the peer sees EOF while the reverse copy
+		// keeps draining. A net.TCPConn/tls.Conn exposes CloseWrite() directly.
+		// A yamux *Stream does not, but its Close() on an established stream is a
+		// half-close too: it sends a FIN (state → localClose) and Read keeps
+		// returning buffered/in-flight data until the peer FINs — so the fallback
+		// does not truncate the other direction.
 		if cw, ok := dst.(interface{ CloseWrite() error }); ok {
 			_ = cw.CloseWrite()
 		} else {
