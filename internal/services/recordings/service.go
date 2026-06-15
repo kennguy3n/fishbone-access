@@ -31,6 +31,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -53,6 +54,26 @@ var (
 // ever sees plaintext frames.
 type ReplayReader interface {
 	GetReplay(ctx context.Context, sessionID string) (io.ReadCloser, error)
+}
+
+// workspaceReplayReader is an optional fast path: a reader that can fetch a
+// blob for a caller that already knows the owning workspace, skipping the
+// reader's own workspace lookup. The at-rest EncryptingReplayStore implements
+// it (its plain GetReplay otherwise re-resolves the workspace from the DB on
+// every read). Honoured via getReplay; readers that don't implement it fall
+// back to GetReplay, so this stays an optimisation, never a requirement.
+type workspaceReplayReader interface {
+	GetReplayForWorkspace(ctx context.Context, workspaceID, sessionID string) (io.ReadCloser, error)
+}
+
+// getReplay reads a recording blob, using the workspace-aware fast path when
+// the configured reader supports it (the caller already loaded the workspace),
+// and otherwise the plain by-session read.
+func (s *Service) getReplay(ctx context.Context, workspaceID, sessionID uuid.UUID) (io.ReadCloser, error) {
+	if wr, ok := s.reader.(workspaceReplayReader); ok && workspaceID != uuid.Nil {
+		return wr.GetReplayForWorkspace(ctx, workspaceID.String(), sessionID.String())
+	}
+	return s.reader.GetReplay(ctx, sessionID.String())
 }
 
 // ReplayDeleter tiers a recording's heavy blob out of storage. The retention

@@ -107,7 +107,7 @@ func (s *Service) LoadFrames(ctx context.Context, workspaceID, sessionID uuid.UU
 		return ReplayStream{}, fmt.Errorf("%w: no replay reader configured", ErrBlobUnavailable)
 	}
 
-	rc, err := s.reader.GetReplay(ctx, sessionID.String())
+	rc, err := s.getReplay(ctx, workspaceID, sessionID)
 	if err != nil {
 		return ReplayStream{}, fmt.Errorf("%w: %v", ErrBlobUnavailable, err)
 	}

@@ -153,7 +153,7 @@ func (s *Service) enrichFromBlob(ctx context.Context, row *models.SessionRecordi
 	if s.reader == nil || row.BlobPruned {
 		return ""
 	}
-	rc, err := s.reader.GetReplay(ctx, row.SessionID.String())
+	rc, err := s.getReplay(ctx, row.WorkspaceID, row.SessionID)
 	if err != nil {
 		return ""
 	}
