@@ -460,6 +460,46 @@ func TestServeSSHPolicyDenyTearsDown(t *testing.T) {
 	}
 }
 
+// TestServeSSHAdminTerminateStatus verifies that when an administrator
+// terminates a live web-SSH session through the hub, the operator's browser
+// receives a descriptive terminated status (carrying the admin-terminate
+// reason) BEFORE the socket closes — rather than a bare disconnect. The
+// cancellation cause threaded through context.WithCancelCause is what lets the
+// bridge distinguish an admin kill from an ordinary close.
+func TestServeSSHAdminTerminateStatus(t *testing.T) {
+	e := newTestEnv(t)
+	addr, cleanup := startEchoSSHServer(t)
+	defer cleanup()
+
+	target := e.createTarget(t, models.PAMProtocolSSH, addr, pam.Secret{Username: "ops", Password: "pw"})
+	token := e.mintToken(t, target.ID, "alice")
+
+	conn := newFakeConn()
+	conn.pushJSON(clientMessage{Type: msgHello, Token: token})
+	done := make(chan struct{})
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
+
+	ready := conn.waitFor(t, "ready frame", func(m map[string]any) bool { return m["type"] == msgReady })
+	sessionID, err := uuid.Parse(ready["session_id"].(string))
+	if err != nil {
+		t.Fatalf("parse session id %q: %v", ready["session_id"], err)
+	}
+	if !e.hub.Terminate(sessionID) {
+		t.Fatalf("hub did not know the live session %s", sessionID)
+	}
+
+	status := conn.waitFor(t, "terminated status", func(m map[string]any) bool {
+		return m["type"] == msgStatus && m["state"] == stateTerminated
+	})
+	if status["reason"] != reasonAdminTerminated {
+		t.Fatalf("admin terminate must carry the admin reason, got %q", status["reason"])
+	}
+	<-done
+}
+
 func TestRunStatementGatesAndStreams(t *testing.T) {
 	e := newTestEnv(t)
 	target := e.createTarget(t, models.PAMProtocolPostgres, "127.0.0.1:5432", pam.Secret{Username: "pg", Password: "pw"})

@@ -31,6 +31,23 @@ const (
 // opens but never authenticates is reaped quickly rather than holding a slot.
 const handshakeTimeout = 20 * time.Second
 
+// errIdleTimeout and errAdminTerminated are cancellation causes carried on the
+// session context (via context.WithCancelCause) so the bridge can tell the
+// operator *why* a session ended before the socket closes. Without a cause the
+// browser would only observe a bare WebSocket close and show a generic
+// "Disconnected". A command-policy denial already sends its own terminated
+// status with a reason before cancelling, so it is left as the default cause.
+var (
+	errIdleTimeout     = errors.New("idle timeout")
+	errAdminTerminated = errors.New("terminated by administrator")
+)
+
+// Operator-facing reasons for the descriptive close/terminate status frames.
+const (
+	reasonIdleTimeout     = "Session ended after being idle too long. Re-launch to continue."
+	reasonAdminTerminated = "Session terminated by an administrator."
+)
+
 // LeaseExpiryLookup resolves the expiry of the JIT lease that authorised a
 // session so the bridge can tell the UI how long the lease window has left (the
 // live countdown). It is read-only and called once per session open. Satisfied
@@ -179,11 +196,19 @@ func (b *Bridge) serve(ctx context.Context, conn wsConn, p ServeParams, k kind) 
 
 	logger.Infof(ctx, "webaccess: session %s opened for %s → %s (%s)", session.ID, session.Subject, leased.Target.Address, leased.Target.Protocol)
 
-	sessCtx, cancel := context.WithCancel(ctx)
+	// WithCancelCause so the teardown reason (idle timeout, admin terminate,
+	// or a plain operator/clean close) travels with the cancellation and can be
+	// surfaced to the UI before the socket closes. cancel() is the normal,
+	// reason-less close used by the protocol loops and the deny path.
+	sessCtx, cancelCause := context.WithCancelCause(ctx)
+	cancel := context.CancelFunc(func() { cancelCause(nil) })
 	defer cancel()
 	rec := gateway.NewIORecorder(sessCtx, session.ID.String(), b.recMaxBytes)
 	if b.hub != nil {
-		deregister := b.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, cancel)
+		// An admin terminate severs the session through this cancel; tag it so
+		// the operator is told an administrator ended the session rather than
+		// seeing a bare disconnect.
+		deregister := b.hub.Register(session.ID, session.WorkspaceID, session.Subject, rec, func() { cancelCause(errAdminTerminated) })
 		defer deregister()
 	}
 	defer b.teardown(ctx, session, rec)
@@ -191,12 +216,17 @@ func (b *Bridge) serve(ctx context.Context, conn wsConn, p ServeParams, k kind) 
 		_ = sender.json(statusMessage{Type: msgStatus, State: stateClosed})
 	}()
 
+	// Single owner of the on-cancel socket close for both protocols: it sends a
+	// descriptive lifecycle status (when the cancellation cause carries one)
+	// before closing, so the read loop unblocks and the operator learns *why*.
+	go b.closeOnCancel(sessCtx, conn, sender)
+
 	// Idle watchdog: sever a session that has exchanged no bytes for the
 	// configured window so an abandoned browser tab does not hold the upstream
 	// (and the lease window) open. Disabled when IdleTimeout <= 0.
 	activity := newActivityClock(b.now)
 	if b.idleTimeout > 0 {
-		go b.watchIdle(sessCtx, cancel, rec, activity)
+		go b.watchIdle(sessCtx, cancelCause, rec, activity)
 	}
 
 	_ = sender.json(readyMessage{
@@ -328,9 +358,29 @@ func (a *activityClock) idleFor() time.Duration {
 	return a.now().Sub(time.Unix(0, a.lastNano.Load()))
 }
 
+// closeOnCancel waits for the session context to end, sends a descriptive
+// lifecycle status to the operator when the cancellation cause carries one
+// (idle timeout, admin terminate), and closes the socket so the protocol read
+// loop unblocks. A reason-less cancel (operator disconnect, shell exit, policy
+// deny — which sends its own status first) just closes the socket, preserving
+// the prior behaviour. The frame is sent before the close so the browser shows
+// *why* the session ended instead of a bare disconnect.
+func (b *Bridge) closeOnCancel(ctx context.Context, conn wsConn, sender *wsSender) {
+	<-ctx.Done()
+	switch context.Cause(ctx) {
+	case errIdleTimeout:
+		_ = sender.json(statusMessage{Type: msgStatus, State: stateClosed, Reason: reasonIdleTimeout})
+	case errAdminTerminated:
+		_ = sender.json(statusMessage{Type: msgStatus, State: stateTerminated, Reason: reasonAdminTerminated})
+	}
+	_ = conn.Close()
+}
+
 // watchIdle cancels the session when it has been idle past the configured
-// timeout. It annotates the recording so the transcript explains the teardown.
-func (b *Bridge) watchIdle(ctx context.Context, cancel context.CancelFunc, rec *gateway.IORecorder, activity *activityClock) {
+// timeout. It annotates the recording so the transcript explains the teardown
+// and cancels with errIdleTimeout so the operator is told the session ended on
+// idle rather than seeing a bare disconnect.
+func (b *Bridge) watchIdle(ctx context.Context, cancel context.CancelCauseFunc, rec *gateway.IORecorder, activity *activityClock) {
 	// Check at a fraction of the timeout so the worst-case overshoot is small.
 	interval := b.idleTimeout / 4
 	if interval < time.Second {
@@ -346,7 +396,7 @@ func (b *Bridge) watchIdle(ctx context.Context, cancel context.CancelFunc, rec *
 			if activity.idleFor() >= b.idleTimeout {
 				rec.Annotate("[session closed: idle timeout]")
 				rec.Interrupt()
-				cancel()
+				cancel(errIdleTimeout)
 				return
 			}
 		}

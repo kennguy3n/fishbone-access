@@ -82,13 +82,10 @@ func (b *Bridge) runSSH(ctx context.Context, cancel context.CancelFunc, conn wsC
 		return
 	}
 
-	// Unblock the blocking WebSocket read when the session ends for any reason
-	// (shell exit, admin terminate, idle timeout): closing the conn makes
-	// ReadMessage return so the input loop exits promptly.
-	go func() {
-		<-ctx.Done()
-		_ = conn.Close()
-	}()
+	// The bridge's closeOnCancel goroutine closes the socket when the session
+	// ends for any reason (shell exit, admin terminate, idle timeout), which
+	// makes the blocking WebSocket read return so this input loop exits
+	// promptly — after delivering a descriptive close status to the operator.
 
 	var wg sync.WaitGroup
 	wg.Add(2)

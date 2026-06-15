@@ -44,12 +44,9 @@ func (b *Bridge) runDB(ctx context.Context, cancel context.CancelFunc, conn wsCo
 	}
 	defer console.close()
 
-	// Unblock the blocking read when the session is cancelled (admin terminate
-	// / idle timeout) by closing the connection.
-	go func() {
-		<-ctx.Done()
-		_ = conn.Close()
-	}()
+	// The bridge's closeOnCancel goroutine closes the socket when the session
+	// is cancelled (admin terminate / idle timeout), which unblocks the read
+	// below — after delivering a descriptive close status to the operator.
 
 	for {
 		_, data, err := conn.ReadMessage()
