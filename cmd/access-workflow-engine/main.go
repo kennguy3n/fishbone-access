@@ -230,7 +230,11 @@ func run() error {
 	// tiers expired replay blobs out of object storage per the retention policy,
 	// hibernation-gated and fail-open exactly like the review sweep above. nil
 	// (feature disabled) simply skips launching the loop.
-	recordingSweeper, err := newRecordingSweeper(ctx, cfg.Recordings, gdb, gate, metrics)
+	// Reuse the connector encryptor main already built and validated (boot
+	// aborts above on a malformed key), and gate at-rest decryption on the same
+	// workspace KMS master key the gateway's write side uses, so the sweep never
+	// constructs a second encryptor from a divergent code path.
+	recordingSweeper, err := newRecordingSweeper(ctx, cfg.Recordings, gdb, gate, metrics, connEnc, cfg.KMSMasterKey != "")
 	if err != nil {
 		return err
 	}

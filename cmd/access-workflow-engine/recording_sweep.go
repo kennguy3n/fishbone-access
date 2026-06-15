@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
-	"strconv"
 
 	"gorm.io/gorm"
 
@@ -27,62 +25,31 @@ type recordingReplayStore interface {
 // buildRecordingReplayStore opens the replay backend from the same PAM_REPLAY_*
 // environment the gateway writes recordings to and the API reads them from, so
 // the sweep tiers blobs out of the IDENTICAL store. When a per-workspace KMS
-// master key is configured it wraps the store in transparent per-workspace
-// decryption, so the index-time integrity check reads the same plaintext frames
-// the gateway recorded (the decorator also opens legacy plaintext blobs
-// unchanged). Returns nil when no backend can be opened — the sweep then still
-// indexes from DB facts and simply skips pruning (which needs a deleter),
-// rather than failing the engine boot.
-func buildRecordingReplayStore(ctx context.Context, gdb *gorm.DB) recordingReplayStore {
+// master key is configured (encConfigured) it wraps the store in transparent
+// per-workspace decryption using the SAME validated encryptor main built for
+// the connector layer (enc), so the index-time integrity check reads the same
+// plaintext frames the gateway recorded (the decorator also opens legacy
+// plaintext blobs unchanged). The gate predicate is the workspace KMS master
+// key — identical to the gateway's write-side replayEncryptionConfigured — so
+// the read and write sides can never disagree on whether blobs are sealed.
+// Returns nil when no backend can be opened — the sweep then still indexes from
+// DB facts and simply skips pruning (which needs a deleter), rather than
+// failing the engine boot.
+func buildRecordingReplayStore(ctx context.Context, gdb *gorm.DB, enc access.CredentialEncryptor, encConfigured bool) recordingReplayStore {
 	base, err := gateway.OpenReplayStoreFromEnv(ctx)
 	if err != nil {
 		logger.Warnf(ctx, "access-workflow-engine: recordings: replay store init: %v (prune disabled)", err)
 		return nil
 	}
-	sealer, serr := recordingReplaySealer()
-	if serr != nil {
-		// A KMS master key IS configured but could not be parsed. Falling back to
-		// the plaintext store would read encrypted blobs as plaintext and record a
-		// fleet-wide false tamper verdict, so disable the store instead: the sweep
-		// still indexes from DB facts and simply skips integrity enrichment +
-		// pruning until the key is fixed.
-		logger.Warnf(ctx, "access-workflow-engine: recordings: replay at-rest key init: %v (integrity enrichment + prune disabled)", serr)
-		return nil
-	}
-	if sealer == nil {
+	if !encConfigured {
 		return base
 	}
-	store, werr := gateway.WrapWithEncryption(base, sealer, gateway.NewGormSessionWorkspaceResolver(gdb))
+	store, werr := gateway.WrapWithEncryption(base, enc, gateway.NewGormSessionWorkspaceResolver(gdb))
 	if werr != nil {
 		logger.Warnf(ctx, "access-workflow-engine: recordings: replay at-rest decryption init: %v (prune disabled)", werr)
 		return nil
 	}
 	return store
-}
-
-// recordingReplaySealer builds the per-workspace credential encryptor used to
-// open at-rest-encrypted recording blobs, from the same ACCESS_KMS_* env the
-// gateway and API read. Returns (nil, nil) when no KMS master key is set
-// (plaintext blobs), matching the gateway's write-side gate, and a non-nil error
-// when a key IS configured but cannot be built — the caller must not silently
-// fall back to plaintext, or it would misread encrypted blobs and raise false
-// tamper alarms.
-func recordingReplaySealer() (access.CredentialEncryptor, error) {
-	master := os.Getenv("ACCESS_KMS_MASTER_KEY")
-	if master == "" {
-		return nil, nil
-	}
-	keyVersion := 1
-	if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
-		if n, perr := strconv.Atoi(v); perr == nil && n >= 0 {
-			keyVersion = n
-		}
-	}
-	enc, err := access.CredentialEncryptorFromConfig(master, keyVersion, os.Getenv("ACCESS_CREDENTIAL_DEK"))
-	if err != nil {
-		return nil, err
-	}
-	return enc, nil
 }
 
 // newRecordingSweeper assembles the background index + retention-prune sweep for
@@ -96,6 +63,8 @@ func newRecordingSweeper(
 	gdb *gorm.DB,
 	gate recordings.HibernationGate,
 	metrics *observability.Metrics,
+	enc access.CredentialEncryptor,
+	encConfigured bool,
 ) (*recordings.Sweeper, error) {
 	if !cfg.SweepEnabled {
 		logger.Infof(ctx, "access-workflow-engine: recordings sweep DISABLED (ACCESS_RECORDING_SWEEP_ENABLED=false)")
@@ -106,7 +75,7 @@ func newRecordingSweeper(
 	if metrics != nil {
 		opts = append(opts, recordings.WithMetrics(metrics))
 	}
-	store := buildRecordingReplayStore(ctx, gdb)
+	store := buildRecordingReplayStore(ctx, gdb, enc, encConfigured)
 	if store != nil {
 		// The reader enriches the index with keystroke text + a live integrity
 		// check; the deleter lets the sweep actually tier expired blobs.
