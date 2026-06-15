@@ -324,6 +324,49 @@ func TestRotationEngine_RotateFailureLeavesUpstreamUntouched(t *testing.T) {
 	}
 }
 
+// TestRotationEngine_UnsupportedProtocolIsPreflight verifies that rotating a
+// target whose protocol has no executor is treated as a PREFLIGHT failure: the
+// engine returns ErrRotationUnsupported with a NIL event and records no
+// RotationEvent (and does not touch policy health), so a manual "rotate now"
+// against an unrotatable target can't pollute the history timeline. Only the
+// manual API path can reach this — UpsertPolicy rejects interval/checkin
+// policies on unsupported protocols.
+func TestRotationEngine_UnsupportedProtocolIsPreflight(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	// Seed an RDP target; the registry below only knows Postgres, so RDP has
+	// no executor.
+	target := seedRotationTarget(t, v, ws, "rdp-box", models.PAMProtocolRDP, "old-pw")
+
+	now := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	ex := &fakeExecutor{protocol: models.PAMProtocolPostgres}
+	eng := newEngineWithExecutor(t, db, v, ex, now)
+	ctx := context.Background()
+
+	event, err := eng.RotateTarget(ctx, ws, target.ID, models.RotationTriggerManual, "admin", nil)
+	if !errors.Is(err, ErrRotationUnsupported) {
+		t.Fatalf("err = %v, want ErrRotationUnsupported", err)
+	}
+	if event != nil {
+		t.Fatalf("event = %+v, want nil (preflight failure records nothing)", event)
+	}
+	// No RotationEvent row may have been written for the unsupported attempt.
+	var count int64
+	if err := db.Model(&models.RotationEvent{}).
+		Where("workspace_id = ? AND target_id = ?", ws, target.ID).
+		Count(&count).Error; err != nil {
+		t.Fatalf("count rotation events: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("recorded %d rotation event(s), want 0 for unsupported protocol", count)
+	}
+	// The executor was never invoked.
+	if ex.rotateCalls != 0 {
+		t.Fatalf("executor.Rotate called %d times, want 0", ex.rotateCalls)
+	}
+}
+
 func TestRotationEngine_PersistFailureRollsBackUpstream(t *testing.T) {
 	db := newTestDB(t)
 	ws := seedWorkspace(t, db, "tenant-a")

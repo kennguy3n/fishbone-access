@@ -244,7 +244,7 @@ func (h *rotationHandlers) rotateNow(c *gin.Context) {
 		// reseal failed) DID run and is recorded as a RotationEvent with
 		// status=failed and a descriptive Error; return it 200 so the console
 		// shows the specific reason instead of a generic "internal error".
-		if event == nil || errors.Is(err, pam.ErrRotationUnsupported) {
+		if event == nil {
 			h.fail(c, err)
 			return
 		}

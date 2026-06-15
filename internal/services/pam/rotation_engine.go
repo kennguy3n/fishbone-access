@@ -72,7 +72,17 @@ func (e *RotationEngine) RotateTarget(ctx context.Context, workspaceID, targetID
 
 	executor, err := e.registry.For(target.Protocol)
 	if err != nil {
-		return e.fail(ctx, workspaceID, target, policy, trigger, actor, leaseID, err)
+		// An unsupported protocol is a PREFLIGHT failure, not an operational
+		// one: nothing touched the upstream, and a protocol having no executor
+		// is a permanent property of the target — not a transient fault that a
+		// retry or an operator could clear. Return the error WITHOUT recording a
+		// RotationEvent or touching policy health, exactly like the validation
+		// guards above, so a manual "rotate now" against an unrotatable target
+		// (the console already disables this) can't spam the history timeline or
+		// falsely mark an otherwise-fine policy unhealthy. The scheduler never
+		// reaches here because UpsertPolicy rejects interval/checkin policies on
+		// unsupported protocols; the only caller is the manual API path.
+		return nil, err
 	}
 
 	current, err := e.vault.OpenSecret(ctx, target)
