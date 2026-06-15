@@ -38,6 +38,7 @@ type SSHProxy struct {
 	ca          *SSHCertificateAuthority
 	hostKey     ssh.Signer
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -52,6 +53,9 @@ type SSHProxyConfig struct {
 	CA          *SSHCertificateAuthority
 	HostKey     ssh.Signer
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -75,6 +79,7 @@ func NewSSHProxy(cfg SSHProxyConfig) (*SSHProxy, error) {
 		ca:          cfg.CA,
 		hostKey:     cfg.HostKey,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -153,7 +158,7 @@ func (p *SSHProxy) Handle(ctx context.Context, conn net.Conn) {
 		}
 	}()
 
-	upstream, err := p.dialUpstream(leased)
+	upstream, err := p.dialUpstream(ctx, leased)
 	if err != nil {
 		rec.Annotate(fmt.Sprintf("[upstream dial failed: %v]", err))
 		logger.Warnf(ctx, "ssh-proxy: dial upstream %s: %v", leased.Target.Address, err)
@@ -186,7 +191,7 @@ func (p *SSHProxy) Handle(ctx context.Context, conn net.Conn) {
 // freshly minted CA certificate and falling back to the JIT-injected vault
 // credential (private key, then password). The upstream username is the
 // target's configured account, never client-supplied.
-func (p *SSHProxy) dialUpstream(leased *pam.LeasedSession) (*ssh.Client, error) {
+func (p *SSHProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (*ssh.Client, error) {
 	target := leased.Target
 	user := target.Username
 	if user == "" {
@@ -217,17 +222,29 @@ func (p *SSHProxy) dialUpstream(leased *pam.LeasedSession) (*ssh.Client, error) 
 		return nil, errors.New("gateway: no usable upstream auth method")
 	}
 
+	// ClientConfig.Timeout is intentionally unset: it only bounds ssh.Dial's TCP
+	// dial, which we no longer use. The dial timeout is enforced by the dialer
+	// seam, and the handshake timeout by the explicit SetDeadline below.
 	clientCfg := &ssh.ClientConfig{
 		User:            user,
 		Auth:            auths,
 		HostKeyCallback: hostKeyCallback(target),
-		Timeout:         p.dialTimeout,
 	}
-	client, err := ssh.Dial("tcp", target.Address, clientCfg)
+	// Obtain the raw transport via the dialer seam (direct or brokered through
+	// an agent tunnel) and run the SSH handshake over it, instead of ssh.Dial
+	// which would always dial directly.
+	conn, err := p.dialer.DialTarget(ctx, target)
 	if err != nil {
 		return nil, fmt.Errorf("gateway: ssh dial %s: %w", target.Address, err)
 	}
-	return client, nil
+	_ = conn.SetDeadline(time.Now().Add(p.dialTimeout))
+	sshConn, chans, reqs, err := ssh.NewClientConn(conn, target.Address, clientCfg)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("gateway: ssh handshake %s: %w", target.Address, err)
+	}
+	_ = conn.SetDeadline(time.Time{})
+	return ssh.NewClient(sshConn, chans, reqs), nil
 }
 
 // proxySessionChannel bridges one operator "session" channel to a matching

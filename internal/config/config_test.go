@@ -263,6 +263,32 @@ func TestValidateRateLimit(t *testing.T) {
 	}
 }
 
+func TestValidateAgentCAPair(t *testing.T) {
+	base := func() Config { return Config{DatabaseDriver: DriverPgx} }
+	// Neither set: feature off, valid.
+	if err := base().Validate(); err != nil {
+		t.Fatalf("agent CA unset failed Validate: %v", err)
+	}
+	// Both set: valid.
+	both := base()
+	both.AgentBroker = AgentBrokerConfig{CACert: "cert", CAKey: "key"}
+	if err := both.Validate(); err != nil {
+		t.Fatalf("agent CA pair failed Validate: %v", err)
+	}
+	// Cert without key: rejected.
+	certOnly := base()
+	certOnly.AgentBroker = AgentBrokerConfig{CACert: "cert"}
+	if err := certOnly.Validate(); err == nil {
+		t.Error("Validate accepted CACert without CAKey, want rejection")
+	}
+	// Key without cert: rejected.
+	keyOnly := base()
+	keyOnly.AgentBroker = AgentBrokerConfig{CAKey: "key"}
+	if err := keyOnly.Validate(); err == nil {
+		t.Error("Validate accepted CAKey without CACert, want rejection")
+	}
+}
+
 func TestSharedStoreLoadAndWarnings(t *testing.T) {
 	// Defaults: shared store off, so neither feature is "active" and no
 	// shared-store warning is emitted even without a Redis URL.

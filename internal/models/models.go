@@ -431,6 +431,10 @@ func All() []any {
 		// Searchable session-recording forensic index + retention policy.
 		&SessionRecording{},
 		&RecordingRetentionPolicy{},
+		// Outbound connector agents + brokered dial.
+		&TargetAgent{},
+		&AgentEnrollmentToken{},
+		&AgentReachableTarget{},
 		// Credential rotation (Session C).
 		&RotationPolicy{},
 		&RotationEvent{},

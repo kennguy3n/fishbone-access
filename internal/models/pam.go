@@ -116,6 +116,13 @@ type PAMTarget struct {
 	// redeemable. Zero falls back to the broker's default.
 	LeaseTTLSeconds int        `gorm:"not null;default:0" json:"lease_ttl_seconds"`
 	SecretRotatedAt *time.Time `json:"secret_rotated_at,omitempty"`
+	// ViaAgentID, when set, marks this target as reachable only through an
+	// outbound connector agent's tunnel rather than by a direct dial from the
+	// gateway. The gateway's dialer brokers the connection through the relay to
+	// the bound agent (see internal/broker and internal/gateway/broker_dial.go)
+	// so the customer exposes no inbound port. Nil keeps the legacy direct-dial
+	// behaviour unchanged.
+	ViaAgentID *uuid.UUID `gorm:"type:uuid;index" json:"via_agent_id,omitempty"`
 }
 
 // PAMConnectToken is a one-shot, short-lived credential an operator presents to

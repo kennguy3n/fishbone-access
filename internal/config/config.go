@@ -10,6 +10,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -176,6 +177,10 @@ type Config struct {
 	// Env is a production label (see DevAuthAllowed); production binaries omit
 	// the validator entirely (internal/iamcore/devauth_prod.go).
 	DevAuth DevAuthConfig
+
+	// AgentBroker configures the outbound connector agent feature (CA, relay
+	// listen/advertise addresses). OFF by default.
+	AgentBroker AgentBrokerConfig
 
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
@@ -386,6 +391,42 @@ type BillingConfig struct {
 	CacheTTL time.Duration
 }
 
+// AgentBrokerConfig configures the outbound connector agent feature: the
+// control-plane CA that signs agent identities, where the relay listens, and
+// the public address agents are told to dial. The whole feature is OFF by
+// default (no CA configured) so a deployment that does not use outbound agents
+// pays nothing and the enrollment endpoint stays absent — safe-by-default and
+// fail-closed: a target marked "via agent" cannot be brokered unless the
+// operator deliberately wired a CA and relay.
+type AgentBrokerConfig struct {
+	// CACert / CAKey are the PEM-encoded agent CA certificate and private key
+	// (inline PEM value, or a path to a file containing it — resolved by the
+	// binaries). ztna-api uses the pair to SIGN agent client certificates and
+	// to issue the relay server certificate; pam-gateway uses it to verify
+	// agent client certificates and present the relay server certificate. Both
+	// binaries must be given the SAME CA. When CACert is empty the feature is
+	// disabled. Read from ACCESS_AGENT_CA_CERT / ACCESS_AGENT_CA_KEY.
+	CACert string
+	CAKey  string
+	// RelayListen is the pam-gateway bind address for the agent relay listener
+	// (plain TCP; the relay performs the mTLS handshake itself). Read from
+	// ACCESS_AGENT_RELAY_LISTEN; defaults to ":7443".
+	RelayListen string
+	// RelayAddr is the PUBLIC host:port agents are told to dial out to (embedded
+	// in the enrollment response). It must resolve from the customer network to
+	// this deployment's relay. Read from ACCESS_AGENT_RELAY_ADDR; defaults to
+	// the RelayListen value for single-host dev.
+	RelayAddr string
+	// RelayHosts are the DNS names / IPs the relay's server certificate is valid
+	// for (SANs). Comma-separated. Read from ACCESS_AGENT_RELAY_HOSTS; defaults
+	// to "localhost,127.0.0.1" for dev.
+	RelayHosts []string
+}
+
+// Configured reports whether an agent CA certificate was supplied, which gates
+// the whole outbound-agent feature.
+func (c AgentBrokerConfig) Configured() bool { return c.CACert != "" }
+
 // WebAccessConfig tunes the clientless browser-access bridge (web SSH terminal
 // and web database console). The feature is safe-by-default and fail-open at
 // the resource layer: when disabled the WebSocket routes are not mounted at all
@@ -586,6 +627,13 @@ func Load() Config {
 			Issuer:   getEnv("AUTH_JWT_ISSUER", "fishbone-access-dev"),
 			Audience: getEnv("AUTH_JWT_AUDIENCE", "fishbone-access"),
 		},
+		AgentBroker: AgentBrokerConfig{
+			CACert:      os.Getenv("ACCESS_AGENT_CA_CERT"),
+			CAKey:       os.Getenv("ACCESS_AGENT_CA_KEY"),
+			RelayListen: getEnv("ACCESS_AGENT_RELAY_LISTEN", ":7443"),
+			RelayAddr:   os.Getenv("ACCESS_AGENT_RELAY_ADDR"),
+			RelayHosts:  getCSV("ACCESS_AGENT_RELAY_HOSTS", []string{"localhost", "127.0.0.1"}),
+		},
 	}
 }
 
@@ -650,6 +698,13 @@ func (c Config) Validate() error {
 		if c.RateLimit.Burst < 1 {
 			return fmt.Errorf("config: ACCESS_TENANT_RATE_LIMIT_BURST must be >= 1 when ACCESS_TENANT_RATE_LIMIT_ENABLED is true (got %d)", c.RateLimit.Burst)
 		}
+	}
+	// The agent CA cert and key are useless apart: signing client/relay
+	// certificates needs both. Reject a half-configured pair loudly at boot
+	// rather than letting the feature appear enabled (CACert set ⇒ Configured)
+	// only to fail when the relay tries to issue its server certificate.
+	if (c.AgentBroker.CACert != "") != (c.AgentBroker.CAKey != "") {
+		return errors.New("config: ACCESS_AGENT_CA_CERT and ACCESS_AGENT_CA_KEY must both be set or both be empty")
 	}
 	return nil
 }
@@ -836,6 +891,26 @@ func getBool(key string, def bool) bool {
 		return b
 	}
 	return def
+}
+
+// getCSV reads a comma-separated env var into a trimmed, non-empty slice,
+// returning def when unset or all-empty.
+func getCSV(key string, def []string) []string {
+	v := os.Getenv(key)
+	if strings.TrimSpace(v) == "" {
+		return def
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return def
+	}
+	return out
 }
 
 func getDuration(key string, def time.Duration) time.Duration {
