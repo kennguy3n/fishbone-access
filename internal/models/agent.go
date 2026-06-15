@@ -33,8 +33,8 @@ const (
 )
 
 // Reachable-target binding kinds. A binding declares one network destination an
-// agent can reach inside the customer's private network, so the relay can route
-// a DialThroughAgent for an address to an agent that actually has a path to it.
+// agent self-reports it can reach inside the customer's private network; it is
+// advertisement shown to operators when they choose what to route via an agent.
 const (
 	AgentReachKindCIDR     = "cidr"     // an IP range, e.g. 10.0.0.0/24
 	AgentReachKindHost     = "host"     // an exact host or host:port
@@ -92,13 +92,12 @@ type AgentEnrollmentToken struct {
 func (AgentEnrollmentToken) TableName() string { return "agent_enrollment_tokens" }
 
 // AgentReachableTarget is one network destination an agent self-reports it can
-// reach on registration (a CIDR, host, or hostname pattern). The relay unions
-// these self-reported specs with the addresses of the PAM targets an operator
-// has bound to the agent (PAMTarget.ViaAgentID — the operator-decision source
-// of truth) to pick an agent for a DialThroughAgent and to fail closed when no
-// online agent covers the requested address. Operator bindings are NOT
-// duplicated into this table; they are derived from the PAM targets directly,
-// so reachability has a single source per origin and never double-counts.
+// reach on registration (a CIDR, host, or hostname pattern). It is purely
+// advertisement: the operator console displays it so an admin knows what an
+// agent can serve when binding a target. Routing itself does NOT consult this
+// table — a session is brokered strictly through the agent a target is bound to
+// (PAMTarget.ViaAgentID, the operator-decision source of truth), so a binding
+// is an authoritative directive and reachability is never double-counted.
 type AgentReachableTarget struct {
 	Base
 	WorkspaceID uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_agent_reach,priority:1,where:deleted_at IS NULL" json:"workspace_id"`

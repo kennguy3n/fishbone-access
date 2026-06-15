@@ -18,7 +18,8 @@ import (
 // Relay is the control-plane endpoint outbound agents dial into. It terminates
 // mTLS, binds each verified tunnel to its agent row, multiplexes session streams
 // over it with yamux, and tracks which agents are online per workspace so
-// DialThroughAgent can reach a private target through the right agent's tunnel.
+// DialThroughAgent routes a privileged session through the specific agent a
+// target is bound to (its ViaAgentID), within the target's workspace.
 //
 // A Relay is a gateway ConnHandler: the pam-gateway supervisor accepts plain TCP
 // on the relay port and hands each connection to Handle, which performs the TLS
@@ -35,26 +36,12 @@ type Relay struct {
 	agents map[uuid.UUID]map[uuid.UUID]*agentConn // workspaceID -> agentID -> conn
 }
 
-// agentConn is one live tunnel: the multiplexed session plus the agent's
-// current reachable set (rebuilt on every (re-)registration).
+// agentConn is one live tunnel: the multiplexed session bound to its agent
+// identity. Routing is by agent identity (the target's ViaAgentID), not by
+// matching a reachable set, so a binding is a strict directive, not a hint.
 type agentConn struct {
 	identity AgentIdentity
 	session  *yamux.Session
-
-	mu    sync.RWMutex
-	reach reachableSet
-}
-
-func (a *agentConn) setReach(rs reachableSet) {
-	a.mu.Lock()
-	a.reach = rs
-	a.mu.Unlock()
-}
-
-func (a *agentConn) allows(addr string) bool {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.reach.allows(addr)
 }
 
 // RelayOption tunes a Relay.
@@ -218,21 +205,14 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 	}
 }
 
-// applyRegister persists the registration and refreshes the in-memory reachable
-// set as the union of the agent's self-reported specs and the operator-created
-// bindings, then publishes the agent into the registry.
+// applyRegister persists the registration (self-reported reachable specs are
+// stored for the operator-facing UI) and publishes the agent into the registry
+// so DialThroughAgent can route to it by identity.
 func (r *Relay) applyRegister(ctx context.Context, ac *agentConn, reg RegisterPayload) error {
 	id := ac.identity
 	if err := r.store.OnRegister(ctx, id.WorkspaceID, id.AgentID, reg); err != nil {
 		return err
 	}
-	bindings, err := r.store.OperatorBindings(ctx, id.WorkspaceID, id.AgentID)
-	if err != nil {
-		return err
-	}
-	specs := append([]ReachableSpec{}, reg.Reachable...)
-	specs = append(specs, bindings...)
-	ac.setReach(newReachableSet(specs))
 	r.register(ac)
 	return nil
 }
@@ -267,67 +247,55 @@ func (r *Relay) deregister(ac *agentConn) {
 	}
 }
 
-// DialThroughAgent opens a new stream to an online agent in workspaceID that
-// advertises a path to targetAddr (host:port) and returns it as a net.Conn the
-// gateway's protocol handlers use unchanged. It fails closed with
-// ErrAgentUnavailable when no such agent is connected — and NEVER considers an
-// agent in another workspace, so cross-tenant brokering is impossible.
-func (r *Relay) DialThroughAgent(ctx context.Context, workspaceID uuid.UUID, targetAddr string) (net.Conn, error) {
-	return r.dialThroughAgentAs(ctx, workspaceID, targetAddr, "")
+// DialThroughAgent opens a new stream to the agent identified by agentID in
+// workspaceID and returns it as a net.Conn the gateway's protocol handlers use
+// unchanged. Routing is strict: it dials through exactly the agent the target
+// is bound to (its ViaAgentID) and NEVER falls back to another agent, so a
+// binding is an authoritative routing directive rather than a reachability
+// hint. It fails closed with ErrAgentUnavailable when that agent is not
+// connected — and only ever looks within workspaceID, so cross-tenant
+// brokering is impossible.
+func (r *Relay) DialThroughAgent(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr string) (net.Conn, error) {
+	return r.dialThroughAgentAs(ctx, workspaceID, agentID, targetAddr, "")
 }
 
 // DialThroughAgentAs is DialThroughAgent with an explicit audit actor (the
 // subject opening the privileged session), recorded on the broker-open event.
-func (r *Relay) DialThroughAgentAs(ctx context.Context, workspaceID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
-	return r.dialThroughAgentAs(ctx, workspaceID, targetAddr, actor)
+func (r *Relay) DialThroughAgentAs(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
+	return r.dialThroughAgentAs(ctx, workspaceID, agentID, targetAddr, actor)
 }
 
-func (r *Relay) dialThroughAgentAs(ctx context.Context, workspaceID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
-	candidates := r.candidates(workspaceID, targetAddr)
-	if len(candidates) == 0 {
+func (r *Relay) dialThroughAgentAs(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
+	if workspaceID == uuid.Nil || agentID == uuid.Nil {
 		return nil, ErrAgentUnavailable
 	}
-	var lastErr error
-	for _, ac := range candidates {
-		// Re-check the agent is still live before opening a session, so a revoke
-		// that landed after the tunnel came up fails the new session closed.
-		if err := r.store.AuthorizeDial(ctx, workspaceID, ac.identity.AgentID); err != nil {
-			lastErr = err
-			continue
-		}
-		conn, err := r.openStream(ctx, ac, targetAddr)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		// Best-effort audit; a failure to record must not drop a live session.
-		if err := r.store.AuditBrokerOpen(context.WithoutCancel(ctx), workspaceID, ac.identity.AgentID, targetAddr, actor); err != nil {
-			logger.Warnf(ctx, "broker: audit broker-open agent=%s: %v", ac.identity.AgentID, err)
-		}
-		return conn, nil
+	ac := r.lookup(workspaceID, agentID)
+	if ac == nil {
+		return nil, ErrAgentUnavailable
 	}
-	if lastErr == nil {
-		lastErr = ErrAgentUnavailable
+	// Re-check the agent is still live before opening a session, so a revoke
+	// that landed after the tunnel came up fails the new session closed.
+	if err := r.store.AuthorizeDial(ctx, workspaceID, agentID); err != nil {
+		return nil, fmt.Errorf("broker: dial through agent: %w", err)
 	}
-	return nil, fmt.Errorf("broker: dial through agent: %w", lastErr)
+	conn, err := r.openStream(ctx, ac, targetAddr)
+	if err != nil {
+		return nil, fmt.Errorf("broker: dial through agent: %w", err)
+	}
+	// Best-effort audit; a failure to record must not drop a live session.
+	if err := r.store.AuditBrokerOpen(context.WithoutCancel(ctx), workspaceID, agentID, targetAddr, actor); err != nil {
+		logger.Warnf(ctx, "broker: audit broker-open agent=%s: %v", agentID, err)
+	}
+	return conn, nil
 }
 
-// candidates returns the online agents in the workspace that advertise a path to
-// addr (a snapshot copy so the dial loop holds no lock).
-func (r *Relay) candidates(workspaceID uuid.UUID, addr string) []*agentConn {
+// lookup returns the live tunnel for a specific agent in a workspace, or nil if
+// that agent is not currently connected (scoped to workspaceID so a foreign
+// agent is never reachable).
+func (r *Relay) lookup(workspaceID, agentID uuid.UUID) *agentConn {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	byAgent := r.agents[workspaceID]
-	if len(byAgent) == 0 {
-		return nil
-	}
-	var out []*agentConn
-	for _, ac := range byAgent {
-		if ac.allows(addr) {
-			out = append(out, ac)
-		}
-	}
-	return out
+	return r.agents[workspaceID][agentID]
 }
 
 // openStream opens a yamux stream to the agent, performs the dial handshake, and

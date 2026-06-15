@@ -37,15 +37,14 @@ var ErrAgentUnavailable = errors.New("broker: no agent available for target")
 
 // RelayStore is the persistence the Relay needs: it authorizes a connecting
 // agent against its issued certificate, records online/offline/heartbeat health
-// transitions, loads the operator-created reachable bindings, and appends the
-// broker-open audit event. It is an interface so the relay is unit-testable
-// against an in-memory fake while production wires the GORM-backed store.
+// transitions, and appends the broker-open audit event. It is an interface so
+// the relay is unit-testable against an in-memory fake while production wires
+// the GORM-backed store.
 type RelayStore interface {
 	AuthorizeConnect(ctx context.Context, id AgentIdentity) (*models.TargetAgent, error)
 	OnRegister(ctx context.Context, workspaceID, agentID uuid.UUID, reg RegisterPayload) error
 	OnHeartbeat(ctx context.Context, workspaceID, agentID uuid.UUID) error
 	OnDisconnect(ctx context.Context, workspaceID, agentID uuid.UUID) error
-	OperatorBindings(ctx context.Context, workspaceID, agentID uuid.UUID) ([]ReachableSpec, error)
 	AuditBrokerOpen(ctx context.Context, workspaceID, agentID uuid.UUID, target, actor string) error
 	// AuthorizeDial re-checks an agent is still live (not revoked, not deleted)
 	// at session-open time, so a revoke that lands after the tunnel came up
@@ -175,30 +174,6 @@ func (s *GormStore) OnDisconnect(ctx context.Context, workspaceID, agentID uuid.
 			TargetRef:   agentID.String(),
 		})
 	})
-}
-
-// OperatorBindings returns the reachable specs implied by the PAM targets an
-// operator has bound to the agent (pam_targets.via_agent_id). Each bound
-// target's address becomes an exact host spec so the relay will broker a dial
-// to it through this specific agent. The relay unions these with the agent's
-// self-reported specs; the two sources never overlap by construction, so there
-// is no double-counting. Bindings are read live, so binding or unbinding a
-// target takes effect on the agent's next (re)registration.
-func (s *GormStore) OperatorBindings(ctx context.Context, workspaceID, agentID uuid.UUID) ([]ReachableSpec, error) {
-	var addrs []string
-	if err := s.db.WithContext(ctx).Model(&models.PAMTarget{}).
-		Where("workspace_id = ? AND via_agent_id = ?", workspaceID, agentID).
-		Pluck("address", &addrs).Error; err != nil {
-		return nil, err
-	}
-	specs := make([]ReachableSpec, 0, len(addrs))
-	for _, addr := range addrs {
-		// An exact host spec (host:port) so the dial address must match the
-		// bound target precisely; this is correct for both IP and hostname
-		// targets and never widens reach beyond what the operator bound.
-		specs = append(specs, ReachableSpec{Pattern: addr, Kind: models.AgentReachKindHost})
-	}
-	return specs, nil
 }
 
 // AuthorizeDial fails closed unless the agent row is still present and not

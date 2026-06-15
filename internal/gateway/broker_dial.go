@@ -29,12 +29,13 @@ type TargetDialer interface {
 	DialTarget(ctx context.Context, target *models.PAMTarget) (net.Conn, error)
 }
 
-// AgentRelay is the slice of the broker the gateway depends on: open a stream to
-// an online agent in a workspace that can reach an address. *broker.Relay
-// satisfies it. Declared here as an interface so the gateway package does not
-// hard-depend on the broker implementation and stays unit-testable with a fake.
+// AgentRelay is the slice of the broker the gateway depends on: open a stream
+// to a SPECIFIC online agent (the one a target is bound to) in a workspace.
+// *broker.Relay satisfies it. Declared here as an interface so the gateway
+// package does not hard-depend on the broker implementation and stays
+// unit-testable with a fake.
 type AgentRelay interface {
-	DialThroughAgentAs(ctx context.Context, workspaceID uuid.UUID, targetAddr, actor string) (net.Conn, error)
+	DialThroughAgentAs(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr, actor string) (net.Conn, error)
 }
 
 // directDialer dials target.Address directly with a bounded timeout. It is the
@@ -84,7 +85,10 @@ func (b brokerDialer) DialTarget(ctx context.Context, target *models.PAMTarget) 
 	if b.relay == nil {
 		return nil, fmt.Errorf("gateway: target %s is via-agent but no relay is configured", target.Address)
 	}
-	conn, err := b.relay.DialThroughAgentAs(ctx, target.WorkspaceID, target.Address, "pam-gateway")
+	// Route strictly through the agent the operator bound this target to
+	// (ViaAgentID), read live from the target row, so a (re)binding takes effect
+	// on the next session and the dial never lands on a different agent.
+	conn, err := b.relay.DialThroughAgentAs(ctx, target.WorkspaceID, *target.ViaAgentID, target.Address, "pam-gateway")
 	if err != nil {
 		return nil, fmt.Errorf("gateway: broker dial %s via agent: %w", target.Address, err)
 	}

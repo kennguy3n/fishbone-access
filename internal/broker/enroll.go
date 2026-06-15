@@ -199,8 +199,15 @@ func (s *EnrollmentService) Enroll(ctx context.Context, in EnrollInput) (*Enroll
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Consume the token first, conditional on it still being pending, so two
-		// concurrent redemptions cannot both create an agent.
+		// Insert the agent first so the token's agent_id foreign key has a row to
+		// reference, then consume the token conditional on it still being pending.
+		// Concurrency is still safe: two racing redemptions both insert an agent,
+		// but only one conditional UPDATE matches (RowsAffected == 1); the loser
+		// returns ErrEnrollment, which rolls back the whole transaction — including
+		// its just-inserted agent — so a token still enrolls at most one agent.
+		if err := tx.Create(agent).Error; err != nil {
+			return fmt.Errorf("broker: create agent: %w", err)
+		}
 		res := tx.Model(&models.AgentEnrollmentToken{}).
 			Where("id = ? AND state = ?", token.ID, models.AgentEnrollTokenPending).
 			Updates(map[string]any{
@@ -214,9 +221,6 @@ func (s *EnrollmentService) Enroll(ctx context.Context, in EnrollInput) (*Enroll
 		}
 		if res.RowsAffected == 0 {
 			return ErrEnrollment
-		}
-		if err := tx.Create(agent).Error; err != nil {
-			return fmt.Errorf("broker: create agent: %w", err)
 		}
 		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
 			WorkspaceID: token.WorkspaceID,

@@ -230,7 +230,7 @@ func TestDialThroughAgentEndToEnd(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			conn, err := st.relay.DialThroughAgent(ctx, st.workspace, upstream)
+			conn, err := st.relay.DialThroughAgent(ctx, st.workspace, st.agentID, upstream)
 			if err != nil {
 				t.Errorf("dial through agent: %v", err)
 				return
@@ -255,11 +255,20 @@ func TestDialThroughAgentEndToEnd(t *testing.T) {
 	wg.Wait()
 }
 
-func TestDialFailsForUnreachableTarget(t *testing.T) {
-	ctx, st := setupStack(t, []ReachableSpec{{Pattern: "10.0.0.0/24", Kind: models.AgentReachKindCIDR}})
-	_, err := st.relay.DialThroughAgent(ctx, st.workspace, "192.168.5.5:22")
+// TestDialFailsWhenBoundAgentOffline proves strict routing fails closed: a
+// target bound to an agent that is not currently connected NEVER falls back to
+// another (online) agent in the workspace — it returns ErrAgentUnavailable.
+func TestDialFailsWhenBoundAgentOffline(t *testing.T) {
+	upstream, stop := echoServer(t)
+	defer stop()
+	host, _, _ := net.SplitHostPort(upstream)
+	ctx, st := setupStack(t, []ReachableSpec{{Pattern: host + "/32", Kind: models.AgentReachKindCIDR}})
+
+	// A different agent id that holds no live tunnel: even though st.agentID is
+	// online and could reach upstream, routing is by the bound agent only.
+	_, err := st.relay.DialThroughAgent(ctx, st.workspace, uuid.New(), upstream)
 	if !errors.Is(err, ErrAgentUnavailable) {
-		t.Fatalf("want ErrAgentUnavailable, got %v", err)
+		t.Fatalf("want ErrAgentUnavailable for offline bound agent, got %v", err)
 	}
 }
 
@@ -270,7 +279,7 @@ func TestCrossTenantBrokeringIsImpossible(t *testing.T) {
 	ctx, st := setupStack(t, []ReachableSpec{{Pattern: host + "/32", Kind: models.AgentReachKindCIDR}})
 
 	otherWS := seedWorkspace(t, st.db, "evil-corp")
-	_, err := st.relay.DialThroughAgent(ctx, otherWS, upstream)
+	_, err := st.relay.DialThroughAgent(ctx, otherWS, st.agentID, upstream)
 	if !errors.Is(err, ErrAgentUnavailable) {
 		t.Fatalf("cross-tenant dial: want ErrAgentUnavailable, got %v", err)
 	}
@@ -285,53 +294,8 @@ func TestRevokedAgentCannotBroker(t *testing.T) {
 	if err := st.enroll.Revoke(ctx, st.workspace, st.agentID, "admin"); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
-	if _, err := st.relay.DialThroughAgent(ctx, st.workspace, upstream); err == nil {
+	if _, err := st.relay.DialThroughAgent(ctx, st.workspace, st.agentID, upstream); err == nil {
 		t.Fatal("revoked agent brokered a session")
-	}
-}
-
-// TestOperatorBindingReachability proves the operator-binding source of reach:
-// a PAM target bound to an agent (via_agent_id) becomes an exact host spec the
-// relay will broker to, without widening reach to any other address and without
-// duplicating the agent's self-reported specs.
-func TestOperatorBindingReachability(t *testing.T) {
-	ctx := context.Background()
-	db := newTestDB(t)
-	ws := seedWorkspace(t, db, "acme")
-	store := NewGormStore(db)
-
-	agentID := uuid.New()
-	other := uuid.New()
-	for _, a := range []uuid.UUID{agentID, other} {
-		if err := db.Create(&models.TargetAgent{
-			Base: models.Base{ID: a}, WorkspaceID: ws, Name: "agent-" + a.String()[:8],
-			CertFingerprint: "fp-" + a.String(), CertSerial: "1",
-			CertNotAfter: time.Now().Add(time.Hour), Status: models.AgentStatusOnline,
-		}).Error; err != nil {
-			t.Fatalf("seed agent: %v", err)
-		}
-	}
-	// A target bound to agentID at an address no self-reported spec covers, and
-	// one bound to a different agent that must NOT leak into agentID's reach.
-	mustCreateTarget(t, db, ws, "db", models.PAMProtocolPostgres, "10.9.9.9:5432", &agentID)
-	mustCreateTarget(t, db, ws, "cache", models.PAMProtocolRedis, "10.9.9.10:6379", &other)
-
-	specs, err := store.OperatorBindings(ctx, ws, agentID)
-	if err != nil {
-		t.Fatalf("operator bindings: %v", err)
-	}
-	if len(specs) != 1 {
-		t.Fatalf("want exactly one operator binding, got %d: %+v", len(specs), specs)
-	}
-	rs := newReachableSet(specs)
-	if !rs.allows("10.9.9.9:5432") {
-		t.Fatal("operator-bound target should be reachable")
-	}
-	if rs.allows("10.9.9.10:6379") {
-		t.Fatal("a target bound to a different agent must not be reachable")
-	}
-	if rs.allows("10.9.9.9:22") {
-		t.Fatal("binding must not widen reach to other ports on the same host")
 	}
 }
 
