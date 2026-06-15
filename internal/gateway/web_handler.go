@@ -51,6 +51,7 @@ type WebProxy struct {
 	hub         *SessionHub
 	store       ReplayStore
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -61,6 +62,9 @@ type WebProxyConfig struct {
 	Hub         *SessionHub
 	Store       ReplayStore
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -79,6 +83,7 @@ func NewWebProxy(cfg WebProxyConfig) (*WebProxy, error) {
 		hub:         cfg.Hub,
 		store:       cfg.Store,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -302,13 +307,12 @@ func (p *WebProxy) upstreamClient(leased *pam.LeasedSession) (*http.Client, stri
 			tlsCfg.InsecureSkipVerify = true //nolint:gosec // no CA pinned: the gateway is the audited trust boundary to the upstream console.
 		}
 	}
-	addr := leased.Target.Address
-	dialer := &net.Dialer{Timeout: p.dialTimeout}
 	tr := &http.Transport{
 		Proxy: nil,
-		// Pin every dial to the leased target regardless of the request URL host.
-		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, addr)
+		// Pin every dial to the leased target through the dialer seam (direct or
+		// brokered via an agent tunnel), regardless of the request URL host.
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return p.dialer.DialTarget(ctx, leased.Target)
 		},
 		TLSClientConfig:     tlsCfg,
 		MaxIdleConns:        4,

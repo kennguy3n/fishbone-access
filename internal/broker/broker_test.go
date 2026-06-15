@@ -290,6 +290,96 @@ func TestRevokedAgentCannotBroker(t *testing.T) {
 	}
 }
 
+// TestOperatorBindingReachability proves the operator-binding source of reach:
+// a PAM target bound to an agent (via_agent_id) becomes an exact host spec the
+// relay will broker to, without widening reach to any other address and without
+// duplicating the agent's self-reported specs.
+func TestOperatorBindingReachability(t *testing.T) {
+	ctx := context.Background()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	store := NewGormStore(db)
+
+	agentID := uuid.New()
+	other := uuid.New()
+	for _, a := range []uuid.UUID{agentID, other} {
+		if err := db.Create(&models.TargetAgent{
+			Base: models.Base{ID: a}, WorkspaceID: ws, Name: "agent-" + a.String()[:8],
+			CertFingerprint: "fp-" + a.String(), CertSerial: "1",
+			CertNotAfter: time.Now().Add(time.Hour), Status: models.AgentStatusOnline,
+		}).Error; err != nil {
+			t.Fatalf("seed agent: %v", err)
+		}
+	}
+	// A target bound to agentID at an address no self-reported spec covers, and
+	// one bound to a different agent that must NOT leak into agentID's reach.
+	mustCreateTarget(t, db, ws, "db", models.PAMProtocolPostgres, "10.9.9.9:5432", &agentID)
+	mustCreateTarget(t, db, ws, "cache", models.PAMProtocolRedis, "10.9.9.10:6379", &other)
+
+	specs, err := store.OperatorBindings(ctx, ws, agentID)
+	if err != nil {
+		t.Fatalf("operator bindings: %v", err)
+	}
+	if len(specs) != 1 {
+		t.Fatalf("want exactly one operator binding, got %d: %+v", len(specs), specs)
+	}
+	rs := newReachableSet(specs)
+	if !rs.allows("10.9.9.9:5432") {
+		t.Fatal("operator-bound target should be reachable")
+	}
+	if rs.allows("10.9.9.10:6379") {
+		t.Fatal("a target bound to a different agent must not be reachable")
+	}
+	if rs.allows("10.9.9.9:22") {
+		t.Fatal("binding must not widen reach to other ports on the same host")
+	}
+}
+
+// TestBindTargetRejectsUnbrokerableProtocol fails closed when a target's
+// protocol has no dialer-wired proxy, so binding can never silently bypass the
+// tunnel by dialing the upstream directly.
+func TestBindTargetRejectsUnbrokerableProtocol(t *testing.T) {
+	ctx := context.Background()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	dir := NewAgentDirectory(db)
+
+	agentID := uuid.New()
+	if err := db.Create(&models.TargetAgent{
+		Base: models.Base{ID: agentID}, WorkspaceID: ws, Name: "a1",
+		CertFingerprint: "fp", CertSerial: "1",
+		CertNotAfter: time.Now().Add(time.Hour), Status: models.AgentStatusOnline,
+	}).Error; err != nil {
+		t.Fatalf("seed agent: %v", err)
+	}
+	// A row written directly with an unsupported protocol (bypassing the vault's
+	// CRUD validation) to exercise the bind-time allow-list.
+	tgt := mustCreateTarget(t, db, ws, "weird", "telnet", "10.0.0.5:23", nil)
+
+	if err := dir.BindTarget(ctx, ws, agentID, tgt.ID, "admin"); !errors.Is(err, ErrValidation) {
+		t.Fatalf("bind unbrokerable protocol: want ErrValidation, got %v", err)
+	}
+	var reloaded models.PAMTarget
+	if err := db.Where("id = ?", tgt.ID).Take(&reloaded).Error; err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if reloaded.ViaAgentID != nil {
+		t.Fatalf("target must not be bound when protocol is rejected, via=%v", reloaded.ViaAgentID)
+	}
+}
+
+func mustCreateTarget(t *testing.T, db *gorm.DB, ws uuid.UUID, name, proto, addr string, via *uuid.UUID) *models.PAMTarget {
+	t.Helper()
+	tgt := &models.PAMTarget{
+		Base: models.Base{ID: uuid.New()}, WorkspaceID: ws, Name: name,
+		Protocol: proto, Address: addr, ViaAgentID: via,
+	}
+	if err := db.Create(tgt).Error; err != nil {
+		t.Fatalf("seed target %q: %v", name, err)
+	}
+	return tgt
+}
+
 func TestAuthorizeConnectRejectsRevoked(t *testing.T) {
 	ctx := context.Background()
 	db := newTestDB(t)

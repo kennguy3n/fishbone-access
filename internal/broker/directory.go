@@ -38,6 +38,25 @@ type AgentView struct {
 	Health AgentHealth        `json:"health"`
 }
 
+// brokerableProtocols are the PAM wire protocols whose gateway proxies route
+// their upstream dial through the dialer seam, so a target on one can be reached
+// through an agent tunnel. Every protocol the gateway serves is wired for
+// brokering today; this explicit allow-list fails closed if a new protocol is
+// added without wiring its proxy's dialer, rather than silently dialing direct
+// and bypassing the tunnel. Keep in sync with the proxies in cmd/pam-gateway.
+var brokerableProtocols = map[string]bool{
+	models.PAMProtocolSSH:      true,
+	models.PAMProtocolPostgres: true,
+	models.PAMProtocolMySQL:    true,
+	models.PAMProtocolK8sExec:  true,
+	models.PAMProtocolRDP:      true,
+	models.PAMProtocolVNC:      true,
+	models.PAMProtocolMongoDB:  true,
+	models.PAMProtocolRedis:    true,
+	models.PAMProtocolMSSQL:    true,
+	models.PAMProtocolHTTP:     true,
+}
+
 // AgentDirectory is the read/bind side of the agent feature used by the HTTP
 // handlers: it lists agents with derived health, exposes the reachable specs an
 // agent advertises, and binds/unbinds PAM targets to an agent (the operator
@@ -113,9 +132,11 @@ func (d *AgentDirectory) BoundTargets(ctx context.Context, workspaceID, agentID 
 }
 
 // BindTarget routes a PAM target through an agent (sets via_agent_id) after
-// verifying both the target and the agent belong to the workspace and the agent
-// is not revoked — fail-closed so a target can never be bound to another
-// tenant's agent. Appends an audit event in the same transaction.
+// verifying both the target and the agent belong to the workspace, the agent is
+// not revoked, and the target's protocol is one the gateway can broker through
+// an agent tunnel — fail-closed so a target can never be bound to another
+// tenant's agent or to a protocol whose proxy would silently bypass the tunnel.
+// Appends an audit event in the same transaction.
 func (d *AgentDirectory) BindTarget(ctx context.Context, workspaceID, agentID, targetID uuid.UUID, actor string) error {
 	if workspaceID == uuid.Nil || agentID == uuid.Nil || targetID == uuid.Nil {
 		return fmt.Errorf("%w: workspace_id, agent_id and target_id are required", ErrValidation)
@@ -128,6 +149,13 @@ func (d *AgentDirectory) BindTarget(ctx context.Context, workspaceID, agentID, t
 		}
 		if agent.Status == models.AgentStatusRevoked {
 			return fmt.Errorf("%w: agent is revoked", ErrValidation)
+		}
+		var target models.PAMTarget
+		if err := tx.Where("id = ? AND workspace_id = ?", targetID, workspaceID).First(&target).Error; err != nil {
+			return err
+		}
+		if !brokerableProtocols[target.Protocol] {
+			return fmt.Errorf("%w: protocol %q cannot be brokered through an agent", ErrValidation, target.Protocol)
 		}
 		res := tx.Model(&models.PAMTarget{}).
 			Where("id = ? AND workspace_id = ?", targetID, workspaceID).

@@ -66,25 +66,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_enroll_tokens_hash ON agent_enrollmen
 CREATE INDEX IF NOT EXISTS idx_agent_enroll_tokens_workspace ON agent_enrollment_tokens(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_agent_enroll_tokens_agent ON agent_enrollment_tokens(agent_id);
 
--- agent_reachable_targets: the network destinations an agent advertises it can
--- reach. The relay unions operator-created bindings (target_id set, what the UI
--- shows) with the agent's self-reported CIDRs (target_id null) to pick an agent
--- for a DialThroughAgent and to fail closed when no online agent covers an
--- address. A binding is unique per (workspace, agent, pattern) for live rows.
+-- agent_reachable_targets: the network destinations an agent self-reports it
+-- can reach on registration (CIDR/host/hostname patterns). The relay unions
+-- these with the addresses of the PAM targets an operator has bound to the
+-- agent (pam_targets.via_agent_id — the operator-decision source of truth) to
+-- pick an agent for a DialThroughAgent and to fail closed when no online agent
+-- covers an address. Operator bindings are derived from pam_targets directly
+-- rather than duplicated here, so reachability has a single source per origin.
+-- A self-reported binding is unique per (workspace, agent, pattern) for live rows.
 CREATE TABLE IF NOT EXISTS agent_reachable_targets (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id),
     agent_id     UUID NOT NULL REFERENCES agents(id),
     pattern      TEXT NOT NULL,
     kind         TEXT NOT NULL,
-    target_id    UUID REFERENCES pam_targets(id),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at   TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_agent_reach_workspace ON agent_reachable_targets(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_agent_reach_agent ON agent_reachable_targets(agent_id);
-CREATE INDEX IF NOT EXISTS idx_agent_reach_target ON agent_reachable_targets(target_id);
 CREATE INDEX IF NOT EXISTS idx_agent_reach_deleted_at ON agent_reachable_targets(deleted_at);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_reach ON agent_reachable_targets(workspace_id, agent_id, pattern) WHERE deleted_at IS NULL;
 

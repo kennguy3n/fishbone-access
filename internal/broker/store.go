@@ -97,10 +97,11 @@ func (s *GormStore) AuthorizeConnect(ctx context.Context, id AgentIdentity) (*mo
 	return &agent, nil
 }
 
-// OnRegister marks the agent online and replaces its SELF-REPORTED reachable
-// bindings (target_id IS NULL) with the freshly advertised set, leaving the
-// operator-created bindings (target_id NOT NULL) untouched. The whole update is
-// one transaction so a registration is atomic.
+// OnRegister marks the agent online and replaces its self-reported reachable
+// bindings with the freshly advertised set. Operator bindings are not stored
+// here (they are derived from pam_targets.via_agent_id), so a registration only
+// ever rewrites the agent's own advertised reach. The whole update is one
+// transaction so a registration is atomic.
 func (s *GormStore) OnRegister(ctx context.Context, workspaceID, agentID uuid.UUID, reg RegisterPayload) error {
 	now := s.now()
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -119,8 +120,8 @@ func (s *GormStore) OnRegister(ctx context.Context, workspaceID, agentID uuid.UU
 		if res.RowsAffected == 0 {
 			return errors.New("broker: agent not found or revoked")
 		}
-		// Replace self-reported reachable bindings.
-		if err := tx.Where("workspace_id = ? AND agent_id = ? AND target_id IS NULL", workspaceID, agentID).
+		// Replace the agent's self-reported reachable bindings.
+		if err := tx.Where("workspace_id = ? AND agent_id = ?", workspaceID, agentID).
 			Delete(&models.AgentReachableTarget{}).Error; err != nil {
 			return err
 		}
@@ -176,18 +177,26 @@ func (s *GormStore) OnDisconnect(ctx context.Context, workspaceID, agentID uuid.
 	})
 }
 
-// OperatorBindings returns the live operator-created and self-reported reachable
-// specs for an agent, which the relay unions into the agent's reachable set.
+// OperatorBindings returns the reachable specs implied by the PAM targets an
+// operator has bound to the agent (pam_targets.via_agent_id). Each bound
+// target's address becomes an exact host spec so the relay will broker a dial
+// to it through this specific agent. The relay unions these with the agent's
+// self-reported specs; the two sources never overlap by construction, so there
+// is no double-counting. Bindings are read live, so binding or unbinding a
+// target takes effect on the agent's next (re)registration.
 func (s *GormStore) OperatorBindings(ctx context.Context, workspaceID, agentID uuid.UUID) ([]ReachableSpec, error) {
-	var rows []models.AgentReachableTarget
-	if err := s.db.WithContext(ctx).
-		Where("workspace_id = ? AND agent_id = ?", workspaceID, agentID).
-		Find(&rows).Error; err != nil {
+	var addrs []string
+	if err := s.db.WithContext(ctx).Model(&models.PAMTarget{}).
+		Where("workspace_id = ? AND via_agent_id = ?", workspaceID, agentID).
+		Pluck("address", &addrs).Error; err != nil {
 		return nil, err
 	}
-	specs := make([]ReachableSpec, 0, len(rows))
-	for _, r := range rows {
-		specs = append(specs, ReachableSpec{Pattern: r.Pattern, Kind: r.Kind})
+	specs := make([]ReachableSpec, 0, len(addrs))
+	for _, addr := range addrs {
+		// An exact host spec (host:port) so the dial address must match the
+		// bound target precisely; this is correct for both IP and hostname
+		// targets and never widens reach beyond what the operator bound.
+		specs = append(specs, ReachableSpec{Pattern: addr, Kind: models.AgentReachKindHost})
 	}
 	return specs, nil
 }

@@ -10,6 +10,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -568,6 +569,13 @@ func (c Config) Validate() error {
 		if c.RateLimit.Burst < 1 {
 			return fmt.Errorf("config: ACCESS_TENANT_RATE_LIMIT_BURST must be >= 1 when ACCESS_TENANT_RATE_LIMIT_ENABLED is true (got %d)", c.RateLimit.Burst)
 		}
+	}
+	// The agent CA cert and key are useless apart: signing client/relay
+	// certificates needs both. Reject a half-configured pair loudly at boot
+	// rather than letting the feature appear enabled (CACert set ⇒ Configured)
+	// only to fail when the relay tries to issue its server certificate.
+	if (c.AgentBroker.CACert != "") != (c.AgentBroker.CAKey != "") {
+		return errors.New("config: ACCESS_AGENT_CA_CERT and ACCESS_AGENT_CA_KEY must both be set or both be empty")
 	}
 	return nil
 }

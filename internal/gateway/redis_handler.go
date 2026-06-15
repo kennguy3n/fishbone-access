@@ -57,6 +57,7 @@ type RedisProxy struct {
 	hub         *SessionHub
 	store       ReplayStore
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -67,6 +68,9 @@ type RedisProxyConfig struct {
 	Hub         *SessionHub
 	Store       ReplayStore
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -85,6 +89,7 @@ func NewRedisProxy(cfg RedisProxyConfig) (*RedisProxy, error) {
 		hub:         cfg.Hub,
 		store:       cfg.Store,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -211,8 +216,7 @@ func (p *RedisProxy) authenticateOperator(br *bufio.Reader, w io.Writer) (string
 // vault credential carries a password, authenticates with AUTH (RESP2). A
 // username (Redis 6+ ACL) is included when present.
 func (p *RedisProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSession) (net.Conn, error) {
-	d := net.Dialer{Timeout: p.dialTimeout}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	conn, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", leased.Target.Address, err)
 	}

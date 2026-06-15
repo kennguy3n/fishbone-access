@@ -91,22 +91,20 @@ type AgentEnrollmentToken struct {
 
 func (AgentEnrollmentToken) TableName() string { return "agent_enrollment_tokens" }
 
-// AgentReachableTarget is one network destination an agent advertises it can
-// reach. Bindings come from two sources that the relay unions: the operator
-// binding a registered PAM target to an agent (durable, what the UI shows) and
-// the agent self-reporting its reachable CIDRs on registration. The relay uses
-// the set to pick an agent for a DialThroughAgent and to fail closed when no
-// online agent covers the requested address.
+// AgentReachableTarget is one network destination an agent self-reports it can
+// reach on registration (a CIDR, host, or hostname pattern). The relay unions
+// these self-reported specs with the addresses of the PAM targets an operator
+// has bound to the agent (PAMTarget.ViaAgentID — the operator-decision source
+// of truth) to pick an agent for a DialThroughAgent and to fail closed when no
+// online agent covers the requested address. Operator bindings are NOT
+// duplicated into this table; they are derived from the PAM targets directly,
+// so reachability has a single source per origin and never double-counts.
 type AgentReachableTarget struct {
 	Base
 	WorkspaceID uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_agent_reach,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
 	AgentID     uuid.UUID `gorm:"type:uuid;index;not null;uniqueIndex:uq_agent_reach,priority:2,where:deleted_at IS NULL" json:"agent_id"`
 	Pattern     string    `gorm:"not null;uniqueIndex:uq_agent_reach,priority:3,where:deleted_at IS NULL" json:"pattern"`
 	Kind        string    `gorm:"not null" json:"kind"`
-	// TargetID, when set, links the binding to the PAM target it was created for
-	// (the operator "reach this target via this agent" action). Self-reported
-	// CIDRs leave it nil.
-	TargetID *uuid.UUID `gorm:"type:uuid;index" json:"target_id,omitempty"`
 }
 
 func (AgentReachableTarget) TableName() string { return "agent_reachable_targets" }

@@ -39,6 +39,7 @@ type K8sExecProxy struct {
 	store       ReplayStore
 	tlsConfig   *tls.Config
 	dialTimeout time.Duration
+	dialer      TargetDialer
 	recMaxBytes int
 }
 
@@ -50,6 +51,9 @@ type K8sExecProxyConfig struct {
 	Store       ReplayStore
 	TLSConfig   *tls.Config
 	DialTimeout time.Duration
+	// Dialer establishes the upstream transport. Nil dials directly (the
+	// default); a broker dialer routes via-agent targets through the tunnel.
+	Dialer      TargetDialer
 	RecMaxBytes int
 }
 
@@ -80,6 +84,7 @@ func NewK8sExecProxy(cfg K8sExecProxyConfig) (*K8sExecProxy, error) {
 		store:       cfg.Store,
 		tlsConfig:   tlsCfg,
 		dialTimeout: dt,
+		dialer:      resolveDialer(cfg.Dialer, dt),
 		recMaxBytes: cfg.RecMaxBytes,
 	}, nil
 }
@@ -202,12 +207,21 @@ func (p *K8sExecProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSessi
 	} else {
 		cfg.InsecureSkipVerify = true //nolint:gosec // no CA pinned: the gateway is the audited trust boundary to the apiserver.
 	}
-	d := &tls.Dialer{NetDialer: &net.Dialer{Timeout: p.dialTimeout}, Config: cfg}
-	conn, err := d.DialContext(ctx, "tcp", leased.Target.Address)
+	// Obtain the raw transport through the dialer seam (direct or brokered via an
+	// agent tunnel), then layer TLS on top so a via-agent apiserver is reached
+	// over the tunnel exactly as a direct dial would be.
+	raw, err := p.dialer.DialTarget(ctx, leased.Target)
 	if err != nil {
 		return nil, fmt.Errorf("dial apiserver: %w", err)
 	}
-	return conn, nil
+	tlsConn := tls.Client(raw, cfg)
+	hsCtx, cancel := context.WithTimeout(ctx, p.dialTimeout)
+	defer cancel()
+	if err := tlsConn.HandshakeContext(hsCtx); err != nil {
+		_ = raw.Close()
+		return nil, fmt.Errorf("tls apiserver: %w", err)
+	}
+	return tlsConn, nil
 }
 
 // rewriteForUpstream injects the upstream credential and fixes routing headers

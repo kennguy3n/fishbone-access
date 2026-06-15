@@ -252,7 +252,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	if err != nil {
 		return nil, err
 	}
-	k8sProxy, err := gateway.NewK8sExecProxy(gateway.K8sExecProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
+	k8sProxy, err := gateway.NewK8sExecProxy(gateway.K8sExecProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
@@ -263,27 +263,27 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	//
 	// RDP presents server-side TLS to the operator when the target uses Enhanced
 	// RDP Security ("tls"/"nla"); reuse the shared operator-facing keypair.
-	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS})
+	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	vncProxy, err := gateway.NewVNCProxy(gateway.VNCProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	vncProxy, err := gateway.NewVNCProxy(gateway.VNCProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	mongoProxy, err := gateway.NewMongoProxy(gateway.MongoProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	mongoProxy, err := gateway.NewMongoProxy(gateway.MongoProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	redisProxy, err := gateway.NewRedisProxy(gateway.RedisProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	redisProxy, err := gateway.NewRedisProxy(gateway.RedisProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	mssqlProxy, err := gateway.NewMSSQLProxy(gateway.MSSQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	mssqlProxy, err := gateway.NewMSSQLProxy(gateway.MSSQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
-	webProxy, err := gateway.NewWebProxy(gateway.WebProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store})
+	webProxy, err := gateway.NewWebProxy(gateway.WebProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
 		return nil, err
 	}
