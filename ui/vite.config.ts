@@ -26,6 +26,7 @@ export default defineConfig({
       "/api": {
         target: process.env.ACCESS_API_PROXY ?? "http://localhost:8080",
         changeOrigin: true,
+        ws: true,
       },
     },
   },

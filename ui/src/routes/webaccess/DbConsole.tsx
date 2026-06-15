@@ -55,7 +55,10 @@ export function DbConsole({ entries, onRun, disabled }: DbConsoleProps) {
       <div className="webaccess-db__transcript" ref={transcriptRef}>
         {entries.length === 0 ? (
           <div className="webaccess-db__hint">
-            <FormattedMessage defaultMessage="Type a SQL statement below and press Run. Each statement is checked against your command policy and recorded before it executes." />
+            <FormattedMessage
+              id="webaccess.db.hint"
+              defaultMessage="Type a SQL statement below and press Run. Each statement is checked against your command policy and recorded before it executes."
+            />
           </div>
         ) : (
           entries.map((entry) => <TranscriptItem key={entry.id} entry={entry} />)
@@ -69,23 +72,30 @@ export function DbConsole({ entries, onRun, disabled }: DbConsoleProps) {
           spellCheck={false}
           disabled={disabled}
           placeholder={intl.formatMessage({
+            id: "webaccess.db.placeholder",
             defaultMessage: "SELECT * FROM …",
           })}
-          aria-label={intl.formatMessage({ defaultMessage: "SQL statement" })}
+          aria-label={intl.formatMessage({
+            id: "webaccess.db.ariaLabel",
+            defaultMessage: "SQL statement",
+          })}
           onChange={(e) => setSql(e.target.value)}
           onKeyDown={onKeyDown}
           rows={3}
         />
         <div className="webaccess-db__composer-actions">
           <span className="muted webaccess-db__kbd-hint">
-            <FormattedMessage defaultMessage="Ctrl / ⌘ + Enter to run" />
+            <FormattedMessage
+              id="webaccess.db.kbdHint"
+              defaultMessage="Ctrl / ⌘ + Enter to run"
+            />
           </span>
           <button
             className="btn btn--primary btn--sm"
             onClick={run}
             disabled={disabled || sql.trim() === ""}
           >
-            <FormattedMessage defaultMessage="Run" />
+            <FormattedMessage id="webaccess.db.run" defaultMessage="Run" />
           </button>
         </div>
       </div>
@@ -104,13 +114,16 @@ function TranscriptItem({ entry }: { entry: ConsoleEntry }) {
       </div>
       {entry.status === "running" && (
         <div className="muted webaccess-db__running">
-          <FormattedMessage defaultMessage="Running…" />
+          <FormattedMessage id="webaccess.db.running" defaultMessage="Running…" />
         </div>
       )}
       {entry.status === "denied" && entry.error && (
         <div className="webaccess-db__deny">
           <Badge tone="danger">
-            <FormattedMessage defaultMessage="Policy denied" />
+            <FormattedMessage
+              id="webaccess.db.policyDenied"
+              defaultMessage="Policy denied"
+            />
           </Badge>
           <span>{entry.error.message}</span>
         </div>
@@ -118,7 +131,7 @@ function TranscriptItem({ entry }: { entry: ConsoleEntry }) {
       {entry.status === "error" && entry.error && (
         <div className="webaccess-db__error">
           <Badge tone="warn">
-            <FormattedMessage defaultMessage="Error" />
+            <FormattedMessage id="webaccess.db.error" defaultMessage="Error" />
           </Badge>
           <span>{entry.error.message}</span>
         </div>
@@ -140,6 +153,7 @@ function ResultView({ result }: { result: ResultFrame }) {
         <Badge tone="ok">{result.command || "OK"}</Badge>
         <span className="muted">
           <FormattedMessage
+            id="webaccess.db.rowsAffected"
             defaultMessage="{n, plural, one {# row} other {# rows}} affected · {ms} ms"
             values={{ n: result.rowsAffected, ms: result.elapsedMs }}
           />
@@ -185,12 +199,16 @@ function ResultView({ result }: { result: ResultFrame }) {
       </div>
       <div className="webaccess-db__result-meta muted">
         <FormattedMessage
+          id="webaccess.db.rowsReturned"
           defaultMessage="{n, plural, one {# row} other {# rows}} · {ms} ms"
           values={{ n: result.rows.length, ms: result.elapsedMs }}
         />
         {result.truncated && (
           <Badge tone="warn">
-            <FormattedMessage defaultMessage="Truncated to row cap" />
+            <FormattedMessage
+              id="webaccess.db.truncated"
+              defaultMessage="Truncated to row cap"
+            />
           </Badge>
         )}
       </div>

@@ -2,11 +2,32 @@ package webaccess
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+// sanitizeCommandText makes an operator command/statement safe to persist in
+// the Postgres TEXT command-log and audit-chain columns. Two byte classes a raw
+// terminal or a hostile client can inject are fatal to those writes: a NUL
+// (0x00), which Postgres rejects outright in TEXT, and any invalid UTF-8
+// sequence (e.g. a lone continuation byte from a torn multibyte keystroke or
+// paste), which Postgres also refuses as "invalid byte sequence for encoding
+// UTF8". Such a write failure must never bubble up as a fail-closed teardown
+// with a misleading "command policy unavailable" — a single stray input byte
+// cannot be allowed to kill a governed session — so we drop NULs and coerce the
+// remainder to valid UTF-8 before the string reaches LogCommand. Well-formed
+// ASCII/UTF-8 input is returned byte-for-byte, leaving policy/audit semantics
+// unchanged. Only the audited string is sanitized; the raw operator bytes still
+// stream to the upstream PTY untouched, so the shell sees exactly what was sent.
+func sanitizeCommandText(s string) string {
+	if strings.IndexByte(s, 0) >= 0 {
+		s = strings.ReplaceAll(s, "\x00", "")
+	}
+	return strings.ToValidUTF8(s, "")
+}
 
 // WebSocket message-type discriminators carried in the JSON control frames.
 // Raw terminal bytes (SSH) travel as binary frames with no JSON envelope; every

@@ -43,15 +43,40 @@ function phaseTone(phase: WebSessionPhase): { tone: string; key: string } {
 function PhaseLabel({ phase }: { phase: WebSessionPhase }) {
   switch (phase) {
     case "connecting":
-      return <FormattedMessage defaultMessage="Connecting" />;
+      return (
+        <FormattedMessage
+          id="webaccess.phase.connecting"
+          defaultMessage="Connecting"
+        />
+      );
     case "authenticating":
-      return <FormattedMessage defaultMessage="Authorizing" />;
+      return (
+        <FormattedMessage
+          id="webaccess.phase.authorizing"
+          defaultMessage="Authorizing"
+        />
+      );
     case "ready":
-      return <FormattedMessage defaultMessage="Connected" />;
+      return (
+        <FormattedMessage
+          id="webaccess.phase.connected"
+          defaultMessage="Connected"
+        />
+      );
     case "error":
-      return <FormattedMessage defaultMessage="Connection error" />;
+      return (
+        <FormattedMessage
+          id="webaccess.phase.connectionError"
+          defaultMessage="Connection error"
+        />
+      );
     default:
-      return <FormattedMessage defaultMessage="Disconnected" />;
+      return (
+        <FormattedMessage
+          id="webaccess.phase.disconnected"
+          defaultMessage="Disconnected"
+        />
+      );
   }
 }
 
@@ -114,7 +139,10 @@ export function SessionChrome({
             </span>
           )}
           <button className="btn btn--sm btn--danger" onClick={onDisconnect}>
-            <FormattedMessage defaultMessage="End session" />
+            <FormattedMessage
+              id="webaccess.session.end"
+              defaultMessage="End session"
+            />
           </button>
         </div>
       </div>
@@ -122,16 +150,26 @@ export function SessionChrome({
       <div className="webaccess-session__governance" role="note">
         <Icon name="audit" size={14} />
         {ready?.recording ? (
-          <FormattedMessage defaultMessage="This session is being recorded." />
+          <FormattedMessage
+            id="webaccess.session.recorded"
+            defaultMessage="This session is being recorded."
+          />
         ) : (
-          <FormattedMessage defaultMessage="This session is audited." />
+          <FormattedMessage
+            id="webaccess.session.audited"
+            defaultMessage="This session is audited."
+          />
         )}
         {ready?.policyGoverned && (
-          <FormattedMessage defaultMessage="Every command is checked against your command policy." />
+          <FormattedMessage
+            id="webaccess.session.policyGoverned"
+            defaultMessage="Every command is checked against your command policy."
+          />
         )}
         {ready?.subject && (
           <span className="muted">
             <FormattedMessage
+              id="webaccess.session.actingAs"
               defaultMessage="Acting as {subject}"
               values={{ subject: ready.subject }}
             />
@@ -141,12 +179,16 @@ export function SessionChrome({
 
       {paused && (
         <div className="webaccess-session__notice webaccess-session__notice--warn" role="status">
-          <FormattedMessage defaultMessage="An administrator has paused this session. Your input is held until it resumes; output stays live." />
+          <FormattedMessage
+            id="webaccess.session.paused"
+            defaultMessage="An administrator has paused this session. Your input is held until it resumes; output stays live."
+          />
         </div>
       )}
       {terminated && (
         <div className="webaccess-session__notice webaccess-session__notice--danger" role="alert">
           <FormattedMessage
+            id="webaccess.session.terminated"
             defaultMessage="Session terminated: {reason}"
             values={{ reason: status?.reason || closeReason || "ended by policy" }}
           />
@@ -154,7 +196,12 @@ export function SessionChrome({
       )}
       {phase === "error" && !terminated && (
         <div className="webaccess-session__notice webaccess-session__notice--danger" role="alert">
-          {closeReason || <FormattedMessage defaultMessage="The connection could not be established." />}
+          {closeReason || (
+            <FormattedMessage
+              id="webaccess.session.connectFailed"
+              defaultMessage="The connection could not be established."
+            />
+          )}
         </div>
       )}
 

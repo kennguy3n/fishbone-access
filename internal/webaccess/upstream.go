@@ -2,7 +2,6 @@ package webaccess
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -162,23 +161,25 @@ func dialUpstreamPostgres(ctx context.Context, leased *pam.LeasedSession, dialTi
 	if user == "" {
 		user = leased.Secret.Username
 	}
-	cfg, err := pgx.ParseConfig("")
+	// sslmode=prefer is what gives pgx the opportunistic-TLS wiring we want: it
+	// builds a TLS-first primary connection AND a plaintext fallback (in
+	// cfg.Fallbacks), so an SSL-capable server is encrypted while a
+	// plaintext-only server (a legacy or dev database) still connects. Setting
+	// cfg.TLSConfig by hand on an empty-DSN config does NOT create that fallback,
+	// so it fails closed against any server that refuses TLS. The host and port
+	// live in the DSN so the generated fallback inherits them; credentials and
+	// database are set on the shared config below. Certificate verification is
+	// intentionally skipped (prefer semantics) — the gateway→DB hop runs inside
+	// the operator's own network and mirrors the native pg proxy; the sensitive
+	// operator↔gateway hop is the WebSocket's TLS.
+	cfg, err := pgx.ParseConfig(fmt.Sprintf("host=%s port=%s sslmode=prefer", host, port))
 	if err != nil {
 		return nil, fmt.Errorf("webaccess: base pg config: %w", err)
 	}
-	cfg.Host = host
-	cfg.Port = parsePort(port)
 	cfg.User = user
 	cfg.Password = leased.Secret.Password
 	cfg.Database = upstreamDBName(leased)
 	cfg.ConnectTimeout = dialTimeout
-	// Prefer TLS but allow the driver to retry without it: ParseConfig with an
-	// empty DSN leaves TLSConfig nil (no TLS). Set a permissive client TLS
-	// config so an SSL-capable server upgrades; pgx falls back to plaintext when
-	// the server refuses. Certificate verification against the upstream is the
-	// target operator's responsibility (host pinning is an SSH concept); the
-	// sensitive operator↔gateway hop is the WebSocket's TLS.
-	cfg.TLSConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // upstream DB TLS; the trust boundary is the gateway→DB hop inside the operator's own network, mirroring the native pg proxy which dials sslmode=prefer.
 
 	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
@@ -224,14 +225,4 @@ func dialUpstreamMySQL(ctx context.Context, leased *pam.LeasedSession, dialTimeo
 		return nil, fmt.Errorf("webaccess: connect upstream mysql: %w", err)
 	}
 	return db, nil
-}
-
-// parsePort converts a port string to a uint16, defaulting to 0 on a parse
-// failure (pgx then uses its own default).
-func parsePort(p string) uint16 {
-	n, err := strconv.ParseUint(p, 10, 16)
-	if err != nil {
-		return 0
-	}
-	return uint16(n)
 }

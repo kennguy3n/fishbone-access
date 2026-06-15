@@ -73,7 +73,10 @@ export function DbSession({ rawToken, onExit }: DbSessionProps) {
       {ended && (
         <div className="webaccess-session__ended">
           <button className="btn btn--primary btn--sm" onClick={onExit}>
-            <FormattedMessage defaultMessage="Back to targets" />
+            <FormattedMessage
+              id="webaccess.backToTargets"
+              defaultMessage="Back to targets"
+            />
           </button>
         </div>
       )}

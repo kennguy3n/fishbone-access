@@ -99,7 +99,10 @@ export function WebAccess() {
       const message =
         err instanceof Error ? err.message : "Could not start the session.";
       toast.error(
-        intl.formatMessage({ defaultMessage: "Could not start the session" }),
+        intl.formatMessage({
+          id: "webaccess.launch.error",
+          defaultMessage: "Could not start the session",
+        }),
         message,
       );
     }
@@ -111,7 +114,9 @@ export function WebAccess() {
         <PageHeader
           title={active.target.name}
           subtitle={intl.formatMessage({
-            defaultMessage: "Live clientless session — recorded and policy-governed.",
+            id: "webaccess.session.subtitle",
+            defaultMessage:
+              "Live clientless session — recorded and policy-governed.",
           })}
           actions={
             <button
@@ -119,7 +124,10 @@ export function WebAccess() {
               onClick={() => setActive(null)}
             >
               <Icon name="chevron-down" size={14} />{" "}
-              <FormattedMessage defaultMessage="Back to targets" />
+              <FormattedMessage
+                id="webaccess.backToTargets"
+                defaultMessage="Back to targets"
+              />
             </button>
           }
         />
@@ -141,8 +149,12 @@ export function WebAccess() {
   return (
     <>
       <PageHeader
-        title={intl.formatMessage({ defaultMessage: "Web access" })}
+        title={intl.formatMessage({
+          id: "webaccess.title",
+          defaultMessage: "Web access",
+        })}
         subtitle={intl.formatMessage({
+          id: "webaccess.subtitle",
           defaultMessage:
             "Open a privileged SSH or database session in your browser — no client to install. Every session is recorded, policy-checked, and audited.",
         })}
@@ -159,9 +171,11 @@ export function WebAccess() {
         empty={
           <EmptyState
             title={intl.formatMessage({
+              id: "webaccess.empty.title",
               defaultMessage: "No connectable targets",
             })}
             description={intl.formatMessage({
+              id: "webaccess.empty.description",
               defaultMessage:
                 "You need an active JIT lease to a SSH, PostgreSQL, or MySQL target to open a browser session. Request a lease, then come back here.",
             })}
@@ -211,15 +225,21 @@ function LaunchCard({
       <dl className="webaccess-card__meta">
         <div>
           <dt>
-            <FormattedMessage defaultMessage="Account" />
+            <FormattedMessage id="webaccess.card.account" defaultMessage="Account" />
           </dt>
           <dd>{target.username || "—"}</dd>
         </div>
         <div>
           <dt>
-            <FormattedMessage defaultMessage="Lease expires" />
+            <FormattedMessage
+              id="webaccess.card.leaseExpires"
+              defaultMessage="Lease expires"
+            />
             <HelpTooltip>
-              <FormattedMessage defaultMessage="Your session ends automatically when the lease window closes." />
+              <FormattedMessage
+                id="webaccess.card.leaseExpires.help"
+                defaultMessage="Your session ends automatically when the lease window closes."
+              />
             </HelpTooltip>
           </dt>
           <dd>{lease.expires_at ? formatRelative(lease.expires_at) : "—"}</dd>
@@ -232,9 +252,15 @@ function LaunchCard({
         disabled={busy}
       >
         {kind === "ssh" ? (
-          <FormattedMessage defaultMessage="Open terminal" />
+          <FormattedMessage
+            id="webaccess.card.openTerminal"
+            defaultMessage="Open terminal"
+          />
         ) : (
-          <FormattedMessage defaultMessage="Open console" />
+          <FormattedMessage
+            id="webaccess.card.openConsole"
+            defaultMessage="Open console"
+          />
         )}
       </button>
     </Card>

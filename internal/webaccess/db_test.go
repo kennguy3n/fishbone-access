@@ -28,6 +28,31 @@ func TestFirstKeyword(t *testing.T) {
 	}
 }
 
+func TestSanitizeCommandText(t *testing.T) {
+	cases := map[string]string{
+		// Well-formed input is returned byte-for-byte.
+		"SELECT * FROM payments": "SELECT * FROM payments",
+		"ls -la /etc":            "ls -la /etc",
+		"echo café — déjà":       "echo café — déjà",
+		"":                       "",
+		// NUL (0x00) is dropped: Postgres TEXT cannot store it, so a stray NUL
+		// must not fail the audit write and tear the session down.
+		"echo \x00hi": "echo hi",
+		"\x00\x00":    "",
+		"a\x00b\x00c": "abc",
+		// A torn multibyte sequence (lone UTF-8 continuation/lead bytes) is
+		// coerced away rather than left to trip "invalid byte sequence".
+		"echo \xe2\x80hi": "echo hi",
+		"\xff\xfe":        "",
+		"good\x80tail":    "goodtail",
+	}
+	for in, want := range cases {
+		if got := sanitizeCommandText(in); got != want {
+			t.Errorf("sanitizeCommandText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestReturnsRows(t *testing.T) {
 	rowReturning := []string{"SELECT 1", "show tables", "DESCRIBE t", "explain analyze select 1", "WITH a AS (select 1) select * from a", "TABLE t", "VALUES (1)", "CALL p()",
 		"ANALYZE TABLE t", "OPTIMIZE TABLE t", "CHECK TABLE t", "CHECKSUM TABLE t", "HANDLER t READ FIRST",

@@ -69,7 +69,7 @@ func (b *Bridge) runDB(ctx context.Context, cancel context.CancelFunc, conn wsCo
 		if msg.Type != msgQuery {
 			continue
 		}
-		statement := strings.TrimSpace(msg.SQL)
+		statement := sanitizeCommandText(strings.TrimSpace(msg.SQL))
 		if statement == "" {
 			continue
 		}

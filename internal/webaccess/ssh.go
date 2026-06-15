@@ -250,7 +250,7 @@ func (s *commandScanner) feed(p []byte) bool {
 }
 
 func (s *commandScanner) flushLine() bool {
-	cmd := strings.TrimSpace(string(s.buf))
+	cmd := sanitizeCommandText(strings.TrimSpace(string(s.buf)))
 	s.buf = s.buf[:0]
 	if cmd == "" {
 		return true
