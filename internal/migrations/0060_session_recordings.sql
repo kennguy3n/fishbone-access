@@ -55,9 +55,16 @@ CREATE TABLE IF NOT EXISTS session_recordings (
 
 -- One index row per session: the indexer upserts on this key (idempotent
 -- re-index), so re-running the sweep over an already-indexed session updates in
--- place rather than duplicating.
+-- place rather than duplicating. The index is PARTIAL on deleted_at IS NULL to
+-- match the soft-delete convention every other unique index in this schema
+-- follows (e.g. uq_pam_targets_name, uq_access_sync_state): the row embeds the
+-- gorm.DeletedAt soft-delete column, so a future soft-delete of a recording must
+-- not block re-inserting a fresh row for the same (workspace_id, session_id).
+-- The indexer's ON CONFLICT specifies the same predicate so Postgres infers this
+-- index as the upsert arbiter.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_session_recordings_session
-    ON session_recordings (workspace_id, session_id);
+    ON session_recordings (workspace_id, session_id)
+    WHERE deleted_at IS NULL;
 
 -- The default console listing is a tenant's own recordings newest-first; this
 -- composite serves that scan directly. A partial expression is unnecessary —

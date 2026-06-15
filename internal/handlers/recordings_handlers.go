@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/recordings"
 )
@@ -192,8 +193,9 @@ func (h *recordingsHandlers) setRetention(c *gin.Context) {
 }
 
 // fail maps recordings sentinel errors to HTTP status codes. Unknown errors are
-// 500 and logged by the central error path (never echoed) so an internal fault
-// is not leaked to clients.
+// logged here (the only place with the underlying cause) and returned as a
+// generic 500 — never echoed — so an internal fault stays visible to operators
+// without leaking detail to clients. Mirrors pamHandlers.fail.
 func (h *recordingsHandlers) fail(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, recordings.ErrValidation):
@@ -209,6 +211,7 @@ func (h *recordingsHandlers) fail(c *gin.Context, err error) {
 		// an authenticated one (parity with the generic 500 below).
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "recording replay is unavailable"})
 	default:
+		logger.Errorf(c.Request.Context(), "recordings: unhandled error: %v", err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 	}
 }

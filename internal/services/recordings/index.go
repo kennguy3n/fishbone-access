@@ -69,8 +69,12 @@ func (s *Service) IndexSession(ctx context.Context, workspaceID, sessionID uuid.
 
 	if err := s.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "workspace_id"}, {Name: "session_id"}},
-			DoUpdates: clause.AssignmentColumns(indexUpsertColumns),
+			Columns: []clause.Column{{Name: "workspace_id"}, {Name: "session_id"}},
+			// The unique index is partial (WHERE deleted_at IS NULL, the schema's
+			// soft-delete convention), so the conflict target must carry the same
+			// predicate for Postgres to infer it as the upsert arbiter.
+			TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Expr{SQL: "deleted_at IS NULL"}}},
+			DoUpdates:   clause.AssignmentColumns(indexUpsertColumns),
 		}).
 		Create(&row).Error; err != nil {
 		return fmt.Errorf("recordings: upsert recording for session %s: %w", sessionID, err)

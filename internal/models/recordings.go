@@ -27,9 +27,9 @@ type SessionRecording struct {
 	Base
 	// WorkspaceID is the owning tenant; the (WorkspaceID, SessionID) pair is the
 	// idempotent upsert key and the RLS isolation key.
-	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_session_recordings_session,priority:1;index:idx_session_recordings_ws_started,priority:1" json:"workspace_id"`
+	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_session_recordings_session,priority:1,where:deleted_at IS NULL;index:idx_session_recordings_ws_started,priority:1" json:"workspace_id"`
 	// SessionID is the PAM session this recording belongs to.
-	SessionID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_session_recordings_session,priority:2" json:"session_id"`
+	SessionID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:uq_session_recordings_session,priority:2,where:deleted_at IS NULL" json:"session_id"`
 	// TargetID is the privileged target the session connected to (nullable: a
 	// session whose target was later deleted still has a recording to replay).
 	TargetID *uuid.UUID `gorm:"type:uuid" json:"target_id,omitempty"`
