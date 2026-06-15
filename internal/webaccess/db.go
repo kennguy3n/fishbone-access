@@ -302,7 +302,10 @@ func (c *mysqlConsole) run(ctx context.Context, statement string) (resultMessage
 // from its leading keyword. Used only for the MySQL path (pgx is uniform).
 func returnsRows(statement string) bool {
 	switch firstKeyword(statement) {
-	case "select", "show", "describe", "desc", "explain", "with", "table", "values", "call":
+	case "select", "show", "describe", "desc", "explain", "with", "table", "values", "call",
+		// MySQL-specific statements that also return a row set; routing these
+		// through ExecContext would silently drop their result.
+		"analyze", "optimize", "check", "checksum", "handler":
 		return true
 	default:
 		return false
@@ -327,15 +330,25 @@ func commandVerb(statement, tag string) string {
 }
 
 // firstKeyword returns the lower-cased leading SQL keyword of a statement,
-// skipping leading whitespace and a leading line comment.
+// skipping leading whitespace and any leading line (--) or block (/* */)
+// comments, so a hint-prefixed statement (common in MySQL, e.g.
+// "/*+ MAX_EXECUTION_TIME(1000) */ SELECT ...") classifies on its real verb.
 func firstKeyword(statement string) string {
 	s := strings.TrimSpace(statement)
-	for strings.HasPrefix(s, "--") {
-		if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+	for strings.HasPrefix(s, "--") || strings.HasPrefix(s, "/*") {
+		if strings.HasPrefix(s, "--") {
+			nl := strings.IndexByte(s, '\n')
+			if nl < 0 {
+				return ""
+			}
 			s = strings.TrimSpace(s[nl+1:])
-		} else {
+			continue
+		}
+		end := strings.Index(s, "*/")
+		if end < 0 {
 			return ""
 		}
+		s = strings.TrimSpace(s[end+2:])
 	}
 	i := strings.IndexFunc(s, func(r rune) bool {
 		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '(' || r == ';'

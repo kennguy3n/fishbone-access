@@ -270,7 +270,10 @@ func TestServeRejectsInvalidToken(t *testing.T) {
 	conn := newFakeConn()
 	conn.pushJSON(clientMessage{Type: msgHello, Token: "not-a-real-token"})
 	done := make(chan struct{})
-	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
 
 	conn.waitFor(t, "invalid-token error", func(m map[string]any) bool {
 		return m["type"] == msgError && m["message"] == "invalid or expired connect token"
@@ -317,7 +320,10 @@ func TestServeRejectsProtocolMismatch(t *testing.T) {
 	conn.pushJSON(clientMessage{Type: msgHello, Token: token})
 
 	done := make(chan struct{})
-	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
 	conn.waitFor(t, "protocol mismatch error", func(m map[string]any) bool {
 		return m["type"] == msgError && m["message"] == "connect token is not for this access type"
 	})
@@ -342,7 +348,10 @@ func TestServeSSHEndToEnd(t *testing.T) {
 	conn.pushJSON(clientMessage{Type: msgHello, Token: token, Cols: 100, Rows: 30})
 
 	done := make(chan struct{})
-	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
 
 	ready := conn.waitFor(t, "ready frame", func(m map[string]any) bool { return m["type"] == msgReady })
 	if ready["protocol"] != models.PAMProtocolSSH || ready["recording"] != true || ready["policy_governed"] != true {
@@ -392,7 +401,10 @@ func TestServeSSHHeartbeat(t *testing.T) {
 	conn := newFakeConn()
 	conn.pushJSON(clientMessage{Type: msgHello, Token: token})
 	done := make(chan struct{})
-	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
 
 	conn.waitFor(t, "ready frame", func(m map[string]any) bool { return m["type"] == msgReady })
 
@@ -420,7 +432,10 @@ func TestServeSSHPolicyDenyTearsDown(t *testing.T) {
 	conn := newFakeConn()
 	conn.pushJSON(clientMessage{Type: msgHello, Token: token})
 	done := make(chan struct{})
-	go func() { e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID}); close(done) }()
+	go func() {
+		e.bridge.ServeSSH(context.Background(), conn, ServeParams{WorkspaceID: e.workspaceID})
+		close(done)
+	}()
 
 	conn.waitFor(t, "ready frame", func(m map[string]any) bool { return m["type"] == msgReady })
 	conn.push(binaryMT, []byte("rm -rf /\n"))

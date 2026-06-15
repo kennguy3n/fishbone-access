@@ -7,15 +7,19 @@ import (
 
 func TestFirstKeyword(t *testing.T) {
 	cases := map[string]string{
-		"SELECT * FROM t":             "select",
-		"  select 1":                  "select",
-		"\n\tUPDATE t SET x=1":        "update",
-		"INSERT INTO t VALUES (1)":    "insert",
-		"WITH a AS (SELECT 1) SELECT": "with",
-		"(SELECT 1)":                  "",
-		"-- a comment\nSELECT 1":      "select",
-		"":                            "",
-		"VACUUM;":                     "vacuum",
+		"SELECT * FROM t":                       "select",
+		"  select 1":                            "select",
+		"\n\tUPDATE t SET x=1":                  "update",
+		"INSERT INTO t VALUES (1)":              "insert",
+		"WITH a AS (SELECT 1) SELECT":           "with",
+		"(SELECT 1)":                            "",
+		"-- a comment\nSELECT 1":                "select",
+		"":                                      "",
+		"VACUUM;":                               "vacuum",
+		"/*+ MAX_EXECUTION_TIME(1) */ SELECT 1": "select",
+		"/* leading block */ UPDATE t SET x=1":  "update",
+		"-- line\n/* block */\nselect 2":        "select",
+		"/* unterminated select":                "",
 	}
 	for in, want := range cases {
 		if got := firstKeyword(in); got != want {
@@ -25,7 +29,9 @@ func TestFirstKeyword(t *testing.T) {
 }
 
 func TestReturnsRows(t *testing.T) {
-	rowReturning := []string{"SELECT 1", "show tables", "DESCRIBE t", "explain analyze select 1", "WITH a AS (select 1) select * from a", "TABLE t", "VALUES (1)", "CALL p()"}
+	rowReturning := []string{"SELECT 1", "show tables", "DESCRIBE t", "explain analyze select 1", "WITH a AS (select 1) select * from a", "TABLE t", "VALUES (1)", "CALL p()",
+		"ANALYZE TABLE t", "OPTIMIZE TABLE t", "CHECK TABLE t", "CHECKSUM TABLE t", "HANDLER t READ FIRST",
+		"/*+ hint */ SELECT 1"}
 	for _, s := range rowReturning {
 		if !returnsRows(s) {
 			t.Errorf("returnsRows(%q) = false, want true", s)

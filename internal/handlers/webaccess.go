@@ -61,7 +61,11 @@ func newWebAccessHandlers(deps Deps, resolver middleware.WorkspaceResolver) *web
 	if enc == nil {
 		keyVersion := 1
 		if v := os.Getenv("ACCESS_KMS_KEY_VERSION"); v != "" {
-			if n, perr := strconv.Atoi(v); perr == nil && n >= 0 {
+			// Match the config and crypto layers, which both require a key
+			// version >= 1 (a 0 is rejected by NewDerivedDEKKeyManager); accept
+			// only a valid version so this fallback never feeds the crypto layer
+			// a value it will reject.
+			if n, perr := strconv.Atoi(v); perr == nil && n >= 1 {
 				keyVersion = n
 			}
 		}
@@ -123,11 +127,17 @@ func newWebAccessHandlers(deps Deps, resolver middleware.WorkspaceResolver) *web
 	}
 
 	// Bridge REST-issued session control onto in-process browser sessions. Bound
-	// to context.Background(): the loop is hub-gated, so it does no work (and no
-	// DB query) while no browser session is live, and it stops when the process
-	// exits.
+	// to the process-lifetime context (signal-cancelled in main) so the loop is
+	// cancelled on shutdown like every other background loop rather than leaked.
+	// It is also hub-gated, so it does no work (and no DB query) while no browser
+	// session is live. nil falls back to context.Background() for bare-Deps
+	// test routers, preserving prior behaviour.
+	reconcileCtx := deps.WebAccessContext
+	if reconcileCtx == nil {
+		reconcileCtx = context.Background()
+	}
 	reconciler := gateway.NewSessionReconciler(hub, sessions, 0)
-	go reconciler.Run(context.Background())
+	go reconciler.Run(reconcileCtx)
 
 	return &webAccessHandlers{
 		bridge:    bridge,

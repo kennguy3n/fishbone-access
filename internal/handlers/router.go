@@ -8,6 +8,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"sync/atomic"
 
@@ -140,6 +141,13 @@ type Deps struct {
 	// a bare-Deps test router does not expose it). Wired from cfg.WebAccess in
 	// cmd/ztna-api/main.go.
 	WebAccess config.WebAccessConfig
+	// WebAccessContext is the process-lifetime context (the signal-cancelled
+	// root context in cmd/ztna-api/main.go). The web-access bridge binds its
+	// background SessionReconciler to it so that, like every other background
+	// loop, the goroutine is cancelled on shutdown rather than leaked. nil
+	// falls back to context.Background() (tests/degraded boots), preserving the
+	// previous behaviour.
+	WebAccessContext context.Context
 }
 
 // NewRouter builds the Gin engine.

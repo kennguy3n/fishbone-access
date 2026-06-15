@@ -95,6 +95,9 @@ func run() error {
 	// recording/audit machinery as the native gateway. Mounted in NewRouter
 	// only when a validator + workspace resolver + DB are present.
 	deps.WebAccess = cfg.WebAccess
+	// Bind the bridge's background SessionReconciler to the signal-cancelled
+	// root context so it shuts down with every other background loop.
+	deps.WebAccessContext = ctx
 	// Operational telemetry: one Prometheus registry shared by the request
 	// instrumentation and the /metrics scrape endpoint (wired in NewRouter). The
 	// DB pool's saturation stats are registered on it once the pool is open.
