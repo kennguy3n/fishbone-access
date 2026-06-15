@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 )
 
 // This file centralises how every binary opens the session-replay backend from
@@ -44,6 +46,9 @@ func OpenReplayStoreFromEnv(ctx context.Context) (ReplayBackend, error) {
 		if err != nil {
 			return nil, fmt.Errorf("gateway: s3 replay store: %w", err)
 		}
+		// Log the selected backend once at open time so an operator can confirm
+		// from boot logs which store every binary is reading/writing.
+		logger.Infof(ctx, "gateway: replay store = s3://%s", bucket)
 		return store, nil
 	}
 	dir := os.Getenv("PAM_REPLAY_DIR")
@@ -54,6 +59,7 @@ func OpenReplayStoreFromEnv(ctx context.Context) (ReplayBackend, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gateway: filesystem replay store: %w", err)
 	}
+	logger.Infof(ctx, "gateway: replay store = file://%s", dir)
 	return store, nil
 }
 

@@ -138,7 +138,7 @@ func (s *Service) projectSession(ctx context.Context, session models.PAMSession)
 	}
 
 	keystrokes := s.enrichFromBlob(ctx, &row, anchor)
-	row.SearchText = buildSearchText(session, cmds, keystrokes)
+	row.SearchText = buildSearchText(session, row.TargetName, cmds, keystrokes)
 	return row, nil
 }
 
@@ -297,14 +297,18 @@ func (s *Service) IndexClosedSessions(ctx context.Context, workspaceID uuid.UUID
 }
 
 // buildSearchText assembles the full-text search payload for a recording: the
-// who/what (operator, target, protocol), every logged command, and the
+// who/what (operator, target name, protocol), every logged command, and the
 // extracted operator keystroke text. It deliberately includes ONLY operator
-// input and the already policy-gated command rows — never target output, which
-// holds secrets and query results that must not be indexed. Duplicate tokens
-// are collapsed to keep the indexed text (and the FTS vector) compact.
-func buildSearchText(session models.PAMSession, cmds []models.PAMSessionCommand, keystrokes string) string {
+// input, the (non-secret) target display name, and the already policy-gated
+// command rows — never target output, which holds secrets and query results
+// that must not be indexed. Duplicate tokens are collapsed to keep the indexed
+// text (and the FTS vector) compact.
+func buildSearchText(session models.PAMSession, targetName string, cmds []models.PAMSessionCommand, keystrokes string) string {
 	parts := make([]string, 0, len(cmds)+4)
 	parts = append(parts, session.Subject, session.Protocol)
+	if t := strings.TrimSpace(targetName); t != "" {
+		parts = append(parts, t)
+	}
 	for _, c := range cmds {
 		if t := strings.TrimSpace(c.Command); t != "" {
 			parts = append(parts, t)

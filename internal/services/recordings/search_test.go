@@ -54,6 +54,19 @@ func TestSearchFacetsAndFullText(t *testing.T) {
 		}
 	})
 
+	t.Run("full text matches target name", func(t *testing.T) {
+		// The target's (non-secret) display name is part of the FTS payload, so an
+		// auditor can find a session by typing the target into the search box, not
+		// only via the dedicated facet filter.
+		res, err := svc.Search(context.Background(), ws, SearchQuery{Text: "prod-db"})
+		if err != nil {
+			t.Fatalf("search: %v", err)
+		}
+		if res.Total != 1 || res.Recordings[0].SessionID != sshSession {
+			t.Fatalf("full-text target match total=%d, want the ssh session", res.Total)
+		}
+	})
+
 	t.Run("full text matches sql statement", func(t *testing.T) {
 		res, err := svc.Search(context.Background(), ws, SearchQuery{Text: "customers"})
 		if err != nil {
