@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -515,6 +516,48 @@ func (f *fakeConsole) run(context.Context, string) (resultMessage, error) {
 	return f.result, nil
 }
 func (f *fakeConsole) close() {}
+
+// fakeLeaseLookup is a LeaseExpiryLookup double for the lease-countdown test.
+type fakeLeaseLookup struct {
+	lease *models.PAMLease
+	err   error
+}
+
+func (f *fakeLeaseLookup) GetLease(context.Context, uuid.UUID, uuid.UUID) (*models.PAMLease, error) {
+	return f.lease, f.err
+}
+
+// TestLeaseExpiry covers populating the UI lease-countdown field: a live lease
+// yields its RFC3339 expiry, while every degraded path (no lookup wired, a
+// direct-mint session with no lease, a lookup error, or a lease with no expiry)
+// yields an empty string so an otherwise-governed session still opens.
+func TestLeaseExpiry(t *testing.T) {
+	exp := time.Date(2031, 6, 15, 12, 0, 0, 0, time.UTC)
+	leaseID := uuid.New()
+	ws := uuid.New()
+	withLease := &models.PAMSession{WorkspaceID: ws, LeaseID: &leaseID}
+
+	cases := []struct {
+		name    string
+		lookup  LeaseExpiryLookup
+		session *models.PAMSession
+		want    string
+	}{
+		{"live lease populates RFC3339 expiry", &fakeLeaseLookup{lease: &models.PAMLease{ExpiresAt: &exp}}, withLease, exp.Format(time.RFC3339)},
+		{"no lookup wired", nil, withLease, ""},
+		{"direct-mint session has no lease", &fakeLeaseLookup{lease: &models.PAMLease{ExpiresAt: &exp}}, &models.PAMSession{WorkspaceID: ws}, ""},
+		{"lookup error must not block the session", &fakeLeaseLookup{err: errors.New("db down")}, withLease, ""},
+		{"lease without expiry", &fakeLeaseLookup{lease: &models.PAMLease{}}, withLease, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := &Bridge{leases: tc.lookup}
+			if got := b.leaseExpiry(context.Background(), tc.session); got != tc.want {
+				t.Fatalf("leaseExpiry = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 // --- in-process SSH upstream ----------------------------------------------
 

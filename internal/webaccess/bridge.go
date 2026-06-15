@@ -31,17 +31,28 @@ const (
 // opens but never authenticates is reaped quickly rather than holding a slot.
 const handshakeTimeout = 20 * time.Second
 
+// LeaseExpiryLookup resolves the expiry of the JIT lease that authorised a
+// session so the bridge can tell the UI how long the lease window has left (the
+// live countdown). It is read-only and called once per session open. Satisfied
+// by *pam.PAMLeaseService; kept as an interface so the bridge stays unit-
+// testable with a fake and the coupling is explicit.
+type LeaseExpiryLookup interface {
+	GetLease(ctx context.Context, workspaceID, leaseID uuid.UUID) (*models.PAMLease, error)
+}
+
 // BridgeConfig wires the bridge to the shared PAM machinery and sets its
 // resource envelope. Broker and Sessions are required; the rest degrade
 // gracefully (no Hub ⇒ no live takeover of browser sessions; no Store ⇒
 // recording is captured but not persisted; no CA ⇒ SSH uses credential
-// injection only).
+// injection only; no Leases ⇒ the UI lease countdown is omitted but the session
+// still respects lease expiry via the idle watchdog and reconciler sweep).
 type BridgeConfig struct {
 	Broker        *pam.Broker
 	Sessions      *pam.SessionManager
 	Hub           *gateway.SessionHub
 	Store         gateway.ReplayStore
 	CA            *gateway.SSHCertificateAuthority
+	Leases        LeaseExpiryLookup
 	RecMaxBytes   int
 	DialTimeout   time.Duration
 	IdleTimeout   time.Duration
@@ -59,6 +70,7 @@ type Bridge struct {
 	hub           *gateway.SessionHub
 	store         gateway.ReplayStore
 	ca            *gateway.SSHCertificateAuthority
+	leases        LeaseExpiryLookup
 	recMaxBytes   int
 	dialTimeout   time.Duration
 	idleTimeout   time.Duration
@@ -89,6 +101,7 @@ func NewBridge(cfg BridgeConfig) (*Bridge, error) {
 		hub:           cfg.Hub,
 		store:         cfg.Store,
 		ca:            cfg.CA,
+		leases:        cfg.Leases,
 		recMaxBytes:   cfg.RecMaxBytes,
 		dialTimeout:   dt,
 		idleTimeout:   cfg.IdleTimeout,
@@ -195,6 +208,7 @@ func (b *Bridge) serve(ctx context.Context, conn wsConn, p ServeParams, k kind) 
 		Subject:        session.Subject,
 		Recording:      b.store != nil,
 		PolicyGoverned: true,
+		LeaseExpiresAt: b.leaseExpiry(ctx, session),
 	})
 
 	switch k {
@@ -259,6 +273,27 @@ func (b *Bridge) reconcileOrphan(ctx context.Context, session *models.PAMSession
 	if err := b.sessions.CloseSession(closeCtx, session.WorkspaceID, session.ID); err != nil {
 		logger.Warnf(ctx, "webaccess: reconcile orphaned session %s: %v", session.ID, err)
 	}
+}
+
+// leaseExpiry returns the RFC3339 expiry of the JIT lease that authorised the
+// session, for the UI's live countdown. It is best-effort and read-only: a
+// direct-mint session has no LeaseID, no lookup is wired in degraded boots, and
+// a transient read error must not block opening an otherwise-governed session,
+// so any of those simply yields an empty string (the field is omitempty and the
+// UI hides the countdown when it is absent). The session's hard expiry is still
+// enforced regardless by the idle watchdog and the lease-expiry reconciler.
+func (b *Bridge) leaseExpiry(ctx context.Context, session *models.PAMSession) string {
+	if b.leases == nil || session == nil || session.LeaseID == nil {
+		return ""
+	}
+	lease, err := b.leases.GetLease(ctx, session.WorkspaceID, *session.LeaseID)
+	if err != nil || lease == nil || lease.ExpiresAt == nil {
+		if err != nil {
+			logger.Warnf(ctx, "webaccess: lease expiry lookup for session %s: %v", session.ID, err)
+		}
+		return ""
+	}
+	return lease.ExpiresAt.UTC().Format(time.RFC3339)
 }
 
 // protocolMatchesKind reports whether a target protocol belongs to the access

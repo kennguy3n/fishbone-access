@@ -113,6 +113,7 @@ func newWebAccessHandlers(deps Deps, resolver middleware.WorkspaceResolver) *web
 		Hub:           hub,
 		Store:         store,
 		CA:            buildWebAccessSSHCA(),
+		Leases:        leases,
 		RecMaxBytes:   deps.WebAccess.RecMaxBytes,
 		DialTimeout:   deps.WebAccess.DialTimeout,
 		IdleTimeout:   deps.WebAccess.IdleTimeout,
