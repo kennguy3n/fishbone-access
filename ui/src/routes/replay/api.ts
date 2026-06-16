@@ -123,12 +123,16 @@ const searchParams = (p: RecordingSearchParams) => ({
   ...(p.offset != null ? { offset: String(p.offset) } : {}),
 });
 
-export const searchRecordings = (p: RecordingSearchParams) =>
-  call<RecordingSearchResponse>({
+export const searchRecordings = async (p: RecordingSearchParams) => {
+  const res = await call<RecordingSearchResponse>({
     url: "/pam/recordings",
     method: "GET",
     params: searchParams(p),
   });
+  // The list is always an array client-side; tolerate a null/absent payload so
+  // an empty result set renders the empty state instead of crashing on .length.
+  return { ...res, recordings: res.recordings ?? [] };
+};
 
 export const getRecording = (id: string) =>
   call<RecordingDetail>({ url: `/pam/recordings/${id}`, method: "GET" });
