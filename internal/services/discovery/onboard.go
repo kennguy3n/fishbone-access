@@ -105,18 +105,23 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 			// The target exists and is usable direct-dial. Link the asset to it
 			// FIRST so a bind failure can't strand the asset as managed with a
 			// NULL target_id — which would make it un-onboardable (ErrConflict)
-			// and invisible to the sweep (it filters status='unmanaged'). Then
-			// surface the bind failure rather than silently dropping the agent
-			// association.
-			// Mark the failure with ErrAgentBindFailed so callers can recognise
-			// this as a partial success (target created + linked, agent bind
-			// missing) and respond accordingly instead of treating it as a hard
-			// failure that hides the created target.
-			bindWrap := errors.Join(ErrAgentBindFailed, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr))
+			// and invisible to the sweep (it filters status='unmanaged').
 			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); linkErr != nil {
-				return target, errors.Join(bindWrap, linkErr)
+				// The link itself failed, so the asset was NOT successfully
+				// onboarded (it is managed with a NULL target_id — the same rare
+				// local-tx residual as the non-bind link path below). This is a
+				// HARD failure, not a partial success: deliberately do NOT tag
+				// ErrAgentBindFailed, so callers surface it (handler 500, sweep
+				// flags + skips the onboarded count) instead of falsely reporting
+				// success on a stranded asset.
+				return target, fmt.Errorf("discovery: onboarded target link failed after bind error (bind=%v): %w", bindErr, linkErr)
 			}
-			return target, bindWrap
+			// Link succeeded: the target is created and the asset is linked +
+			// audited — only the agent association is missing. Tag the failure
+			// with ErrAgentBindFailed so callers recognise it as a partial
+			// success (handler 201 + warning, sweep counts it onboarded) rather
+			// than a hard failure that hides the usable direct-dial target.
+			return target, errors.Join(ErrAgentBindFailed, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr))
 		}
 	}
 

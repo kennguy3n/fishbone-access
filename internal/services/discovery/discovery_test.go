@@ -163,10 +163,17 @@ func (f *fakeDialer) DialThroughAgent(_ context.Context, _, _ uuid.UUID, addr st
 type fakeBinder struct {
 	calls int
 	err   error
+	// hook, if set, runs after the call is recorded but before the error is
+	// returned. Tests use it to simulate a side effect of the bind (e.g.
+	// cancelling the context) so the subsequent linkAssetTarget fails.
+	hook func()
 }
 
 func (f *fakeBinder) BindTarget(_ context.Context, _, _, _ uuid.UUID, _ string) error {
 	f.calls++
+	if f.hook != nil {
+		f.hook()
+	}
 	return f.err
 }
 
@@ -697,6 +704,43 @@ func TestOnboardAssetBindFailureStillLinksTarget(t *testing.T) {
 	// The asset is fully onboarded, so a retry is a conflict (not a stuck loop).
 	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
 		t.Errorf("re-onboard after bind failure: err = %v, want ErrConflict", err)
+	}
+}
+
+// TestOnboardAssetBindAndLinkFailureIsHardFailure guards the boundary of the
+// partial-success contract: when the agent bind fails AND the follow-up link
+// also fails, the asset was NOT actually onboarded (managed with a NULL
+// target_id), so the error must NOT be tagged ErrAgentBindFailed — otherwise
+// the handler/scheduler would report a 201/onboarded for a stranded asset.
+// The bind hook cancels the context so the subsequent linkAssetTarget tx fails
+// deterministically (CreateTarget already committed before the bind).
+func TestOnboardAssetBindAndLinkFailureIsHardFailure(t *testing.T) {
+	h := newHarness(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.8:22", "ssh", "10.0.0.8:22", models.DiscoveryStatusUnmanaged)
+	agentID := uuid.New()
+	h.binder.err = errors.New("agent offline")
+	h.binder.hook = cancel // cancel after the bind so linkAssetTarget fails
+
+	_, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "hunter2"}, AgentID: &agentID, RequireMFA: true, Actor: "tester",
+	})
+	if err == nil {
+		t.Fatalf("expected hard failure when both bind and link fail")
+	}
+	// Must be a HARD failure: callers key off ErrAgentBindFailed to report a
+	// partial success, which would be wrong here (asset wasn't linked).
+	if errors.Is(err, ErrAgentBindFailed) {
+		t.Fatalf("both-fail case must NOT be a partial success, got ErrAgentBindFailed: %v", err)
+	}
+	// The asset must not be linked (target_id NULL) — same residual as the
+	// non-bind link-failure path; it is not falsely reported as onboarded.
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.TargetID != nil {
+		t.Fatalf("asset should not be linked when link failed: %+v", got)
 	}
 }
 
