@@ -329,11 +329,14 @@ func (h *discoveryHandlers) dispositionAccount(c *gin.Context) {
 	if !bindDiscoveryJSON(c, &req) {
 		return
 	}
-	if err := h.engine.DispositionAccount(c.Request.Context(), ws, accountID, strings.TrimSpace(req.Status), actor(c)); err != nil {
+	status := strings.TrimSpace(req.Status)
+	if err := h.engine.DispositionAccount(c.Request.Context(), ws, accountID, status, actor(c)); err != nil {
 		h.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": req.Status})
+	// Echo the normalized status the engine actually persisted, not the raw
+	// request body, so a client syncing its cache from the response can't drift.
+	c.JSON(http.StatusOK, gin.H{"status": status})
 }
 
 // --- policy ---

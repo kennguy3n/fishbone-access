@@ -130,12 +130,15 @@ func (e *Engine) probeHosts(ctx context.Context, workspaceID, agentID uuid.UUID,
 		go func() {
 			defer wg.Done()
 			for j := range jobs {
-				mu.Lock()
-				probed++
-				mu.Unlock()
+				// Count only jobs we actually probe. If the sweep was
+				// cancelled, buffered jobs may still drain to a worker; skip
+				// them without inflating the probed total in the scan record.
 				if ctx.Err() != nil {
 					continue
 				}
+				mu.Lock()
+				probed++
+				mu.Unlock()
 				if e.probeOne(ctx, workspaceID, agentID, j.host, j.port) {
 					addr := net.JoinHostPort(j.host, strconv.Itoa(j.port))
 					protocol := protocolForPort(j.port)

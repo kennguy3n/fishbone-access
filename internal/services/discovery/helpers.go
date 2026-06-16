@@ -2,6 +2,9 @@ package discovery
 
 import (
 	"encoding/json"
+	"net"
+	"strconv"
+	"strings"
 
 	"gorm.io/datatypes"
 
@@ -39,6 +42,42 @@ func protocolForPort(port int) string {
 		}
 	}
 	return ""
+}
+
+// defaultPortForProtocol returns the well-known privileged-service port for a
+// PAM protocol as a string, or "" when discovery has no default for it. It is
+// the inverse of protocolForPort over the same well-known set.
+func defaultPortForProtocol(protocol string) string {
+	for _, p := range defaultProbePorts {
+		if p.Protocol == protocol {
+			return strconv.Itoa(p.Port)
+		}
+	}
+	return ""
+}
+
+// normalizeEndpoint canonicalizes an address to "host:port" (host lower-cased)
+// for managed-vs-discovered comparison, filling the protocol's well-known port
+// when the address omits one. This makes a target registered as "10.0.0.5"
+// (protocol ssh) compare equal to an asset discovered as "10.0.0.5:22" instead
+// of being perpetually misclassified as unmanaged. A port-less address with an
+// unknown protocol is returned host-only (lower-cased); an unparseable value is
+// returned trimmed so it still matches an identical raw string.
+func normalizeEndpoint(address, protocol string) string {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return ""
+	}
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		// No (or malformed) port present: treat the whole value as host and
+		// fill the protocol default when we recognize it.
+		if dp := defaultPortForProtocol(protocol); dp != "" {
+			return strings.ToLower(net.JoinHostPort(address, dp))
+		}
+		return strings.ToLower(address)
+	}
+	return strings.ToLower(net.JoinHostPort(host, port))
 }
 
 // defaultProtocolForKind picks a sensible PAM protocol when a connector could

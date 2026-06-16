@@ -39,7 +39,12 @@ func (e *Engine) reconcileAssets(ctx context.Context, workspaceID uuid.UUID, sou
 		}
 		status := models.DiscoveryStatusUnmanaged
 		if spec.Address != "" {
+			// Match on the raw address first, then on the port-normalized form
+			// so a target registered without an explicit port still classifies
+			// a discovered host:port as managed (and vice-versa).
 			if _, ok := managed[spec.Address]; ok {
+				status = models.DiscoveryStatusManaged
+			} else if _, ok := managed[normalizeEndpoint(spec.Address, protocol)]; ok {
 				status = models.DiscoveryStatusManaged
 			}
 		}
@@ -122,15 +127,27 @@ func (e *Engine) upsertAsset(ctx context.Context, workspaceID uuid.UUID, source 
 // the workspace, used to classify a discovered asset as managed when its
 // endpoint matches an existing target.
 func (e *Engine) managedAddresses(ctx context.Context, workspaceID uuid.UUID) (map[string]struct{}, error) {
-	var addrs []string
+	var rows []struct {
+		Address  string
+		Protocol string
+	}
 	if err := e.db.WithContext(ctx).Model(&models.PAMTarget{}).
 		Where("workspace_id = ?", workspaceID).
-		Pluck("address", &addrs).Error; err != nil {
+		Select("address", "protocol").
+		Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("discovery: load managed targets: %w", err)
 	}
-	set := make(map[string]struct{}, len(addrs))
-	for _, a := range addrs {
-		set[a] = struct{}{}
+	// Index each target under both its raw address and its port-normalized form
+	// so classification tolerates a missing/implicit port on either side.
+	set := make(map[string]struct{}, len(rows)*2)
+	for _, r := range rows {
+		if r.Address == "" {
+			continue
+		}
+		set[r.Address] = struct{}{}
+		if n := normalizeEndpoint(r.Address, r.Protocol); n != "" {
+			set[n] = struct{}{}
+		}
 	}
 	return set, nil
 }

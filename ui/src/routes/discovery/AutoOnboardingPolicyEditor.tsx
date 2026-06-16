@@ -100,11 +100,19 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
         }))
         .filter((r) => r.name),
     };
-    // Send a credential block when the operator typed a new password (reseal)
-    // or edited the username. A username-only change preserves the existing
-    // sealed secret server-side; the secret is only cleared by an explicit
-    // empty-username + empty-password save.
-    if (draft.credential_password.trim() || draft.credential_username.trim()) {
+    // Send a credential block whenever the operator typed a new password
+    // (reseal), edited the username, OR a sealed credential already exists. The
+    // last case is what lets an operator CLEAR the credential: blanking both
+    // fields on a policy that has one sends an empty block, which the backend's
+    // explicit-clear path (policy.go) reverts to flag-only. A username-only
+    // change still preserves the sealed secret server-side. When no credential
+    // exists and both fields are blank we send nothing, so the policy stays
+    // flag-only.
+    if (
+      draft.credential_password.trim() ||
+      draft.credential_username.trim() ||
+      draft.has_credential
+    ) {
       body.credential = {
         username: draft.credential_username.trim(),
         password: draft.credential_password,

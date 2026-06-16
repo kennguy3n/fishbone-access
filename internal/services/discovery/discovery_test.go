@@ -141,8 +141,11 @@ func (f *fakeDialer) DialThroughAgent(_ context.Context, _, _ uuid.UUID, addr st
 	if !f.open[addr] {
 		return nil, errors.New("connection refused")
 	}
-	c, _ := net.Pipe()
-	return c, nil
+	// Close the peer end immediately so each successful probe doesn't leak a
+	// pipe goroutine/fd; probeOne only closes the conn, it never reads/writes.
+	client, peer := net.Pipe()
+	_ = peer.Close()
+	return client, nil
 }
 
 type fakeBinder struct {
@@ -381,6 +384,69 @@ func TestReconcileNeverDowngradesIgnored(t *testing.T) {
 	h.db.Where("workspace_id = ? AND external_id = ?", ws, "host:10.0.0.5:22").Take(&a)
 	if a.Status != models.DiscoveryStatusIgnored {
 		t.Fatalf("ignored asset downgraded to %q on re-scan", a.Status)
+	}
+}
+
+// TestReconcileClassifiesPortNormalized proves a target registered without an
+// explicit port still classifies a discovered host:port (and the reverse) as
+// managed, so a trivial port-format difference no longer causes a false
+// "unmanaged" that would offer to re-onboard an already-managed endpoint.
+func TestReconcileClassifiesPortNormalized(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	requireMFA := true
+	// Target stored port-less; discovery reports it with the default SSH port.
+	if _, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "portless-ssh", Protocol: "ssh", Address: "10.0.0.9",
+		Username: "root", RequireMFA: &requireMFA, Secret: pam.Secret{Password: "pw"}, Actor: "tester",
+	}); err != nil {
+		t.Fatalf("create port-less target: %v", err)
+	}
+	// Target stored with explicit port; discovery reports it port-less.
+	if _, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "ported-pg", Protocol: "postgres", Address: "db.internal:5432",
+		Username: "root", RequireMFA: &requireMFA, Secret: pam.Secret{Password: "pw"}, Actor: "tester",
+	}); err != nil {
+		t.Fatalf("create ported target: %v", err)
+	}
+
+	specs := []access.DiscoveredAssetSpec{
+		{ExternalID: "host:10.0.0.9:22", Kind: access.AssetKindHost, Name: "10.0.0.9", Protocol: "ssh", Address: "10.0.0.9:22"},
+		{ExternalID: "db:db.internal", Kind: access.AssetKindDatabase, Name: "db.internal", Protocol: "postgres", Address: "db.internal"},
+	}
+	if _, _, err := h.engine.reconcileAssets(ctx, ws, models.DiscoverySourceAgentSweep, specs, nil, nil); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var managed int64
+	h.db.Model(&models.DiscoveredAsset{}).Where("workspace_id = ? AND status = ?", ws, models.DiscoveryStatusManaged).Count(&managed)
+	if managed != 2 {
+		t.Fatalf("managed=%d, want 2 (both endpoints should match despite port-format differences)", managed)
+	}
+}
+
+func TestNormalizeEndpoint(t *testing.T) {
+	cases := []struct {
+		name     string
+		address  string
+		protocol string
+		want     string
+	}{
+		{"fills default ssh port", "10.0.0.9", "ssh", "10.0.0.9:22"},
+		{"fills default postgres port", "db.internal", "postgres", "db.internal:5432"},
+		{"keeps explicit port", "10.0.0.9:2222", "ssh", "10.0.0.9:2222"},
+		{"lowercases host", "DB.Internal:5432", "postgres", "db.internal:5432"},
+		{"unknown protocol host-only", "10.0.0.9", "weird", "10.0.0.9"},
+		{"ipv6 with port", "[2001:db8::1]:22", "ssh", "[2001:db8::1]:22"},
+		{"trims whitespace", "  10.0.0.9:22 ", "ssh", "10.0.0.9:22"},
+		{"empty stays empty", "", "ssh", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeEndpoint(tc.address, tc.protocol); got != tc.want {
+				t.Fatalf("normalizeEndpoint(%q, %q) = %q, want %q", tc.address, tc.protocol, got, tc.want)
+			}
+		})
 	}
 }
 

@@ -163,6 +163,52 @@ func TestDiscoveryOnboardCreatesTarget(t *testing.T) {
 	}
 }
 
+// TestDiscoveryDispositionEchoesNormalizedStatus proves the disposition handler
+// returns the status the engine actually persisted (trimmed), not the raw
+// request body, so a client syncing its cache from the response can't drift.
+func TestDiscoveryDispositionEchoesNormalizedStatus(t *testing.T) {
+	env := newDiscoveryTestEnv(t)
+	ws := workspaceIDByTenant(t, env.db, "tenant-a")
+	now := time.Now().UTC()
+	acct := &models.DiscoveredAccount{
+		WorkspaceID: ws,
+		TargetID:    uuid.New(),
+		Username:    "postgres",
+		Source:      models.DiscoverySourceDBAccounts,
+		Status:      models.DiscoveryStatusOrphan,
+		CanLogin:    true,
+		FirstSeenAt: now,
+		LastSeenAt:  now,
+	}
+	acct.ID = uuid.New()
+	if err := env.db.Create(acct).Error; err != nil {
+		t.Fatalf("seed account: %v", err)
+	}
+
+	w := do(t, env.router, http.MethodPost, "/api/v1/discovery/accounts/"+acct.ID.String()+"/disposition", "tok-admin", map[string]any{
+		"status": "  ignored  ",
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("disposition: want 200, got %d (%s)", w.Code, w.Body.String())
+	}
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Status != models.DiscoveryStatusIgnored {
+		t.Fatalf("response status = %q, want %q (untrimmed echo)", body.Status, models.DiscoveryStatusIgnored)
+	}
+	var got models.DiscoveredAccount
+	if err := env.db.Where("id = ?", acct.ID).Take(&got).Error; err != nil {
+		t.Fatalf("reload account: %v", err)
+	}
+	if got.Status != body.Status {
+		t.Fatalf("DB status %q diverged from response %q", got.Status, body.Status)
+	}
+}
+
 func TestDiscoveryCrossTenantIsolation(t *testing.T) {
 	env := newDiscoveryTestEnv(t)
 	assetID, _ := seedDiscoveredAsset(t, env.db, "tenant-a", "host:10.0.0.5:22")
