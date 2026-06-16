@@ -22,16 +22,33 @@ type ScheduledSweepResult struct {
 	AssetsNew         int
 	PolicyMatched     int
 	Onboarded         int
+	// Healed counts assets recovered from the stranded managed/target_id=NULL
+	// state this sweep (re-linked to their created target or released back to
+	// unmanaged). Normally zero.
+	Healed int
 }
 
 // RunScheduledSweep is the workflow-engine entry point for one ACTIVE workspace
 // (the caller gates on the tenant hibernation gate, so dormant tenants are never
-// swept). It re-enumerates every connector that exposes a native inventory, then
-// evaluates the auto-onboarding policy over the workspace's unmanaged assets.
-// It is a no-op (returns zero, nil) when the workspace has no enabled policy, so
-// the workflow engine can call it for every active tenant cheaply.
+// swept). It first recovers any assets stranded by a failed onboard, then (only
+// when an enabled policy exists) re-enumerates every connector that exposes a
+// native inventory and evaluates the auto-onboarding policy over the workspace's
+// unmanaged assets. With no enabled policy it does just the cheap heal probe and
+// returns, so the workflow engine can call it for every active tenant cheaply.
 func (e *Engine) RunScheduledSweep(ctx context.Context, workspaceID uuid.UUID) (ScheduledSweepResult, error) {
 	var res ScheduledSweepResult
+
+	// Recover any assets stranded by a prior failed onboard (managed/target_id=
+	// NULL) first, independent of the auto-onboarding policy: a MANUAL onboard
+	// can strand an asset too, and such a workspace may have no policy at all.
+	// This runs inside the hibernation-gated sweep, so dormant tenants are never
+	// touched, and is near-free when nothing is stranded (one index-only probe).
+	healed, healErr := e.reconcileStuckOnboards(ctx, workspaceID)
+	if healErr != nil {
+		return res, healErr
+	}
+	res.Healed = healed
+
 	policy, err := e.loadPolicy(ctx, workspaceID)
 	if err != nil {
 		return res, err
@@ -157,6 +174,7 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 				AgentID:    agentID,
 				RequireMFA: true,
 				Actor:      "system:auto-onboard",
+				Trigger:    models.DiscoveryTriggerScheduled,
 			})
 			if onbErr != nil && !errors.Is(onbErr, ErrAgentBindFailed) {
 				// A single onboarding failure (e.g. duplicate name) must not abort

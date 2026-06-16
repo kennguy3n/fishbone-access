@@ -37,6 +37,10 @@ type OnboardAssetInput struct {
 	LeaseTTL time.Duration
 	// Actor is the iam-core subject performing the onboard (audited).
 	Actor string
+	// Trigger records what drove the onboard in the audit metadata
+	// (manual operator click vs. scheduled auto-onboard sweep). Empty defaults
+	// to manual so direct API callers don't have to set it.
+	Trigger string
 }
 
 // OnboardAsset promotes a discovered asset into a managed PAM target. It creates
@@ -79,6 +83,7 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 	if agentID == nil {
 		agentID = asset.AgentID
 	}
+	trigger := firstNonEmpty(in.Trigger, models.DiscoveryTriggerManual)
 	requireMFA := in.RequireMFA
 
 	target, err := e.vault.CreateTarget(ctx, pam.CreateTargetInput{
@@ -106,7 +111,7 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 			// FIRST so a bind failure can't strand the asset as managed with a
 			// NULL target_id — which would make it un-onboardable (ErrConflict)
 			// and invisible to the sweep (it filters status='unmanaged').
-			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); linkErr != nil {
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, trigger); linkErr != nil {
 				// The link itself failed, so the asset was NOT successfully
 				// onboarded (it is managed with a NULL target_id — the same rare
 				// local-tx residual as the non-bind link path below). This is a
@@ -125,7 +130,7 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		}
 	}
 
-	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); err != nil {
+	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, trigger); err != nil {
 		return target, err
 	}
 	return target, nil
