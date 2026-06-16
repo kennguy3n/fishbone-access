@@ -134,6 +134,22 @@ anchored on the chain — `pam_sessions = 1`, replayable over
 `GET /pam/sessions/a44bb3ea-6087-446f-b1e5-c94655dbfadd/replay`. That is what
 covers ISO `A.8.2` ("privileged access rights *monitored*").
 
+And the operational depth around that lease is what lets a lean security team
+actually run privileged access to T24 (the full surface, with screenshots, is in
+[Post 1](01-singapore-fintech-pdpa-mas-trm.md#privileged-access-in-depth-reach-it-rotate-it-and-search-the-replay)):
+the private core-banking network is reached by running one **outbound connector
+agent** inside it — it dials out over mTLS and the gateway brokers the session
+back down the tunnel, so **no inbound port is opened and no VPN is needed**, and a
+session that names an agent fails **closed** if the agent is offline; an auditor
+can open the target **clientless from the browser** (in-browser SSH terminal or
+DB query console) under the same leasing, command policy, step-up MFA, recording
+and audit; standing T24 credentials are **rotated automatically** — on a schedule,
+on each check-in, or on demand — through executors that verify-by-reconnect and
+roll back on failure (and **ephemeral per-lease DB credentials** can be minted);
+and every recorded session is **searchable by the commands operators ran** and
+**replayable in the browser** with a synchronized command timeline and a live
+tamper-evidence badge.
+
 ## The toxic combination DESC cares about most
 
 For a bank, the catastrophic SoD pairing is the same identity that *administers*
@@ -159,20 +175,22 @@ data-subject-request handling — external party, named sponsor, built-in expiry
   "resource_ref": "pdpl:dsr", "role": "auditor", "sponsor_id": "ae-security_admin", "state": "active" }
 ```
 
-## Where we fall short — the session is recorded, but the credential is not vaulted
+## Where we fall short — the pipeline is real, but the demo upstream is a bastion
 
 `A.8.2` ("privileged access rights *monitored*") is covered here — and on the
 highest-risk workspace in the series, the *precise* remaining boundary matters
 most:
 
-- **The session is recorded; the credential is not vaulted, the stream is not
-  brokered in-path, and the upstream is a bastion.** `pam_sessions = 1`: the
-  recorded session is real, replayable and chained, which is what `A.8.2`
-  requires. But the demo recorder drives **representative commands against a
-  bastion target** — it does not vault T24's live credential, sit in the TCP
-  stream, or capture an admin's real keystrokes *inside* Temenos. It proves the
-  monitoring pipeline end-to-end, not in-path interception of a live mainframe
-  session.
+- **The session is brokered, recorded and searchable; the demo upstream is a
+  bastion, not live T24.** `pam_sessions = 1`: the recorded session is real,
+  searchable, browser-replayable and chained, the secret is sealed under the
+  workspace's derived key and auto-rotatable, and the stream is brokered in-path
+  (directly or through the outbound agent's tunnel). But the demo recorder drives
+  **representative commands against a bastion target** — it does not capture an
+  admin's real keystrokes *inside* Temenos T24, and we do not claim the depth of a
+  dedicated credential vault (HSM-backed secret zones, deep account discovery into
+  the mainframe). It proves the brokering + monitoring pipeline end-to-end, not
+  in-path interception of a live mainframe session.
 - **SSO is not enforced for this connector**
   ([`s5-ae-northwind-finance-sso-status.json`](../artifacts/payloads/s5-ae-northwind-finance-sso-status.json)
   reports `"enforced": false, "supported": false`). We surface that honestly
@@ -193,9 +211,12 @@ where a dedicated PAM tool is not optional.
 | Capability | fishbone-access | CyberArk | StrongDM | Teleport | Okta IGA |
 | --- | --- | --- | --- | --- | --- |
 | Privileged JIT **lease** lifecycle (request→approve→expire, chained) | ✅ | ✅ | ✅ | ✅ | ⚠️ add-on |
-| Privileged credential vaulting | ❌ | ✅ core | ⚠️ brokered | ⚠️ cert-based | ❌ |
-| Session isolation / in-path brokering | ❌ | ✅ | ✅ core | ✅ core | ❌ |
-| Privileged **session recording** (replayable, chained) | ⚠️ recorded; demo upstream is a bastion, not live T24 | ✅ core (live keystrokes) | ✅ | ✅ | ❌ |
+| Reach private targets, **zero inbound exposure** (outbound agent) | ✅ | ✅ connector | ✅ core | ✅ | ❌ |
+| **Clientless** browser access (web SSH / DB console) | ✅ | ⚠️ | ✅ | ✅ | ❌ |
+| **Automatic + dynamic** credential rotation (sealed at rest) | ✅ | ✅ core | ⚠️ | ⚠️ cert-based | ❌ |
+| Dedicated credential **vault** (HSM zones, account discovery) | ⚠️ sealed + rotated, not a standalone vault | ✅ core | ⚠️ brokered | ⚠️ cert-based | ❌ |
+| Session isolation / in-path brokering | ⚠️ brokered (direct or via agent tunnel); demo upstream is a bastion | ✅ | ✅ core | ✅ core | ❌ |
+| **Searchable** session recording + **in-browser replay** (chained) | ⚠️ searchable + replayable; demo upstream is a bastion, not live T24 | ✅ core (live keystrokes) | ✅ | ✅ | ❌ |
 | Govern the privileged **grant** (request→review→revoke) | ✅ | ⚠️ add-on | ❌ | ❌ | ✅ |
 | SoD: core-banking-vs-treasury caught pre-grant | ✅ `critical` | ❌ | ❌ | ❌ | ⚠️ |
 | PDPL/DESC packs + framework evidence | ✅ | ❌ | ❌ | ❌ | ⚠️ |
@@ -206,12 +227,14 @@ JIT lease lifecycle — request, sponsor approval under step-up MFA, short-lived
 token, auto-expiry, every step chained — is real on Northwind, **and** the
 session is recorded, replayable and chained, so `A.8.2` reads covered. For
 many SMEs "no standing privileged credentials, time-boxed access, fully audited,
-recorded" is the 80% that actually moves their risk. But for Northwind's *core*
-risk — capturing what an admin does inside a *live* Temenos T24 once connected —
-**CyberArk** is still the correct purchase. Credential vaulting, in-path session
-isolation, and live keystroke recording off the real stream are its reason to
-exist; our recording proves the monitoring pipeline against a bastion, not
-in-path interception of the mainframe.
+recorded, **searchable and browser-replayable**" — reached over an outbound agent
+with zero inbound exposure, with credentials auto-rotated — is the 80% that
+actually moves their risk. But for Northwind's *core* risk — capturing what an
+admin does inside a *live* Temenos T24 once connected — **CyberArk** is still the
+correct purchase. A dedicated credential vault (HSM-backed secret zones, deep
+account discovery) and live keystroke recording off the real mainframe stream are
+its reason to exist; our recording proves the brokering + monitoring pipeline
+against a bastion, not in-path interception of the mainframe.
 **StrongDM** and **Teleport** are the modern, engineer-friendly alternatives if
 the privileged targets are databases, SSH, and Kubernetes rather than a banking
 mainframe. Where fishbone-access fits is the **governance + JIT-lease** wrapper

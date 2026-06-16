@@ -113,6 +113,16 @@ const showAllSessions = async (page) => {
   await page.waitForTimeout(800);
 };
 
+// Open the first row of the recordings table to land on the replay player. The
+// row id is dynamic (a fresh recording per seed), so we click rather than
+// hard-code a URL — same reproducibility discipline as the rest of the harness.
+const openFirstRecording = async (page) => {
+  const row = page.getByRole("row").nth(1);
+  await row.click();
+  await page.waitForURL("**/pam/recordings/*", { timeout: 15000 });
+  await page.waitForTimeout(1200);
+};
+
 const ids = Object.fromEntries(Object.keys(WS).map((s) => [s, dynamicIDs(s)]));
 
 // ---- S1 Singapore (en) — flagship full surface ----
@@ -131,6 +141,16 @@ await shot("sg-acme-payments", "en", "/pam/sessions", "pam-sessions", { action: 
 await shot("sg-acme-payments", "en", "/compliance/evidence", "compliance-pci-dss", { action: clickFrameworkTab("PCI-DSS") });
 await shot("sg-acme-payments", "en", "/compliance/evidence", "compliance-soc2", { action: clickFrameworkTab("SOC 2") });
 await shot("sg-acme-payments", "en", "/settings/roles", "roles-permissions");
+
+// ---- S1 Singapore (en) — privileged-access depth (the flagship feature set) ----
+// The outbound connector agent (zero inbound exposure), clientless browser
+// access (web SSH + DB console), automatic + dynamic credential rotation, and
+// the searchable session-recording store + in-browser replay player.
+await shot("sg-acme-payments", "en", "/pam/agents", "pam-agents");
+await shot("sg-acme-payments", "en", "/pam/web-access", "pam-web-access");
+await shot("sg-acme-payments", "en", "/pam/rotation", "pam-rotation");
+await shot("sg-acme-payments", "en", "/pam/recordings", "recordings-search");
+await shot("sg-acme-payments", "en", "/pam/recordings", "recordings-replay", { action: openFirstRecording });
 
 // ---- S2 US healthcare (en) — JML + certification ----
 await shot("us-globex-health", "en", "/", "dashboard");

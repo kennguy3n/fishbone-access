@@ -234,6 +234,64 @@ end-to-end and the chained, retrievable artifact**, not keystrokes captured off 
 production box. Pointed at a reachable upstream through the in-path gateway, the
 exact same `IORecorder` captures real bytes.
 
+## Privileged access in depth: reach it, rotate it, and search the replay
+
+The lease lifecycle above is the spine. Four capabilities sit on it that decide
+whether a 40-person SME can actually *run* privileged access without a network
+engineer, a bastion fleet, or a forensics team.
+
+**Reach a private network with zero inbound exposure.** Acme's ledger lives on a
+private subnet — there is no public SSH port to point a gateway at, and a
+40-person shop is not going to stand up a site-to-site VPN. Instead it runs one
+lightweight **connector agent** inside that network. The agent dials *out* to
+ShieldNet over mTLS and holds the tunnel open; the gateway brokers SSH and
+database sessions back down it. No firewall ports open inbound, no VPN. The
+console enrolls and watches agents, and a session that names an agent fails
+**closed** if that agent is offline — it never silently falls back to a direct
+dial:
+
+![Connector agents — reach private targets with zero inbound exposure; the agent dials out, the gateway brokers sessions back through the tunnel](../artifacts/screenshots/s1-sg-pam-agents.png)
+
+**Open a privileged session from the browser — no client to install.** An
+auditor or an on-call engineer with no `psql` and no SSH key on their laptop
+opens the target straight from the console. The same leasing, command policy,
+step-up MFA, recording and audit chain apply; the bytes just ride a WebSocket to
+an in-browser xterm.js terminal (SSH) or a query console (Postgres/MySQL):
+
+![Web access — open a privileged SSH or database session in the browser; every session is leased, policy-checked, recorded, and audited](../artifacts/screenshots/s1-sg-pam-web-access.png)
+
+**Rotate privileged credentials automatically — or on every check-in.** Standing
+secrets are the thing attackers actually steal. ShieldNet rotates them on a
+schedule, after each use (rotate-on-checkin), or on demand, through real
+executors (`ALTER ROLE` on Postgres, `ALTER USER` on MySQL, key rotation over
+SSH) that verify the new credential by reconnecting and roll back on failure.
+The new secret is re-sealed under the workspace's own derived key and the
+rotation is written to the audit chain in the same transaction. It can also mint
+**ephemeral per-lease database credentials** that exist only for the life of a
+session:
+
+![Credential rotation — change privileged credentials on a schedule or after each use, and issue short-lived database credentials](../artifacts/screenshots/s1-sg-pam-rotation.png)
+
+**Search across every recorded session, then replay it in the browser.** A
+recording you can only fetch by id is an archive, not a forensic tool. Every
+closed session is projected into a searchable index: an auditor full-text
+searches the *commands operators ran* (plus facets for operator, protocol,
+target and time) and gets back the matching sessions —
+
+![Session recordings — search every recorded privileged session by the commands that were run](../artifacts/screenshots/s1-sg-recordings-search.png)
+
+— then opens the **in-browser replay player**: the time-ordered transcript, a
+synchronized command timeline (denied commands highlighted), and a live
+**tamper-evidence badge** that re-verifies the recording's SHA-256 against the
+hash chain at view time:
+
+![Session replay — the time-ordered transcript with a synchronized command timeline and a verified tamper badge](../artifacts/screenshots/s1-sg-recordings-replay.png)
+
+The honest residual from the lease section still holds: the recorded commands
+are representative I/O against a bastion target, so this proves the
+search → replay → tamper-verify pipeline end-to-end, not keystrokes captured off
+a live ledger box.
+
 ## Stopping a catastrophic grant *before* it happens
 
 MAS TRM segregation says the identity that administers the ledger must not also

@@ -47,7 +47,19 @@ goes well beyond simple SaaS grants:
    **managed databases over their native wire protocol** — are registered in a
    vault and reached through a **just-in-time lease**: request → sponsor approval
    (step-up MFA) → short-lived connect-token → automatic expiry. Every step is
-   risk-scored and recorded.
+   risk-scored and recorded. The privileged-access surface goes deep enough for a
+   no-IT SME to actually run it: a private target behind a firewall is reached by
+   running one **outbound connector agent** inside the network (it dials out over
+   mTLS, the gateway brokers sessions back down the tunnel — **zero inbound
+   exposure, no VPN**); a session can be opened **clientless, straight from the
+   browser** (an in-browser SSH terminal or DB query console, with the same
+   leasing, command policy, step-up MFA, recording and audit applied); standing
+   credentials are **rotated automatically** — on a schedule, after each check-in,
+   or on demand — through real executors that verify-by-reconnect and roll back on
+   failure, and **ephemeral per-lease database credentials** can be minted that
+   exist only for the life of a session; and every recorded session is **searchable
+   by the commands operators ran** and **replayable in the browser** with a
+   synchronized command timeline and a live tamper-evidence badge.
 6. **Contractor access.** Time-boxed, sponsor-approved grants for external
    parties, with a **mandatory expiry**, a named internal sponsor, and a full
    extend / early-revoke history — a separate lifecycle from employees.
@@ -100,9 +112,12 @@ nothing is faked:
   privileged session**: a JIT lease is redeemed, the operator's commands are
   driven through the same `IORecorder` the live gateway uses, the framed
   transcript is persisted to the replay store, its SHA-256 is **anchored in the
-  hash chain**, and it is **retrievable over `GET /pam/sessions/:id/replay`**.
-  `pam_sessions = 1` per workspace, and the coverage map reads these controls as
-  *covered*. The honest residual: the recorded commands are seeded representative
+  hash chain**, it is **retrievable over `GET /pam/sessions/:id/replay`**, and it
+  is **projected into a searchable index** so an auditor can full-text search the
+  commands operators ran and open the **in-browser replay player** (synchronized
+  command timeline + a tamper-evidence badge that re-verifies the digest at view
+  time). `pam_sessions = 1` per workspace, and the coverage map reads these
+  controls as *covered*. The honest residual: the recorded commands are seeded representative
   I/O against a registered bastion target — the demo has no live SSH daemon — so
   this proves the **recording pipeline and the chained, replayable session
   artifact end-to-end**, not keystrokes captured off a production box.

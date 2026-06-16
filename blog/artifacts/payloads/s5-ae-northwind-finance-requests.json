@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "8b332100-4c54-40c8-ba0b-e8d767525c25",
-      "created_at": "2026-06-13T16:52:31.663894Z",
+      "connector_id": "97eda4ae-b6ff-42de-baa8-49e563c01513",
+      "created_at": "2026-06-16T02:37:01.907633Z",
       "deleted_at": null,
-      "id": "19556267-1600-4e63-b3d1-ba2dc75cd665",
+      "id": "ddfddac1-d215-4ddd-952b-cb76796c0f07",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-13T16:52:31.679404Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "updated_at": "2026-06-16T02:37:01.937587Z",
+      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
     },
     {
-      "connector_id": "8b332100-4c54-40c8-ba0b-e8d767525c25",
-      "created_at": "2026-06-13T16:52:31.621189Z",
+      "connector_id": "97eda4ae-b6ff-42de-baa8-49e563c01513",
+      "created_at": "2026-06-16T02:37:01.82886Z",
       "deleted_at": null,
-      "id": "9d48056c-bb3a-46b4-8ff8-40c60dd34823",
+      "id": "95879d89-4e0c-426b-84c2-aba68cd07633",
       "justification": "UAE PDPL data-subject request fulfilment.",
       "requester_id": "ae-northwind-finance-owner",
       "resource_ref": "pdpl:dsr",
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
+      "risk_level": "medium",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "ae-northwind-finance-owner",
-      "updated_at": "2026-06-13T16:52:31.628759Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "updated_at": "2026-06-16T02:37:01.842239Z",
+      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
     },
     {
-      "connector_id": "8b332100-4c54-40c8-ba0b-e8d767525c25",
-      "created_at": "2026-06-13T16:52:31.603609Z",
+      "connector_id": "97eda4ae-b6ff-42de-baa8-49e563c01513",
+      "created_at": "2026-06-16T02:37:01.796198Z",
       "deleted_at": null,
-      "id": "0a255cd6-8faf-45f2-8c83-954e10421bbb",
+      "id": "140ca3d9-9171-4429-88a0-2673d526e60c",
       "justification": "Treasury settlement run for end-of-day processing.",
       "requester_id": "ae-northwind-finance-owner",
       "resource_ref": "t24:treasury",
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
+      "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "ae-northwind-finance-owner",
-      "updated_at": "2026-06-13T16:52:31.640934Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "updated_at": "2026-06-16T02:37:01.895887Z",
+      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
     },
     {
-      "connector_id": "8b332100-4c54-40c8-ba0b-e8d767525c25",
-      "created_at": "2026-06-13T16:52:31.580371Z",
+      "connector_id": "97eda4ae-b6ff-42de-baa8-49e563c01513",
+      "created_at": "2026-06-16T02:37:01.762134Z",
       "deleted_at": null,
-      "id": "8dfc0adb-0e3f-4f93-a97e-d9241b668bdf",
+      "id": "0f07ac09-21c1-4262-85f4-ab19c24f1fc3",
       "justification": "DESC privileged-access review requires temporary core-banking admin.",
       "requester_id": "ae-northwind-finance-owner",
       "resource_ref": "t24:privileged-admin",
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
+      "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "ae-northwind-finance-owner",
-      "updated_at": "2026-06-13T16:52:31.657924Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "updated_at": "2026-06-16T02:37:01.862412Z",
+      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
     }
   ]
 }

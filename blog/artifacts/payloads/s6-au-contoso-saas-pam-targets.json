@@ -2,42 +2,42 @@
   "targets": [
     {
       "address": "prod-bastion.contoso.internal:22",
-      "created_at": "2026-06-13T16:56:31.484924Z",
+      "created_at": "2026-06-16T02:41:02.00413Z",
       "deleted_at": null,
-      "id": "5997e171-64ae-40f2-81ef-3d73c02ad7ee",
+      "id": "2e4a0c50-3c91-411c-bd38-9ca9a714ba15",
       "lease_ttl_seconds": 1800,
       "name": "Prod bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-13T16:56:31.484924Z",
+      "updated_at": "2026-06-16T02:41:02.00413Z",
       "username": "sre",
-      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+      "workspace_id": "005c22ba-0e64-47fb-a9e6-21cbbe2f7f60"
     },
     {
       "address": "prod-db-1.contoso-saas.internal:5432",
-      "created_at": "2026-06-13T16:56:01.467249Z",
+      "created_at": "2026-06-16T02:40:31.972501Z",
       "deleted_at": null,
-      "id": "12c9604d-d1a7-413a-b97e-418241b15d51",
+      "id": "151f06fc-9dac-4283-8fad-09a544695ac3",
       "lease_ttl_seconds": 1800,
       "name": "Production datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:56:01.467249Z",
+      "updated_at": "2026-06-16T02:40:31.972501Z",
       "username": "app_ro",
-      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+      "workspace_id": "005c22ba-0e64-47fb-a9e6-21cbbe2f7f60"
     },
     {
       "address": "prod-au-1.contoso-saas.internal:22",
-      "created_at": "2026-06-13T16:55:32.392231Z",
+      "created_at": "2026-06-16T02:40:01.949144Z",
       "deleted_at": null,
-      "id": "d69f602c-4db4-4dfd-9c77-a5cf660608d2",
+      "id": "c10e6944-d513-4e5d-b0f3-1159aa6f51ca",
       "lease_ttl_seconds": 1800,
       "name": "GCP production VM (prod-au-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:55:32.392231Z",
+      "updated_at": "2026-06-16T02:40:01.949144Z",
       "username": "sre",
-      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+      "workspace_id": "005c22ba-0e64-47fb-a9e6-21cbbe2f7f60"
     }
   ]
 }

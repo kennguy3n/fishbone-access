@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "45ba4ba9-20a6-4b9a-89f5-a9c84c1106ee",
-    "created_at": "2026-06-13T16:50:31.62002Z",
+    "connector_id": "5f8cb034-267a-46e7-bf27-2b6230d73b3b",
+    "created_at": "2026-06-16T02:35:01.755895Z",
     "deleted_at": null,
-    "id": "76db8c31-5b78-411e-975b-363604195ce2",
+    "id": "42baa274-4f68-4961-890a-a1c70d558235",
     "justification": "PDPD personal-data processing register review.",
     "requester_id": "vn-umbrella-logistics-owner",
     "resource_ref": "pii:decree13-register",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "vn-umbrella-logistics-owner",
-    "updated_at": "2026-06-13T16:50:31.626625Z",
-    "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
+    "updated_at": "2026-06-16T02:35:01.768302Z",
+    "workspace_id": "14e2ff02-4214-487a-b0dd-f8be50c4423e"
   },
   "risk": {
-    "created_at": "2026-06-13T16:50:31.622659Z",
-    "degraded": false,
+    "created_at": "2026-06-16T02:35:01.759496Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "b044dd65-bf59-40da-bb07-6b2665345c90",
+    "id": "70401aa6-a7b3-4e5e-a429-8a755eae6874",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "76db8c31-5b78-411e-975b-363604195ce2",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-13T16:50:31.622659Z",
-    "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "42baa274-4f68-4961-890a-a1c70d558235",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-16T02:35:01.759496Z",
+    "workspace_id": "14e2ff02-4214-487a-b0dd-f8be50c4423e"
   }
 }

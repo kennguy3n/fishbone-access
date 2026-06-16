@@ -1,10 +1,10 @@
 {
-  "from_hash": "f4b70e2b7710517b082562db36025eaf9ec0e39e6429d4b0969c29acf5e92d29",
-  "from_seq": 94,
-  "head_hash": "f4b70e2b7710517b082562db36025eaf9ec0e39e6429d4b0969c29acf5e92d29",
-  "head_seq": 94,
+  "from_hash": "4efe77b71270b9d1c113984888152832b9124a7aaf349c8ec4e6fb4c2720129b",
+  "from_seq": 92,
+  "head_hash": "4efe77b71270b9d1c113984888152832b9124a7aaf349c8ec4e6fb4c2720129b",
+  "head_seq": 92,
   "ok": true,
   "status": "consistent",
   "verified": 0,
-  "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+  "workspace_id": "005c22ba-0e64-47fb-a9e6-21cbbe2f7f60"
 }

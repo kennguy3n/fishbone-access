@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-13T16:46:31.351408Z",
+      "created_at": "2026-06-16T02:31:02.072866Z",
       "deleted_at": null,
-      "ended_at": "2026-06-13T16:46:31.362028Z",
-      "id": "771ffa8a-8e66-4d95-a51e-fe72d1af8b82",
+      "ended_at": "2026-06-16T02:31:02.095032Z",
+      "id": "8f721693-ae23-4770-a41f-29c0b13e5811",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/771ffa8a-8e66-4d95-a51e-fe72d1af8b82/replay.bin",
-      "started_at": "2026-06-13T16:46:31.350636Z",
+      "replay_key": "sessions/8f721693-ae23-4770-a41f-29c0b13e5811/replay.bin",
+      "started_at": "2026-06-16T02:31:02.071084Z",
       "state": "closed",
       "subject": "us-globex-health-owner",
-      "target_id": "59856690-9e3e-4799-b2d9-9a9506705428",
-      "updated_at": "2026-06-13T16:46:31.362028Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "target_id": "67cf2118-2efd-4ac6-8ec1-3e6e82c56b47",
+      "updated_at": "2026-06-16T02:31:02.095032Z",
+      "workspace_id": "0699aeba-00f9-4e52-a90d-f60fa57b15ae"
     }
   ]
 }

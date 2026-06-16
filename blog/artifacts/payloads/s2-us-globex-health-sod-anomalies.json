@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-13T16:46:31.377674Z",
+      "created_at": "2026-06-16T02:31:02.130522Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,21 @@
           "resource": "ehr:clinician",
           "role": "operator"
         },
-        "rule_id": "ea08ca06-ba78-49a2-88c1-af3ecbe4ae50",
+        "rule_id": "cd644003-f352-4c51-bade-3d4d1fbbc96c",
         "rule_name": "Clinician role must not hold billing export",
         "severity": "high",
         "subject": "ext-dual-role@us-globex-health.example"
       },
-      "detected_at": "2026-06-13T16:46:31.377674Z",
+      "detected_at": "2026-06-16T02:31:02.130522Z",
       "disposition": "flagged",
-      "fingerprint": "bb235ad4df6513be8d4d4e6cd3e5e9b6f32ea4712359200bb87ec0b7cb6bdd39",
-      "id": "9cd8711e-4ac8-459e-8de7-20c6ccdea1ac",
+      "fingerprint": "2486f8fbd06023a4c9a6ee81612169dbde34cf16b1e3705c87b43d24c923231f",
+      "id": "940ead15-8b3a-4a93-b5d7-beace1d4645b",
       "kind": "sod_violation",
-      "rule_id": "ea08ca06-ba78-49a2-88c1-af3ecbe4ae50",
+      "rule_id": "cd644003-f352-4c51-bade-3d4d1fbbc96c",
       "severity": "high",
       "subject": "ext-dual-role@us-globex-health.example",
-      "updated_at": "2026-06-13T16:46:31.377674Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "updated_at": "2026-06-16T02:31:02.130522Z",
+      "workspace_id": "0699aeba-00f9-4e52-a90d-f60fa57b15ae"
     }
   ]
 }

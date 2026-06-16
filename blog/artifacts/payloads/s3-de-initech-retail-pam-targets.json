@@ -2,42 +2,42 @@
   "targets": [
     {
       "address": "pos-bastion.initech.internal:22",
-      "created_at": "2026-06-13T16:50:01.378836Z",
+      "created_at": "2026-06-16T02:34:31.412013Z",
       "deleted_at": null,
-      "id": "f9377d9a-44c4-4b62-b164-14cd02164782",
+      "id": "af8350ba-6e5b-4076-a270-d38990ccfd15",
       "lease_ttl_seconds": 1800,
       "name": "POS bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-13T16:50:01.378836Z",
+      "updated_at": "2026-06-16T02:34:31.412013Z",
       "username": "pos-ops",
-      "workspace_id": "40d95482-a5b5-4607-9fff-f38add1edc63"
+      "workspace_id": "a39e6010-741f-4a94-aa81-80a3715b2693"
     },
     {
       "address": "sap-pos-db-1.initech.internal:3306",
-      "created_at": "2026-06-13T16:50:01.374839Z",
+      "created_at": "2026-06-16T02:34:31.403269Z",
       "deleted_at": null,
-      "id": "c84890fe-a966-4009-8c19-fb00e5a20236",
+      "id": "38d88668-913a-4f32-87a5-db542a072b8c",
       "lease_ttl_seconds": 1800,
       "name": "SAP POS database (MySQL)",
       "protocol": "mysql",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:50:01.374839Z",
+      "updated_at": "2026-06-16T02:34:31.403269Z",
       "username": "pos_admin",
-      "workspace_id": "40d95482-a5b5-4607-9fff-f38add1edc63"
+      "workspace_id": "a39e6010-741f-4a94-aa81-80a3715b2693"
     },
     {
       "address": "pos-jump-1.initech.internal:22",
-      "created_at": "2026-06-13T16:49:33.350011Z",
+      "created_at": "2026-06-16T02:34:03.31057Z",
       "deleted_at": null,
-      "id": "108753ec-323e-40b7-9568-f5bb6fb04a05",
+      "id": "627d67fb-8b4f-4e1c-849e-3d86af9501c9",
       "lease_ttl_seconds": 1800,
       "name": "Azure POS jump host (de-pos-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:49:33.350011Z",
+      "updated_at": "2026-06-16T02:34:03.31057Z",
       "username": "pos-ops",
-      "workspace_id": "40d95482-a5b5-4607-9fff-f38add1edc63"
+      "workspace_id": "a39e6010-741f-4a94-aa81-80a3715b2693"
     }
   ]
 }
