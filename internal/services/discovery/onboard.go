@@ -118,8 +118,11 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 				// HARD failure, not a partial success: deliberately do NOT tag
 				// ErrAgentBindFailed, so callers surface it (handler 500, sweep
 				// flags + skips the onboarded count) instead of falsely reporting
-				// success on a stranded asset.
-				return target, fmt.Errorf("discovery: onboarded target link failed after bind error (bind=%v): %w", bindErr, linkErr)
+				// success on a stranded asset. Wrap linkErr with %v (not %w): a
+				// link failure is an internal residual, so we must not leak a
+				// sentinel (e.g. ErrNotFound from a concurrent reconcile race)
+				// that the handler would map to 404/409 instead of 500.
+				return target, fmt.Errorf("discovery: onboarded target link failed after bind error (bind=%v): %v", bindErr, linkErr)
 			}
 			// Link succeeded: the target is created and the asset is linked +
 			// audited — only the agent association is missing. Tag the failure
@@ -131,7 +134,11 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 	}
 
 	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, trigger); err != nil {
-		return target, err
+		// Same rationale as the bind+link path above: surface a link failure as
+		// an internal error (handler 500) rather than leaking a sentinel like
+		// ErrNotFound — from a concurrent reconcile that already linked the
+		// target_id — which the handler would otherwise map to a misleading 404.
+		return target, fmt.Errorf("discovery: onboarded target link failed: %v", err)
 	}
 	return target, nil
 }
