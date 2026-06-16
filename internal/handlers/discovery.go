@@ -296,6 +296,11 @@ func (h *discoveryHandlers) onboardAsset(c *gin.Context) {
 		// 201 with the target plus a warning header instead of a 500 that hides
 		// the created target and leaves a retry to hit 409 Conflict.
 		if errors.Is(err, discovery.ErrAgentBindFailed) && target != nil {
+			// Record the bind failure server-side so ops dashboards can track
+			// its frequency: this branch bypasses h.fail (the usual logging
+			// path), and the X-Discovery-Warning response header alone is
+			// invisible to log-based monitoring.
+			logger.Warnf(c.Request.Context(), "discovery: onboard partial success (agent bind failed) asset=%s target=%s: %v", assetID, target.ID, err)
 			c.Header("X-Discovery-Warning", "agent-bind-failed: target created with direct dial; re-bind from target settings")
 			c.JSON(http.StatusCreated, target)
 			return

@@ -42,8 +42,9 @@ func (e *Engine) reconcileAssets(ctx context.Context, workspaceID uuid.UUID, sou
 		if spec.Address != "" {
 			// Match on the raw address first, then on the port-normalized form
 			// so a target registered without an explicit port still classifies
-			// a discovered host:port as managed (and vice-versa).
-			if _, ok := managed[spec.Address]; ok {
+			// a discovered host:port as managed (and vice-versa). Lowercase the
+			// raw probe to match the (now case-insensitive) managedAddresses keys.
+			if _, ok := managed[strings.ToLower(strings.TrimSpace(spec.Address))]; ok {
 				status = models.DiscoveryStatusManaged
 			} else if _, ok := managed[normalizeEndpoint(spec.Address, protocol)]; ok {
 				status = models.DiscoveryStatusManaged
@@ -145,7 +146,10 @@ func (e *Engine) managedAddresses(ctx context.Context, workspaceID uuid.UUID) (m
 		if r.Address == "" {
 			continue
 		}
-		set[r.Address] = struct{}{}
+		// Lowercase the raw key (hostnames are case-insensitive per RFC) so this
+		// path classifies mixed-case addresses the same way the normalized form
+		// and targetEndpointIndex already do.
+		set[strings.ToLower(strings.TrimSpace(r.Address))] = struct{}{}
 		if n := normalizeEndpoint(r.Address, r.Protocol); n != "" {
 			set[n] = struct{}{}
 		}
@@ -227,9 +231,13 @@ func (e *Engine) reconcileStuckOnboards(ctx context.Context, workspaceID uuid.UU
 		case 0:
 			// No target stands behind the claim; release it so it can be onboarded
 			// again (release is guarded on managed/target_id=NULL, so it can never
-			// clobber a concurrently-linked asset).
-			e.releaseAssetClaim(ctx, workspaceID, asset.ID)
-			healed++
+			// clobber a concurrently-linked asset). Only count it healed when the
+			// row was actually flipped, so a swallowed DB error or a concurrent
+			// linker's row doesn't inflate the Healed metric — the next sweep
+			// retries either way.
+			if e.releaseAssetClaim(ctx, workspaceID, asset.ID) {
+				healed++
+			}
 		default:
 			// Ambiguous: multiple unlinked targets share this endpoint. Leave it
 			// for an operator rather than risk linking the wrong credential.

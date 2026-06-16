@@ -169,12 +169,17 @@ func (e *Engine) claimAssetForOnboard(ctx context.Context, workspaceID, assetID 
 // releaseAssetClaim reverts a claim made by claimAssetForOnboard when target
 // creation fails, returning the asset to unmanaged so it can be retried. It is
 // best-effort and guarded on target_id IS NULL so it can never clobber a target
-// that was successfully linked. Any error is swallowed: the caller is already
-// returning the more important target-creation error.
-func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) {
-	_ = e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+// that was successfully linked. Any error is swallowed: the create-failure
+// caller is already returning the more important target-creation error.
+//
+// Returns true only when it actually flipped a row back to unmanaged, so the
+// reconcile sweep can avoid counting a no-op (DB error, or a row a concurrent
+// linker already moved) as a heal.
+func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) bool {
+	res := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
 		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
-		Update("status", models.DiscoveryStatusUnmanaged).Error
+		Update("status", models.DiscoveryStatusUnmanaged)
+	return res.Error == nil && res.RowsAffected == 1
 }
 
 // linkAssetTarget records the new target_id on an already-claimed (managed)

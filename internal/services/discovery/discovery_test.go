@@ -464,6 +464,32 @@ func TestReconcileClassifiesPortNormalized(t *testing.T) {
 	}
 }
 
+func TestReconcileClassifiesCaseInsensitive(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	requireMFA := true
+	// Target stored with a mixed-case hostname; discovery reports it lowercased.
+	// Hostnames are case-insensitive per RFC, so it must still classify managed.
+	if _, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "mixed-case-pg", Protocol: "postgres", Address: "DB.Acme:5432",
+		Username: "root", RequireMFA: &requireMFA, Secret: pam.Secret{Password: "pw"}, Actor: "tester",
+	}); err != nil {
+		t.Fatalf("create mixed-case target: %v", err)
+	}
+	specs := []access.DiscoveredAssetSpec{
+		{ExternalID: "db:db.acme:5432", Kind: access.AssetKindDatabase, Name: "db.acme", Protocol: "postgres", Address: "db.acme:5432"},
+	}
+	if _, _, err := h.engine.reconcileAssets(ctx, ws, models.DiscoverySourceAgentSweep, specs, nil, nil); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var managed int64
+	h.db.Model(&models.DiscoveredAsset{}).Where("workspace_id = ? AND status = ?", ws, models.DiscoveryStatusManaged).Count(&managed)
+	if managed != 1 {
+		t.Fatalf("managed=%d, want 1 (mixed-case host should match lowercased discovery)", managed)
+	}
+}
+
 func TestNormalizeEndpoint(t *testing.T) {
 	cases := []struct {
 		name     string
