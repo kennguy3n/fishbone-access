@@ -33,6 +33,16 @@ type Relay struct {
 	dialTO    time.Duration
 	now       func() time.Time
 
+	// Cross-replica HA (all nil/empty unless WithCrossReplica is set, so a
+	// single-replica or test deployment behaves exactly as before): dir is the
+	// durable owner directory, fwd dials a peer replica's forward listener,
+	// nodeID identifies this replica and forwardAddr is the internal address
+	// peers dial to reach the tunnels this replica owns.
+	dir         SessionDirectory
+	fwd         *ForwardClient
+	nodeID      string
+	forwardAddr string
+
 	mu     sync.RWMutex
 	agents map[uuid.UUID]map[uuid.UUID]*agentConn // workspaceID -> agentID -> conn
 }
@@ -43,6 +53,11 @@ type Relay struct {
 type agentConn struct {
 	identity AgentIdentity
 	session  *yamux.Session
+	// ownerEpoch is the session-directory generation this connection claimed on
+	// register (0 when no directory is wired). Heartbeat refresh and disconnect
+	// release are conditioned on it so a superseded owner cannot clobber a newer
+	// claim (epoch CAS).
+	ownerEpoch int64
 }
 
 // RelayOption tunes a Relay.
@@ -63,6 +78,22 @@ func WithClock(now func() time.Time) RelayOption {
 		if now != nil {
 			r.now = now
 		}
+	}
+}
+
+// WithCrossReplica enables the HA path: the relay claims/refreshes/releases
+// ownership of its tunnels in the shared session directory and, when a dial
+// lands here for an agent owned by ANOTHER replica, forwards it to that owner
+// via fwd. nodeID is this replica's identity (defaulted to hostname by the
+// caller) and forwardAddr is the internal address peers dial to reach it. When
+// any of dir/fwd/forwardAddr is unset the relay stays single-replica and a
+// non-local agent fails closed exactly as before.
+func WithCrossReplica(dir SessionDirectory, fwd *ForwardClient, nodeID, forwardAddr string) RelayOption {
+	return func(r *Relay) {
+		r.dir = dir
+		r.fwd = fwd
+		r.nodeID = nodeID
+		r.forwardAddr = forwardAddr
 	}
 }
 
@@ -158,9 +189,30 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 	id := ac.identity
 	scanner := scanControl(control)
 	registered := false
+	// ownershipLost is set when a heartbeat's CAS reveals another replica took
+	// over this agent (it reconnected elsewhere). In that case the agent is NOT
+	// offline — its tunnel merely migrated — so we must drop our local tunnel
+	// WITHOUT touching shared state: the new owner already marked it online, and
+	// emitting OnDisconnect here would both flip its status to offline and append
+	// a misleading AgentOffline event to the immutable audit chain. The directory
+	// row and its ownership likewise belong to the new owner now (our Release CAS
+	// would no-op anyway), so we leave them untouched.
+	ownershipLost := false
 	defer func() {
 		if registered {
 			r.deregister(ac)
+			if ownershipLost {
+				logger.Infof(ctx, "broker: tunnel migrated to another replica workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
+				return
+			}
+			// Clear our directory ownership so peers stop forwarding to a tunnel
+			// we no longer hold. CAS-conditioned on (node, epoch) so a superseded
+			// owner can never delete a newer owner's claim.
+			if r.dir != nil && ac.ownerEpoch != 0 {
+				if err := r.dir.Release(context.WithoutCancel(ctx), id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
+					logger.Warnf(ctx, "broker: release ownership agent=%s: %v", id.AgentID, err)
+				}
+			}
 			if err := r.store.OnDisconnect(context.WithoutCancel(ctx), id.WorkspaceID, id.AgentID); err != nil {
 				logger.Warnf(ctx, "broker: mark agent offline agent=%s: %v", id.AgentID, err)
 			}
@@ -208,6 +260,30 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 				}
 				logger.Warnf(ctx, "broker: heartbeat agent=%s: %v", id.AgentID, err)
 			}
+			// Coalesced directory maintenance (heartbeat only, never per-dial).
+			if r.dir != nil && r.forwardAddr != "" {
+				if ac.ownerEpoch == 0 {
+					// We hold no ownership epoch: the initial Claim at register
+					// failed (e.g. a transient Postgres error), so a Refresh has
+					// nothing to update. Retry the Claim here so a registered agent
+					// becomes forward-reachable on the next heartbeat instead of
+					// waiting for a full reconnect.
+					if epoch, err := r.dir.Claim(ctx, id.WorkspaceID, id.AgentID, r.nodeID, r.forwardAddr); err != nil {
+						logger.Warnf(ctx, "broker: re-claim ownership agent=%s: %v", id.AgentID, err)
+					} else {
+						ac.ownerEpoch = epoch
+					}
+				} else if err := r.dir.Refresh(ctx, id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
+					// A lost CAS means the agent reconnected to another replica that
+					// took over — drop this now-stale tunnel.
+					if errors.Is(err, ErrOwnershipLost) {
+						logger.Infof(ctx, "broker: ownership lost, dropping stale tunnel workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
+						ownershipLost = true
+						return
+					}
+					logger.Warnf(ctx, "broker: refresh ownership agent=%s: %v", id.AgentID, err)
+				}
+			}
 		default:
 			logger.Warnf(ctx, "broker: unknown control type %q agent=%s", msg.Type, id.AgentID)
 		}
@@ -221,6 +297,20 @@ func (r *Relay) applyRegister(ctx context.Context, ac *agentConn, reg RegisterPa
 	id := ac.identity
 	if err := r.store.OnRegister(ctx, id.WorkspaceID, id.AgentID, reg); err != nil {
 		return err
+	}
+	// Claim cross-replica ownership of this tunnel (coalesced — register only,
+	// never per-dial). A reconnect anywhere takes over via epoch CAS. Failure is
+	// fail-open relative to the LOCAL tunnel (which works regardless), matching
+	// the house posture for cross-replica state: ownerEpoch stays 0 and the next
+	// heartbeat retries the Claim (see serveControl), so we just won't be
+	// reachable by forwarding for at most one heartbeat interval.
+	if r.dir != nil && r.forwardAddr != "" {
+		epoch, err := r.dir.Claim(ctx, id.WorkspaceID, id.AgentID, r.nodeID, r.forwardAddr)
+		if err != nil {
+			logger.Warnf(ctx, "broker: claim ownership agent=%s: %v", id.AgentID, err)
+		} else {
+			ac.ownerEpoch = epoch
+		}
 	}
 	r.register(ac)
 	return nil
@@ -278,10 +368,28 @@ func (r *Relay) dialThroughAgentAs(ctx context.Context, workspaceID, agentID uui
 	if workspaceID == uuid.Nil || agentID == uuid.Nil {
 		return nil, ErrAgentUnavailable
 	}
-	ac := r.lookup(workspaceID, agentID)
-	if ac == nil {
+	// Local fast-path: if this replica holds the tunnel, dial it exactly as
+	// before — a pure in-memory lookup with ZERO new DB round-trips, which is the
+	// common case and the one that must stay cheap at 5k-tenant scale.
+	if ac := r.lookup(workspaceID, agentID); ac != nil {
+		return r.dialLocal(ctx, ac, workspaceID, agentID, targetAddr, actor)
+	}
+	// Not local. Without the HA path wired, fail closed exactly as today.
+	if !r.crossReplica() {
 		return nil, ErrAgentUnavailable
 	}
+	return r.dialForward(ctx, workspaceID, agentID, targetAddr, actor)
+}
+
+// crossReplica reports whether the directory + forwarder HA path is wired.
+func (r *Relay) crossReplica() bool {
+	return r.dir != nil && r.fwd != nil && r.forwardAddr != ""
+}
+
+// dialLocal opens a stream through a tunnel THIS replica holds: the authoritative
+// revoke re-check, the agent stream open, and the single broker-open audit all
+// happen here.
+func (r *Relay) dialLocal(ctx context.Context, ac *agentConn, workspaceID, agentID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
 	// Re-check the agent is still live before opening a session, so a revoke
 	// that landed after the tunnel came up fails the new session closed.
 	if err := r.store.AuthorizeDial(ctx, workspaceID, agentID); err != nil {
@@ -294,6 +402,35 @@ func (r *Relay) dialThroughAgentAs(ctx context.Context, workspaceID, agentID uui
 	// Best-effort audit; a failure to record must not drop a live session.
 	if err := r.store.AuditBrokerOpen(context.WithoutCancel(ctx), workspaceID, agentID, targetAddr, actor); err != nil {
 		logger.Warnf(ctx, "broker: audit broker-open agent=%s: %v", agentID, err)
+	}
+	return conn, nil
+}
+
+// dialForward routes a dial to the replica that owns the agent's tunnel. It does
+// a single directory read and at most one forward dial; the owner performs the
+// revoke re-check and the single broker-open audit, so this path neither
+// authorizes nor audits (no double-audit). It fails closed with
+// ErrAgentUnavailable on any unknown/stale/unreachable owner — never a fallback
+// to a different agent, never a direct dial.
+func (r *Relay) dialForward(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr, actor string) (net.Conn, error) {
+	entry, fresh, err := r.dir.Lookup(ctx, workspaceID, agentID)
+	if err != nil {
+		// Source of truth unreachable: fail closed, never guess an owner.
+		logger.Warnf(ctx, "broker: directory lookup agent=%s: %v", agentID, err)
+		return nil, ErrAgentUnavailable
+	}
+	// Owner unknown, stale (crashed replica, no heartbeat), missing its forward
+	// address, or — defensively — pointing back at this node even though we have
+	// no local tunnel (ours just dropped): all fail closed.
+	if entry == nil || !fresh || entry.ForwardAddr == "" || entry.NodeID == r.nodeID {
+		return nil, ErrAgentUnavailable
+	}
+	conn, err := r.fwd.Dial(ctx, entry.ForwardAddr, workspaceID, agentID, targetAddr, actor)
+	if err != nil {
+		// Bounded by the forward client's dial timeout, so a dead owner fails
+		// closed promptly rather than hanging the caller.
+		logger.Warnf(ctx, "broker: forward dial agent=%s owner=%s: %v", agentID, entry.NodeID, err)
+		return nil, ErrAgentUnavailable
 	}
 	return conn, nil
 }
@@ -338,20 +475,54 @@ func (r *Relay) openStream(ctx context.Context, ac *agentConn, targetAddr string
 	return stream, nil
 }
 
-// OnlineCount reports how many agents are currently online for a workspace
-// (used by the API health surface and tests).
+// directoryReadTimeout bounds the management-surface directory reads
+// (OnlineCount / IsOnline) so a stalled database pool degrades to the local-map
+// fallback instead of blocking the health surface indefinitely. These are not
+// on the hot dial path, so a generous bound is fine.
+const directoryReadTimeout = 5 * time.Second
+
+// OnlineCount reports how many agents are online for a workspace. With the HA
+// directory wired it reflects GLOBAL state (agents online on any replica),
+// reading the directory's fresh-owner count; it falls back to the local map if
+// the directory is unavailable so the surface degrades safely rather than
+// reporting zero. Without the directory it is the local count, as before.
 func (r *Relay) OnlineCount(workspaceID uuid.UUID) int {
+	if r.dir != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), directoryReadTimeout)
+		defer cancel()
+		if n, err := r.dir.OnlineCount(ctx, workspaceID); err == nil {
+			return n
+		} else {
+			logger.Warnf(context.Background(), "broker: directory online-count workspace=%s: %v", workspaceID, err)
+		}
+	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.agents[workspaceID])
 }
 
-// IsOnline reports whether a specific agent currently holds a live tunnel.
+// IsOnline reports whether a specific agent is online. The local tunnel map is
+// authoritative for THIS replica (and the zero-DB fast-path); when the agent is
+// not local and the HA directory is wired, it reflects global state so the
+// Agents UI shows an agent as online regardless of which replica pins it.
 func (r *Relay) IsOnline(workspaceID, agentID uuid.UUID) bool {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-	_, ok := r.agents[workspaceID][agentID]
-	return ok
+	_, local := r.agents[workspaceID][agentID]
+	r.mu.RUnlock()
+	if local {
+		return true
+	}
+	if r.dir == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), directoryReadTimeout)
+	defer cancel()
+	online, err := r.dir.IsOnline(ctx, workspaceID, agentID)
+	if err != nil {
+		logger.Warnf(context.Background(), "broker: directory is-online agent=%s: %v", agentID, err)
+		return false
+	}
+	return online
 }
 
 var _ interface {
