@@ -139,6 +139,14 @@ type Config struct {
 	// is set-based and hibernation-gated, so it stays cheap at 5k tenants.
 	Rotation RotationConfig
 
+	// Discovery tunes account/asset auto-discovery and auto-onboarding
+	// (Feature E): probe timeouts/concurrency for the agent network sweep, the
+	// scheduled-sweep cadence, and the feature flag that gates the workflow
+	// engine's periodic policy evaluation. It is safe-by-default — the periodic
+	// sweep only touches workspaces with an explicitly enabled, opt-in policy,
+	// so it stays cheap at 5k tenants.
+	Discovery DiscoveryConfig
+
 	// UsageMetering accumulates per-tenant usage counts (API calls today) and
 	// flushes them to the tenant_usage rollup so cost-to-serve is attributable
 	// per tenant. It is the "who is using what" half of the cost story; the
@@ -283,6 +291,35 @@ type RotationConfig struct {
 	// mint/drop makes (SSH/Postgres/MySQL). Read from
 	// ACCESS_ROTATION_DIAL_TIMEOUT; defaults to 10s.
 	DialTimeout time.Duration
+}
+
+// DiscoveryConfig tunes account/asset auto-discovery and auto-onboarding
+// (Feature E). All values are safe-by-default: the zero value yields conservative
+// timeouts/concurrency and a disabled periodic sweep, so a degraded boot never
+// probes with an unbounded fan-out and never auto-onboards without an operator
+// opting in.
+type DiscoveryConfig struct {
+	// ScheduledSweepEnabled gates the workflow engine's periodic discovery
+	// sweep (connector re-inventory + auto-onboarding policy evaluation). Only
+	// workspaces with an explicitly enabled, opt-in policy are ever touched, so
+	// this stays cheap at 5k tenants. Read from ACCESS_DISCOVERY_SWEEP_ENABLED;
+	// defaults to true (a no-op for tenants without a policy).
+	ScheduledSweepEnabled bool
+	// SweepInterval is the periodic-sweep cadence. Read from
+	// ACCESS_DISCOVERY_SWEEP_INTERVAL; defaults to 6h.
+	SweepInterval time.Duration
+	// ProbeTimeout bounds a single host:port reachability probe through an
+	// agent. Read from ACCESS_DISCOVERY_PROBE_TIMEOUT; defaults to 3s.
+	ProbeTimeout time.Duration
+	// ProbeConcurrency caps concurrent probes per sweep. Read from
+	// ACCESS_DISCOVERY_PROBE_CONCURRENCY; defaults to 16.
+	ProbeConcurrency int
+	// MaxProbeTargets caps host*port fan-out for one sweep. Read from
+	// ACCESS_DISCOVERY_MAX_PROBE_TARGETS; defaults to 1024.
+	MaxProbeTargets int
+	// DBDialTimeout bounds a DB account-enumeration connection. Read from
+	// ACCESS_DISCOVERY_DB_DIAL_TIMEOUT; defaults to 10s.
+	DBDialTimeout time.Duration
 }
 
 // RateLimitConfig tunes the per-tenant inbound request limiter. The limiter is
@@ -588,6 +625,14 @@ func Load() Config {
 			Enabled:       getBool("ACCESS_ROTATION_ENABLED", true),
 			SweepInterval: getDuration("ACCESS_ROTATION_SWEEP_INTERVAL", 60*time.Second),
 			DialTimeout:   getDuration("ACCESS_ROTATION_DIAL_TIMEOUT", 10*time.Second),
+		},
+		Discovery: DiscoveryConfig{
+			ScheduledSweepEnabled: getBool("ACCESS_DISCOVERY_SWEEP_ENABLED", true),
+			SweepInterval:         getDuration("ACCESS_DISCOVERY_SWEEP_INTERVAL", 6*time.Hour),
+			ProbeTimeout:          getDuration("ACCESS_DISCOVERY_PROBE_TIMEOUT", 3*time.Second),
+			ProbeConcurrency:      getInt("ACCESS_DISCOVERY_PROBE_CONCURRENCY", 16),
+			MaxProbeTargets:       getInt("ACCESS_DISCOVERY_MAX_PROBE_TARGETS", 1024),
+			DBDialTimeout:         getDuration("ACCESS_DISCOVERY_DB_DIAL_TIMEOUT", 10*time.Second),
 		},
 		UsageMetering: UsageMeteringConfig{
 			Enabled:       getBool("ACCESS_USAGE_METERING_ENABLED", true),

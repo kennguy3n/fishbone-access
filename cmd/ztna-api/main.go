@@ -47,6 +47,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/billing"
+	"github.com/kennguy3n/fishbone-access/internal/services/discovery"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -105,6 +106,17 @@ func run() error {
 	// so an operator who raises ACCESS_ROTATION_DIAL_TIMEOUT for slow upstreams
 	// sees it honoured on both paths.
 	deps.RotationDialTimeout = cfg.Rotation.DialTimeout
+	// Account/asset auto-discovery + auto-onboarding (Feature E): the agent
+	// sweep's probe timeouts/concurrency and the scheduled-sweep cadence. The
+	// API process honours the same tuning the workflow engine's periodic sweep
+	// uses, so an operator who tightens probe limits sees it on both paths.
+	deps.Discovery = discovery.Config{
+		ProbeTimeout:     cfg.Discovery.ProbeTimeout,
+		ProbeConcurrency: cfg.Discovery.ProbeConcurrency,
+		MaxProbeTargets:  cfg.Discovery.MaxProbeTargets,
+		DBDialTimeout:    cfg.Discovery.DBDialTimeout,
+		SweepInterval:    cfg.Discovery.SweepInterval,
+	}
 	// Operational telemetry: one Prometheus registry shared by the request
 	// instrumentation and the /metrics scrape endpoint (wired in NewRouter). The
 	// DB pool's saturation stats are registered on it once the pool is open.

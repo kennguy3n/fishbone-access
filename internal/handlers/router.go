@@ -28,6 +28,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/authz"
 	"github.com/kennguy3n/fishbone-access/internal/services/billing"
+	"github.com/kennguy3n/fishbone-access/internal/services/discovery"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/mfa"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -180,6 +181,11 @@ type Deps struct {
 	// honours the SAME timeout as the scheduled sweep in access-workflow-engine;
 	// a zero value falls back to the 10s default inside newRotationHandlers.
 	RotationDialTimeout time.Duration
+	// Discovery tunes account/asset auto-discovery and auto-onboarding (Feature
+	// E): agent-sweep probe timeouts/concurrency and the scheduled-sweep cadence.
+	// main sets it from cfg.Discovery; the zero value falls back to the
+	// engine's safe defaults inside newDiscoveryHandlers.
+	Discovery discovery.Config
 }
 
 // NewRouter builds the Gin engine.
@@ -325,6 +331,9 @@ func NewRouter(deps Deps) *gin.Engine {
 			rh.register(scoped)
 		}
 		newAgentHandlers(deps).register(scoped)
+		// Feature E: account/asset auto-discovery + auto-onboarding. Additive —
+		// one constructor + register on the same tenant-scoped group.
+		newDiscoveryHandlers(deps).register(scoped)
 		newWorkflowHandlers(deps).register(scoped)
 		newComplianceHandlers(deps).register(scoped)
 		if deps.UsageReader != nil {
