@@ -49,12 +49,15 @@ var _ SessionDirectory = (*RedisSessionDirectory)(nil)
 // layout evolve without colliding with an older deployment's keys.
 const directoryKeyPrefix = "shieldnet:agentdir:v1:"
 
-// defaultDirectoryCacheTTL bounds how long a cached owner entry lives. It is
-// short on purpose: long enough to absorb a burst of dials to the same agent,
-// short enough that a crashed owner's dangling entry (no Release ran) falls back
-// to Postgres quickly. It is well under HealthOfflineAfter so the cache never
-// outlives the authoritative staleness decision.
-const defaultDirectoryCacheTTL = 3 * time.Second
+// The cache entry TTL defaults to the freshness (staleness) window: an entry
+// must outlive the heartbeat interval so a live owner's write-through Refresh
+// keeps finding its own entry (a TTL far shorter than the heartbeat would let
+// the entry expire between heartbeats, silently stopping cache maintenance).
+// Pinning the TTL to staleAfter is safe because Lookup ALWAYS recomputes
+// freshness from the stored last_seen, so a crashed owner's still-cached entry
+// is reported stale exactly when Postgres would — the TTL only bounds how long a
+// dangling entry from an unclean crash (no Release) survives, identical to the
+// authoritative staleness decision.
 
 // defaultDirectoryOpTimeout bounds a single Redis round trip on the dial path so
 // a stalled Redis trips the fail-open fallback fast rather than adding its stall
@@ -66,7 +69,8 @@ type RedisDirectoryConfig struct {
 	// StaleAfter is the freshness window; must match the inner directory's so
 	// cache and source agree on "online". Non-positive uses HealthOfflineAfter.
 	StaleAfter time.Duration
-	// TTL is the cache entry lifetime. Non-positive uses defaultDirectoryCacheTTL.
+	// TTL is the cache entry lifetime. Non-positive defaults to StaleAfter so the
+	// cache spans the heartbeat interval (see the comment above).
 	TTL time.Duration
 	// OpTimeout bounds a single Redis call. Non-positive uses the default.
 	OpTimeout time.Duration
@@ -82,7 +86,7 @@ func NewRedisSessionDirectory(inner SessionDirectory, rdb *redis.Client, cfg Red
 	}
 	ttl := cfg.TTL
 	if ttl <= 0 {
-		ttl = defaultDirectoryCacheTTL
+		ttl = staleAfter
 	}
 	opTO := cfg.OpTimeout
 	if opTO <= 0 {
@@ -128,7 +132,7 @@ func (d *RedisSessionDirectory) Claim(ctx context.Context, workspaceID, agentID 
 	if err != nil {
 		return 0, err
 	}
-	d.cacheSet(ctx, workspaceID, agentID, cachedEntry{
+	d.cachePut(ctx, workspaceID, agentID, cachedEntry{
 		NodeID:      nodeID,
 		ForwardAddr: forwardAddr,
 		Epoch:       epoch,
@@ -148,12 +152,23 @@ func (d *RedisSessionDirectory) Refresh(ctx context.Context, workspaceID, agentI
 		}
 		return err
 	}
-	d.cacheSet(ctx, workspaceID, agentID, cachedEntry{
-		NodeID:      nodeID,
-		ForwardAddr: "", // resolved below from the cache/inner; see note
-		Epoch:       epoch,
-		LastSeenAt:  d.now(),
-	})
+	// Write-through to keep a live owner's cached last_seen current. Refresh
+	// carries no forward address (the relay only knows node+epoch here), so fold
+	// it from the still-cached entry; if the entry has expired (eviction, or a
+	// TTL shorter than the heartbeat), repopulate from the authoritative
+	// directory so cache maintenance never silently stops. Both are best-effort.
+	if existing, ok := d.cacheGet(ctx, workspaceID, agentID); ok {
+		existing.Epoch = epoch
+		existing.LastSeenAt = d.now()
+		d.cachePut(ctx, workspaceID, agentID, existing)
+	} else if entry, _, lerr := d.inner.Lookup(ctx, workspaceID, agentID); lerr == nil && entry != nil {
+		d.cachePut(ctx, workspaceID, agentID, cachedEntry{
+			NodeID:      entry.NodeID,
+			ForwardAddr: entry.ForwardAddr,
+			Epoch:       entry.Epoch,
+			LastSeenAt:  entry.LastSeenAt,
+		})
+	}
 	return nil
 }
 
@@ -186,7 +201,7 @@ func (d *RedisSessionDirectory) Lookup(ctx context.Context, workspaceID, agentID
 		return nil, false, err
 	}
 	if entry != nil {
-		d.cacheSet(ctx, workspaceID, agentID, cachedEntry{
+		d.cachePut(ctx, workspaceID, agentID, cachedEntry{
 			NodeID:      entry.NodeID,
 			ForwardAddr: entry.ForwardAddr,
 			Epoch:       entry.Epoch,
@@ -232,16 +247,13 @@ func (d *RedisSessionDirectory) cacheGet(ctx context.Context, workspaceID, agent
 	return ce, true
 }
 
-func (d *RedisSessionDirectory) cacheSet(ctx context.Context, workspaceID, agentID uuid.UUID, ce cachedEntry) {
-	// A Refresh knows the epoch and last_seen but not the forward address; rather
-	// than risk caching an empty address, fold it from the existing entry when
-	// the caller left it blank. A miss here just skips the cache write.
+// cachePut serializes and stores a fully-populated entry. Callers must supply a
+// non-empty forward address (a cached owner with no forward address could never
+// be dialed); Refresh resolves it before calling. Best-effort: a write failure
+// just leaves the next Lookup to fall through to the authoritative directory.
+func (d *RedisSessionDirectory) cachePut(ctx context.Context, workspaceID, agentID uuid.UUID, ce cachedEntry) {
 	if ce.ForwardAddr == "" {
-		if existing, ok := d.cacheGet(ctx, workspaceID, agentID); ok {
-			ce.ForwardAddr = existing.ForwardAddr
-		} else {
-			return
-		}
+		return
 	}
 	b, err := json.Marshal(ce)
 	if err != nil {

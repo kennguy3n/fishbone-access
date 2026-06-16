@@ -341,7 +341,7 @@ func buildAgentRelay(ctx context.Context, cfg config.Config, gdb *gorm.DB) (gate
 	var relayOpts []broker.RelayOption
 	var forwardTLS *broker.ForwardTLS
 	if cfg.AgentBroker.CrossReplicaConfigured() {
-		forwardTLS, err = broker.LoadForwardTLS(cfg.AgentBroker.ForwardCACert, cfg.AgentBroker.ForwardCert, cfg.AgentBroker.ForwardKey)
+		forwardTLS, err = broker.LoadForwardTLS(cfg.AgentBroker.ForwardCert, cfg.AgentBroker.ForwardKey, cfg.AgentBroker.ForwardCACert)
 		if err != nil {
 			return nil, nil, fmt.Errorf("agent forward mTLS load: %w", err)
 		}

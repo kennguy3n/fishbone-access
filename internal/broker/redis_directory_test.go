@@ -159,6 +159,41 @@ func TestRedisDirectoryStaleEntryNotFreshFromCache(t *testing.T) {
 	}
 }
 
+// TestRedisDirectoryRefreshRepopulatesAfterEviction proves write-through Refresh
+// keeps the cache warm: even after the cached entry is gone (eviction / a TTL
+// shorter than the heartbeat), a heartbeat Refresh repopulates it from the
+// authoritative directory with the correct forward address, so cache
+// maintenance never silently stops.
+func TestRedisDirectoryRefreshRepopulatesAfterEviction(t *testing.T) {
+	ctx := context.Background()
+	cached, _, mr, _, ws := newRedisDir(t)
+
+	agentID := uuid.New()
+	epoch, err := cached.Claim(ctx, ws, agentID, "node-a", "10.0.0.1:7444")
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	// Simulate the cache entry expiring/evicted between heartbeats.
+	mr.Del(cached.key(ws, agentID))
+	if mr.Exists(cached.key(ws, agentID)) {
+		t.Fatalf("precondition: cache entry should be gone")
+	}
+
+	if err := cached.Refresh(ctx, ws, agentID, "node-a", epoch); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	if !mr.Exists(cached.key(ws, agentID)) {
+		t.Fatalf("refresh did not repopulate the evicted cache entry")
+	}
+	entry, fresh, err := cached.Lookup(ctx, ws, agentID)
+	if err != nil || entry == nil || !fresh {
+		t.Fatalf("lookup after repopulate: entry=%v fresh=%v err=%v", entry, fresh, err)
+	}
+	if entry.ForwardAddr != "10.0.0.1:7444" {
+		t.Fatalf("repopulated entry lost the forward address: %+v", entry)
+	}
+}
+
 // TestRedisDirectoryRefreshLostInvalidates proves a Refresh that lost ownership
 // (another replica took over) invalidates the local cache entry.
 func TestRedisDirectoryRefreshLostInvalidates(t *testing.T) {
