@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "us-globex-health-owner",
-      "created_at": "2026-06-13T16:46:02.32365Z",
+      "created_at": "2026-06-16T07:46:32.61543Z",
       "deleted_at": null,
-      "expires_at": "2026-06-13T17:01:31.335778Z",
-      "granted_at": "2026-06-13T16:46:31.335778Z",
-      "id": "ed42f87b-e4cd-4e01-a8ca-4f65fc7a1c9a",
+      "expires_at": "2026-06-16T08:02:01.69412Z",
+      "granted_at": "2026-06-16T07:47:01.69412Z",
+      "id": "72002fca-3141-460e-888b-99b5e595b699",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "us-globex-health-owner",
       "requested_ttl_seconds": 900,
@@ -16,11 +16,11 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "expired",
+      "state": "approved",
       "subject": "us-globex-health-owner",
-      "target_id": "d78a139d-921c-483b-9388-d54c298a9989",
-      "updated_at": "2026-06-13T16:46:31.335778Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "target_id": "b7e0401f-9072-42bf-ab1b-ee8d8d43d1f8",
+      "updated_at": "2026-06-16T07:47:01.69412Z",
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     }
   ]
 }

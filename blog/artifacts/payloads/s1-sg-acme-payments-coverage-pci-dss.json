@@ -3,11 +3,11 @@
     {
       "by_kind": {
         "access_granted": 7,
-        "policy_created": 8,
+        "policy_created": 6,
         "policy_promoted": 6
       },
       "covered": true,
-      "evidence_count": 21,
+      "evidence_count": 19,
       "id": "7.2",
       "kinds": [
         "policy_promoted",
@@ -68,13 +68,13 @@
     },
     {
       "by_kind": {
-        "evidence_exported": 3,
+        "evidence_exported": 2,
         "privileged_command": 4,
         "privileged_recording": 1,
         "privileged_session": 2
       },
       "covered": true,
-      "evidence_count": 10,
+      "evidence_count": 9,
       "id": "10.2",
       "kinds": [
         "privileged_session",
@@ -87,6 +87,6 @@
   ],
   "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 56,
+  "evidence_total": 51,
   "framework": "PCI-DSS"
 }

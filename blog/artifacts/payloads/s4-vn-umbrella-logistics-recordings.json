@@ -1,0 +1,34 @@
+{
+  "limit": 50,
+  "offset": 0,
+  "recordings": [
+    {
+      "blob_pruned": false,
+      "bytes": 350,
+      "client_addr": "blog-seed",
+      "command_count": 4,
+      "created_at": "2026-06-16T07:51:02.355506Z",
+      "deleted_at": null,
+      "deny_count": 0,
+      "duration_ms": 22,
+      "ended_at": "2026-06-16T07:51:02.34803Z",
+      "frame_count": 0,
+      "id": "7181c683-4519-4191-884c-a93081109f7f",
+      "indexed_at": "2026-06-16T07:51:02.354418Z",
+      "operator": "vn-umbrella-logistics-owner",
+      "protocol": "ssh",
+      "replay_key": "sessions/3a68bdd4-6a9e-478d-aa6b-ef18b5da5381/replay.bin",
+      "session_id": "3a68bdd4-6a9e-478d-aa6b-ef18b5da5381",
+      "sha256": "49e00f5dc333dd962bacbeb034b2903782c08b679780aa8a9e7d1a1d00a221fa",
+      "sha256_verified": false,
+      "started_at": "2026-06-16T07:51:02.32517Z",
+      "state": "closed",
+      "target_id": "c58ad3a8-c667-42c9-87c3-91c89a38a664",
+      "target_name": "WMS bastion (recorded session)",
+      "truncated": false,
+      "updated_at": "2026-06-16T07:51:02.355506Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
+    }
+  ],
+  "total": 1
+}

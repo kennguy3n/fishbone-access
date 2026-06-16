@@ -1,9 +1,9 @@
 {
   "request": {
-    "connector_id": "2983da27-098d-4df9-9f61-8cfd4ddff986",
-    "created_at": "2026-06-13T16:55:31.943546Z",
+    "connector_id": "5a441403-e673-4d5d-ad7f-e352f3a18f5d",
+    "created_at": "2026-06-16T07:56:01.646871Z",
     "deleted_at": null,
-    "id": "40e79372-08f6-49d9-8a74-6d6b4f810bb4",
+    "id": "b4a18dce-72dc-44c1-8f89-71e2ab5ccac0",
     "justification": "SOC 2 Type II auditor evidence sampling.",
     "requester_id": "au-contoso-saas-owner",
     "resource_ref": "soc2:evidence",
@@ -14,17 +14,17 @@
     "role": "auditor",
     "state": "approved",
     "target_user_id": "au-contoso-saas-owner",
-    "updated_at": "2026-06-13T16:55:31.949599Z",
-    "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+    "updated_at": "2026-06-16T07:56:01.66106Z",
+    "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
   },
   "risk": {
-    "created_at": "2026-06-13T16:55:31.946222Z",
+    "created_at": "2026-06-16T07:56:01.652704Z",
     "degraded": false,
     "deleted_at": null,
     "factors": [
       "baseline_low_risk"
     ],
-    "id": "3ccf6107-72c2-462f-9a59-1d09c2373169",
+    "id": "054984fe-efba-4141-94a3-051dd8c8f537",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 72,
@@ -35,10 +35,10 @@
     },
     "rationale": "rule-based risk=low from 1 factor(s)",
     "recommendation": "auto_approve_eligible",
-    "request_id": "40e79372-08f6-49d9-8a74-6d6b4f810bb4",
+    "request_id": "b4a18dce-72dc-44c1-8f89-71e2ab5ccac0",
     "score": "low",
     "source": "ai_agent",
-    "updated_at": "2026-06-13T16:55:31.946222Z",
-    "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+    "updated_at": "2026-06-16T07:56:01.652704Z",
+    "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
   }
 }

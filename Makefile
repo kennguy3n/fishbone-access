@@ -67,6 +67,7 @@ blog-seed: ## seed 6 workspaces with the full lifecycle (idempotent; writes seed
 	$(GO) run ./blog/harness/seed -base $(BLOG_API_BASE) -out $(BLOG_ARTIFACTS)
 
 blog-capture: ## capture verbatim API payloads + step-up-gated evidence-pack exports
+	$(GO) run ./blog/harness/freshenagents
 	$(GO) run ./blog/harness/capture -base $(BLOG_API_BASE) -out $(BLOG_ARTIFACTS)/payloads -summary $(BLOG_ARTIFACTS)/seed-summary.json
 
 blog-test: ## run + tee the connector / compliance / handler test matrices
@@ -80,6 +81,7 @@ blog-bench: ## time the live API on this VM (latency/throughput; writes benchmar
 blog-screenshots: ## capture console screenshots (needs the UI dev server + seeded data; installs Playwright on first run)
 	npm --prefix blog/harness/screenshots install --no-audit --no-fund
 	npx --prefix blog/harness/screenshots playwright install chromium
+	$(GO) run ./blog/harness/freshenagents
 	TOK=$$(mktemp) && trap 'rm -f $$TOK' EXIT && \
 	  $(GO) run ./blog/harness/minttokens > $$TOK && \
 	  BLOG_UI_BASE=$(BLOG_UI_BASE) BLOG_TOKENS=$$TOK BLOG_PAYLOADS=$(BLOG_ARTIFACTS)/payloads \

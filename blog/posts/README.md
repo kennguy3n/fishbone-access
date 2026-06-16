@@ -1,10 +1,15 @@
 # fishbone-access — the evidence-based access-governance series
 
-An eight-post engineering series that walks the real product end-to-end across
-six jurisdictions, with live console screenshots, verbatim API payloads, on-VM
-benchmarks, and a tamper-evident evidence chain you can export and verify. Every
-figure traces to an evidence source; every post ends with an honest "where we
-fall short."
+An evidence-based engineering series in two parts. **Posts 0–7 (the showcase)**
+walk the real product end-to-end across six jurisdictions, with live console
+screenshots, verbatim API payloads, on-VM benchmarks, and a tamper-evident
+evidence chain you can export and verify. **Posts 8–13 (how to build this)** are
+a build-along for engineers *and* product people: the architecture, the data
+model, and the wired build steps per subsystem — each anchored to a
+business-level decision (why we chose X over Y, and where we deliberately diverge
+from the incumbents) seen through the lens of running SaaS security for up to
+5,000 resource-light SME tenants. Every figure traces to an evidence source;
+every showcase post ends with an honest "where we fall short."
 
 The series covers the full access surface, not just compliance reporting:
 **SaaS + internal-system** access through one connector fabric, **PAM** to cloud
@@ -18,10 +23,12 @@ live box), **JML**
 access**, employee-initiated **access requests with AI-assisted risk scoring**
 (real agent verdicts, fail-safe degraded default only when the agent is offline),
 **separation-of-duties** checks both pre-commit (catastrophic simulation) and as a
-**standing anomaly** (`sod_anomalies = 1`), and regulation-keyed **access
-certification** with a re-verifiable evidence export. Each post also carries an
-honest competitor assessment (Okta IGA, SailPoint, Saviynt, CyberArk, Teleport,
-StrongDM).
+**standing anomaly** (`sod_anomalies = 1`), regulation-keyed **access
+certification** with a re-verifiable evidence export, **asset/account
+auto-discovery + opt-in governed onboarding**, and **cross-replica HA** for the
+agent plane. Each showcase post also carries an honest competitor assessment
+(Okta IGA, SailPoint, Saviynt, CyberArk, Delinea, BeyondTrust, Teleport,
+StrongDM, Tailscale / Cloudflare ZTNA).
 
 ## The posts
 
@@ -35,6 +42,20 @@ StrongDM).
 | 5 | [UAE finance: PDPL + DESC — privileged access / PAM](05-uae-finance-pdpl-desc-pam.md) | S5 | 🇦🇪 ae | Sofia / Marcus |
 | 6 | [Australian SaaS: Essential Eight + SOC 2 — certify, export, critique](06-australia-saas-essential-eight-soc2.md) | S6 | 🇦🇺 au | Marcus / Aisha |
 | 7 | [Benchmarks on this VM — latency, throughput, honest caveats](07-benchmarks-on-this-vm.md) | — | — | Marcus / Dmitri |
+
+### How to build this (a build-along sub-series)
+
+For readers who want to rebuild a system like this. Technical depth with a
+business-decision lens at every fork.
+
+| # | Post | Focus |
+| --- | --- | --- |
+| 8 | [Architecture overview — the shape of a multi-tenant access plane](08-architecture-overview.md) | Binaries, request path, isolation model, build vs buy |
+| 9 | [The data model — tenancy, the hash chain, and the access graph](09-data-model.md) | Tables, RLS, the evidence chain formula, per-workspace keys |
+| 10 | [Building the connector fabric](10-building-the-connector-fabric.md) | The `AccessConnector` interface, sealed secrets, optional capabilities |
+| 11 | [The PAM workflow engine — request to recorded replay](11-pam-workflow-engine.md) | Lease lifecycle, the gateway, rotation, recording + chain |
+| 12 | [Discovery and governed onboarding](12-discovery-and-onboarding.md) | Three discovery sources, reconcile, opt-in auto-onboard |
+| 13 | [Cross-replica HA for the agent plane](13-cross-replica-ha.md) | Session directory, epoch-CAS ownership, the mTLS forward plane |
 
 Scenario definitions and the evidence map live in
 [`../scenarios/00-scenario-catalog.md`](../scenarios/00-scenario-catalog.md).

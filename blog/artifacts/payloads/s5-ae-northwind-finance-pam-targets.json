@@ -1,43 +1,56 @@
 {
   "targets": [
     {
-      "address": "t24-bastion.northwind.internal:22",
-      "created_at": "2026-06-13T16:53:31.624712Z",
+      "address": "bastion.corp.internal:22",
+      "created_at": "2026-06-16T07:54:32.147278Z",
       "deleted_at": null,
-      "id": "72ba778a-9e09-4eea-88a1-e724f8fb563a",
+      "id": "c7f8b2e7-eee5-4bc6-9104-a5059366f507",
+      "lease_ttl_seconds": 0,
+      "name": "bastion.corp.internal",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-16T07:54:32.147278Z",
+      "username": "svc_access",
+      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+    },
+    {
+      "address": "t24-bastion.northwind.internal:22",
+      "created_at": "2026-06-16T07:54:01.91428Z",
+      "deleted_at": null,
+      "id": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
       "lease_ttl_seconds": 1800,
       "name": "T24 bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-13T16:53:31.624712Z",
+      "updated_at": "2026-06-16T07:54:01.91428Z",
       "username": "t24-ops",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
     },
     {
       "address": "treasury-db-1.northwind.internal:5432",
-      "created_at": "2026-06-13T16:53:01.582925Z",
+      "created_at": "2026-06-16T07:53:31.822506Z",
       "deleted_at": null,
-      "id": "ad1ca9a5-2265-49d6-a860-e8502c26bf03",
+      "id": "d2eba9b5-46d0-4ed8-8334-95db6a2e1c82",
       "lease_ttl_seconds": 900,
       "name": "Treasury ledger (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:53:01.582925Z",
+      "updated_at": "2026-06-16T07:53:31.822506Z",
       "username": "treasury_ro",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
     },
     {
       "address": "t24-prod-1.northwind.internal:22",
-      "created_at": "2026-06-13T16:52:32.468788Z",
+      "created_at": "2026-06-16T07:53:02.792898Z",
       "deleted_at": null,
-      "id": "c41481b7-fd3f-4602-8c31-8e871085b09e",
+      "id": "4f1002bd-c0ea-4336-a3fa-ad4de6205c40",
       "lease_ttl_seconds": 900,
       "name": "Temenos T24 core-banking host (t24-prod-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:52:32.468788Z",
+      "updated_at": "2026-06-16T07:53:02.792898Z",
       "username": "t24-admin",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
     }
   ]
 }

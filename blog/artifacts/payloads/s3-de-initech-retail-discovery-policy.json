@@ -1,0 +1,19 @@
+{
+  "create_targets": false,
+  "enabled": true,
+  "has_credential": false,
+  "require_lease": true,
+  "rules": [
+    {
+      "name": "SSH bastions",
+      "protocols": [
+        "ssh"
+      ],
+      "sources": [
+        "agent_sweep"
+      ]
+    }
+  ],
+  "updated_at": "2026-06-16T07:51:01.368272Z",
+  "updated_by": "de-initech-retail-owner"
+}

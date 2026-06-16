@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-13T16:56:01.473658Z",
+      "created_at": "2026-06-16T07:56:31.444738Z",
       "deleted_at": null,
-      "expires_at": "2026-06-13T17:26:31.477776Z",
-      "granted_at": "2026-06-13T16:56:31.477776Z",
-      "id": "c1106d29-dffa-4676-a5c4-f4baa91fbf01",
+      "expires_at": "2026-06-16T08:27:01.451567Z",
+      "granted_at": "2026-06-16T07:57:01.451567Z",
+      "id": "d02547f4-58b9-4152-9bd2-e7dc1d2ce562",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -16,19 +16,19 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "expired",
+      "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "12c9604d-d1a7-413a-b97e-418241b15d51",
-      "updated_at": "2026-06-13T16:56:31.477776Z",
-      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+      "target_id": "30f185e2-8abc-450e-9720-8d6a14612bac",
+      "updated_at": "2026-06-16T07:57:01.451567Z",
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     },
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-13T16:55:32.396272Z",
+      "created_at": "2026-06-16T07:56:02.31564Z",
       "deleted_at": null,
-      "expires_at": "2026-06-13T17:26:01.459724Z",
-      "granted_at": "2026-06-13T16:56:01.459724Z",
-      "id": "a938e5d4-5e2a-4eb0-bb48-94a369384b10",
+      "expires_at": "2026-06-16T08:26:31.421246Z",
+      "granted_at": "2026-06-16T07:56:31.421246Z",
+      "id": "6bd1a636-66b0-4d10-abd8-fa1d7b6688f0",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -38,11 +38,11 @@
       ],
       "risk_level": "low",
       "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "expired",
+      "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "d69f602c-4db4-4dfd-9c77-a5cf660608d2",
-      "updated_at": "2026-06-13T16:56:01.459724Z",
-      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+      "target_id": "29c0466f-bc88-4aad-8db7-e3739d1357d2",
+      "updated_at": "2026-06-16T07:56:31.421246Z",
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     }
   ]
 }

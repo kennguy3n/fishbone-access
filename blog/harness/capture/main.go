@@ -141,6 +141,20 @@ func main() {
 		cap.get(c, prefix+"sod-rules", "/api/v1/sod-rules")
 		cap.get(c, prefix+"sod-anomalies", "/api/v1/sod-anomalies")
 
+		// The deep privileged-access surface: the outbound connector agents that
+		// reach private targets with no inbound exposure, the asset/account
+		// discovery inventory those agents feed (managed vs unmanaged candidates)
+		// plus its opt-in auto-onboarding policy, the credential-rotation
+		// schedules on each target, and the searchable session-recording index.
+		// Every payload is read verbatim from the live API so the posts cite real
+		// state, not a mock.
+		cap.get(c, prefix+"agents", "/api/v1/agents")
+		cap.get(c, prefix+"discovery-summary", "/api/v1/discovery/summary")
+		cap.get(c, prefix+"discovery-assets", "/api/v1/discovery/assets")
+		cap.get(c, prefix+"discovery-policy", "/api/v1/discovery/policy")
+		cap.get(c, prefix+"rotation-policies", "/api/v1/pam/rotation/policies")
+		cap.get(c, prefix+"recordings", "/api/v1/pam/recordings")
+
 		// SoD access simulation: replay the dry-run that would hand ONE subject
 		// both halves of the workspace's first toxic-combination rule, capturing
 		// the verdict the engine returns (the conflict/violation it blocks
@@ -222,6 +236,30 @@ func main() {
 		disp := harnesskit.NewStepUpDispenser(harnesskit.TOTPBase32Secret(ws.Slug))
 		prefix := "s" + strconv.Itoa(ws.Index) + "-" + ws.Slug + "-"
 		cap.exportPack(c, disp, prefix, e.framework)
+
+		// The evidence-pack export is itself an audited event (compliance.export),
+		// so it advances the workspace's hash chain by one. Re-capture this
+		// workspace's chain-verify and the exported framework's coverage *after*
+		// the export, overwriting the in-loop captures, so the committed payloads
+		// reflect the same post-export chain the live console (and the blog
+		// screenshots) show. The manifest inside the ZIP still snapshots the chain
+		// as it stood at export time (one shorter) — by design, since exporting is
+		// the next event on the chain.
+		fwToken := ""
+		for _, fw := range frameworks {
+			if fw.query == e.framework {
+				fwToken = fw.token
+				break
+			}
+		}
+		if fwToken == "" {
+			// Fail loudly rather than silently writing coverage-<raw framework>.json,
+			// which would not overwrite the in-loop capture (keyed by fw.token) and
+			// would leave the committed payload one event behind the live console.
+			harnesskit.Fatalf("export framework %q is not in the frameworks lookup; add it so the post-export coverage re-capture matches the in-loop filename", e.framework)
+		}
+		cap.get(c, prefix+"chain-verify", "/api/v1/compliance/chain/verify")
+		cap.get(c, prefix+"coverage-"+fwToken, "/api/v1/compliance/coverage?framework="+url.QueryEscape(e.framework))
 	}
 
 	harnesskit.Logf("\ncaptured %d ok, %d skipped, %d failed", cap.ok, cap.skip, cap.fail)

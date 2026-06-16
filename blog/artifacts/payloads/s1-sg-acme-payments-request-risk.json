@@ -1,9 +1,9 @@
 {
   "request": {
-    "connector_id": "b01fb102-1478-4b68-ba11-915a6faba5b7",
-    "created_at": "2026-06-13T16:44:01.93626Z",
+    "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
+    "created_at": "2026-06-16T07:44:31.782782Z",
     "deleted_at": null,
-    "id": "5316b642-6e55-4f13-b9aa-2f7b946f24a5",
+    "id": "3c91f55b-7d4e-4046-957f-f5a2b9e7200b",
     "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
     "requester_id": "sg-acme-payments-owner",
     "resource_ref": "cde:pci-scope",
@@ -14,17 +14,17 @@
     "role": "auditor",
     "state": "approved",
     "target_user_id": "sg-acme-payments-owner",
-    "updated_at": "2026-06-13T16:44:01.943093Z",
-    "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
+    "updated_at": "2026-06-16T07:44:31.796925Z",
+    "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
   },
   "risk": {
-    "created_at": "2026-06-13T16:44:01.939319Z",
+    "created_at": "2026-06-16T07:44:31.788842Z",
     "degraded": false,
     "deleted_at": null,
     "factors": [
       "baseline_low_risk"
     ],
-    "id": "6c6bd5b4-f86a-429b-bce2-c25e663c0460",
+    "id": "579deaae-29ce-4df3-8ab3-b47def4cfcc0",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 48,
@@ -35,10 +35,10 @@
     },
     "rationale": "rule-based risk=low from 1 factor(s)",
     "recommendation": "auto_approve_eligible",
-    "request_id": "5316b642-6e55-4f13-b9aa-2f7b946f24a5",
+    "request_id": "3c91f55b-7d4e-4046-957f-f5a2b9e7200b",
     "score": "low",
     "source": "ai_agent",
-    "updated_at": "2026-06-13T16:44:01.939319Z",
-    "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a"
+    "updated_at": "2026-06-16T07:44:31.788842Z",
+    "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
   }
 }

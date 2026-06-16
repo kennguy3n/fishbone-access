@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-13T16:50:32.108322Z",
+      "created_at": "2026-06-16T07:51:02.326869Z",
       "deleted_at": null,
-      "ended_at": "2026-06-13T16:50:32.119572Z",
-      "id": "089d3e39-48a0-42ab-8b53-92f946c680e7",
+      "ended_at": "2026-06-16T07:51:02.34803Z",
+      "id": "3a68bdd4-6a9e-478d-aa6b-ef18b5da5381",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/089d3e39-48a0-42ab-8b53-92f946c680e7/replay.bin",
-      "started_at": "2026-06-13T16:50:32.107706Z",
+      "replay_key": "sessions/3a68bdd4-6a9e-478d-aa6b-ef18b5da5381/replay.bin",
+      "started_at": "2026-06-16T07:51:02.32517Z",
       "state": "closed",
       "subject": "vn-umbrella-logistics-owner",
-      "target_id": "2a0afa16-3e06-4431-a564-5c6c4f17400c",
-      "updated_at": "2026-06-13T16:50:32.119572Z",
-      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
+      "target_id": "c58ad3a8-c667-42c9-87c3-91c89a38a664",
+      "updated_at": "2026-06-16T07:51:02.34803Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     }
   ]
 }

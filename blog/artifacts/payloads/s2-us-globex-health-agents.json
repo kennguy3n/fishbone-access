@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "agent": {
+        "agent_version": "1.6.0",
+        "cert_fingerprint": "67b28bf6082edf8940304a98ce9815db73782f37ca72fb13fb1971ce63a7af36",
+        "cert_not_after": "2027-06-16T07:47:31.929568Z",
+        "cert_serial": "67b28bf6082edf8940304a98ce9815db",
+        "created_at": "2026-06-16T07:47:31.930295Z",
+        "deleted_at": null,
+        "id": "c3697f88-b597-4738-8560-5516ad53725f",
+        "last_seen_at": "2026-06-16T07:58:36.907052Z",
+        "name": "us-globex-health-edge-01",
+        "platform": "linux/amd64",
+        "status": "online",
+        "updated_at": "2026-06-16T07:58:36.908172Z",
+        "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
+      },
+      "health": "online"
+    }
+  ]
+}

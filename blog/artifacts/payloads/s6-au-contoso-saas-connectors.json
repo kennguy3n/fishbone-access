@@ -1395,7 +1395,7 @@
     {
       "category": "Cloud Infra",
       "connected": true,
-      "connector_id": "655f6aea-56a8-43d2-9e06-e686fef039f7",
+      "connector_id": "cd3b2b46-1f02-45cf-a291-fdb82e3c872d",
       "display_name": "GCP IAM",
       "operational": {
         "access_audit_stream": true,
@@ -1517,7 +1517,7 @@
     {
       "category": "DevOps",
       "connected": true,
-      "connector_id": "e8e3468c-7bde-44b6-8628-d5d5f2741ef3",
+      "connector_id": "63b018a1-ead3-44a7-8b3d-cf22e3f7eeca",
       "display_name": "GitHub",
       "operational": {
         "access_audit_stream": true,
@@ -2455,7 +2455,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "2983da27-098d-4df9-9f61-8cfd4ddff986",
+      "connector_id": "5a441403-e673-4d5d-ad7f-e352f3a18f5d",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,
@@ -3729,7 +3729,7 @@
     {
       "category": "Collab",
       "connected": true,
-      "connector_id": "fe0b7433-6667-4893-93a6-45fb0efd1c18",
+      "connector_id": "ce024808-3c67-45f4-9b91-4e45084d0383",
       "display_name": "Slack",
       "operational": {
         "access_audit_stream": true,
