@@ -20,9 +20,18 @@
 // (policy simulate-definition) exercises the impact/conflict engine without
 // persisting anything, so the run stays idempotent and leaves no state.
 //
+// This measures raw server latency, not the per-tenant rate limiter — those are
+// separate properties. The limiter (a deliberate fairness shield, default 50
+// rps / 100 burst per tenant) would otherwise shape a single-tenant 400-request
+// burst into mostly-429 errors and the timings would reflect rejection speed,
+// not work. So start the measured API with ACCESS_TENANT_RATE_LIMIT_ENABLED=false
+// for a bench run; the limiter is exercised by its own unit tests. As a guard,
+// the bench exits non-zero if any endpoint returns errors, so a throttled or
+// otherwise-degraded run can never be silently committed as evidence.
+//
 // Usage:
 //
-//	AUTH_JWT_SECRET=... go run ./blog/harness/bench \
+//	AUTH_JWT_SECRET=... ACCESS_TENANT_RATE_LIMIT_ENABLED=false go run ./blog/harness/bench \
 //	  -base http://localhost:8080 -n 400 -c 16 -out blog/artifacts/benchmark-results.json
 package main
 
@@ -197,6 +206,23 @@ func main() {
 		harnesskit.Fatalf("write %s: %v", *outFile, err)
 	}
 	fmt.Printf("\nwrote %s\n", *outFile)
+
+	// Guard the evidence: a healthy localhost bench against a seeded workspace
+	// should return zero non-2xx responses. Any errors mean the run is degraded
+	// (most commonly the per-tenant rate limiter throttling the burst into 429s,
+	// or a half-seeded workspace) and the artifact would misrepresent the system
+	// as failing under trivial load. Fail loudly so it is never committed.
+	var degraded []string
+	for _, r := range rep.Results {
+		if r.Errors > 0 {
+			degraded = append(degraded, fmt.Sprintf("%s (%d/%d)", r.Name, r.Errors, r.Requests))
+		}
+	}
+	if len(degraded) > 0 {
+		harnesskit.Fatalf("benchmark degraded — %d endpoint(s) returned errors: %s\n"+
+			"start the measured API with ACCESS_TENANT_RATE_LIMIT_ENABLED=false and ensure the workspace is seeded",
+			len(degraded), strings.Join(degraded, ", "))
+	}
 }
 
 // run warms the endpoint, then fires n requests across c workers and records

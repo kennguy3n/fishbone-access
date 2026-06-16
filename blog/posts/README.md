@@ -9,8 +9,11 @@ fall short."
 The series covers the full access surface, not just compliance reporting:
 **SaaS + internal-system** access through one connector fabric, **PAM** to cloud
 VMs (SSH) and managed databases (PostgreSQL/MySQL) via a just-in-time **lease**
-lifecycle **plus a recorded, replayable, chain-anchored privileged session**
-(`pam_sessions = 1`; the demo upstream is a bastion, not a live box), **JML**
+lifecycle — reachable through an **outbound connector agent** (zero inbound
+exposure) and **clientless from the browser**, with **automatic + dynamic
+credential rotation** — **plus a searchable, browser-replayable, chain-anchored
+privileged session** (`pam_sessions = 1`; the demo upstream is a bastion, not a
+live box), **JML**
 (joiner/mover/leaver) with a layered leaver kill switch, **time-boxed contractor
 access**, employee-initiated **access requests with AI-assisted risk scoring**
 (real agent verdicts, fail-safe degraded default only when the agent is offline),

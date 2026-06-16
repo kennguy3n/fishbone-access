@@ -15,6 +15,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
+	"github.com/kennguy3n/fishbone-access/internal/services/recordings"
 )
 
 // closeEvidenceGaps drives the three evidence trails the older seed left empty,
@@ -213,6 +214,13 @@ func (s *seeder) recordPrivilegedSession(ws harnesskit.Workspace, workspaceID uu
 	if err := sessions.CloseSession(ctx, workspaceID, session.ID); err != nil {
 		harnesskit.Logf("WARN %s: close session: %v", ws.Slug, err)
 		return ""
+	}
+	// Project the finished session into its searchable index immediately, the
+	// same idempotent upsert the workflow-engine sweep performs, so the recording
+	// is queryable over GET /pam/recordings the moment seeding finishes rather
+	// than only after the next background sweep.
+	if err := recordings.NewService(s.db).IndexSession(ctx, workspaceID, session.ID); err != nil {
+		harnesskit.Logf("WARN %s: index recording: %v", ws.Slug, err)
 	}
 	harnesskit.Logf("OK   %s: recorded privileged session %s (%d commands, %d-byte framed replay)", ws.Slug, session.ID, len(commands), rc.Bytes)
 	return session.ID.String()
