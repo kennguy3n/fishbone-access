@@ -2,47 +2,47 @@
   "leases": [
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-13T16:53:01.589821Z",
+      "created_at": "2026-06-16T05:44:31.543432Z",
       "deleted_at": null,
-      "expires_at": "2026-06-13T17:08:31.616693Z",
-      "granted_at": "2026-06-13T16:53:31.616693Z",
-      "id": "6719866c-8686-45ab-b954-551fe56d0ec3",
+      "expires_at": "2026-06-16T06:00:01.551887Z",
+      "granted_at": "2026-06-16T05:45:01.551887Z",
+      "id": "d324b039-adf0-4d58-94aa-8e4e196e60b8",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
-      "risk_degraded": false,
+      "risk_degraded": true,
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
-      "risk_reason": "rule-based risk=low from 1 factor(s)",
-      "state": "expired",
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "ad1ca9a5-2265-49d6-a860-e8502c26bf03",
-      "updated_at": "2026-06-13T16:53:31.616693Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "target_id": "726afee2-c0d4-4be3-a30c-13009a884821",
+      "updated_at": "2026-06-16T05:45:01.551887Z",
+      "workspace_id": "167f5f5d-33d9-469c-8016-787da8e42828"
     },
     {
       "approved_by": "ae-northwind-finance-owner",
-      "created_at": "2026-06-13T16:52:32.47273Z",
+      "created_at": "2026-06-16T05:44:02.469613Z",
       "deleted_at": null,
-      "expires_at": "2026-06-13T17:08:01.57618Z",
-      "granted_at": "2026-06-13T16:53:01.57618Z",
-      "id": "75821ca8-d983-466d-99c7-cfafef18eaee",
+      "expires_at": "2026-06-16T05:59:31.522383Z",
+      "granted_at": "2026-06-16T05:44:31.522383Z",
+      "id": "105eb8dc-ef62-4c5e-8155-d6f5e4237919",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "ae-northwind-finance-owner",
       "requested_ttl_seconds": 900,
-      "risk_degraded": false,
+      "risk_degraded": true,
       "risk_factors": [
-        "write_role:t24-admin"
+        "ai_unavailable"
       ],
       "risk_level": "medium",
-      "risk_reason": "rule-based risk=medium from 1 factor(s)",
-      "state": "expired",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "c41481b7-fd3f-4602-8c31-8e871085b09e",
-      "updated_at": "2026-06-13T16:53:01.57618Z",
-      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
+      "target_id": "afcb88d0-7c6c-487d-a5c9-c2ba2b8159b3",
+      "updated_at": "2026-06-16T05:44:31.522383Z",
+      "workspace_id": "167f5f5d-33d9-469c-8016-787da8e42828"
     }
   ]
 }

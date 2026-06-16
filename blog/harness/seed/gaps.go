@@ -39,6 +39,7 @@ func (s *seeder) closeEvidenceGaps(c *harnesskit.Client, ws harnesskit.Workspace
 	s.seedStandingConflict(c, ws, manualID)
 	s.detectStandingAnomalies(ws, workspaceID)
 	s.exportEvidence(c, ws, disp)
+	s.seedAccessCapabilities(ws, workspaceID)
 	return sessionID
 }
 

@@ -141,6 +141,20 @@ func main() {
 		cap.get(c, prefix+"sod-rules", "/api/v1/sod-rules")
 		cap.get(c, prefix+"sod-anomalies", "/api/v1/sod-anomalies")
 
+		// The deep privileged-access surface: the outbound connector agents that
+		// reach private targets with no inbound exposure, the asset/account
+		// discovery inventory those agents feed (managed vs unmanaged candidates)
+		// plus its opt-in auto-onboarding policy, the credential-rotation
+		// schedules on each target, and the searchable session-recording index.
+		// Every payload is read verbatim from the live API so the posts cite real
+		// state, not a mock.
+		cap.get(c, prefix+"agents", "/api/v1/agents")
+		cap.get(c, prefix+"discovery-summary", "/api/v1/discovery/summary")
+		cap.get(c, prefix+"discovery-assets", "/api/v1/discovery/assets")
+		cap.get(c, prefix+"discovery-policy", "/api/v1/discovery/policy")
+		cap.get(c, prefix+"rotation-policies", "/api/v1/pam/rotation/policies")
+		cap.get(c, prefix+"recordings", "/api/v1/pam/recordings")
+
 		// SoD access simulation: replay the dry-run that would hand ONE subject
 		// both halves of the workspace's first toxic-combination rule, capturing
 		// the verdict the engine returns (the conflict/violation it blocks

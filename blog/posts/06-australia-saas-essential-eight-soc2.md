@@ -128,7 +128,7 @@ surface through the chain before exporting it:
   ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json),
   [`-sod-anomalies.json`](../artifacts/payloads/s6-au-contoso-saas-sod-anomalies.json)).
 - **The prod lease is followed by a recorded session** (`pam_sessions = 1`),
-  replayable over `GET /pam/sessions/96cad08a-6c2d-410e-bddb-8618640877f8/replay`
+  replayable over `GET /pam/sessions/fbdd217f-b030-4c8d-a36f-0e8f98d6e39f/replay`
   and chained — the `CC6.7` evidence.
 - **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
   expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):

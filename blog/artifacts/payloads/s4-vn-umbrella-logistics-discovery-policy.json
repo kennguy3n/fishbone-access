@@ -1,0 +1,19 @@
+{
+  "create_targets": false,
+  "enabled": true,
+  "has_credential": false,
+  "require_lease": true,
+  "rules": [
+    {
+      "name": "SSH bastions",
+      "protocols": [
+        "ssh"
+      ],
+      "sources": [
+        "agent_sweep"
+      ]
+    }
+  ],
+  "updated_at": "2026-06-16T05:42:32.058448Z",
+  "updated_by": "vn-umbrella-logistics-owner"
+}

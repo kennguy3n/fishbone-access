@@ -151,6 +151,9 @@ await shot("sg-acme-payments", "en", "/pam/web-access", "pam-web-access");
 await shot("sg-acme-payments", "en", "/pam/rotation", "pam-rotation");
 await shot("sg-acme-payments", "en", "/pam/recordings", "recordings-search");
 await shot("sg-acme-payments", "en", "/pam/recordings", "recordings-replay", { action: openFirstRecording });
+// Asset/account discovery + auto-onboarding: the inventory the connector agent's
+// self-reported reach produces, reconciled into managed vs unmanaged candidates.
+await shot("sg-acme-payments", "en", "/discovery", "discovery");
 
 // ---- S2 US healthcare (en) — JML + certification ----
 await shot("us-globex-health", "en", "/", "dashboard");

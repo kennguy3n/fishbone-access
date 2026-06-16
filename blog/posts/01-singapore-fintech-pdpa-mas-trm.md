@@ -209,7 +209,7 @@ against a registered bastion target: the JIT connect-token is redeemed, the
 operator's commands run through the **same `IORecorder` the live gateway uses**,
 and the session is **closed** with its recording anchored. `pam_sessions = 1` for
 this workspace, and the framed transcript is retrievable over
-`GET /pam/sessions/27eeb988-0912-4234-b407-46712aae6d7b/replay`:
+`GET /pam/sessions/a70dcf3a-8bf1-4fd9-a466-6700c919e2b7/replay`:
 
 ```json
 { "frames": [
@@ -236,7 +236,7 @@ exact same `IORecorder` captures real bytes.
 
 ## Privileged access in depth: reach it, rotate it, and search the replay
 
-The lease lifecycle above is the spine. Four capabilities sit on it that decide
+The lease lifecycle above is the spine. Six capabilities sit on it that decide
 whether a 40-person SME can actually *run* privileged access without a network
 engineer, a bastion fleet, or a forensics team.
 
@@ -251,6 +251,29 @@ console enrolls and watches agents, and a session that names an agent fails
 dial:
 
 ![Connector agents — reach private targets with zero inbound exposure; the agent dials out, the gateway brokers sessions back through the tunnel](../artifacts/screenshots/s1-sg-pam-agents.png)
+
+**Find the targets you didn't know you had — and onboard them safely.** The same
+agent that reaches the private subnet also *self-reports what it can see* on it.
+ShieldNet turns that reach into an asset inventory: the agent's reachable CIDR
+and host:port bindings become candidate assets, the protocol is inferred per
+port (`5432 → postgres`, `3306 → mysql`, `22 → ssh`), and the inventory is
+reconciled against the PAM targets already under management. Acme's edge agent
+surfaces **5 assets — 1 already managed** (the ledger bastion) **and 4
+unmanaged** candidates it had never inventoried (a Postgres primary, a reporting
+MySQL, a build host, and a private subnet range). The same engine also reads
+cloud inventory through a connector's sealed credentials (AWS EC2 + RDS, Azure
+VMs + SQL) and enumerates database accounts (`pg_roles`, `mysql.user`) to flag
+orphaned logins — so discovery is not limited to what one agent can ping:
+
+![Asset discovery — the agent's reach turned into an inventory, reconciled into managed vs unmanaged candidates, with opt-in auto-onboarding](../artifacts/screenshots/s1-sg-discovery.png)
+
+The safety boundary is the whole point. Onboarding a discovered asset goes
+through the *real* PAM vault path — RBAC, step-up MFA, audit chain — and the
+optional **auto-onboarding policy** is opt-in, scoped by source and protocol
+(here: SSH bastions seen by the agent sweep), and **never grants standing
+access**: it creates the managed target with `require_lease` pinned server-side,
+so every session still flows request → approve → time-boxed lease. Auto-onboard
+turns "an asset exists" into "an asset is *governed*," not "an asset is open."
 
 **Open a privileged session from the browser — no client to install.** An
 auditor or an on-call engineer with no `psql` and no SSH key on their laptop
@@ -291,6 +314,20 @@ The honest residual from the lease section still holds: the recorded commands
 are representative I/O against a bastion target, so this proves the
 search → replay → tamper-verify pipeline end-to-end, not keystrokes captured off
 a live ledger box.
+
+**And it stays up when a replica doesn't.** The agent tunnel terminates on
+whichever API replica it happened to dial. In a multi-replica deployment that is
+a trap: a session opened on replica B for an agent connected to replica A would
+have nowhere to go. ShieldNet keeps a durable **session directory** mapping
+`(workspace, agent) → owning replica`, claimed with epoch-CAS ownership so
+exactly one replica owns an agent at a time. A session opened on any other
+replica is forwarded to the owner over a separate mTLS inter-replica plane —
+fail-closed if the owner is unreachable, with the single audit-open and the
+revoke re-check still happening *at the owner* so tenant scoping and the audit
+trail are never weakened by the hop. The practical payoff for a no-ops SME: a
+rolling deploy or a replica restart does not drop privileged access, and there
+is no sticky-session load-balancer to configure. (Optional Redis fast-path for
+the lookup; the Postgres directory remains the source of truth.)
 
 ## Stopping a catastrophic grant *before* it happens
 
@@ -424,7 +461,7 @@ SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 100, "ok": true, "status": "valid", "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a" }
+{ "length": 100, "ok": true, "status": "valid", "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a
@@ -500,6 +537,21 @@ For an SME like Acme, the honest competitive picture:
 | Access certifications / campaigns | ✅ | ✅ | ✅ deepest (SoD analytics) | ⚠️ |
 | SME pricing / time-to-value | ✅ single console, days | ⚠️ per-user, weeks | ❌ enterprise, months | ❌ enterprise |
 
+The access plane — reaching, brokering and recording the target — is a different
+field, so it deserves its own honest scorecard against the connectivity/PAM
+leaders rather than the IGA suites:
+
+| Access-plane capability | fishbone-access | Teleport | StrongDM | CyberArk | Tailscale / Cloudflare ZTNA |
+| --- | --- | --- | --- | --- | --- |
+| Reach private targets with **zero inbound** (outbound agent) | ✅ outbound mTLS connector + brokered dial | ✅ (agent/tunnel) | ✅ (relay) | ⚠️ (connector add-on) | ✅ core strength |
+| **Clientless** browser SSH/DB session | ✅ xterm.js + query console | ✅ | ✅ | ⚠️ | ❌ (network tunnel, not app console) |
+| Automatic + **dynamic** credential rotation | ✅ schedule / on-checkin / ephemeral DB creds | ⚠️ (certs, less secret-rotation) | ✅ | ✅ deepest vault | ❌ |
+| Searchable session **recording + replay**, chained | ⚠️ recorded + replayable; demo upstream is a bastion | ✅ (incl. video) | ✅ | ✅ core strength (live keystrokes) | ❌ |
+| Asset/account **auto-discovery + governed onboarding** | ✅ agent reach + cloud + DB accounts, opt-in, lease-pinned | ⚠️ | ⚠️ | ✅ accounts discovery | ❌ |
+| **Cross-replica HA** for the agent plane (no sticky LB) | ✅ durable directory + epoch-CAS + mTLS forward | ✅ (clustered) | ✅ (managed) | ✅ (enterprise HA) | ✅ (managed cloud) |
+| Tamper-evident **evidence chain** over the whole lifecycle | ✅ hash-chain + re-verify | ❌ | ❌ | ⚠️ | ❌ |
+| SME pricing / no-ops single binary | ✅ one console, days | ⚠️ (cluster to run) | ❌ enterprise | ❌ enterprise | ✅ (managed, but networking-only) |
+
 **The honest read:** we ship a real SoD toxic-combination check that fires at
 simulation time (the `catastrophic` verdict above) **and** a standing anomaly
 sweep, a first-class contractor lifecycle, a governed JIT privileged-lease flow,
@@ -516,6 +568,21 @@ without an integration project. For a 40-person payments shop that needs to pass
 an assessment next quarter — not stand up an IGA program over two years — that
 trade is usually the right one. Just don't buy us expecting CyberArk's session
 vault; buy the tool whose strength matches your top risk.
+
+On the access plane the same honesty applies. Teleport and StrongDM are
+excellent connectivity products, and at very large fleets their clustering and
+recording maturity (Teleport's session video, StrongDM's managed relays) is
+ahead of ours; Tailscale and Cloudflare own raw network reach. What none of them
+do is fold that access plane into the *governed lifecycle and tamper-evident
+evidence chain* an SME assessor actually asks for — a session is requested,
+risk-scored, approved with step-up MFA, time-boxed, recorded, **and** anchored
+on the same chain as the policy that authorised it. Teleport and StrongDM hand
+you superb access and a separate audit log; the ZTNA products give you a tunnel
+and no application-level governance at all. For Acme, "one console where the
+reach, the rotation, the recording and the proof live together, run by nobody
+full-time" beats a best-of-breed access tool plus a SIEM plus an IGA suite it
+cannot staff. If raw fleet scale or session *video* is the top requirement,
+Teleport is the heavier tool — match the choice to the risk.
 
 ---
 

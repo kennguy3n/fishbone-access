@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "2983da27-098d-4df9-9f61-8cfd4ddff986",
-    "created_at": "2026-06-13T16:55:31.943546Z",
+    "connector_id": "40e647da-94b5-4977-b995-1c228607b997",
+    "created_at": "2026-06-16T05:47:01.20848Z",
     "deleted_at": null,
-    "id": "40e79372-08f6-49d9-8a74-6d6b4f810bb4",
+    "id": "ec491a9f-eb7e-4cd5-8abf-af2cfd2a2d2b",
     "justification": "SOC 2 Type II auditor evidence sampling.",
     "requester_id": "au-contoso-saas-owner",
     "resource_ref": "soc2:evidence",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "au-contoso-saas-owner",
-    "updated_at": "2026-06-13T16:55:31.949599Z",
-    "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+    "updated_at": "2026-06-16T05:47:01.223679Z",
+    "workspace_id": "d2c696f7-7652-4d8f-8af8-0ecfc1a578b4"
   },
   "risk": {
-    "created_at": "2026-06-13T16:55:31.946222Z",
-    "degraded": false,
+    "created_at": "2026-06-16T05:47:01.213026Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "3ccf6107-72c2-462f-9a59-1d09c2373169",
+    "id": "4b784271-f88c-43e5-a15b-3712d4b3c303",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 72,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "40e79372-08f6-49d9-8a74-6d6b4f810bb4",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-13T16:55:31.946222Z",
-    "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00"
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "ec491a9f-eb7e-4cd5-8abf-af2cfd2a2d2b",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-16T05:47:01.213026Z",
+    "workspace_id": "d2c696f7-7652-4d8f-8af8-0ecfc1a578b4"
   }
 }

@@ -57,9 +57,19 @@ goes well beyond simple SaaS grants:
    credentials are **rotated automatically** — on a schedule, after each check-in,
    or on demand — through real executors that verify-by-reconnect and roll back on
    failure, and **ephemeral per-lease database credentials** can be minted that
-   exist only for the life of a session; and every recorded session is **searchable
+   exist only for the life of a session; every recorded session is **searchable
    by the commands operators ran** and **replayable in the browser** with a
-   synchronized command timeline and a live tamper-evidence badge.
+   synchronized command timeline and a live tamper-evidence badge; the targets
+   themselves are **auto-discovered** — from the agent's self-reported reach, from
+   cloud inventory (AWS/Azure) through a connector's sealed credentials, and from
+   database account enumeration — and reconciled into managed vs unmanaged, with
+   **opt-in auto-onboarding that never grants standing access** (it creates a
+   managed target with `require_lease` pinned, so the JIT flow still applies); and
+   because the agent tunnel terminates on one replica, a durable **session
+   directory** with epoch-CAS ownership lets a session opened on any replica be
+   forwarded to the agent's owner over an mTLS plane, so a rolling deploy or
+   replica restart never drops privileged access and there is no sticky
+   load-balancer to run.
 6. **Contractor access.** Time-boxed, sponsor-approved grants for external
    parties, with a **mandatory expiry**, a named internal sponsor, and a full
    extend / early-revoke history — a separate lifecycle from employees.
@@ -139,7 +149,7 @@ accrete evidence for years. So `GET /compliance/chain/verify` also takes a
 trusted anchor (`?from_seq=&from_hash=`) and runs an **incremental consistency
 verify** that re-checks only the suffix appended since that anchor: an
 interactive dashboard pays the O(n) cost once to establish a baseline, then O(Δ)
-on every refresh thereafter. On this VM that is **10.15 ms (full) vs 3.45 ms
+on every refresh thereafter. On this VM that is **13.38 ms (full) vs 8.38 ms
 (incremental) p50** on a ~100-row chain (Post 7); the gap widens without bound as
 the chain grows. The honest boundary is stated wherever it appears: the
 incremental call is a *consistency* proof of the suffix, **not** a fresh
@@ -252,7 +262,20 @@ boundaries.
   the screenshot sets).
 - **Recorded privileged sessions** — every workspace opens one real JIT-leased,
   gateway-recorded session (`pam_sessions = 1`); the framed transcript is
-  retrievable over `GET /pam/sessions/:id/replay` and its digest is chained.
+  retrievable over `GET /pam/sessions/:id/replay` and its digest is chained, and
+  the session is projected into a **searchable, replayable recording index**.
+- **An online connector agent per workspace** (`status: online`, platform
+  `linux/amd64`, agent `1.6.0`) holding the outbound mTLS tunnel, with its
+  self-reported reachable CIDR/host:port bindings — the **zero-inbound** reach
+  path and the substrate the cross-replica session directory makes
+  highly-available.
+- **Asset discovery + opt-in auto-onboarding** — each workspace's agent reach is
+  reconciled into an inventory (here **5 assets: 1 managed, 4 unmanaged**), with
+  an enabled, source/protocol-scoped auto-onboarding policy that pins
+  `require_lease` and never grants standing access.
+- **Credential rotation schedules** — privileged targets carry real rotation
+  policies (interval, rotate-on-checkin, and ephemeral per-lease DB credentials),
+  executed by verify-by-reconnect executors and re-sealed under the workspace DEK.
 - **Step-up MFA** (RFC 6238 TOTP, 30s period, anti-replay) on the highest-risk
   actions: policy promotion, evidence-pack export, and privileged-lease approval.
 

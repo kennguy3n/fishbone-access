@@ -1,43 +1,56 @@
 {
   "targets": [
     {
-      "address": "ehr-bastion.globex.internal:22",
-      "created_at": "2026-06-13T16:46:31.346481Z",
+      "address": "bastion.corp.internal:22",
+      "created_at": "2026-06-16T05:38:31.559487Z",
       "deleted_at": null,
-      "id": "59856690-9e3e-4799-b2d9-9a9506705428",
+      "id": "e6bb6f14-4c10-40a8-8c9f-6e1c55dd7b17",
+      "lease_ttl_seconds": 0,
+      "name": "bastion.corp.internal",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-16T05:38:31.559487Z",
+      "username": "svc_access",
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
+    },
+    {
+      "address": "ehr-bastion.globex.internal:22",
+      "created_at": "2026-06-16T05:38:01.417758Z",
+      "deleted_at": null,
+      "id": "12419ee1-3d13-4249-84ae-241e556c2ffa",
       "lease_ttl_seconds": 1800,
       "name": "EHR bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-13T16:46:31.346481Z",
+      "updated_at": "2026-06-16T05:38:01.417758Z",
       "username": "ehr-ops",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     },
     {
       "address": "ehr-db-1.globex.internal:5432",
-      "created_at": "2026-06-13T16:46:31.342788Z",
+      "created_at": "2026-06-16T05:38:01.409553Z",
       "deleted_at": null,
-      "id": "9162e6de-7858-4f8b-b1f2-4897b5d698e3",
+      "id": "63b77276-43c9-4c5b-99f4-7953f821e867",
       "lease_ttl_seconds": 900,
       "name": "ePHI datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:46:31.342788Z",
+      "updated_at": "2026-06-16T05:38:01.409553Z",
       "username": "phi_reader",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     },
     {
       "address": "clinical-app-1.globex.internal:22",
-      "created_at": "2026-06-13T16:46:02.319749Z",
+      "created_at": "2026-06-16T05:37:32.326573Z",
       "deleted_at": null,
-      "id": "d78a139d-921c-483b-9388-d54c298a9989",
+      "id": "d1273453-c1c1-49c1-b7ea-5964a9c4cfd4",
       "lease_ttl_seconds": 900,
       "name": "EHR app server (clinical-app-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-13T16:46:02.319749Z",
+      "updated_at": "2026-06-16T05:37:32.326573Z",
       "username": "ehr-ops",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     }
   ]
 }

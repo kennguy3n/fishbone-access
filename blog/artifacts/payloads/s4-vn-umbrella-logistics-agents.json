@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "agent": {
+        "agent_version": "1.6.0",
+        "cert_fingerprint": "5224b731e0ef150b52ab7142c71731a52046d1e16967878a390b9a54e902ee97",
+        "cert_not_after": "2027-06-16T05:42:32.01237Z",
+        "cert_serial": "5224b731e0ef150b52ab7142c71731a5",
+        "created_at": "2026-06-16T05:42:32.013139Z",
+        "deleted_at": null,
+        "id": "813fe98b-4171-4483-880d-99d83f4ef286",
+        "last_seen_at": "2026-06-16T05:57:51.953857Z",
+        "name": "vn-umbrella-logistics-edge-01",
+        "platform": "linux/amd64",
+        "status": "online",
+        "updated_at": "2026-06-16T05:57:51.955098Z",
+        "workspace_id": "b9b4b92c-d535-40c9-8041-1085b1463d9e"
+      },
+      "health": "online"
+    }
+  ]
+}

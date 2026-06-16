@@ -1,0 +1,33 @@
+{
+  "policies": [
+    {
+      "created_at": "2026-06-16T05:36:31.225491Z",
+      "deleted_at": null,
+      "dynamic_enabled": true,
+      "dynamic_ttl_seconds": 3600,
+      "enabled": true,
+      "id": "8a7722f3-1b65-406e-b35e-01a4626c491d",
+      "interval_seconds": 604800,
+      "mode": "interval",
+      "next_rotation_at": "2026-06-23T05:36:31.223915Z",
+      "rotate_on_checkin": false,
+      "target_id": "cb16df5f-2890-4baa-a820-46009d612f32",
+      "updated_at": "2026-06-16T05:36:31.225491Z",
+      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+    },
+    {
+      "created_at": "2026-06-16T05:36:31.219852Z",
+      "deleted_at": null,
+      "dynamic_enabled": false,
+      "dynamic_ttl_seconds": 0,
+      "enabled": true,
+      "id": "c8134120-1a56-48b3-907a-21058e75b47a",
+      "interval_seconds": 0,
+      "mode": "disabled",
+      "rotate_on_checkin": true,
+      "target_id": "853b40a8-acd8-455d-9d82-c18a7943d4b3",
+      "updated_at": "2026-06-16T05:36:31.219852Z",
+      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+    }
+  ]
+}

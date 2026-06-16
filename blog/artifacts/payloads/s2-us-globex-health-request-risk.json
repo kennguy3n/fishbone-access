@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
-    "created_at": "2026-06-13T16:46:01.662061Z",
+    "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+    "created_at": "2026-06-16T05:37:31.521129Z",
     "deleted_at": null,
-    "id": "6e99d0af-4bbf-4cb8-a080-586190dfc380",
+    "id": "fc78730d-1567-40db-b759-e7a6efdb7081",
     "justification": "CCPA/CPRA consumer data-subject access request fulfilment.",
     "requester_id": "us-globex-health-owner",
     "resource_ref": "phi:export",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "us-globex-health-owner",
-    "updated_at": "2026-06-13T16:46:01.668452Z",
-    "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+    "updated_at": "2026-06-16T05:37:31.53705Z",
+    "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
   },
   "risk": {
-    "created_at": "2026-06-13T16:46:01.664919Z",
-    "degraded": false,
+    "created_at": "2026-06-16T05:37:31.525874Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "30a85437-26d9-46b8-8794-7cec0bf1dcd0",
+    "id": "5ba0247a-7a1f-4afa-a1d8-4103987509aa",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "6e99d0af-4bbf-4cb8-a080-586190dfc380",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-13T16:46:01.664919Z",
-    "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "fc78730d-1567-40db-b759-e7a6efdb7081",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-16T05:37:31.525874Z",
+    "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
   }
 }

@@ -131,7 +131,7 @@ The *other* half is present too: Northwind opens a **recorded** session
 through the leased connect-token. The operator's commands run through the
 production `IORecorder`, the session is closed, and its recording digest is
 anchored on the chain — `pam_sessions = 1`, replayable over
-`GET /pam/sessions/a44bb3ea-6087-446f-b1e5-c94655dbfadd/replay`. That is what
+`GET /pam/sessions/9c73e935-5f0d-4ce7-8af5-650f485fd42f/replay`. That is what
 covers ISO `A.8.2` ("privileged access rights *monitored*").
 
 And the operational depth around that lease is what lets a lean security team

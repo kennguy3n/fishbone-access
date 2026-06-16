@@ -3,11 +3,11 @@
     {
       "by_kind": {
         "access_granted": 7,
-        "policy_created": 8,
+        "policy_created": 7,
         "policy_promoted": 6
       },
       "covered": true,
-      "evidence_count": 21,
+      "evidence_count": 20,
       "id": "CC6.1",
       "kinds": [
         "policy_promoted",
@@ -102,6 +102,6 @@
   ],
   "controls_covered": 6,
   "controls_total": 6,
-  "evidence_total": 56,
+  "evidence_total": 53,
   "framework": "SOC 2"
 }

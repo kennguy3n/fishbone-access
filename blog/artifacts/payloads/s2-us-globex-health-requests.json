@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
-      "created_at": "2026-06-13T16:46:01.701331Z",
+      "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+      "created_at": "2026-06-16T05:37:31.606833Z",
       "deleted_at": null,
-      "id": "49bfd5d2-4cd7-4cae-ac53-547992085dca",
+      "id": "bc29b1ba-a23e-4d71-b284-d8e980f0b8ba",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-13T16:46:01.715439Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "updated_at": "2026-06-16T05:37:31.637885Z",
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     },
     {
-      "connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
-      "created_at": "2026-06-13T16:46:01.662061Z",
+      "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+      "created_at": "2026-06-16T05:37:31.521129Z",
       "deleted_at": null,
-      "id": "6e99d0af-4bbf-4cb8-a080-586190dfc380",
+      "id": "fc78730d-1567-40db-b759-e7a6efdb7081",
       "justification": "CCPA/CPRA consumer data-subject access request fulfilment.",
       "requester_id": "us-globex-health-owner",
       "resource_ref": "phi:export",
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
+      "risk_level": "medium",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "us-globex-health-owner",
-      "updated_at": "2026-06-13T16:46:01.668452Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "updated_at": "2026-06-16T05:37:31.53705Z",
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     },
     {
-      "connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
-      "created_at": "2026-06-13T16:46:01.646112Z",
+      "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+      "created_at": "2026-06-16T05:37:31.481567Z",
       "deleted_at": null,
-      "id": "48de875f-0a2d-4102-87d3-24a4224b3b1d",
+      "id": "22796922-d06f-4f45-ac10-9a153d2fb473",
       "justification": "Revenue-cycle analyst needs billing module for claims processing.",
       "requester_id": "us-globex-health-owner",
       "resource_ref": "ehr:billing",
       "risk_factors": [
-        "baseline_low_risk"
-      ],
-      "risk_level": "low",
-      "role": "operator",
-      "state": "revoked",
-      "target_user_id": "us-globex-health-owner",
-      "updated_at": "2026-06-13T16:46:01.695997Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
-    },
-    {
-      "connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
-      "created_at": "2026-06-13T16:46:01.623719Z",
-      "deleted_at": null,
-      "id": "1eee9c2f-71f8-452b-a7f3-adcf3d568c57",
-      "justification": "New hire onboarding to ePHI clinical systems under HIPAA minimum-necessary.",
-      "requester_id": "us-globex-health-owner",
-      "resource_ref": "ehr:clinician",
-      "risk_factors": [
-        "long_duration_hours:720"
+        "ai_unavailable"
       ],
       "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "us-globex-health-owner",
-      "updated_at": "2026-06-13T16:46:01.680064Z",
-      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b"
+      "updated_at": "2026-06-16T05:37:31.559783Z",
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
+    },
+    {
+      "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+      "created_at": "2026-06-16T05:37:31.442824Z",
+      "deleted_at": null,
+      "id": "36fcee0e-a20a-437b-ba34-b2235dacd3e4",
+      "justification": "New hire onboarding to ePHI clinical systems under HIPAA minimum-necessary.",
+      "requester_id": "us-globex-health-owner",
+      "resource_ref": "ehr:clinician",
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "role": "operator",
+      "state": "revoked",
+      "target_user_id": "us-globex-health-owner",
+      "updated_at": "2026-06-16T05:37:31.593808Z",
+      "workspace_id": "157610c5-27af-41ea-b289-71526df58b4c"
     }
   ]
 }

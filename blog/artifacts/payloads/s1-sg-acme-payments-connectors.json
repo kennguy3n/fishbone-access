@@ -1515,7 +1515,7 @@
     {
       "category": "DevOps",
       "connected": true,
-      "connector_id": "1f28b34e-3a1d-4a51-a4b4-dc7ee64d62a5",
+      "connector_id": "093215c4-0264-496a-a44f-a6f237956625",
       "display_name": "GitHub",
       "operational": {
         "access_audit_stream": true,
@@ -2453,7 +2453,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "b01fb102-1478-4b68-ba11-915a6faba5b7",
+      "connector_id": "e2f26992-8e8b-4d53-a17b-da069bb3636f",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,
@@ -3535,7 +3535,7 @@
     {
       "category": "CRM",
       "connected": true,
-      "connector_id": "65ebd439-1e8d-4ace-a28b-22017a56bccc",
+      "connector_id": "e0b1eddd-60a5-44a0-9fae-41e1be253bf7",
       "display_name": "Salesforce",
       "operational": {
         "access_audit_stream": true,
@@ -3993,7 +3993,7 @@
     {
       "category": "Finance",
       "connected": true,
-      "connector_id": "b89c301c-1d33-460d-907a-7d836ecb9b04",
+      "connector_id": "dd18bdaf-4904-45a5-bcaf-7fbf99dd1056",
       "display_name": "Stripe",
       "operational": {
         "access_audit_stream": true,

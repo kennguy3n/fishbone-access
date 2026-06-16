@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "agent": {
+        "agent_version": "1.6.0",
+        "cert_fingerprint": "1fb68fec92385e1b13555638d73fe7d466ff4a27a6f999d3744d5dc68b20baab",
+        "cert_not_after": "2027-06-16T05:42:01.879366Z",
+        "cert_serial": "1fb68fec92385e1b13555638d73fe7d4",
+        "created_at": "2026-06-16T05:42:01.880082Z",
+        "deleted_at": null,
+        "id": "0173aea3-7a0b-476d-8de9-e3089beaee26",
+        "last_seen_at": "2026-06-16T05:57:51.953857Z",
+        "name": "de-initech-retail-edge-01",
+        "platform": "linux/amd64",
+        "status": "online",
+        "updated_at": "2026-06-16T05:57:51.955098Z",
+        "workspace_id": "863260a8-c03b-4b15-bd47-d269ded88c7a"
+      },
+      "health": "online"
+    }
+  ]
+}
