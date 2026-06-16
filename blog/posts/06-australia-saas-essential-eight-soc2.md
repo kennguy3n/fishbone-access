@@ -38,12 +38,12 @@ On the **Compliance evidence** page, Contoso clicks **Export SOC 2 pack**. Two
 things happen that you can see in the live console:
 
 1. A ZIP downloads (here, `evidence-pack-SOC_2.zip`).
-2. A toast confirms **"Evidence pack exported — Digest `d52bf907fdfb…` recorded
+2. A toast confirms **"Evidence pack exported — Digest `f5eff33453…` recorded
    on the audit chain"**, and the export *itself* appears as a new
-   `compliance.export` event on the timeline (record `#94` in the screenshot —
+   `compliance.export` event on the timeline (record `#99` in the screenshot —
    the newest row on the chain).
 
-![Contoso's SOC 2 compliance-evidence page — 94 records verified, chain intact, 6/6 controls covered, 50 evidence records, export button top-right](../artifacts/screenshots/s6-au-compliance-export.png)
+![Contoso's SOC 2 compliance-evidence page — 99 records verified, chain intact, 6/6 controls covered, 49 evidence records, export button top-right](../artifacts/screenshots/s6-au-compliance-export.png)
 
 The export is **step-up-MFA-gated** — it consumes a fresh TOTP code, the same
 strongest-gate treatment as policy promotion — and it is *self-recording*:
@@ -60,11 +60,11 @@ The committed manifest is the contract
   "framework": "SOC 2",
   "schema_version": "1.1",
   "generated_by": "au-contoso-saas-owner",
-  "content_sha256": "d52bf907fdfb8e5221c7d504d6984b3db01d559380d4ad9f57d9d38380b4ea60",
-  "chain_verification": { "length": 94, "ok": true, "status": "valid" },
-  "coverage": { "framework": "SOC 2", "controls_covered": 6, "controls_total": 6, "evidence_total": 50 },
+  "content_sha256": "f5eff33453816b1961068196047ef5f9c1017287a8ea64e89e04b3176d2aa9cd",
+  "chain_verification": { "length": 98, "ok": true, "status": "valid" },
+  "coverage": { "framework": "SOC 2", "controls_covered": 6, "controls_total": 6, "evidence_total": 48 },
   "files": [
-    { "name": "evidence.jsonl",              "rows": 94 },
+    { "name": "evidence.jsonl",              "rows": 98 },
     { "name": "pam-recordings.jsonl",        "rows": 1 },
     { "name": "access-grants.jsonl",          "rows": 6 },
     { "name": "certification-campaigns.jsonl","rows": 1 },
@@ -83,19 +83,22 @@ is mechanical and needs **zero trust in Contoso**:
 1. Re-hash each file → compare to the per-file `sha256` in the manifest.
 2. Re-hash the whole pack → compare to `content_sha256`.
 3. Replay `evidence.jsonl`'s hash chain → confirm it matches
-   `chain-verification.json` (`length: 94, status: valid`).
+   `chain-verification.json` (`length: 98, status: valid`).
 
 If a single byte of any evidence record was altered after the fact, a link
 breaks and the chain fails. That's the difference between "here are some
 screenshots" and "here is a tamper-evident record you can independently verify."
 
-> Note on the numbers: the export runs **before** the capture snapshots the
-> chain, so the committed manifest, the live screenshot and
-> `chain-verification.json` all agree at `length: 94` — the `evidence_exported`
-> record is itself inside the verified chain (it is record `#94`, the newest row
-> in the screenshot's timeline). The manifest's `pam-recordings.jsonl` carries a
-> line for the **recorded privileged session** (`pam_sessions = 1`), and the
-> SOC 2 coverage is the full **6 / 6** controls over **50** evidence records.
+> Note on the numbers: exporting is itself an audited event, so the pack is a
+> **pre-export snapshot**. The manifest's `chain_verification` and the pack's
+> `evidence.jsonl` seal the **98** records that existed at the instant of export;
+> the `compliance.export` event then lands as the **99th** record on the chain
+> (the newest row in the screenshot's timeline), which is why the live console
+> reads **99 evidence records verified** over **49** SOC 2 evidence records. A
+> pack cannot hash itself — the export it records is always the next link, and
+> that link is independently re-verifiable on the chain. The manifest's
+> `pam-recordings.jsonl` carries a line for the **recorded privileged session**
+> (`pam_sessions = 1`), and SOC 2 coverage is the full **6 / 6** controls.
 >
 > One honest subtlety the digest makes concrete: every export is a fresh
 > invocation, so its `content_sha256` is computed over a manifest that includes
@@ -128,7 +131,7 @@ surface through the chain before exporting it:
   ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json),
   [`-sod-anomalies.json`](../artifacts/payloads/s6-au-contoso-saas-sod-anomalies.json)).
 - **The prod lease is followed by a recorded session** (`pam_sessions = 1`),
-  replayable over `GET /pam/sessions/fbdd217f-b030-4c8d-a36f-0e8f98d6e39f/replay`
+  replayable over `GET /pam/sessions/e6187127-648c-49b4-a1ed-d9275461f939/replay`
   and chained — the `CC6.7` evidence.
 - **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
   expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):

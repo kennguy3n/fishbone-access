@@ -177,7 +177,7 @@ footnotes:
   client. A real client over the internet adds tens of milliseconds that have
   nothing to do with the control plane.
 - **The dataset is small.** These workspaces hold tens to low-hundreds of
-  evidence records (86–100 per workspace). A *full* `chain-verify` and
+  evidence records (86–101 per workspace). A *full* `chain-verify` and
   `evidence` are **O(n)** in chain length, so a workspace
   with hundreds of thousands of records will be materially slower on those two
   routes specifically. We measured what we seeded; we are **not** extrapolating

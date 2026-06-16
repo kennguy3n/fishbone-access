@@ -4,17 +4,17 @@
       "agent": {
         "agent_version": "1.6.0",
         "cert_fingerprint": "3444dc11272a5839db74a0ca7239112b9a831c3e0110b80a5fd79db94c636923",
-        "cert_not_after": "2027-06-16T05:45:31.668104Z",
+        "cert_not_after": "2027-06-16T07:06:31.518376Z",
         "cert_serial": "3444dc11272a5839db74a0ca7239112b",
-        "created_at": "2026-06-16T05:45:31.668856Z",
+        "created_at": "2026-06-16T07:06:31.519151Z",
         "deleted_at": null,
-        "id": "9aeb3ebb-c4f9-4a1d-be1e-2fe22c6b687a",
-        "last_seen_at": "2026-06-16T05:57:51.953857Z",
+        "id": "40bffbb4-aead-441e-b8fc-7e886b9878e8",
+        "last_seen_at": "2026-06-16T07:09:39.675579Z",
         "name": "ae-northwind-finance-edge-01",
         "platform": "linux/amd64",
         "status": "online",
-        "updated_at": "2026-06-16T05:57:51.955098Z",
-        "workspace_id": "167f5f5d-33d9-469c-8016-787da8e42828"
+        "updated_at": "2026-06-16T07:09:39.676732Z",
+        "workspace_id": "81a75bc4-ac48-469b-8f3e-2b4f1a0c549e"
       },
       "health": "online"
     }

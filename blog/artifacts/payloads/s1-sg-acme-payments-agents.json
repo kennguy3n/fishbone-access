@@ -4,17 +4,17 @@
       "agent": {
         "agent_version": "1.6.0",
         "cert_fingerprint": "a3c7392fba948a6a4d7384457acd62c1bce53d8600fb72029c3e359d61782c11",
-        "cert_not_after": "2027-06-16T05:36:31.153839Z",
+        "cert_not_after": "2027-06-16T06:57:31.313639Z",
         "cert_serial": "a3c7392fba948a6a4d7384457acd62c1",
-        "created_at": "2026-06-16T05:36:31.154498Z",
+        "created_at": "2026-06-16T06:57:31.314384Z",
         "deleted_at": null,
-        "id": "090c564f-6330-4ecf-a74e-28cf4a6b5f7f",
-        "last_seen_at": "2026-06-16T05:57:51.953857Z",
+        "id": "09818733-b759-4fc4-af92-9b6a156a11f9",
+        "last_seen_at": "2026-06-16T07:09:39.675579Z",
         "name": "sg-acme-payments-edge-01",
         "platform": "linux/amd64",
         "status": "online",
-        "updated_at": "2026-06-16T05:57:51.955098Z",
-        "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+        "updated_at": "2026-06-16T07:09:39.676732Z",
+        "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
       },
       "health": "online"
     }

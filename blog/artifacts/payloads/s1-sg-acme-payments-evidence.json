@@ -1,235 +1,235 @@
 {
-  "count": 103,
+  "count": 100,
   "records": [
     {
       "action": "rbac.member.added",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "24dc66c8970df9d3493e7e47bbef6cf2e34233755c00e1f2afb0dbd762bf71a7",
+      "chain_hash": "d549f8980ab8ed4b19c9fbc6c7963cabbd02d2671e7d8594d1a816a5e0da1a72",
       "chain_seq": 1,
-      "id": "1fc5b48c-d072-452b-abf4-98801c1f3157",
+      "id": "87e74e82-d95b-4974-b261-12adcccd8a26",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "sg-acme-payments-admin"
       },
-      "occurred_at": "2026-06-16T05:34:00.119947Z",
+      "occurred_at": "2026-06-16T06:55:23.230428Z",
       "target_ref": "sg-acme-payments-admin",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "rbac.member.added",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "3311b208bed10adfba117e6689b60bd3a58cf5e1e4c29c253c76d1198937c1df",
+      "chain_hash": "c13994d3cbd4b95928406fb08dce551c02af9070bce4c51b2de5bac8fcf49a19",
       "chain_seq": 2,
-      "id": "76212329-a780-4339-b249-1c23d9c9bfde",
+      "id": "dd16f34f-9cdb-4df0-b3c2-5f259ba15442",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "sg-acme-payments-security_admin"
       },
-      "occurred_at": "2026-06-16T05:34:00.129613Z",
-      "prev_hash": "24dc66c8970df9d3493e7e47bbef6cf2e34233755c00e1f2afb0dbd762bf71a7",
+      "occurred_at": "2026-06-16T06:55:23.241001Z",
+      "prev_hash": "d549f8980ab8ed4b19c9fbc6c7963cabbd02d2671e7d8594d1a816a5e0da1a72",
       "target_ref": "sg-acme-payments-security_admin",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "rbac.member.added",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "5369aa8932f80e9b37da513083562b0a9b0c4f675442e973f412700d8fc5662b",
+      "chain_hash": "26d6f8dd0981ed94a454ee51d70042390e663820272da9c7956acf045cf22ac4",
       "chain_seq": 3,
-      "id": "a915b596-0404-4326-9f83-b25db83e322c",
+      "id": "0818a71f-8a88-47c9-b404-d223044a651f",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "sg-acme-payments-operator"
       },
-      "occurred_at": "2026-06-16T05:34:00.134882Z",
-      "prev_hash": "3311b208bed10adfba117e6689b60bd3a58cf5e1e4c29c253c76d1198937c1df",
+      "occurred_at": "2026-06-16T06:55:23.246549Z",
+      "prev_hash": "c13994d3cbd4b95928406fb08dce551c02af9070bce4c51b2de5bac8fcf49a19",
       "target_ref": "sg-acme-payments-operator",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "rbac.member.added",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "375b515958cfec22ee3a03a2f92ed7d9669c0dcb17c3888e6ee00fd9e42c8253",
+      "chain_hash": "67a6af1df00eb19077c4b65cac703fdcb308bed012f514cfa7ad907ed0ad8a7d",
       "chain_seq": 4,
-      "id": "befaa9ce-c936-4551-bd8a-f95d787969e0",
+      "id": "63dafd0b-250b-4570-995f-2932d1e26ffd",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "sg-acme-payments-auditor"
       },
-      "occurred_at": "2026-06-16T05:34:00.141066Z",
-      "prev_hash": "5369aa8932f80e9b37da513083562b0a9b0c4f675442e973f412700d8fc5662b",
+      "occurred_at": "2026-06-16T06:55:23.251851Z",
+      "prev_hash": "26d6f8dd0981ed94a454ee51d70042390e663820272da9c7956acf045cf22ac4",
       "target_ref": "sg-acme-payments-auditor",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ce0905079ebc1cf9c20d85cbf2e1c41d2bd2ac6e811a7ddcecf85be0c8dd6d7d",
+      "chain_hash": "8a53983fdd60ad35732eb4a5c244b2ff2ab56662fc45e8ff43449ab48955f837",
       "chain_seq": 5,
-      "id": "14f1427a-63ae-4c41-b465-4afdb301de84",
+      "id": "e76698e7-73dc-407f-a38b-06019ae16d5a",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.169635Z",
-      "prev_hash": "375b515958cfec22ee3a03a2f92ed7d9669c0dcb17c3888e6ee00fd9e42c8253",
-      "target_ref": "e3f05d3b-04db-4076-8efd-858636b44ac7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.281277Z",
+      "prev_hash": "67a6af1df00eb19077c4b65cac703fdcb308bed012f514cfa7ad907ed0ad8a7d",
+      "target_ref": "e9fb1946-51a6-49fa-ad6b-a0e67a73afc0",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "35f61e0d44586e05213f03de04ec6889a7e2d6444bf42491e91b05f939563404",
+      "chain_hash": "a8b4b03a562d348805b6a4e9fd1ce3ca5c4130cef19c06fa0b5a509d09ddaf69",
       "chain_seq": 6,
-      "id": "a4a3efae-435c-4917-92a4-44a970ed1c76",
+      "id": "0f701aa6-c6ff-4487-9a59-5cdbe922f1ed",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.172447Z",
-      "prev_hash": "ce0905079ebc1cf9c20d85cbf2e1c41d2bd2ac6e811a7ddcecf85be0c8dd6d7d",
-      "target_ref": "ba93065c-87a0-41e0-b665-95560d7267a9",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.284255Z",
+      "prev_hash": "8a53983fdd60ad35732eb4a5c244b2ff2ab56662fc45e8ff43449ab48955f837",
+      "target_ref": "f5d19cf9-8974-41d2-806c-7830cc2150ce",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "7f598117d5b0f6346d6119ee9558941b1701992260fc6775349b4f8b26d05902",
+      "chain_hash": "08af2fe4a74b8e594d0aec9fb536a87dbe59b1add508f4d9f6d4c4c8b4c542ed",
       "chain_seq": 7,
-      "id": "25a2605f-1202-4ea0-8ead-91eee00609f1",
+      "id": "8065748a-9e58-4d00-aa13-8754cc495cc4",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.174213Z",
-      "prev_hash": "35f61e0d44586e05213f03de04ec6889a7e2d6444bf42491e91b05f939563404",
-      "target_ref": "7e5e08af-f5db-4497-9589-0caba885e8fd",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.286227Z",
+      "prev_hash": "a8b4b03a562d348805b6a4e9fd1ce3ca5c4130cef19c06fa0b5a509d09ddaf69",
+      "target_ref": "51a64b60-e658-4e61-ad1f-e873317fd9a0",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "67c7575b8f9884540ab0687b9d67b6a83215457575eaaedf5adac47b2b7d83cb",
+      "chain_hash": "ff85ee27adb2f40d6c840a4b0255cc72fd7c67dfb381041fac7b2161ca35afda",
       "chain_seq": 8,
-      "id": "3f13f667-bad6-4ab7-9a76-fb41f50d6b61",
+      "id": "6bdfa8bd-67bb-4167-9151-c3c7aec191c6",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.178942Z",
-      "prev_hash": "7f598117d5b0f6346d6119ee9558941b1701992260fc6775349b4f8b26d05902",
-      "target_ref": "431f0356-2189-41c8-898c-88a6525b669e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.291443Z",
+      "prev_hash": "08af2fe4a74b8e594d0aec9fb536a87dbe59b1add508f4d9f6d4c4c8b4c542ed",
+      "target_ref": "86486855-730f-4868-bd36-67ad83878e73",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "f64fe8eaa665eedd314f9b236a46803ea959caf000d953db692751b6d730eb9c",
+      "chain_hash": "4e1c775d68f291711c353fd9af80659a65c541b6fc76e7f1812715ef50816f5e",
       "chain_seq": 9,
-      "id": "8cea5c56-b90c-4568-a699-fe97af8e2cc4",
+      "id": "98a68e94-899c-49c2-9b26-d06e0a8944e0",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.18081Z",
-      "prev_hash": "67c7575b8f9884540ab0687b9d67b6a83215457575eaaedf5adac47b2b7d83cb",
-      "target_ref": "fcd0aa97-5034-4fc5-a348-103360a902a7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.293338Z",
+      "prev_hash": "ff85ee27adb2f40d6c840a4b0255cc72fd7c67dfb381041fac7b2161ca35afda",
+      "target_ref": "00f9a0ab-5a69-4569-b51c-cc14015ecfef",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "8f39ec5469f77edd1747771987f9e4a3f8acfcbaf783025e4ebe5f68bd573f58",
+      "chain_hash": "144f0308e4b5b1287b3897cae62d183cb4e8493cd747bcdb897a25f88ebf37c9",
       "chain_seq": 10,
-      "id": "8a9e64c3-27b5-4fe0-bf56-d0cd4a078d9a",
+      "id": "7ed7fd34-58a6-4ed4-81a8-b6a6a8586e9f",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:34:00.182428Z",
-      "prev_hash": "f64fe8eaa665eedd314f9b236a46803ea959caf000d953db692751b6d730eb9c",
-      "target_ref": "f6aa1be1-9491-48f9-bd84-173eee9812c7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.29499Z",
+      "prev_hash": "4e1c775d68f291711c353fd9af80659a65c541b6fc76e7f1812715ef50816f5e",
+      "target_ref": "d6545fd7-add6-4f53-9115-abd91a4a34ef",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "b92d570269816abab41ca76a7b239f7ecc6cbb9215f6ee545f5cf64e80468ae2",
+      "chain_hash": "425844be8b27f3650f1597c3e0bdc8388b8e9a7265972e2f051407ed785cc87e",
       "chain_seq": 11,
-      "id": "5786b269-52b5-4703-a115-929a7382a6c0",
+      "id": "72664034-399e-4458-9b75-dd95d898f502",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:34:00.23816Z",
-      "prev_hash": "8f39ec5469f77edd1747771987f9e4a3f8acfcbaf783025e4ebe5f68bd573f58",
-      "target_ref": "f6aa1be1-9491-48f9-bd84-173eee9812c7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.352766Z",
+      "prev_hash": "144f0308e4b5b1287b3897cae62d183cb4e8493cd747bcdb897a25f88ebf37c9",
+      "target_ref": "d6545fd7-add6-4f53-9115-abd91a4a34ef",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "95347e7eb8732209a9e9deb6d3f45de7c55867e9cb3505e3c57c8eaf6fcb8407",
+      "chain_hash": "74207a72805d7270fa7a35726fcb5e113c7898f590611bfb05e234add679e530",
       "chain_seq": 12,
-      "id": "f702006a-1305-41e2-99c3-65e8461e38c2",
+      "id": "19d212f0-81f9-4788-ac4e-fadd76244be1",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:34:00.246673Z",
-      "prev_hash": "b92d570269816abab41ca76a7b239f7ecc6cbb9215f6ee545f5cf64e80468ae2",
-      "target_ref": "fcd0aa97-5034-4fc5-a348-103360a902a7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.361851Z",
+      "prev_hash": "425844be8b27f3650f1597c3e0bdc8388b8e9a7265972e2f051407ed785cc87e",
+      "target_ref": "00f9a0ab-5a69-4569-b51c-cc14015ecfef",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "6523a9f32c4ededeb102698f070cc4d069d6d8a1aef8e2a73aaa06b80e0da030",
+      "chain_hash": "6f6f29c6bbd73aa3bf03f3373d3c6e9c2ac36c1ab339a025c5ac08c5bafa149e",
       "chain_seq": 13,
-      "id": "d01e2190-83d1-4cfb-8a14-b36220771014",
+      "id": "32e65233-2c34-459a-918d-2906f520f658",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:34:00.255295Z",
-      "prev_hash": "95347e7eb8732209a9e9deb6d3f45de7c55867e9cb3505e3c57c8eaf6fcb8407",
-      "target_ref": "431f0356-2189-41c8-898c-88a6525b669e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:23.37126Z",
+      "prev_hash": "74207a72805d7270fa7a35726fcb5e113c7898f590611bfb05e234add679e530",
+      "target_ref": "86486855-730f-4868-bd36-67ad83878e73",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "81842b1f8d4c91b1a44e26921447485c7c02b7afbdbc601fd04e039126d1cc7b",
+      "chain_hash": "caf999ab1bb122978aa97757a7001a5977bde48d5e938c57fb8c300ab3e4631a",
       "chain_seq": 14,
-      "id": "3de499cc-c2ec-4119-b1e8-d95431546926",
+      "id": "c48e107c-82d4-4c7a-a517-684f962383e7",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:34:31.300817Z",
-      "prev_hash": "6523a9f32c4ededeb102698f070cc4d069d6d8a1aef8e2a73aaa06b80e0da030",
-      "target_ref": "7e5e08af-f5db-4497-9589-0caba885e8fd",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:55:31.424202Z",
+      "prev_hash": "6f6f29c6bbd73aa3bf03f3373d3c6e9c2ac36c1ab339a025c5ac08c5bafa149e",
+      "target_ref": "51a64b60-e658-4e61-ad1f-e873317fd9a0",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "0647c4752319fff28906659b526bef9c73cb127314a1ecf95b07710217b08676",
+      "chain_hash": "746bba4ac51b406ac9d54bb841071f6029276da0c992cc0a715d14fe7fdc1d67",
       "chain_seq": 15,
-      "id": "a0433eab-098d-4f69-b959-a78094f99d48",
+      "id": "010b62cb-324e-4cd6-8856-fb6edfe5bd8c",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:35:01.337336Z",
-      "prev_hash": "81842b1f8d4c91b1a44e26921447485c7c02b7afbdbc601fd04e039126d1cc7b",
-      "target_ref": "ba93065c-87a0-41e0-b665-95560d7267a9",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:01.478713Z",
+      "prev_hash": "caf999ab1bb122978aa97757a7001a5977bde48d5e938c57fb8c300ab3e4631a",
+      "target_ref": "f5d19cf9-8974-41d2-806c-7830cc2150ce",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "policy.promoted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "7f5a8061d4731a092429d75248abb971aed16726168ce6b81d2f55b383e2dd5e",
+      "chain_hash": "5d9458a951c079d4962cc1f00bef87f5ea9741db51dc86760b04f0496a59e927",
       "chain_seq": 16,
-      "id": "c38b12ef-f40b-4012-be29-6c8519b825b1",
+      "id": "044ed933-f34a-4dca-8278-75a6fd918d8f",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T05:35:31.360723Z",
-      "prev_hash": "0647c4752319fff28906659b526bef9c73cb127314a1ecf95b07710217b08676",
-      "target_ref": "e3f05d3b-04db-4076-8efd-858636b44ac7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.51347Z",
+      "prev_hash": "746bba4ac51b406ac9d54bb841071f6029276da0c992cc0a715d14fe7fdc1d67",
+      "target_ref": "e9fb1946-51a6-49fa-ad6b-a0e67a73afc0",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "2023a14dbaff9256e6e0ab14797be8129d4b5e9021261bd2e83f311ca4f404a3",
+      "chain_hash": "79781a4e9fe7e1b6113d1842848a08b9f2d6289795884ae49ec68f37d97c7a58",
       "chain_seq": 17,
-      "id": "dc2cda81-aea4-45a5-81c5-b32ce0ec1cbe",
+      "id": "182969c6-2cd9-4f3a-b77e-07ce449ee9b3",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T05:35:31.367744Z",
-      "prev_hash": "7f5a8061d4731a092429d75248abb971aed16726168ce6b81d2f55b383e2dd5e",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.524852Z",
+      "prev_hash": "5d9458a951c079d4962cc1f00bef87f5ea9741db51dc86760b04f0496a59e927",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ea064d84580e97caec789c3ed1b412c66290fa74ccde2b5da4579a5a28df2bd7",
+      "chain_hash": "17979c84d4716fe4bd0de76a8135eff6ee7fa0e950f35766ca1e4e8136d556d4",
       "chain_seq": 18,
-      "id": "428bb813-f3ef-4db9-afaf-9031010ee53e",
+      "id": "ec6795d0-e072-404f-bf7c-97082e1cd1af",
       "kind": "other",
       "metadata": {
         "degraded": true,
@@ -240,101 +240,101 @@
         "score": "medium",
         "source": "fallback"
       },
-      "occurred_at": "2026-06-16T05:35:31.37564Z",
-      "prev_hash": "2023a14dbaff9256e6e0ab14797be8129d4b5e9021261bd2e83f311ca4f404a3",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.532805Z",
+      "prev_hash": "79781a4e9fe7e1b6113d1842848a08b9f2d6289795884ae49ec68f37d97c7a58",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "4bf244678417b07c4416c536885257ca159b39758c5be16261f624f8e014af5f",
+      "chain_hash": "23d2644688fcad44d16808746555624b26af68360d916262b0cabe8f16451ad2",
       "chain_seq": 19,
-      "id": "50a9def6-dcfa-45d3-9335-8f717f43e15b",
+      "id": "3791af52-69e2-458b-9770-7438c80f60d8",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.381299Z",
-      "prev_hash": "ea064d84580e97caec789c3ed1b412c66290fa74ccde2b5da4579a5a28df2bd7",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.538759Z",
+      "prev_hash": "17979c84d4716fe4bd0de76a8135eff6ee7fa0e950f35766ca1e4e8136d556d4",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "4e0a1f123d3e6a7422ed67293cfcd16bfc28236da32b1e2923fdb1b107e6f1d1",
+      "chain_hash": "12030e63024aa6f24072de958f761ab553deca473ba659c2209681a844a22381",
       "chain_seq": 20,
-      "id": "0029e5e2-93d2-4ad0-b5ff-4a6142deaec8",
+      "id": "b817ed0a-0e4d-4e65-9fec-98982f71265d",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.39089Z",
-      "prev_hash": "4bf244678417b07c4416c536885257ca159b39758c5be16261f624f8e014af5f",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.547113Z",
+      "prev_hash": "23d2644688fcad44d16808746555624b26af68360d916262b0cabe8f16451ad2",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioning",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "d87b1edbdab38a42d086315f12560f4e982374b992d5fb5c870cb4cbee0243f1",
+      "chain_hash": "146a5a11141b1d084422cca0c301465c144237a11fc3035f6c78ebc043494db3",
       "chain_seq": 21,
-      "id": "32b573f2-1503-4a1e-a8fc-705693241f82",
+      "id": "db2a6266-d98e-4712-aed7-2a540f05469e",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.398006Z",
-      "prev_hash": "4e0a1f123d3e6a7422ed67293cfcd16bfc28236da32b1e2923fdb1b107e6f1d1",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.554254Z",
+      "prev_hash": "12030e63024aa6f24072de958f761ab553deca473ba659c2209681a844a22381",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioned",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "725e29c3742b264a36804e2d0cc01b4d6c1115420df8dabf3aab82f99356895d",
+      "chain_hash": "46e5209370c776a0cf5fc91524348e8ce8c346f659f069e82fb9a8bef0fe80bd",
       "chain_seq": 22,
-      "id": "cc7df326-7a91-4ebd-9539-5d2d09b012cc",
+      "id": "19b3ab7b-d6c4-47b7-b6d8-eceabc5c0556",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.405411Z",
-      "prev_hash": "d87b1edbdab38a42d086315f12560f4e982374b992d5fb5c870cb4cbee0243f1",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.561831Z",
+      "prev_hash": "146a5a11141b1d084422cca0c301465c144237a11fc3035f6c78ebc043494db3",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.active",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "05d8c62133c1d1ab5a1ab4cdc827adcc83752456406a0a241962ae1d5a10f7b9",
+      "chain_hash": "153906f77b7a0e49c0a829a10945a1e99ece390aee256baad113a77f0afe3d4a",
       "chain_seq": 23,
-      "id": "ecbf746b-41ca-4873-87ba-e107b6c6db63",
+      "id": "23964d07-4d5a-4951-b9d5-e5d42c146f87",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.41003Z",
-      "prev_hash": "725e29c3742b264a36804e2d0cc01b4d6c1115420df8dabf3aab82f99356895d",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.565917Z",
+      "prev_hash": "46e5209370c776a0cf5fc91524348e8ce8c346f659f069e82fb9a8bef0fe80bd",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ff9d852cdf5a8d65c3ffcf9fb2286199ae266a2bdecf3691bfa0c54467741f40",
+      "chain_hash": "d3fa915bb8f37d3ca4696d803a6939ca97de2593f755433096bd8d007f220081",
       "chain_seq": 24,
-      "id": "dc6602ea-2056-43eb-8798-c269c30dd15b",
+      "id": "70d6ea47-40f2-423e-8296-155916aa0a86",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:35:31.402519Z",
-      "prev_hash": "05d8c62133c1d1ab5a1ab4cdc827adcc83752456406a0a241962ae1d5a10f7b9",
-      "target_ref": "ce4bd086-1ead-40c1-8de1-1d2cc3477d2e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.559005Z",
+      "prev_hash": "153906f77b7a0e49c0a829a10945a1e99ece390aee256baad113a77f0afe3d4a",
+      "target_ref": "49566573-d433-40a0-b86c-7c23b9780816",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "0f972e661946904e618cfb9f428e03585d8e932013ba2af5c9345838c73282be",
+      "chain_hash": "791ecc56eec9d9196671ce51547656dbc9f7c9c8fd9911a190ffc70ddb5b2c8d",
       "chain_seq": 25,
-      "id": "6ffe03d4-813d-49e6-b3f4-57a6f8bf9448",
+      "id": "60c57249-626d-4fc8-967f-f91757436a28",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T05:35:31.41634Z",
-      "prev_hash": "ff9d852cdf5a8d65c3ffcf9fb2286199ae266a2bdecf3691bfa0c54467741f40",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.571385Z",
+      "prev_hash": "d3fa915bb8f37d3ca4696d803a6939ca97de2593f755433096bd8d007f220081",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "00a97dbbecc3aec16a21097a073b1326b5ac1dae88a1890858db078b30ffdc96",
+      "chain_hash": "3b3b304f5fd8ce506c669fa20e23db432511b48d0c263a89ea41122b05a5041b",
       "chain_seq": 26,
-      "id": "b5556624-f9e7-4876-ae80-419a1bd60435",
+      "id": "873e5315-5692-41f6-a4a2-851df36bba70",
       "kind": "other",
       "metadata": {
         "degraded": true,
@@ -345,101 +345,101 @@
         "score": "medium",
         "source": "fallback"
       },
-      "occurred_at": "2026-06-16T05:35:31.421213Z",
-      "prev_hash": "0f972e661946904e618cfb9f428e03585d8e932013ba2af5c9345838c73282be",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.575862Z",
+      "prev_hash": "791ecc56eec9d9196671ce51547656dbc9f7c9c8fd9911a190ffc70ddb5b2c8d",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "456170df24eab463ead1bdb30609bbf3df1e0b07232acbb8c7dc1a2501cba22f",
+      "chain_hash": "7010213fdf5049ea6079f330aef575fb9add41ecf405361e88ff563e67954e0d",
       "chain_seq": 27,
-      "id": "5dc7d296-d296-4928-a4f7-0878229705a9",
+      "id": "c3bc69e0-0506-4913-bf34-644142717837",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.424865Z",
-      "prev_hash": "00a97dbbecc3aec16a21097a073b1326b5ac1dae88a1890858db078b30ffdc96",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.579164Z",
+      "prev_hash": "3b3b304f5fd8ce506c669fa20e23db432511b48d0c263a89ea41122b05a5041b",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "e0b613d8c4d3d732d13ec4f1b3c559180ebd65e5080b52d2d689e27d6ec84ca3",
+      "chain_hash": "53f77b9b2b80d83d11639e2367f97a4f7b7e3b1971dabcfd4ed3947161de3a10",
       "chain_seq": 28,
-      "id": "11a3c9a3-59e9-43bd-adfe-c5c4ed8c7e90",
+      "id": "0fd76a6e-fe62-4486-8a5e-29fec803369f",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.432214Z",
-      "prev_hash": "456170df24eab463ead1bdb30609bbf3df1e0b07232acbb8c7dc1a2501cba22f",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.58597Z",
+      "prev_hash": "7010213fdf5049ea6079f330aef575fb9add41ecf405361e88ff563e67954e0d",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioning",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "158850d50444d068268e7a6f0ba1f5bb9291087b0aae4a4e24d7b5671c4ce643",
+      "chain_hash": "598d8525ef940c7a60af3dba979b2b4f7122fd3db45c91e5c898730922e91423",
       "chain_seq": 29,
-      "id": "11e5b847-7302-408f-b97d-420a6def37e5",
+      "id": "4f01c786-c592-428d-a8d2-2a1bdb66b351",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.438687Z",
-      "prev_hash": "e0b613d8c4d3d732d13ec4f1b3c559180ebd65e5080b52d2d689e27d6ec84ca3",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.592757Z",
+      "prev_hash": "53f77b9b2b80d83d11639e2367f97a4f7b7e3b1971dabcfd4ed3947161de3a10",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioned",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "85ca2bb1fed6d0e0013a1b20c423464d5c24e6c4042d6a86f842232896750a9f",
+      "chain_hash": "84ce6dcb5a881a2d6099cdb54a19da8df825ebe89f49423e7ce599028af1c873",
       "chain_seq": 30,
-      "id": "9882d3d4-ef5e-4da4-b0a1-897604cbc579",
+      "id": "4486356b-9a72-45f4-b212-61d7cac8c722",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.443914Z",
-      "prev_hash": "158850d50444d068268e7a6f0ba1f5bb9291087b0aae4a4e24d7b5671c4ce643",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.597997Z",
+      "prev_hash": "598d8525ef940c7a60af3dba979b2b4f7122fd3db45c91e5c898730922e91423",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.active",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "2dd3ddfd952d51dd826b93deaa2c91f5cf2d31a450ed8f2b7768c2042a454f1d",
+      "chain_hash": "724b2e81ad492955d5ffc8e90ad293f3843ee07008a42610da1959f38a340992",
       "chain_seq": 31,
-      "id": "e3e95166-c3eb-4214-bf75-549d62f71c17",
+      "id": "4e20afd2-cabc-4766-83d8-6282b634dadf",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.446979Z",
-      "prev_hash": "85ca2bb1fed6d0e0013a1b20c423464d5c24e6c4042d6a86f842232896750a9f",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.601171Z",
+      "prev_hash": "84ce6dcb5a881a2d6099cdb54a19da8df825ebe89f49423e7ce599028af1c873",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "9154f64b53bc27fe0ec8a4ab750362d5493f3823d6e4253cd9e13b65a4f25321",
+      "chain_hash": "28dbe59c21cb38ef974bc016b05c2372987af3705cfb8afb8d261f26420620fd",
       "chain_seq": 32,
-      "id": "83f7f4f0-be1a-4c02-b071-7b1380f0b935",
+      "id": "af797bf1-5dbd-4255-be6b-ef77f16e6acd",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:35:31.442321Z",
-      "prev_hash": "2dd3ddfd952d51dd826b93deaa2c91f5cf2d31a450ed8f2b7768c2042a454f1d",
-      "target_ref": "231521d0-710e-49ea-952e-733000d3c4f2",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.596429Z",
+      "prev_hash": "724b2e81ad492955d5ffc8e90ad293f3843ee07008a42610da1959f38a340992",
+      "target_ref": "825a4de6-b6ee-459c-a1be-c7ca2f122a4f",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "e8696f5b5d0f3d43bcd2814845719e4dc878222f3c49ef54ff7089824eab64a4",
+      "chain_hash": "d3561e717a8e6aa8bc8050e69e9161744d4700d62d5f56670f5af8a253e0be90",
       "chain_seq": 33,
-      "id": "f5975c6e-f35d-423a-93f5-5d0c2ad20b1d",
+      "id": "7fd7ff75-4be3-4d7f-91c8-eb7d764173d2",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T05:35:31.452116Z",
-      "prev_hash": "9154f64b53bc27fe0ec8a4ab750362d5493f3823d6e4253cd9e13b65a4f25321",
-      "target_ref": "f601e17b-8047-4918-8a02-2281447fb661",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.607248Z",
+      "prev_hash": "28dbe59c21cb38ef974bc016b05c2372987af3705cfb8afb8d261f26420620fd",
+      "target_ref": "02066ff0-036b-428c-88a8-b04d8065dc91",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "08e1d2f4d628c41cd2f4162e8a9d25a4154273d5f8945219c6f1fbb0ed3f8cdd",
+      "chain_hash": "d2d10d72e5efb070df7bc242fcf317585f186154cd0e2b9ee9bcf597687723e4",
       "chain_seq": 34,
-      "id": "65fd2053-6fc4-455d-93ab-12c7931ca72c",
+      "id": "0902333f-8fdb-4384-9e60-c3962e540d1e",
       "kind": "other",
       "metadata": {
         "degraded": true,
@@ -450,357 +450,357 @@
         "score": "medium",
         "source": "fallback"
       },
-      "occurred_at": "2026-06-16T05:35:31.456538Z",
-      "prev_hash": "e8696f5b5d0f3d43bcd2814845719e4dc878222f3c49ef54ff7089824eab64a4",
-      "target_ref": "f601e17b-8047-4918-8a02-2281447fb661",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.612067Z",
+      "prev_hash": "d3561e717a8e6aa8bc8050e69e9161744d4700d62d5f56670f5af8a253e0be90",
+      "target_ref": "02066ff0-036b-428c-88a8-b04d8065dc91",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "690aa8c655d1aff0bc6e6c15fae758e8094089c1c1f24b2ca3d7d575016b4aa4",
+      "chain_hash": "ffd5c0625d6b4641818ee1fb72de52f961ceb40fcb891338275a698e34d026d9",
       "chain_seq": 35,
-      "id": "5e14af47-c435-462d-8404-57fba5c4b12f",
+      "id": "3d06ef28-94c0-4196-bacc-12413ff4cab2",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.459812Z",
-      "prev_hash": "08e1d2f4d628c41cd2f4162e8a9d25a4154273d5f8945219c6f1fbb0ed3f8cdd",
-      "target_ref": "f601e17b-8047-4918-8a02-2281447fb661",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.615542Z",
+      "prev_hash": "d2d10d72e5efb070df7bc242fcf317585f186154cd0e2b9ee9bcf597687723e4",
+      "target_ref": "02066ff0-036b-428c-88a8-b04d8065dc91",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "45c952c858b44cfb8d40231978aedd4f433cc3c954824545b68d3616e5a8b62f",
+      "chain_hash": "5de1dd6322fd56526dfff572266da7e173781ca494353a9826a50f918cfbf490",
       "chain_seq": 36,
-      "id": "69ddabca-51ac-4f09-96b8-2c2ef1cd370a",
+      "id": "902d098b-6d7a-4115-abd4-71d586404909",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.466387Z",
-      "prev_hash": "690aa8c655d1aff0bc6e6c15fae758e8094089c1c1f24b2ca3d7d575016b4aa4",
-      "target_ref": "f601e17b-8047-4918-8a02-2281447fb661",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.622997Z",
+      "prev_hash": "ffd5c0625d6b4641818ee1fb72de52f961ceb40fcb891338275a698e34d026d9",
+      "target_ref": "02066ff0-036b-428c-88a8-b04d8065dc91",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_review.started",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "7e0305f52a63693381c4daaf3febba53e738fbed031fb7a632b297b10cad13ac",
+      "chain_hash": "11221b1a439bcea9aa9442ecf246ea209b820c9dab7e7b5b69226652ce730098",
       "chain_seq": 37,
-      "id": "47afb2c8-ce2c-4334-987a-44ab6777fd19",
+      "id": "62bc26f8-2a8e-4bbc-9817-544667c3aba2",
       "kind": "review_started",
-      "occurred_at": "2026-06-16T05:35:31.471581Z",
-      "prev_hash": "45c952c858b44cfb8d40231978aedd4f433cc3c954824545b68d3616e5a8b62f",
-      "target_ref": "5d3f50a0-bff5-4bc0-9555-597316723cfe",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.628476Z",
+      "prev_hash": "5de1dd6322fd56526dfff572266da7e173781ca494353a9826a50f918cfbf490",
+      "target_ref": "034a68c2-b708-4be5-abca-ba2a01cff2c0",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "7674ce2a2791305c0b4e6de9ea00c50c3c2ebc870bd815c3cdcd82907492ef9b",
+      "chain_hash": "6a2b26f6ece64a1f90773b2705c43611a3da09b1f11ca5a549a2462de614a10c",
       "chain_seq": 38,
-      "id": "13771d0e-c0e5-48e3-99a6-ad8b816eb6fa",
+      "id": "6a730113-851b-466a-a63e-bb52635a418f",
       "kind": "review_decision",
-      "occurred_at": "2026-06-16T05:35:31.485527Z",
-      "prev_hash": "7e0305f52a63693381c4daaf3febba53e738fbed031fb7a632b297b10cad13ac",
-      "target_ref": "6948a115-32ae-4c75-8eb7-f686b608179b",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.643232Z",
+      "prev_hash": "11221b1a439bcea9aa9442ecf246ea209b820c9dab7e7b5b69226652ce730098",
+      "target_ref": "5c43d1ff-d8ad-428e-bc51-0ec03739c707",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "8fb5ba9975bebcb97ec82da0736cd80daf7ab071556801d2582ffd5da7b30811",
+      "chain_hash": "915959ffa8b4d4792d61339880984199f5f589c2b2304d5cbc55110196cc14f7",
       "chain_seq": 39,
-      "id": "c3edd95f-ad0c-44b7-9e05-01ab740c548a",
+      "id": "5ecefb61-09bb-43f5-bc78-146b2e8e2d06",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.495734Z",
-      "prev_hash": "7674ce2a2791305c0b4e6de9ea00c50c3c2ebc870bd815c3cdcd82907492ef9b",
-      "target_ref": "f6b463e6-8381-4e01-bb54-e55803ae6c37",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.656259Z",
+      "prev_hash": "6a2b26f6ece64a1f90773b2705c43611a3da09b1f11ca5a549a2462de614a10c",
+      "target_ref": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "9fb6560bdaeef92329b7059db771ef1ce35f21d34770975e38d0e5f1e82b8472",
+      "chain_hash": "8d2cefce07341174e429334733062dcaf59aff84f14bbf6927d94519f1112271",
       "chain_seq": 40,
-      "id": "ad324912-d6f6-4dd1-b194-9258305d3184",
+      "id": "63021623-f1bd-4264-ae9b-3bcff1956aed",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T05:35:31.493076Z",
-      "prev_hash": "8fb5ba9975bebcb97ec82da0736cd80daf7ab071556801d2582ffd5da7b30811",
-      "target_ref": "ce4bd086-1ead-40c1-8de1-1d2cc3477d2e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.654006Z",
+      "prev_hash": "915959ffa8b4d4792d61339880984199f5f589c2b2304d5cbc55110196cc14f7",
+      "target_ref": "825a4de6-b6ee-459c-a1be-c7ca2f122a4f",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "4d32e8dfbeae8d8840bed6a525950064761f1f82526cf67786df14fc661d786d",
+      "chain_hash": "fa1cc09a056a904f08604f5c5661882a8defed5d20df595ce48a17d922186ac6",
       "chain_seq": 41,
-      "id": "cab39d2e-3f5e-476d-8702-567f2f77ab96",
+      "id": "9878622f-918b-46b9-b86c-ac202db3a313",
       "kind": "review_decision",
-      "occurred_at": "2026-06-16T05:35:31.50109Z",
-      "prev_hash": "9fb6560bdaeef92329b7059db771ef1ce35f21d34770975e38d0e5f1e82b8472",
-      "target_ref": "d5fb528f-0779-4469-bc41-67f4148d9d2f",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.661646Z",
+      "prev_hash": "8d2cefce07341174e429334733062dcaf59aff84f14bbf6927d94519f1112271",
+      "target_ref": "be9e65e9-be53-4aa1-84e1-dc13b4e50982",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "certification.campaign.started",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "66c4258a611a09273107e6284597325f7325c080f8d9a78f12e42bc8fea1f76b",
+      "chain_hash": "471703f18dc1e1632f0793fbe65949e3853b8d824315622492db6324652a76c5",
       "chain_seq": 42,
-      "id": "c5020a33-c9f3-4b5f-a028-e9534df20a33",
+      "id": "7c1f20fb-2c2d-455b-90d3-ba12b0a241d3",
       "kind": "certification_started",
       "metadata": {
         "framework": "PCI-DSS",
         "item_count": 1,
         "name": "Q2 2026 PCI-DSS v4 cardholder-data certification",
         "scope": {
-          "connector_id": "e2f26992-8e8b-4d53-a17b-da069bb3636f"
+          "connector_id": "4f788324-a61c-460b-8e4e-681e4a1d5812"
         }
       },
-      "occurred_at": "2026-06-16T05:35:31.506301Z",
-      "prev_hash": "4d32e8dfbeae8d8840bed6a525950064761f1f82526cf67786df14fc661d786d",
-      "target_ref": "d1985666-6624-43a1-b0ae-74b312bac2cf",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.667394Z",
+      "prev_hash": "fa1cc09a056a904f08604f5c5661882a8defed5d20df595ce48a17d922186ac6",
+      "target_ref": "356049d7-661d-4b31-9002-0c361f4a6691",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "7824a9c49bc94ec417b2c7e6bb72763bf48d4537b13f3a8ccd70e62799bfd4e7",
+      "chain_hash": "bb075e415fe89ff4ef2dfe67c71859f919030043a581f60a7d3f01862a851f8e",
       "chain_seq": 43,
-      "id": "d68111c7-fa39-4cb9-958a-f1c2fad3cb98",
+      "id": "b8ca4e68-0404-4516-8d86-48eecc6e4c3b",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "d1985666-6624-43a1-b0ae-74b312bac2cf",
-        "grant_id": "231521d0-710e-49ea-952e-733000d3c4f2",
+        "campaign_id": "356049d7-661d-4b31-9002-0c361f4a6691",
+        "grant_id": "49566573-d433-40a0-b86c-7c23b9780816",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-16T05:35:31.521224Z",
-      "prev_hash": "66c4258a611a09273107e6284597325f7325c080f8d9a78f12e42bc8fea1f76b",
-      "target_ref": "9671450b-44a6-4d3e-8250-aa0c29517a9e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.681145Z",
+      "prev_hash": "471703f18dc1e1632f0793fbe65949e3853b8d824315622492db6324652a76c5",
+      "target_ref": "28dce2f8-8fbf-49d2-b926-af5c424333a1",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "112ee285239eedcb046c0c897c0a611c9dbc307ab213996c262c2e6f52b78e1a",
+      "chain_hash": "c83de887650c3054038b005b49511ccee06dd1c208b7602f90f1b09f83094efb",
       "chain_seq": 44,
-      "id": "81397a25-3a9b-4438-918c-555cac6dd783",
+      "id": "6db1c96b-bec8-4cd0-910e-c04223af36ae",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-16T05:35:31.527462Z",
-      "prev_hash": "7824a9c49bc94ec417b2c7e6bb72763bf48d4537b13f3a8ccd70e62799bfd4e7",
-      "target_ref": "d1985666-6624-43a1-b0ae-74b312bac2cf",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.687442Z",
+      "prev_hash": "bb075e415fe89ff4ef2dfe67c71859f919030043a581f60a7d3f01862a851f8e",
+      "target_ref": "356049d7-661d-4b31-9002-0c361f4a6691",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "332da1581c2848ee8fd3c44801a163087fe87bf470d8e7777dc637c6d3aebfb0",
+      "chain_hash": "235a40cb7f1ee4cc2dcc04524516306508c1144e1bd0256580c2d9b38d898db4",
       "chain_seq": 45,
-      "id": "d2229e42-9416-49b6-bd00-fdd28630423f",
+      "id": "2c4dda0f-8c9b-4d93-8936-1bd44a2710b3",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.537643Z",
-      "prev_hash": "112ee285239eedcb046c0c897c0a611c9dbc307ab213996c262c2e6f52b78e1a",
-      "target_ref": "cac1f8df-3b31-40f3-856f-8611ef58e973",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.695999Z",
+      "prev_hash": "c83de887650c3054038b005b49511ccee06dd1c208b7602f90f1b09f83094efb",
+      "target_ref": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "d9a537b4d643bd7f0d2ca99525c1d216012c653599ecf0d698d6ad95c9eec15a",
+      "chain_hash": "926e412f15421d0188994b6f197fc7d3eb2234f7085f9dd01c84523c57cd951e",
       "chain_seq": 46,
-      "id": "d3d969b8-f419-4a62-8eb9-b121eb9dca43",
+      "id": "50ecf637-28e6-418a-ba86-f4e3297e08bc",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T05:35:31.535519Z",
-      "prev_hash": "332da1581c2848ee8fd3c44801a163087fe87bf470d8e7777dc637c6d3aebfb0",
-      "target_ref": "231521d0-710e-49ea-952e-733000d3c4f2",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.694317Z",
+      "prev_hash": "235a40cb7f1ee4cc2dcc04524516306508c1144e1bd0256580c2d9b38d898db4",
+      "target_ref": "49566573-d433-40a0-b86c-7c23b9780816",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "d7120b7199db463f15952ec1311912857effd2ffc3713a8cf49c205d1e0a87b0",
+      "chain_hash": "7d542cb6a5deb87653b7235825b46ee8d20e5e1d316b0ec133147690e402c306",
       "chain_seq": 47,
-      "id": "a26064e9-2da0-4870-af6e-4064fed4c395",
+      "id": "efe04b91-57a2-4b24-bad7-cea88c48973f",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T05:35:31.553966Z",
-      "prev_hash": "d9a537b4d643bd7f0d2ca99525c1d216012c653599ecf0d698d6ad95c9eec15a",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.709527Z",
+      "prev_hash": "926e412f15421d0188994b6f197fc7d3eb2234f7085f9dd01c84523c57cd951e",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "fcd4ef9bf4bf1a52489cefe23d551c4f74a65fa425b2764b56b9cf84c229f4f4",
+      "chain_hash": "8837df0c7322a92e9371547ff48cc2a276155d56048ec914ba0f4bfda3edd1e3",
       "chain_seq": 48,
-      "id": "e13677f3-4f2d-418f-82de-573cfc10fd6d",
+      "id": "f2ae9f2a-8b67-48ea-b022-2ca84ceb8149",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.559143Z",
-      "prev_hash": "d7120b7199db463f15952ec1311912857effd2ffc3713a8cf49c205d1e0a87b0",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.713547Z",
+      "prev_hash": "7d542cb6a5deb87653b7235825b46ee8d20e5e1d316b0ec133147690e402c306",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "7fb989224b9fbd7769c193f78240bb06ea788e803182890942cfc9405a3a205c",
+      "chain_hash": "c7f6e41c29b41011ee9b3713b66f76cb222e8a196dbd2a258d46550b8b22bf12",
       "chain_seq": 49,
-      "id": "4b4d54e2-6ee7-4a95-9504-ec1c43a6de5b",
+      "id": "d6cfaa8b-2e18-4fb0-8a2f-2f91f012795e",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.564006Z",
-      "prev_hash": "fcd4ef9bf4bf1a52489cefe23d551c4f74a65fa425b2764b56b9cf84c229f4f4",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.717865Z",
+      "prev_hash": "8837df0c7322a92e9371547ff48cc2a276155d56048ec914ba0f4bfda3edd1e3",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "bf30c103f9e7db39d3efcbea15a74e7d209ec3df4931245db42ce161d904bea7",
+      "chain_hash": "105569b645e9f28253f2ed3f0d7dda4f2fcddb7a9b70f4b6dc2412590ffcebbe",
       "chain_seq": 50,
-      "id": "6957c9ad-446b-458e-a5b0-cee54dc713f4",
+      "id": "4039a7d2-4953-4fd7-8f65-78211b751c46",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.569491Z",
-      "prev_hash": "7fb989224b9fbd7769c193f78240bb06ea788e803182890942cfc9405a3a205c",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.723032Z",
+      "prev_hash": "c7f6e41c29b41011ee9b3713b66f76cb222e8a196dbd2a258d46550b8b22bf12",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "7feebb2731dcf45cc7e9f9c229f6abd3175ccb34f23f428a8487d39953a49465",
+      "chain_hash": "7ea3548907aeecaf634a9d6cdd1c2aee5b1eed0aa878c93b64c8f00bcd462c76",
       "chain_seq": 51,
-      "id": "647b0d73-7fbc-45d5-bfff-28459344b49c",
+      "id": "42ae4091-618e-415f-a0c8-2a5739461b4b",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.57293Z",
-      "prev_hash": "bf30c103f9e7db39d3efcbea15a74e7d209ec3df4931245db42ce161d904bea7",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.72614Z",
+      "prev_hash": "105569b645e9f28253f2ed3f0d7dda4f2fcddb7a9b70f4b6dc2412590ffcebbe",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "df7d48ff2fcff4ecb657b2c308e46ac0183c0392aa049bf52e2a7eff3a4df98d",
+      "chain_hash": "7a993eba26cff1e3daf3f733b8be107a2f41049f1290e7681fc2b39d4d7c398c",
       "chain_seq": 52,
-      "id": "a9eb0a39-cef5-4581-8b0e-272bb7f9aa1e",
+      "id": "02102861-5e83-4959-a1cf-99b8dfa1784f",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:35:31.567808Z",
-      "prev_hash": "7feebb2731dcf45cc7e9f9c229f6abd3175ccb34f23f428a8487d39953a49465",
-      "target_ref": "dad1feb3-d2fd-47ca-b03c-b92ea802d121",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.721445Z",
+      "prev_hash": "7ea3548907aeecaf634a9d6cdd1c2aee5b1eed0aa878c93b64c8f00bcd462c76",
+      "target_ref": "3a957420-7b3b-4ef2-bd4b-c450c2e82929",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "2fcc6929da7f9719ad69842e9caffdf0dba00a92a95e1364d1776a94c07ac778",
+      "chain_hash": "c3ab5b32d1a9d6fbd8f9d1dae5293d948a79f8cf966aab1575dad34d0098823a",
       "chain_seq": 53,
-      "id": "35b58f3b-623c-4f79-9204-adf828f8f8b4",
+      "id": "b6d90c02-2775-4bde-b47c-e214a4700213",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-16T05:35:31.578535Z",
-      "prev_hash": "df7d48ff2fcff4ecb657b2c308e46ac0183c0392aa049bf52e2a7eff3a4df98d",
+      "occurred_at": "2026-06-16T06:56:31.731208Z",
+      "prev_hash": "7a993eba26cff1e3daf3f733b8be107a2f41049f1290e7681fc2b39d4d7c398c",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "5215ba475d7e6c0da06a4fa6a452e026fd0da1b22646a5f877c40b80f0fe9b63",
+      "chain_hash": "a15c97b5d3a48173da197848cfa822ce016ca68dbce3a4d9e899d68500b30100",
       "chain_seq": 54,
-      "id": "5c8e1650-4d36-4c84-a502-6c6a4fa61b7a",
+      "id": "c0e4dbe9-6aa0-4309-870d-8fd623a25c4f",
       "kind": "other",
-      "occurred_at": "2026-06-16T05:35:31.587552Z",
-      "prev_hash": "2fcc6929da7f9719ad69842e9caffdf0dba00a92a95e1364d1776a94c07ac778",
-      "target_ref": "6163886b-a19f-4941-ac7f-b4243504622e",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.739318Z",
+      "prev_hash": "c3ab5b32d1a9d6fbd8f9d1dae5293d948a79f8cf966aab1575dad34d0098823a",
+      "target_ref": "04897010-d596-418f-a876-0768d26d4646",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "8113aedcaf2a2f2570b959521a3953fec49aac31be4733df7f16210d67224c18",
+      "chain_hash": "d1b92d4b9db7f5f26560e09a3c4ccfac523ccd0c15eea0d6ef8b17c87d66910b",
       "chain_seq": 55,
-      "id": "2e503b73-3a78-4a3a-ae3f-4aa80680d412",
+      "id": "8455c473-4f1e-46ea-9b67-9a2e9aeb60d8",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T05:35:31.585496Z",
-      "prev_hash": "5215ba475d7e6c0da06a4fa6a452e026fd0da1b22646a5f877c40b80f0fe9b63",
-      "target_ref": "dad1feb3-d2fd-47ca-b03c-b92ea802d121",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:31.737267Z",
+      "prev_hash": "a15c97b5d3a48173da197848cfa822ce016ca68dbce3a4d9e899d68500b30100",
+      "target_ref": "3a957420-7b3b-4ef2-bd4b-c450c2e82929",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "250c79956632afddb645770ea53ac37a62856daab787241013a29c8b0978780b",
+      "chain_hash": "6b77df5eeb20bd9ab6973c74a9eb7a11e65bfe77ed3a4a070ebe8c3f006efb85",
       "chain_seq": 56,
-      "id": "67bc800f-4678-4b6a-9073-4f1ea8a2b884",
+      "id": "c26882f8-8d52-46ba-a766-e635dc91db55",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.591747Z",
-      "prev_hash": "8113aedcaf2a2f2570b959521a3953fec49aac31be4733df7f16210d67224c18",
+      "occurred_at": "2026-06-16T06:56:31.744393Z",
+      "prev_hash": "d1b92d4b9db7f5f26560e09a3c4ccfac523ccd0c15eea0d6ef8b17c87d66910b",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "7b8e352deac73164b8ff055b455e1a2d527ee50e0ab381759547c1ba98616779",
+      "chain_hash": "bf44db8a34c50d0940aeb9e03d024f0122b9aeb85d8335c74cace34fc133dfd3",
       "chain_seq": 57,
-      "id": "f86ee29c-c0f5-4c1e-803e-48476f39a0a5",
+      "id": "e455873f-e2ee-4003-8d60-2a5fe29f7a15",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.597181Z",
-      "prev_hash": "250c79956632afddb645770ea53ac37a62856daab787241013a29c8b0978780b",
+      "occurred_at": "2026-06-16T06:56:31.7499Z",
+      "prev_hash": "6b77df5eeb20bd9ab6973c74a9eb7a11e65bfe77ed3a4a070ebe8c3f006efb85",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "1e260ec39cd60d35aedd075f4f0a6e2ff89c32a226fb3aa6f2375fba035d0ba7",
+      "chain_hash": "72d83b0005cbf7fc472eee65aad25f99620732d69920e70f243f47b7f86df591",
       "chain_seq": 58,
-      "id": "64f53733-4f9c-4b2e-bbe7-922d9540f878",
+      "id": "e389ab25-8254-4d9a-a2cd-872d22b77657",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.6Z",
-      "prev_hash": "7b8e352deac73164b8ff055b455e1a2d527ee50e0ab381759547c1ba98616779",
+      "occurred_at": "2026-06-16T06:56:31.752629Z",
+      "prev_hash": "bf44db8a34c50d0940aeb9e03d024f0122b9aeb85d8335c74cace34fc133dfd3",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "3731da699173bac7b528cb7a71e952af5ef02f7caa16d1489dd94c0e814b0910",
+      "chain_hash": "aba21f1d0bb85896643dc727cbaba369e63971e5d05eacc6c93ba3fb182db2e2",
       "chain_seq": 59,
-      "id": "c1632b70-482a-481c-ac2d-4a3416afe936",
+      "id": "43a428b0-bdfa-4ec4-8bcd-ad58bd6f9417",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.806497Z",
-      "prev_hash": "1e260ec39cd60d35aedd075f4f0a6e2ff89c32a226fb3aa6f2375fba035d0ba7",
+      "occurred_at": "2026-06-16T06:56:32.015886Z",
+      "prev_hash": "72d83b0005cbf7fc472eee65aad25f99620732d69920e70f243f47b7f86df591",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "c45a50465215eb033a310e50a7de63008640cc3efbe86c725dc5b28fc1a3fda1",
+      "chain_hash": "3cc8594da5d296332da132ecdf40f3e2ace7794a86ffddf7adf7ec685b74b55a",
       "chain_seq": 60,
-      "id": "1570a87e-4312-41a0-804e-dbe2596ddae2",
+      "id": "2a2fb670-9612-4e52-b935-9680581f3be4",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.809314Z",
-      "prev_hash": "3731da699173bac7b528cb7a71e952af5ef02f7caa16d1489dd94c0e814b0910",
+      "occurred_at": "2026-06-16T06:56:32.0187Z",
+      "prev_hash": "aba21f1d0bb85896643dc727cbaba369e63971e5d05eacc6c93ba3fb182db2e2",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "9f4b528d555026fea1848998e6fa30b6061469e75b9f5a75badff2b07ee07316",
+      "chain_hash": "29c2dd43cf800b4e646887f92f2032e6aa8a8fefccc11003430a17c8f67e3d2b",
       "chain_seq": 61,
-      "id": "4fc0ed51-8deb-457c-8d29-390b15c6fbcd",
+      "id": "a5d543c8-27cd-4e6c-ab23-e9fc0202ccd6",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T05:35:31.815495Z",
-      "prev_hash": "c45a50465215eb033a310e50a7de63008640cc3efbe86c725dc5b28fc1a3fda1",
+      "occurred_at": "2026-06-16T06:56:32.025835Z",
+      "prev_hash": "3cc8594da5d296332da132ecdf40f3e2ace7794a86ffddf7adf7ec685b74b55a",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "sod.rule.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ce2f06d2e48bda6c3e6c80f0a37f689edf4c0fa86116bd11042a229f684face6",
+      "chain_hash": "b53dc15a53fbec5c9bf8fa4f94407a54c65b8b59eb88b719e259fb6c4f407c62",
       "chain_seq": 62,
-      "id": "20743d41-f045-410c-9df9-5cb59b55352c",
+      "id": "51761657-6d0e-41ec-83fd-556e44058066",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -813,500 +813,500 @@
         },
         "severity": "critical"
       },
-      "occurred_at": "2026-06-16T05:35:31.819238Z",
-      "prev_hash": "9f4b528d555026fea1848998e6fa30b6061469e75b9f5a75badff2b07ee07316",
-      "target_ref": "906d7c68-e1e1-47a5-8a56-250a506abcbf",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.029999Z",
+      "prev_hash": "29c2dd43cf800b4e646887f92f2032e6aa8a8fefccc11003430a17c8f67e3d2b",
+      "target_ref": "4d33fa26-2d95-4436-bb7f-5297d67b9e85",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ca465f3383e7afff3351620dd3482a8848f7e127f3c1c9f079b8b8520fa93fe3",
+      "chain_hash": "9b90ba5d62edeb06d464d64393be603775eb0c38b5eea0668cba8375b5ea7233",
       "chain_seq": 63,
-      "id": "924eddc8-27fe-4674-a93d-ac914a146569",
+      "id": "482e736f-9f73-494e-9104-29065a7af438",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-paytech-integrator@vendor.example",
-        "expires_at": "2026-07-28T05:35:31Z",
+        "expires_at": "2026-07-28T06:56:32Z",
         "resource_ref": "ledger:reconcile",
         "role": "operator",
         "sponsor_id": "sg-admin"
       },
-      "occurred_at": "2026-06-16T05:35:31.828856Z",
-      "prev_hash": "ce2f06d2e48bda6c3e6c80f0a37f689edf4c0fa86116bd11042a229f684face6",
-      "target_ref": "683024f0-6ef5-4df5-a451-ba6006c5e574",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.040203Z",
+      "prev_hash": "b53dc15a53fbec5c9bf8fa4f94407a54c65b8b59eb88b719e259fb6c4f407c62",
+      "target_ref": "bef12f92-d999-44a3-844a-152a668fe6d9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "57edd3f1140115736d36aa5e77ed2910869c9df1c3a1023740428951946892be",
+      "chain_hash": "d8b45376607a2e13a55d299d8401a3036da1fc2416976221201a935b3bc4ad28",
       "chain_seq": 64,
-      "id": "65d8b6fa-eb67-4e87-b40d-fd4e7b9aa763",
+      "id": "f56c96cc-0a32-4e73-847c-c4729c92b61a",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:35:31.83656Z",
-      "prev_hash": "ca465f3383e7afff3351620dd3482a8848f7e127f3c1c9f079b8b8520fa93fe3",
-      "target_ref": "8a274433-e430-4447-b388-3c4602e992cf",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.049017Z",
+      "prev_hash": "9b90ba5d62edeb06d464d64393be603775eb0c38b5eea0668cba8375b5ea7233",
+      "target_ref": "b92c2612-9510-4451-8f2b-a16972f4c76d",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "55f7c67fc50049498241bd3306107481a9345aa618b75776e8f5736c6435305a",
+      "chain_hash": "1d5712bdd81fb924df2bf9485905ee579f0996e330e3ea68e1cc96a778bf6240",
       "chain_seq": 65,
-      "id": "f1ac6939-845c-454e-a98e-9d2c78c6314e",
+      "id": "9ef271f5-1aae-4c43-9405-5b84c71a6c8b",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-paytech-integrator@vendor.example",
-        "expires_at": "2026-07-28T05:35:31Z",
-        "grant_id": "8a274433-e430-4447-b388-3c4602e992cf"
+        "expires_at": "2026-07-28T06:56:32Z",
+        "grant_id": "b92c2612-9510-4451-8f2b-a16972f4c76d"
       },
-      "occurred_at": "2026-06-16T05:35:31.83656Z",
-      "prev_hash": "57edd3f1140115736d36aa5e77ed2910869c9df1c3a1023740428951946892be",
-      "target_ref": "683024f0-6ef5-4df5-a451-ba6006c5e574",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.049017Z",
+      "prev_hash": "d8b45376607a2e13a55d299d8401a3036da1fc2416976221201a935b3bc4ad28",
+      "target_ref": "bef12f92-d999-44a3-844a-152a668fe6d9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.extended",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ba13d68b8d91f00befb86768f26aa164df5ff42965da5082d434b33cf51d4b85",
+      "chain_hash": "feb3c9cdc4de5330d98b65c1801fb533da21ef732d8c3aa434d6b26e17c9933f",
       "chain_seq": 66,
-      "id": "0519bdfc-0bc9-4aa5-975c-0f7fc113ead6",
+      "id": "0cd78de2-552f-4db3-8320-e5f962bc39b0",
       "kind": "other",
       "metadata": {
-        "new_expires_at": "2026-09-08T05:35:31Z",
-        "previous_expires_at": "2026-07-28T05:35:31Z",
+        "new_expires_at": "2026-09-08T06:56:32Z",
+        "previous_expires_at": "2026-07-28T06:56:32Z",
         "reason": "Sponsor-approved extension: engagement prolonged."
       },
-      "occurred_at": "2026-06-16T05:35:31.845761Z",
-      "prev_hash": "55f7c67fc50049498241bd3306107481a9345aa618b75776e8f5736c6435305a",
-      "target_ref": "683024f0-6ef5-4df5-a451-ba6006c5e574",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.059441Z",
+      "prev_hash": "1d5712bdd81fb924df2bf9485905ee579f0996e330e3ea68e1cc96a778bf6240",
+      "target_ref": "bef12f92-d999-44a3-844a-152a668fe6d9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "ff66cb85994da421020dadba293661a4a6d1b074297027fd07307cd0e4df2007",
+      "chain_hash": "9ff162eddaeffbd2be353719a528acaff7ff4da3cdb2b5ec15702b4be1340f06",
       "chain_seq": 67,
-      "id": "ac32d717-76bc-46bb-ae6f-28e5fccc63dc",
+      "id": "ea38a064-d732-4dc8-a544-32652486cc3d",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-pentest@security.example",
-        "expires_at": "2026-06-26T05:35:31Z",
+        "expires_at": "2026-06-26T06:56:32Z",
         "resource_ref": "cde:pci-scope",
         "role": "auditor",
         "sponsor_id": "sg-security_admin"
       },
-      "occurred_at": "2026-06-16T05:35:31.853998Z",
-      "prev_hash": "ba13d68b8d91f00befb86768f26aa164df5ff42965da5082d434b33cf51d4b85",
-      "target_ref": "8ae95352-a322-4619-83d8-3d2b17842e39",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.067957Z",
+      "prev_hash": "feb3c9cdc4de5330d98b65c1801fb533da21ef732d8c3aa434d6b26e17c9933f",
+      "target_ref": "e8adda13-3452-4d69-87fc-aafd95fb715c",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "3a0f38d8d36d56ef04d4d824ae67e6e6a876d22223356a85be85bd12ebe02993",
+      "chain_hash": "7e6b59b51a5111fcfd0ff2b5ed73dc68729fb3c58f8ce3c5bc7fc71847bfd861",
       "chain_seq": 68,
-      "id": "f67baf56-6ff6-4f80-9757-f0735530666a",
+      "id": "b57464f9-4430-43f7-9cc2-62d5bfb46486",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:35:31.859511Z",
-      "prev_hash": "ff66cb85994da421020dadba293661a4a6d1b074297027fd07307cd0e4df2007",
-      "target_ref": "b6b6631d-d8d0-4317-b440-bf99ea4bc401",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.073458Z",
+      "prev_hash": "9ff162eddaeffbd2be353719a528acaff7ff4da3cdb2b5ec15702b4be1340f06",
+      "target_ref": "83ca9c8d-27c4-4d71-8145-d60dd4bbae7a",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "20dca59b4a74d64eb20c3aff83903b9011d46c78a255f733b47b0a8fab2f49a0",
+      "chain_hash": "841e67eeddd189e2e5996ff8d61c1faeea4e027b1d7133a998da29f490e11f62",
       "chain_seq": 69,
-      "id": "de1b61a1-20bc-4fb0-ba7f-86114c47d253",
+      "id": "209fcd28-0dd4-4055-b3e1-de50737fefb8",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-pentest@security.example",
-        "expires_at": "2026-06-26T05:35:31Z",
-        "grant_id": "b6b6631d-d8d0-4317-b440-bf99ea4bc401"
+        "expires_at": "2026-06-26T06:56:32Z",
+        "grant_id": "83ca9c8d-27c4-4d71-8145-d60dd4bbae7a"
       },
-      "occurred_at": "2026-06-16T05:35:31.859511Z",
-      "prev_hash": "3a0f38d8d36d56ef04d4d824ae67e6e6a876d22223356a85be85bd12ebe02993",
-      "target_ref": "8ae95352-a322-4619-83d8-3d2b17842e39",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.073458Z",
+      "prev_hash": "7e6b59b51a5111fcfd0ff2b5ed73dc68729fb3c58f8ce3c5bc7fc71847bfd861",
+      "target_ref": "e8adda13-3452-4d69-87fc-aafd95fb715c",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "84caa3fa138a27e93ce2e910c5b1ccdbb6bf274ef947563943e1e2d3b6894672",
+      "chain_hash": "c6ad384eee77696f3847ac5a284c01c559d2c6fa487c839a8d872d71808a5430",
       "chain_seq": 70,
-      "id": "25602734-a812-462f-b5a5-d91d28516f50",
+      "id": "aa3d7e89-2678-4939-bd3f-cd6a97c8ca8c",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T05:35:31.869918Z",
-      "prev_hash": "20dca59b4a74d64eb20c3aff83903b9011d46c78a255f733b47b0a8fab2f49a0",
-      "target_ref": "b6b6631d-d8d0-4317-b440-bf99ea4bc401",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.084466Z",
+      "prev_hash": "841e67eeddd189e2e5996ff8d61c1faeea4e027b1d7133a998da29f490e11f62",
+      "target_ref": "83ca9c8d-27c4-4d71-8145-d60dd4bbae7a",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.revoked",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "72f45cc2c9a09e31951a45894f3528fb29efc4d7c085e8c16f60b1f888e53aea",
+      "chain_hash": "9b71917acdb1eacb0662fb38368807c184050bb036be1a5fe8ea4a50ddaaea54",
       "chain_seq": 71,
-      "id": "c9a0d1ed-6d4e-45d0-8305-3bc93b3abb46",
+      "id": "0911d4e4-f373-4d10-936d-ba38444d3bc1",
       "kind": "other",
       "metadata": {
         "reason": "Engagement ended early; external access withdrawn."
       },
-      "occurred_at": "2026-06-16T05:35:31.872803Z",
-      "prev_hash": "84caa3fa138a27e93ce2e910c5b1ccdbb6bf274ef947563943e1e2d3b6894672",
-      "target_ref": "8ae95352-a322-4619-83d8-3d2b17842e39",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.08766Z",
+      "prev_hash": "c6ad384eee77696f3847ac5a284c01c559d2c6fa487c839a8d872d71808a5430",
+      "target_ref": "e8adda13-3452-4d69-87fc-aafd95fb715c",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.target.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "5ce00e32c3937eb4014b76aaac3007a00de21113f403ec401b9914dc828d7ec5",
+      "chain_hash": "a49d82d1d0146cc216bdb7a755723e8b6bc5d788ee4b5271447d2511c3869f92",
       "chain_seq": 72,
-      "id": "c027adea-e6ab-48df-bb3a-9c8bcc219ca1",
+      "id": "c4763cec-90f3-4b1c-a695-341b3f0edd62",
       "kind": "other",
       "metadata": {
         "address": "ledger-db-1.acme-pay.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T05:35:31.882386Z",
-      "prev_hash": "72f45cc2c9a09e31951a45894f3528fb29efc4d7c085e8c16f60b1f888e53aea",
-      "target_ref": "853b40a8-acd8-455d-9d82-c18a7943d4b3",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.098003Z",
+      "prev_hash": "9b71917acdb1eacb0662fb38368807c184050bb036be1a5fe8ea4a50ddaaea54",
+      "target_ref": "d6dd0a54-ae72-42de-90f5-8b8f610730fc",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.lease.requested",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "b957249df2fd65898002473a8aa41ba2c9c8acdcd0ee4f56b0152f034c2b8802",
+      "chain_hash": "783085e144a5c09280e5c7c02a094fb91ab31528a73e0a339553b9b35eddf99e",
       "chain_seq": 73,
-      "id": "7d64abe7-d518-4ff2-a70d-e724fd391eb9",
+      "id": "330fe31d-3428-47c9-9072-32fec3ee291f",
       "kind": "other",
       "metadata": {
         "risk_degraded": true,
         "risk_level": "medium",
         "subject": "sg-acme-payments-owner",
-        "target_id": "853b40a8-acd8-455d-9d82-c18a7943d4b3",
+        "target_id": "d6dd0a54-ae72-42de-90f5-8b8f610730fc",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-16T05:35:31.886545Z",
-      "prev_hash": "5ce00e32c3937eb4014b76aaac3007a00de21113f403ec401b9914dc828d7ec5",
-      "target_ref": "561bc941-0f6d-444d-a37e-62d5df105efd",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:56:32.102818Z",
+      "prev_hash": "a49d82d1d0146cc216bdb7a755723e8b6bc5d788ee4b5271447d2511c3869f92",
+      "target_ref": "7f859bf1-bf68-4326-beaa-bf27840824d5",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.lease.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "49185f092e724894258cdc57a5a94403fdcf47143dfe6b659d5cc7aceea7d06f",
+      "chain_hash": "749d5a6b383ff4aa1e7e7fe30fb28c4531f703b1051dc4ef5397f61d28204fdb",
       "chain_seq": 74,
-      "id": "3c725380-9770-401d-bd10-fd5f7c041621",
+      "id": "623cb42a-fc8b-4642-b1e7-5bbad6483a85",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T06:06:01Z",
+        "expires_at": "2026-06-16T07:27:01Z",
         "subject": "sg-acme-payments-owner",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-16T05:36:01.898947Z",
-      "prev_hash": "b957249df2fd65898002473a8aa41ba2c9c8acdcd0ee4f56b0152f034c2b8802",
-      "target_ref": "561bc941-0f6d-444d-a37e-62d5df105efd",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.151231Z",
+      "prev_hash": "783085e144a5c09280e5c7c02a094fb91ab31528a73e0a339553b9b35eddf99e",
+      "target_ref": "7f859bf1-bf68-4326-beaa-bf27840824d5",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "66e12806ad655de7302fe12e99cfd5a297aeaaa7cfa28e48f88ce583f847f49a",
+      "chain_hash": "89970fd07e9576bb76665f093612ea716bea26bf9ed400d79f173fc50c124b7f",
       "chain_seq": 75,
-      "id": "040ba65a-dbbd-4e60-b868-2d68053c20e7",
+      "id": "05806026-b10b-4806-83a1-b4d34b8bc9a1",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T06:06:01Z",
+        "expires_at": "2026-06-16T07:27:01Z",
         "subject": "sg-acme-payments-owner"
       },
-      "occurred_at": "2026-06-16T05:36:01.910566Z",
-      "prev_hash": "49185f092e724894258cdc57a5a94403fdcf47143dfe6b659d5cc7aceea7d06f",
-      "target_ref": "853b40a8-acd8-455d-9d82-c18a7943d4b3",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.163044Z",
+      "prev_hash": "749d5a6b383ff4aa1e7e7fe30fb28c4531f703b1051dc4ef5397f61d28204fdb",
+      "target_ref": "d6dd0a54-ae72-42de-90f5-8b8f610730fc",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.target.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "e5333e2138d3b552f50f0a497a294de4cdb920057fceb4306fa880ca36075000",
+      "chain_hash": "a4ed151055d5132dbceb26fba69d15d6fddd85e777fb85474ea6715c80e627b3",
       "chain_seq": 76,
-      "id": "b6fe40bb-5308-4ca4-9109-60fab604af68",
+      "id": "cda64389-a278-480a-8bee-0c635091de83",
       "kind": "other",
       "metadata": {
         "address": "ledger-db-1.acme-pay.internal:5432",
         "protocol": "postgres"
       },
-      "occurred_at": "2026-06-16T05:36:01.916835Z",
-      "prev_hash": "66e12806ad655de7302fe12e99cfd5a297aeaaa7cfa28e48f88ce583f847f49a",
-      "target_ref": "cb16df5f-2890-4baa-a820-46009d612f32",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.169087Z",
+      "prev_hash": "89970fd07e9576bb76665f093612ea716bea26bf9ed400d79f173fc50c124b7f",
+      "target_ref": "165d52de-bc92-4cfe-947e-bf228909a7a1",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.target.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "808a5aa6cb0657153efec12cef377e6064e1124f6c4db7023983ef52da69b325",
+      "chain_hash": "0fee6e9b0d2743179030496e8b5b50bbc22815856f95ca37fe376779dd62185e",
       "chain_seq": 77,
-      "id": "7861ebae-4c0a-431d-a3a7-a5c6415b6d54",
+      "id": "0a412880-145e-47e7-8d28-320b095fe459",
       "kind": "other",
       "metadata": {
         "address": "ledger-bastion.acme-pay.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T05:36:01.932319Z",
-      "prev_hash": "e5333e2138d3b552f50f0a497a294de4cdb920057fceb4306fa880ca36075000",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.183029Z",
+      "prev_hash": "a4ed151055d5132dbceb26fba69d15d6fddd85e777fb85474ea6715c80e627b3",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "c19e0824a5589a4398c44cdeea2a5b57c5c41515dc7ef7bb8dc046154995fffd",
+      "chain_hash": "b5d2fe8b6e75f6e4d0301d1b63f677e7d4854ae089b6f94e75c06c466899d744",
       "chain_seq": 78,
-      "id": "8a7da675-08c3-4761-88f5-01e98ddf7265",
+      "id": "f7bfc4d3-b785-4a69-b2e4-e130927c20dc",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T06:06:01Z",
+        "expires_at": "2026-06-16T07:27:01Z",
         "subject": "sg-acme-payments-owner"
       },
-      "occurred_at": "2026-06-16T05:36:01.941385Z",
-      "prev_hash": "808a5aa6cb0657153efec12cef377e6064e1124f6c4db7023983ef52da69b325",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.19128Z",
+      "prev_hash": "0fee6e9b0d2743179030496e8b5b50bbc22815856f95ca37fe376779dd62185e",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.session.opened",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "091486a059d9da3f6844875d9ec64b8f0c1ad8ae5be0ba50973cf500a7a469ec",
+      "chain_hash": "9e92e7213839a22f26d5d186ffb37c98d08039fb851c342999e5ee92db00783a",
       "chain_seq": 79,
-      "id": "35c6e7e0-f2c6-480c-a651-a7536aa84839",
+      "id": "8befcc12-f973-48a2-8305-a45445bccf9b",
       "kind": "privileged_session",
       "metadata": {
         "client_addr": "blog-seed",
         "protocol": "ssh",
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7"
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e"
       },
-      "occurred_at": "2026-06-16T05:36:01.948444Z",
-      "prev_hash": "c19e0824a5589a4398c44cdeea2a5b57c5c41515dc7ef7bb8dc046154995fffd",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.199351Z",
+      "prev_hash": "b5d2fe8b6e75f6e4d0301d1b63f677e7d4854ae089b6f94e75c06c466899d744",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.command",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "39a4bf9cf034c344af29d659376f0d183584ee13ae6234e078ef13f4fdb45fb2",
+      "chain_hash": "4ae43252835b6fb20ffd6bf23796c180edf07e724100f64bdf091bb440814b52",
       "chain_seq": 80,
-      "id": "ee15df05-9835-4978-80e9-667b957bdfb6",
+      "id": "1d2ec1cd-8013-4b98-9426-5d80e3cb4cf0",
       "kind": "privileged_command",
       "metadata": {
         "command": "whoami",
         "decision": "allow",
         "reason": "",
         "seq": 1,
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7"
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e"
       },
-      "occurred_at": "2026-06-16T05:36:01.952642Z",
-      "prev_hash": "091486a059d9da3f6844875d9ec64b8f0c1ad8ae5be0ba50973cf500a7a469ec",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.206215Z",
+      "prev_hash": "9e92e7213839a22f26d5d186ffb37c98d08039fb851c342999e5ee92db00783a",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.command",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "e719c0ddafa87f322f3c5349cedfc2934a1108f142aa4c4b8d89d0c15c24a7c3",
+      "chain_hash": "947813344c43c08666b2e7c1e2897ca27bb62bfe0230bec6a87e21c042d88162",
       "chain_seq": 81,
-      "id": "29050c57-704a-4f19-86eb-18208c920b3a",
+      "id": "0823cc58-1681-4071-9603-22b03e97c553",
       "kind": "privileged_command",
       "metadata": {
         "command": "sudo systemctl status ledger-postgres",
         "decision": "allow",
         "reason": "",
         "seq": 2,
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7"
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e"
       },
-      "occurred_at": "2026-06-16T05:36:01.958836Z",
-      "prev_hash": "39a4bf9cf034c344af29d659376f0d183584ee13ae6234e078ef13f4fdb45fb2",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.211949Z",
+      "prev_hash": "4ae43252835b6fb20ffd6bf23796c180edf07e724100f64bdf091bb440814b52",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.command",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "64532aa24a7cbb4d005a9a6038a5d7bf537c87ae7a5777b1fa4ae5d4ef2877fc",
+      "chain_hash": "7082905c0254981d0163df00e6e1ec97dd540e7c48452c17e65fa27c25e7cd2f",
       "chain_seq": 82,
-      "id": "d280b57f-1be4-4e0c-8f2e-9e340b4f081d",
+      "id": "2e9e7ade-64ab-4e9b-a2af-03fd38862804",
       "kind": "privileged_command",
       "metadata": {
         "command": "psql -At -c \"select count(*) from postings where settled_at is null\"",
         "decision": "allow",
         "reason": "",
         "seq": 3,
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7"
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e"
       },
-      "occurred_at": "2026-06-16T05:36:01.962557Z",
-      "prev_hash": "e719c0ddafa87f322f3c5349cedfc2934a1108f142aa4c4b8d89d0c15c24a7c3",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.215914Z",
+      "prev_hash": "947813344c43c08666b2e7c1e2897ca27bb62bfe0230bec6a87e21c042d88162",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.command",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "198d691467953ebacb177db630cf14f4b5bfbc1e6d8b8f745c3cdf1222293f7c",
+      "chain_hash": "cb6ee77b8ebd0ef279e7e1be2baa018ea71eed2bf744a709c3ea02480824030e",
       "chain_seq": 83,
-      "id": "3501c8a8-7595-4ca7-8e3d-4ce9d3de43cb",
+      "id": "482c4b6f-be4c-4783-807d-56f3955cbee0",
       "kind": "privileged_command",
       "metadata": {
         "command": "exit",
         "decision": "allow",
         "reason": "",
         "seq": 4,
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7"
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e"
       },
-      "occurred_at": "2026-06-16T05:36:01.966266Z",
-      "prev_hash": "64532aa24a7cbb4d005a9a6038a5d7bf537c87ae7a5777b1fa4ae5d4ef2877fc",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.220019Z",
+      "prev_hash": "7082905c0254981d0163df00e6e1ec97dd540e7c48452c17e65fa27c25e7cd2f",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.session.recording",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "45d20543e23338f70dffc160043f35b90bcc71b35b40b5891524273a874a2f33",
+      "chain_hash": "59a48121d630174d2c277caad3a0fa7c5e1580fb80439177384c36f589972d21",
       "chain_seq": 84,
-      "id": "afc1607f-978a-465b-81f8-14306ef71398",
+      "id": "d78e524d-e2b0-47c7-9898-7680bdaf368b",
       "kind": "privileged_recording",
       "metadata": {
         "bytes": 371,
-        "replay_key": "sessions/a70dcf3a-8bf1-4fd9-a466-6700c919e2b7/replay.bin",
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7",
-        "sha256": "f0eb1aec5b627312c7c66c22f88ae17d3a5d2530f5232af620a691af2407a2df",
+        "replay_key": "sessions/f35079ec-b768-4f47-9d94-f062bffef38e/replay.bin",
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e",
+        "sha256": "433fb40bfc92a597973f6b71fedc285013024b5455dedc56375fbea5b7718052",
         "truncated": false
       },
-      "occurred_at": "2026-06-16T05:36:01.970194Z",
-      "prev_hash": "198d691467953ebacb177db630cf14f4b5bfbc1e6d8b8f745c3cdf1222293f7c",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.224326Z",
+      "prev_hash": "cb6ee77b8ebd0ef279e7e1be2baa018ea71eed2bf744a709c3ea02480824030e",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.session.closed",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "647187ee076a3a542d9660de6850779047cadee5c1b9935796e7b1829f9c8d73",
+      "chain_hash": "765d9e50362eaa4500be4513e199c7c46110d8e348996140d0119156364c8906",
       "chain_seq": 85,
-      "id": "6a98fdf4-2576-4a71-917c-528e6bf2609e",
+      "id": "9bd4a8f4-0b39-4426-8e71-66f40fb39fb5",
       "kind": "privileged_session",
       "metadata": {
-        "session_id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7",
+        "session_id": "f35079ec-b768-4f47-9d94-f062bffef38e",
         "state": "closed"
       },
-      "occurred_at": "2026-06-16T05:36:01.972553Z",
-      "prev_hash": "45d20543e23338f70dffc160043f35b90bcc71b35b40b5891524273a874a2f33",
-      "target_ref": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.226964Z",
+      "prev_hash": "59a48121d630174d2c277caad3a0fa7c5e1580fb80439177384c36f589972d21",
+      "target_ref": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "9f88db8646d0a25703bb0af93e8a184ec8158846cc2dafb237b2c3f1324356eb",
+      "chain_hash": "f391c2c02e954027a6cb042d7a1d08ae322f7711d8e6583f3a85d6bd88b445f8",
       "chain_seq": 86,
-      "id": "00cfceeb-7d2d-4298-a812-4232f6233c05",
+      "id": "94685e23-e02c-41ff-b931-95eb4574f054",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@sg-acme-payments.example",
-        "expires_at": "2026-07-16T05:36:01Z",
+        "expires_at": "2026-07-16T06:57:01Z",
         "resource_ref": "ledger:admin",
         "role": "operator",
         "sponsor_id": "sg-admin"
       },
-      "occurred_at": "2026-06-16T05:36:01.988604Z",
-      "prev_hash": "647187ee076a3a542d9660de6850779047cadee5c1b9935796e7b1829f9c8d73",
-      "target_ref": "0ee0cff0-38d3-42b6-b4cd-5ef027ad0e30",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.244382Z",
+      "prev_hash": "765d9e50362eaa4500be4513e199c7c46110d8e348996140d0119156364c8906",
+      "target_ref": "987c1ff3-dc67-4164-a131-14ef2049c481",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "8ecfd5b92ca22e1ab9cafa79fb4d5bfeca72a7f406049bea0cd7c7c698f44729",
+      "chain_hash": "62dcf4db6a6f8587355814ab49f1c1e1fcee5ed9475253caae3dbe6dcd53f350",
       "chain_seq": 87,
-      "id": "4622f74b-6bf5-46a8-959e-12b36736f492",
+      "id": "9108d28a-c113-4e3d-b6ec-724b82c8231e",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:36:01.996335Z",
-      "prev_hash": "9f88db8646d0a25703bb0af93e8a184ec8158846cc2dafb237b2c3f1324356eb",
-      "target_ref": "17f0dffc-1716-4cba-ad46-5a0214f4600c",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.251068Z",
+      "prev_hash": "f391c2c02e954027a6cb042d7a1d08ae322f7711d8e6583f3a85d6bd88b445f8",
+      "target_ref": "e5a19b00-e214-4b79-97f7-2f715159ad2c",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "b533981e0985c1faacad7fc3e3f4eeb686b07fb53ce72e303ddfe9a13f3dfaf5",
+      "chain_hash": "cdf147f057703a1f20dfb3e29cad7fb1a30d84cb583eee85527f7f1cf2641acb",
       "chain_seq": 88,
-      "id": "1cd91756-4ccb-467e-acc2-a334d32993f3",
+      "id": "c5e833da-d8a6-440e-afa4-1fc913d7e05f",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@sg-acme-payments.example",
-        "expires_at": "2026-07-16T05:36:01Z",
-        "grant_id": "17f0dffc-1716-4cba-ad46-5a0214f4600c"
+        "expires_at": "2026-07-16T06:57:01Z",
+        "grant_id": "e5a19b00-e214-4b79-97f7-2f715159ad2c"
       },
-      "occurred_at": "2026-06-16T05:36:01.996335Z",
-      "prev_hash": "8ecfd5b92ca22e1ab9cafa79fb4d5bfeca72a7f406049bea0cd7c7c698f44729",
-      "target_ref": "0ee0cff0-38d3-42b6-b4cd-5ef027ad0e30",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.251068Z",
+      "prev_hash": "62dcf4db6a6f8587355814ab49f1c1e1fcee5ed9475253caae3dbe6dcd53f350",
+      "target_ref": "987c1ff3-dc67-4164-a131-14ef2049c481",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "000ac142bc050349439bf9addb9fd6fe755ab9ca375996b35e5ac2b3120df038",
+      "chain_hash": "eb5f5ec5b435b5e978964ffec68ae0dde03c4eb9d96197bb62c7a131dffebc64",
       "chain_seq": 89,
-      "id": "352c07e5-f662-4d4a-a4e7-6ef29bc2a0da",
+      "id": "497c629c-3839-41b3-93ad-d785fc014906",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@sg-acme-payments.example",
-        "expires_at": "2026-07-16T05:36:02Z",
+        "expires_at": "2026-07-16T06:57:01Z",
         "resource_ref": "ledger:reconcile",
         "role": "operator",
         "sponsor_id": "sg-admin"
       },
-      "occurred_at": "2026-06-16T05:36:02.006194Z",
-      "prev_hash": "b533981e0985c1faacad7fc3e3f4eeb686b07fb53ce72e303ddfe9a13f3dfaf5",
-      "target_ref": "5018027d-33f1-4659-b265-8049d305e64b",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.259949Z",
+      "prev_hash": "cdf147f057703a1f20dfb3e29cad7fb1a30d84cb583eee85527f7f1cf2641acb",
+      "target_ref": "d7cfe38e-3481-4b36-8c90-dff647217a48",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "access_grant.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "65f91d0f12733edeef54b0c6a8c9d83b97c7bc77ade9dd4bb238837bb6c4a50b",
+      "chain_hash": "777ae81b11221402788996057f381c12f99b212c6497d37660f6f05858aedf64",
       "chain_seq": 90,
-      "id": "75e3c07e-0513-4063-8582-43cc20e85398",
+      "id": "17e6e294-3299-487d-afa8-4c94ac75981e",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T05:36:02.011885Z",
-      "prev_hash": "000ac142bc050349439bf9addb9fd6fe755ab9ca375996b35e5ac2b3120df038",
-      "target_ref": "8d116ce6-c399-46b4-ba0c-32603bb38a68",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.266544Z",
+      "prev_hash": "eb5f5ec5b435b5e978964ffec68ae0dde03c4eb9d96197bb62c7a131dffebc64",
+      "target_ref": "a6608014-11f8-489c-855c-380c9c889955",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "a3e191de5af9c0deb386dd7f5836f417a8e988fd47ea764dc8aa080f38013d75",
+      "chain_hash": "01f9c5a776f10a7b3e6f64095e204660e0e57111c554eddbbefe989b4c78ccea",
       "chain_seq": 91,
-      "id": "cc8fe09b-854a-45b1-b1c6-147378ac7b4a",
+      "id": "b2f1d24a-5faf-43e2-8f33-3ef226d31163",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@sg-acme-payments.example",
-        "expires_at": "2026-07-16T05:36:02Z",
-        "grant_id": "8d116ce6-c399-46b4-ba0c-32603bb38a68"
+        "expires_at": "2026-07-16T06:57:01Z",
+        "grant_id": "a6608014-11f8-489c-855c-380c9c889955"
       },
-      "occurred_at": "2026-06-16T05:36:02.011885Z",
-      "prev_hash": "65f91d0f12733edeef54b0c6a8c9d83b97c7bc77ade9dd4bb238837bb6c4a50b",
-      "target_ref": "5018027d-33f1-4659-b265-8049d305e64b",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.266544Z",
+      "prev_hash": "777ae81b11221402788996057f381c12f99b212c6497d37660f6f05858aedf64",
+      "target_ref": "d7cfe38e-3481-4b36-8c90-dff647217a48",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "orphan.detected",
       "actor": "system:anomaly-detector",
-      "chain_hash": "766892042d35894d0568a5158f2f8d434f81a24db1952fd1c9ce6809fe37e4d2",
+      "chain_hash": "76794578e0ca36920e6cd0e24d524c77687542f5f06297fcacc34a2bb6955a9b",
       "chain_seq": 92,
-      "id": "047ab992-a403-4ec9-8bd6-80c0f0df565c",
+      "id": "c10c1e7c-6fd6-459c-9cfd-3d793bcc10ac",
       "kind": "orphan_detected",
       "metadata": {
-        "anomaly_id": "461dff3f-f5cc-4071-83aa-473731f0349f",
+        "anomaly_id": "5cca1e83-58e3-42f8-b206-dd6f7450e335",
         "anomaly_kind": "sod_violation",
         "conflicting": {
           "resource": "ledger:reconcile",
@@ -1316,110 +1316,110 @@
           "resource": "ledger:admin",
           "role": "operator"
         },
-        "rule_id": "906d7c68-e1e1-47a5-8a56-250a506abcbf",
+        "rule_id": "4d33fa26-2d95-4436-bb7f-5297d67b9e85",
         "rule_name": "Ledger admin must not also approve reconciliation",
         "severity": "critical",
         "subject": "ext-dual-role@sg-acme-payments.example"
       },
-      "occurred_at": "2026-06-16T05:36:02.02508Z",
-      "prev_hash": "a3e191de5af9c0deb386dd7f5836f417a8e988fd47ea764dc8aa080f38013d75",
-      "target_ref": "461dff3f-f5cc-4071-83aa-473731f0349f",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.280548Z",
+      "prev_hash": "01f9c5a776f10a7b3e6f64095e204660e0e57111c554eddbbefe989b4c78ccea",
+      "target_ref": "5cca1e83-58e3-42f8-b206-dd6f7450e335",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "orphan.disposition.flagged",
       "actor": "system:anomaly-detector",
-      "chain_hash": "a971952b9fef87b5815a3dfb01474923432227910336648d51e51310931bbba8",
+      "chain_hash": "6b594d0d6845e89217a41e24c61f8769ae9c5c07093587c4d7f77dbeb93022da",
       "chain_seq": 93,
-      "id": "5e18517d-fcc1-47e7-876f-06b95db118a4",
+      "id": "d76958a6-9d3f-43e9-9f1b-ebf2cafef7a2",
       "kind": "orphan_disposition",
       "metadata": {
-        "anomaly_id": "461dff3f-f5cc-4071-83aa-473731f0349f",
+        "anomaly_id": "5cca1e83-58e3-42f8-b206-dd6f7450e335",
         "anomaly_kind": "sod_violation",
         "automated": true,
         "disposition": "flagged",
         "severity": "critical",
         "subject": "ext-dual-role@sg-acme-payments.example"
       },
-      "occurred_at": "2026-06-16T05:36:02.02508Z",
-      "prev_hash": "766892042d35894d0568a5158f2f8d434f81a24db1952fd1c9ce6809fe37e4d2",
-      "target_ref": "461dff3f-f5cc-4071-83aa-473731f0349f",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:01.280548Z",
+      "prev_hash": "76794578e0ca36920e6cd0e24d524c77687542f5f06297fcacc34a2bb6955a9b",
+      "target_ref": "5cca1e83-58e3-42f8-b206-dd6f7450e335",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "compliance.export",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "b20abc31be48d29fe0ae49f07d48715c33fb1ad8256d10c41e24660ba1a72e9b",
+      "chain_hash": "480150f32b4fe5af81e5a19925551e21b8821f5db3004f1f9d9febe506c64998",
       "chain_seq": 94,
-      "id": "3b5e762e-37a9-429b-a240-00482a12946f",
+      "id": "73a7a959-def1-4b15-a1c5-5796da1321cd",
       "kind": "evidence_exported",
       "metadata": {
         "chain_status": "valid",
-        "content_sha256": "3da4cc351640bcd835a053bdd171ef09732daf8b8b09f4603633da6346b2e6da",
+        "content_sha256": "eaecb21e3dce112f01a904f8e9854cdc104cc1180fbdc516304cab45aef4cf3d",
         "evidence_total": 93,
         "framework": "SOC 2",
         "mfa_satisfied": true
       },
-      "occurred_at": "2026-06-16T05:36:31.147547Z",
-      "prev_hash": "a971952b9fef87b5815a3dfb01474923432227910336648d51e51310931bbba8",
+      "occurred_at": "2026-06-16T06:57:31.305926Z",
+      "prev_hash": "6b594d0d6845e89217a41e24c61f8769ae9c5c07093587c4d7f77dbeb93022da",
       "target_ref": "SOC 2",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "discovery.agent_reachable_import",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "1c8db5c30d85695c12d5c1fee856d9673c3fd78bc2a1bbe60ae5ddaf0698b364",
+      "chain_hash": "d7c63511631893a776777862e8eb84d793df6b794aee1744570ed51b7362a239",
       "chain_seq": 95,
-      "id": "e32ee3c5-6019-412f-a04f-fd208fbd9461",
+      "id": "0328fa4b-dc06-4bd9-a487-556003b19904",
       "kind": "other",
       "metadata": {
         "assets_new": 5,
         "reported": 5,
-        "scan_id": "e99de636-94f2-4838-bf9b-105fdb2f5581"
+        "scan_id": "0d0f7af2-1639-4b7b-a474-45c9f139ede9"
       },
-      "occurred_at": "2026-06-16T05:36:31.192242Z",
-      "prev_hash": "b20abc31be48d29fe0ae49f07d48715c33fb1ad8256d10c41e24660ba1a72e9b",
-      "target_ref": "090c564f-6330-4ecf-a74e-28cf4a6b5f7f",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.350305Z",
+      "prev_hash": "480150f32b4fe5af81e5a19925551e21b8821f5db3004f1f9d9febe506c64998",
+      "target_ref": "09818733-b759-4fc4-af92-9b6a156a11f9",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.target.created",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "c057b6d83ec81b938a2becbd45aa4e20235d08cf276afafec361af5086c1b6d0",
+      "chain_hash": "c80faa31e6ec2f561bdddc415c1db6fc62d6c312b9fdba5698fff8d37503a029",
       "chain_seq": 96,
-      "id": "9311c4e7-e53b-4c90-88ea-31663e922c15",
+      "id": "9fabbc0b-ffb0-4368-8da4-5db88cd3336a",
       "kind": "other",
       "metadata": {
         "address": "bastion.corp.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T05:36:31.202529Z",
-      "prev_hash": "1c8db5c30d85695c12d5c1fee856d9673c3fd78bc2a1bbe60ae5ddaf0698b364",
-      "target_ref": "e48dd520-83b8-4837-8e74-dc67cd4afe89",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.359364Z",
+      "prev_hash": "d7c63511631893a776777862e8eb84d793df6b794aee1744570ed51b7362a239",
+      "target_ref": "dc04779a-60d1-4c1a-806e-80c08d743c81",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "discovery.onboard",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "d01e0fd184673a01e6d896bc4495433635ddcb6a88b13c3bdee1d7ed98d26a0e",
+      "chain_hash": "ecb7105910de183d609b456d7afa0409ffd0d1b959f8820714fbc5983e7dfd94",
       "chain_seq": 97,
-      "id": "5de16e3c-5fe7-4e79-b874-7ea781f7de97",
+      "id": "f5e45c59-8d6c-4b41-aed9-c8aa74ab6ae2",
       "kind": "other",
       "metadata": {
-        "asset_id": "ecfc8f46-1604-47bd-a384-c9dce6be1330",
+        "asset_id": "796e0ebc-97da-4826-964f-9e05ac3afde0",
         "trigger": "manual"
       },
-      "occurred_at": "2026-06-16T05:36:31.204564Z",
-      "prev_hash": "c057b6d83ec81b938a2becbd45aa4e20235d08cf276afafec361af5086c1b6d0",
-      "target_ref": "e48dd520-83b8-4837-8e74-dc67cd4afe89",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.361209Z",
+      "prev_hash": "c80faa31e6ec2f561bdddc415c1db6fc62d6c312b9fdba5698fff8d37503a029",
+      "target_ref": "dc04779a-60d1-4c1a-806e-80c08d743c81",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "discovery.policy_update",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "a62315f01512b86c9967e238c8c14c1eb19592c9f42bf523824c7ec0f0c12ac9",
+      "chain_hash": "500d421388d043b7855fdcb1d04f9ec4e5371bd9a0949128310e04ab8b29da7c",
       "chain_seq": 98,
-      "id": "e17a0f87-f7d5-439e-a393-ca2492e94287",
+      "id": "50a960ad-317d-4786-972a-b37dbc314644",
       "kind": "other",
       "metadata": {
         "create_targets": false,
@@ -1427,17 +1427,17 @@
         "has_credential": false,
         "rules": 1
       },
-      "occurred_at": "2026-06-16T05:36:31.210239Z",
-      "prev_hash": "d01e0fd184673a01e6d896bc4495433635ddcb6a88b13c3bdee1d7ed98d26a0e",
-      "target_ref": "4570b17c-35e3-4633-9a1b-76d38678e6f7",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.366319Z",
+      "prev_hash": "ecb7105910de183d609b456d7afa0409ffd0d1b959f8820714fbc5983e7dfd94",
+      "target_ref": "b39c911b-0f79-4951-928e-339e84a47350",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "b1082f76229ced2de3d435bc23e746c5e521fcb9b2e37a006877b60719c663b3",
+      "chain_hash": "8fc7af39dcda7d89b5cf9ba39a3b5f036ef274302d1b43b211f19f9e94c29623",
       "chain_seq": 99,
-      "id": "4a603a20-a831-4d83-bab6-8f030c70b6b4",
+      "id": "a98a6c31-83bf-4ab1-bd2a-579bdb2b8991",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": false,
@@ -1446,17 +1446,17 @@
         "mode": "disabled",
         "rotate_on_checkin": true
       },
-      "occurred_at": "2026-06-16T05:36:31.221159Z",
-      "prev_hash": "a62315f01512b86c9967e238c8c14c1eb19592c9f42bf523824c7ec0f0c12ac9",
-      "target_ref": "853b40a8-acd8-455d-9d82-c18a7943d4b3",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.377216Z",
+      "prev_hash": "500d421388d043b7855fdcb1d04f9ec4e5371bd9a0949128310e04ab8b29da7c",
+      "target_ref": "d6dd0a54-ae72-42de-90f5-8b8f610730fc",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "sg-acme-payments-owner",
-      "chain_hash": "1e40be2d3368b9464a97f1ad678ae109579d3fd4de9ef49ad5420d5e78a0d54e",
+      "chain_hash": "7477b18f329bebd86f0cea7db7a44c8662a408a0efe66d3b3f4bea87c5ea47a7",
       "chain_seq": 100,
-      "id": "38fe6c9b-fd79-4b6a-82b8-dbc870a649fd",
+      "id": "29216ed3-44eb-426c-99a6-ac8c74bacd6d",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": true,
@@ -1465,53 +1465,10 @@
         "mode": "interval",
         "rotate_on_checkin": false
       },
-      "occurred_at": "2026-06-16T05:36:31.226189Z",
-      "prev_hash": "b1082f76229ced2de3d435bc23e746c5e521fcb9b2e37a006877b60719c663b3",
-      "target_ref": "cb16df5f-2890-4baa-a820-46009d612f32",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
-    },
-    {
-      "action": "compliance.export",
-      "actor": "sg-acme-payments-owner",
-      "chain_hash": "a9f621c658c0e699cc643bf021dca252aa14211ff0bc711c917fb82dfe61ba30",
-      "chain_seq": 101,
-      "id": "92c581ab-3dce-4053-b88e-ac29d4f3859f",
-      "kind": "evidence_exported",
-      "metadata": {
-        "chain_status": "valid",
-        "content_sha256": "060cd4581481ddc114da9bbb215b3254579594f39c896c880f9ed6dd9d0500b6",
-        "evidence_total": 100,
-        "framework": "PCI-DSS",
-        "mfa_satisfied": true
-      },
-      "occurred_at": "2026-06-16T05:48:44.378601Z",
-      "prev_hash": "1e40be2d3368b9464a97f1ad678ae109579d3fd4de9ef49ad5420d5e78a0d54e",
-      "target_ref": "PCI-DSS",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
-    },
-    {
-      "action": "policy.created",
-      "actor": "sg-acme-payments-owner",
-      "chain_hash": "f69c2199f4187b9b5cb1fd94c2c54a2246561261b5d0748615bc34d74c05f7b7",
-      "chain_seq": 102,
-      "id": "c84e9cb7-0aab-4cff-af72-36ed76be833b",
-      "kind": "policy_created",
-      "occurred_at": "2026-06-16T05:51:14.785425Z",
-      "prev_hash": "a9f621c658c0e699cc643bf021dca252aa14211ff0bc711c917fb82dfe61ba30",
-      "target_ref": "19ab9700-6827-4902-ad01-86837b6e0a50",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
-    },
-    {
-      "action": "policy.archived",
-      "actor": "sg-acme-payments-owner",
-      "chain_hash": "2ee2f6aa26a101b3ce47c1e168a3812cee8f1b50766845abfab20feca28574cc",
-      "chain_seq": 103,
-      "id": "abd1e619-f4f1-41e9-90c9-35dd5bdeaeac",
-      "kind": "policy_archived",
-      "occurred_at": "2026-06-16T05:51:19.798546Z",
-      "prev_hash": "f69c2199f4187b9b5cb1fd94c2c54a2246561261b5d0748615bc34d74c05f7b7",
-      "target_ref": "19ab9700-6827-4902-ad01-86837b6e0a50",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "occurred_at": "2026-06-16T06:57:31.382492Z",
+      "prev_hash": "8fc7af39dcda7d89b5cf9ba39a3b5f036ef274302d1b43b211f19f9e94c29623",
+      "target_ref": "165d52de-bc92-4cfe-947e-bf228909a7a1",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     }
   ]
 }

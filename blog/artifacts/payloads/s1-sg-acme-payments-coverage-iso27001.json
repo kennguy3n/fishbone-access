@@ -2,12 +2,11 @@
   "controls": [
     {
       "by_kind": {
-        "policy_archived": 1,
-        "policy_created": 7,
+        "policy_created": 6,
         "policy_promoted": 6
       },
       "covered": true,
-      "evidence_count": 14,
+      "evidence_count": 12,
       "id": "A.5.15",
       "kinds": [
         "policy_promoted",
@@ -73,10 +72,10 @@
     },
     {
       "by_kind": {
-        "evidence_exported": 2
+        "evidence_exported": 1
       },
       "covered": true,
-      "evidence_count": 2,
+      "evidence_count": 1,
       "id": "A.8.15",
       "kinds": [
         "evidence_exported"
@@ -86,6 +85,6 @@
   ],
   "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 53,
+  "evidence_total": 50,
   "framework": "ISO 27001"
 }

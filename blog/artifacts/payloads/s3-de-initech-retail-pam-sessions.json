@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-16T05:41:31.737179Z",
+      "created_at": "2026-06-16T07:02:31.657474Z",
       "deleted_at": null,
-      "ended_at": "2026-06-16T05:41:31.760429Z",
-      "id": "38370abc-8569-4ac0-a6e2-090dd99fe66a",
+      "ended_at": "2026-06-16T07:02:31.678867Z",
+      "id": "7cb0324e-7fc5-4bcb-bcff-9cc7e2ae5f61",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/38370abc-8569-4ac0-a6e2-090dd99fe66a/replay.bin",
-      "started_at": "2026-06-16T05:41:31.735523Z",
+      "replay_key": "sessions/7cb0324e-7fc5-4bcb-bcff-9cc7e2ae5f61/replay.bin",
+      "started_at": "2026-06-16T07:02:31.656011Z",
       "state": "closed",
       "subject": "de-initech-retail-owner",
-      "target_id": "beff2516-1e79-4ef2-b684-35d1bc2f2021",
-      "updated_at": "2026-06-16T05:41:31.760429Z",
-      "workspace_id": "863260a8-c03b-4b15-bd47-d269ded88c7a"
+      "target_id": "57a330cf-0415-4820-a254-c3ad359be2a6",
+      "updated_at": "2026-06-16T07:02:31.678867Z",
+      "workspace_id": "e8a12559-97bf-474b-8634-e5e025b1f3a0"
     }
   ]
 }

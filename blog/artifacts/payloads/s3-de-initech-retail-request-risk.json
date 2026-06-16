@@ -1,9 +1,9 @@
 {
   "request": {
-    "connector_id": "4661312e-532b-4192-bffd-90730c007554",
-    "created_at": "2026-06-16T05:41:02.186289Z",
+    "connector_id": "a8ff4c2a-94b5-4ea1-9568-a32d44721e8f",
+    "created_at": "2026-06-16T07:02:01.264866Z",
     "deleted_at": null,
-    "id": "88ce354a-de91-4101-bea1-f5205739474a",
+    "id": "54d2c2db-db4a-4c91-aca2-db47987d1965",
     "justification": "GDPR Article 15 data-subject access request export.",
     "requester_id": "de-initech-retail-owner",
     "resource_ref": "customer:gdpr-export",
@@ -14,17 +14,17 @@
     "role": "auditor",
     "state": "approved",
     "target_user_id": "de-initech-retail-owner",
-    "updated_at": "2026-06-16T05:41:02.204441Z",
-    "workspace_id": "863260a8-c03b-4b15-bd47-d269ded88c7a"
+    "updated_at": "2026-06-16T07:02:01.278642Z",
+    "workspace_id": "e8a12559-97bf-474b-8634-e5e025b1f3a0"
   },
   "risk": {
-    "created_at": "2026-06-16T05:41:02.190038Z",
+    "created_at": "2026-06-16T07:02:01.268959Z",
     "degraded": true,
     "deleted_at": null,
     "factors": [
       "ai_unavailable"
     ],
-    "id": "e9816802-05ba-4de6-9f7a-57b22eb47f87",
+    "id": "159f0a5c-6746-4f55-850d-8db91325ab1a",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -35,10 +35,10 @@
     },
     "rationale": "ai agent unavailable; applied fail-safe default",
     "recommendation": "needs_review",
-    "request_id": "88ce354a-de91-4101-bea1-f5205739474a",
+    "request_id": "54d2c2db-db4a-4c91-aca2-db47987d1965",
     "score": "medium",
     "source": "fallback",
-    "updated_at": "2026-06-16T05:41:02.190038Z",
-    "workspace_id": "863260a8-c03b-4b15-bd47-d269ded88c7a"
+    "updated_at": "2026-06-16T07:02:01.268959Z",
+    "workspace_id": "e8a12559-97bf-474b-8634-e5e025b1f3a0"
   }
 }

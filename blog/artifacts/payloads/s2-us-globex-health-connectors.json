@@ -411,7 +411,7 @@
     {
       "category": "Storage",
       "connected": true,
-      "connector_id": "7267469a-1c3c-4fbd-8dea-a7d80001d2d4",
+      "connector_id": "00797b2a-8638-418f-8e39-58cb14a5c297",
       "display_name": "Box",
       "operational": {
         "access_audit_stream": true,
@@ -2453,7 +2453,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "58fe9325-b1eb-4c11-bf9c-73242376df6a",
+      "connector_id": "52584713-a226-4a15-8a15-a9e41add1bd4",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,
@@ -2911,7 +2911,7 @@
     {
       "category": "IAM/SSO",
       "connected": true,
-      "connector_id": "daa3b224-7618-4af0-8eac-8ce4a8ab9432",
+      "connector_id": "083072b4-1c25-4c39-957a-4c8f2f7b750d",
       "display_name": "Okta",
       "operational": {
         "access_audit_stream": true,

@@ -74,7 +74,7 @@ policy" into "we can prove it"
 ([`s4-vn-umbrella-logistics-chain-verify.json`](../artifacts/payloads/s4-vn-umbrella-logistics-chain-verify.json)):
 
 ```json
-{ "length": 86, "ok": true, "status": "valid", "workspace_id": "b9b4b92c-d535-40c9-8041-1085b1463d9e" }
+{ "length": 86, "ok": true, "status": "valid", "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076" }
 ```
 
 That's the day-one win: a Vietnamese SME with *two policies* still produces a

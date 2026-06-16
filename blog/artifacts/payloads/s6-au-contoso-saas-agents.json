@@ -4,17 +4,17 @@
       "agent": {
         "agent_version": "1.6.0",
         "cert_fingerprint": "ef8ef2a1fd3a5681a65efbf438849d7707f7390382e6a62376719e48e0604838",
-        "cert_not_after": "2027-06-16T05:48:31.195893Z",
+        "cert_not_after": "2027-06-16T07:09:32.047415Z",
         "cert_serial": "ef8ef2a1fd3a5681a65efbf438849d77",
-        "created_at": "2026-06-16T05:48:31.196628Z",
+        "created_at": "2026-06-16T07:09:32.048149Z",
         "deleted_at": null,
-        "id": "855c6a97-22e9-45da-9b51-4fe2619228da",
-        "last_seen_at": "2026-06-16T05:57:51.953857Z",
+        "id": "d6a54be3-91ce-4477-b084-8441eeeab1ac",
+        "last_seen_at": "2026-06-16T07:09:39.675579Z",
         "name": "au-contoso-saas-edge-01",
         "platform": "linux/amd64",
         "status": "online",
-        "updated_at": "2026-06-16T05:57:51.955098Z",
-        "workspace_id": "d2c696f7-7652-4d8f-8af8-0ecfc1a578b4"
+        "updated_at": "2026-06-16T07:09:39.676732Z",
+        "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
       },
       "health": "online"
     }

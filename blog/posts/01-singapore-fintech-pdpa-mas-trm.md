@@ -209,7 +209,7 @@ against a registered bastion target: the JIT connect-token is redeemed, the
 operator's commands run through the **same `IORecorder` the live gateway uses**,
 and the session is **closed** with its recording anchored. `pam_sessions = 1` for
 this workspace, and the framed transcript is retrievable over
-`GET /pam/sessions/a70dcf3a-8bf1-4fd9-a466-6700c919e2b7/replay`:
+`GET /pam/sessions/f35079ec-b768-4f47-9d94-f062bffef38e/replay`:
 
 ```json
 { "frames": [
@@ -455,19 +455,21 @@ The same page also renders SOC 2's logical-access controls from the *same* chain
 
 ## Under the hood: the tamper-evident chain
 
-The number that matters to an auditor is not "100 events" — it's that the **100
+The number that matters to an auditor is not "101 events" — it's that the **101
 events form an unbroken hash chain**. Each record links to the previous by
 SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 100, "ok": true, "status": "valid", "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7" }
+{ "length": 101, "ok": true, "status": "valid", "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a
 `content_sha256` over the whole pack plus a per-file SHA-256, and the export
-*itself* is step-up-MFA-gated and recorded back onto the chain. The pack is a
-ZIP of newline-delimited JSON (`evidence.jsonl` with all 100 records,
+*itself* is step-up-MFA-gated and recorded back onto the chain as the **101st**
+event — which is why the live verifier above reads 101. The pack seals the 100
+records that existed at the instant of export: a ZIP of newline-delimited JSON
+(`evidence.jsonl` with all 100 records,
 `access-grants.jsonl`, `certification-*.jsonl`, `policies.jsonl`,
 `pam-recordings.jsonl` for the recorded session, `chain-verification.json`, and an
 auditor README). An auditor can re-hash the

@@ -236,6 +236,24 @@ func main() {
 		disp := harnesskit.NewStepUpDispenser(harnesskit.TOTPBase32Secret(ws.Slug))
 		prefix := "s" + strconv.Itoa(ws.Index) + "-" + ws.Slug + "-"
 		cap.exportPack(c, disp, prefix, e.framework)
+
+		// The evidence-pack export is itself an audited event (compliance.export),
+		// so it advances the workspace's hash chain by one. Re-capture this
+		// workspace's chain-verify and the exported framework's coverage *after*
+		// the export, overwriting the in-loop captures, so the committed payloads
+		// reflect the same post-export chain the live console (and the blog
+		// screenshots) show. The manifest inside the ZIP still snapshots the chain
+		// as it stood at export time (one shorter) — by design, since exporting is
+		// the next event on the chain.
+		fwToken := e.framework
+		for _, fw := range frameworks {
+			if fw.query == e.framework {
+				fwToken = fw.token
+				break
+			}
+		}
+		cap.get(c, prefix+"chain-verify", "/api/v1/compliance/chain/verify")
+		cap.get(c, prefix+"coverage-"+fwToken, "/api/v1/compliance/coverage?framework="+url.QueryEscape(e.framework))
 	}
 
 	harnesskit.Logf("\ncaptured %d ok, %d skipped, %d failed", cap.ok, cap.skip, cap.fail)

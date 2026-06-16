@@ -40,7 +40,7 @@ This is the headline. Initech ran *one* lifecycle — provision a store manager 
 a CDE-maintenance engineer, file a GDPR Article 15 export request, run a BSI C5 +
 GDPR review, close an ISO 27001 certification campaign, open a recorded
 privileged session, and detect a standing SoD conflict. The **same evidence
-chain (93 records)** then projects onto every framework's control set. Here is the console's
+chain (98 records)** then projects onto every framework's control set. Here is the console's
 compliance view, in **German** (locale `de`) — the same data, translated chrome:
 
 ![Initech's compliance evidence in German — control coverage from one chain](../artifacts/screenshots/s3-de-compliance-de.png)
@@ -125,7 +125,7 @@ both halves — `sod_anomalies = 1`, the `CC7.3` evidence
 
 Initech also opens a JIT-leased session to the POS bastion and records it through
 the production `IORecorder` — `pam_sessions = 1`, replayable over
-`GET /pam/sessions/38370abc-8569-4ac0-a6e2-090dd99fe66a/replay`, digest on the
+`GET /pam/sessions/7cb0324e-7fc5-4bcb-bcff-9cc7e2ae5f61/replay`, digest on the
 chain. That is what covers `CC6.7` / `A.8.2` ("privileged access monitored").
 The honest residual: the captured commands are representative I/O against a
 bastion target (no live SSH daemon in the demo), proving the record-and-replay

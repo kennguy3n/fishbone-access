@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-16T05:41:31.799561Z",
+      "created_at": "2026-06-16T07:02:31.72237Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,21 @@
           "resource": "pos:store-manager",
           "role": "operator"
         },
-        "rule_id": "6243567e-dc42-49d9-9542-18965bfe3f64",
+        "rule_id": "a21ab390-dae6-4a0c-bf24-053b06479af6",
         "rule_name": "Store-manager must not hold cardholder-data access",
         "severity": "critical",
         "subject": "ext-dual-role@de-initech-retail.example"
       },
-      "detected_at": "2026-06-16T05:41:31.799561Z",
+      "detected_at": "2026-06-16T07:02:31.72237Z",
       "disposition": "flagged",
-      "fingerprint": "912d08c94ac998846b30a110c46878af2f016054b711c96665d5b9eac36fed32",
-      "id": "3c90849b-46c1-4ad1-8f62-58ce509f6f0a",
+      "fingerprint": "c0a19212f930601c0e91852c1b05001d909aefee94427beb86a597e4937c8c19",
+      "id": "99d0e792-f471-49ac-b3b5-0c25ecc5699f",
       "kind": "sod_violation",
-      "rule_id": "6243567e-dc42-49d9-9542-18965bfe3f64",
+      "rule_id": "a21ab390-dae6-4a0c-bf24-053b06479af6",
       "severity": "critical",
       "subject": "ext-dual-role@de-initech-retail.example",
-      "updated_at": "2026-06-16T05:41:31.799561Z",
-      "workspace_id": "863260a8-c03b-4b15-bd47-d269ded88c7a"
+      "updated_at": "2026-06-16T07:02:31.72237Z",
+      "workspace_id": "e8a12559-97bf-474b-8634-e5e025b1f3a0"
     }
   ]
 }

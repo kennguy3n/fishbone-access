@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-16T05:36:01.945942Z",
+      "created_at": "2026-06-16T06:57:01.196296Z",
       "deleted_at": null,
-      "ended_at": "2026-06-16T05:36:01.972553Z",
-      "id": "a70dcf3a-8bf1-4fd9-a466-6700c919e2b7",
+      "ended_at": "2026-06-16T06:57:01.226964Z",
+      "id": "f35079ec-b768-4f47-9d94-f062bffef38e",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/a70dcf3a-8bf1-4fd9-a466-6700c919e2b7/replay.bin",
-      "started_at": "2026-06-16T05:36:01.94366Z",
+      "replay_key": "sessions/f35079ec-b768-4f47-9d94-f062bffef38e/replay.bin",
+      "started_at": "2026-06-16T06:57:01.19355Z",
       "state": "closed",
       "subject": "sg-acme-payments-owner",
-      "target_id": "bfb1b246-aa42-49d3-a0ae-658fa95d5910",
-      "updated_at": "2026-06-16T05:36:01.972553Z",
-      "workspace_id": "4570b17c-35e3-4633-9a1b-76d38678e6f7"
+      "target_id": "f279fc90-cd02-4204-8593-038e0430ceb9",
+      "updated_at": "2026-06-16T06:57:01.226964Z",
+      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
     }
   ]
 }
