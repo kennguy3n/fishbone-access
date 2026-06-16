@@ -260,11 +260,22 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 				}
 				logger.Warnf(ctx, "broker: heartbeat agent=%s: %v", id.AgentID, err)
 			}
-			// Coalesced directory refresh: keep our ownership entry fresh so peers
-			// keep forwarding to us. A lost CAS means the agent reconnected to
-			// another replica that took over — drop this now-stale tunnel.
-			if r.dir != nil && r.forwardAddr != "" && ac.ownerEpoch != 0 {
-				if err := r.dir.Refresh(ctx, id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
+			// Coalesced directory maintenance (heartbeat only, never per-dial).
+			if r.dir != nil && r.forwardAddr != "" {
+				if ac.ownerEpoch == 0 {
+					// We hold no ownership epoch: the initial Claim at register
+					// failed (e.g. a transient Postgres error), so a Refresh has
+					// nothing to update. Retry the Claim here so a registered agent
+					// becomes forward-reachable on the next heartbeat instead of
+					// waiting for a full reconnect.
+					if epoch, err := r.dir.Claim(ctx, id.WorkspaceID, id.AgentID, r.nodeID, r.forwardAddr); err != nil {
+						logger.Warnf(ctx, "broker: re-claim ownership agent=%s: %v", id.AgentID, err)
+					} else {
+						ac.ownerEpoch = epoch
+					}
+				} else if err := r.dir.Refresh(ctx, id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
+					// A lost CAS means the agent reconnected to another replica that
+					// took over — drop this now-stale tunnel.
 					if errors.Is(err, ErrOwnershipLost) {
 						logger.Infof(ctx, "broker: ownership lost, dropping stale tunnel workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
 						ownershipLost = true
@@ -290,8 +301,9 @@ func (r *Relay) applyRegister(ctx context.Context, ac *agentConn, reg RegisterPa
 	// Claim cross-replica ownership of this tunnel (coalesced — register only,
 	// never per-dial). A reconnect anywhere takes over via epoch CAS. Failure is
 	// fail-open relative to the LOCAL tunnel (which works regardless), matching
-	// the house posture for cross-replica state: we just won't be reachable by
-	// forwarding until a later heartbeat refresh re-claims successfully.
+	// the house posture for cross-replica state: ownerEpoch stays 0 and the next
+	// heartbeat retries the Claim (see serveControl), so we just won't be
+	// reachable by forwarding for at most one heartbeat interval.
 	if r.dir != nil && r.forwardAddr != "" {
 		epoch, err := r.dir.Claim(ctx, id.WorkspaceID, id.AgentID, r.nodeID, r.forwardAddr)
 		if err != nil {
