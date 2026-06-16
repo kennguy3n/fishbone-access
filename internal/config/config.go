@@ -1050,7 +1050,7 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst/shared=%t usagemetering=%t/%s/shared=%t billing=%t/hardcap=%t/%s hibernation=%t/idle=%s workermetrics=%q iamcore=%t issuer=%q}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst/shared=%t usagemetering=%t/%s/shared=%t billing=%t/hardcap=%t/%s hibernation=%t/idle=%s workermetrics=%q iamcore=%t issuer=%q agentbroker=%t/crossreplica=%t/node=%q/fwdaddr=%q/dirredis=%t}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
 		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst, c.RateLimitSharedStoreActive(),
@@ -1058,5 +1058,9 @@ func (c Config) String() string {
 		c.Billing.Enabled, c.Billing.EnforceHardCap, c.Billing.CacheTTL,
 		c.Tenancy.HibernationEnabled, c.Tenancy.DormantIdleThreshold, c.WorkerMetricsAddr,
 		c.IAMCore.Configured(), c.IAMCore.Issuer,
+		// Cross-replica forward plane: only non-sensitive fields — never the mTLS
+		// cert/key/CA material. crossreplica reflects the fully-wired gate.
+		c.AgentBroker.Configured(), c.AgentBroker.CrossReplicaConfigured(),
+		c.AgentBroker.NodeID, c.AgentBroker.ForwardAddr, c.DirectoryRedisActive(),
 	)
 }
