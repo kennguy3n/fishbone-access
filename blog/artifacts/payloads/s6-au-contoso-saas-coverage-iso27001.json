@@ -72,10 +72,10 @@
     },
     {
       "by_kind": {
-        "evidence_exported": 1
+        "evidence_exported": 3
       },
       "covered": true,
-      "evidence_count": 1,
+      "evidence_count": 3,
       "id": "A.8.15",
       "kinds": [
         "evidence_exported"
@@ -85,6 +85,6 @@
   ],
   "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 48,
+  "evidence_total": 50,
   "framework": "ISO 27001"
 }

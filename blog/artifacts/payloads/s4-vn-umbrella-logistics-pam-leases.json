@@ -2,25 +2,25 @@
   "leases": [
     {
       "approved_by": "vn-umbrella-logistics-owner",
-      "created_at": "2026-06-16T02:35:02.414634Z",
+      "created_at": "2026-06-13T16:50:32.093729Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T03:05:02.41952Z",
-      "granted_at": "2026-06-16T02:35:02.41952Z",
-      "id": "128a8324-6e81-423d-b1f7-049ac58153fc",
+      "expires_at": "2026-06-13T17:20:32.096808Z",
+      "granted_at": "2026-06-13T16:50:32.096808Z",
+      "id": "6582f352-def0-40f4-ba6b-594c1be201af",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "vn-umbrella-logistics-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": true,
+      "risk_degraded": false,
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
-      "risk_reason": "ai agent unavailable; applied fail-safe default",
-      "state": "approved",
+      "risk_level": "low",
+      "risk_reason": "rule-based risk=low from 1 factor(s)",
+      "state": "expired",
       "subject": "vn-umbrella-logistics-owner",
-      "target_id": "3fa0948d-21d8-41a6-85ca-42c7c5dbf49c",
-      "updated_at": "2026-06-16T02:35:02.41952Z",
-      "workspace_id": "14e2ff02-4214-487a-b0dd-f8be50c4423e"
+      "target_id": "923ae9c5-67c2-44ff-9079-68e7654aa40d",
+      "updated_at": "2026-06-13T16:50:32.096808Z",
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
     }
   ]
 }

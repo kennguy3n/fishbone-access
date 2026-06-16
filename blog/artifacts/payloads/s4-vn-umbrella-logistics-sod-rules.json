@@ -1,19 +1,19 @@
 {
   "rules": [
     {
-      "created_at": "2026-06-16T02:35:02.375543Z",
+      "created_at": "2026-06-13T16:50:32.072154Z",
       "deleted_at": null,
       "description": "PDPD operational integrity: dispatch and inventory-adjustment duties are separated to prevent shrinkage fraud.",
       "enabled": true,
-      "id": "566ee8c1-5d04-45ac-a03e-67c15cc74291",
+      "id": "fb108347-a358-4e1e-83b9-f8cb753c9576",
       "name": "Dispatcher must not also adjust inventory",
       "resource_a": "wms:dispatcher",
       "resource_b": "wms:inventory",
       "role_a": "operator",
       "role_b": "operator",
       "severity": "medium",
-      "updated_at": "2026-06-16T02:35:02.375543Z",
-      "workspace_id": "14e2ff02-4214-487a-b0dd-f8be50c4423e"
+      "updated_at": "2026-06-13T16:50:32.072154Z",
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc"
     }
   ]
 }

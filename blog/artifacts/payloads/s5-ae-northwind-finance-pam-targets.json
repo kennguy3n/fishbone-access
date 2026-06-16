@@ -2,42 +2,42 @@
   "targets": [
     {
       "address": "t24-bastion.northwind.internal:22",
-      "created_at": "2026-06-16T02:38:01.836106Z",
+      "created_at": "2026-06-13T16:53:31.624712Z",
       "deleted_at": null,
-      "id": "d5017ff2-0075-43cb-86e3-47bd57c43220",
+      "id": "72ba778a-9e09-4eea-88a1-e724f8fb563a",
       "lease_ttl_seconds": 1800,
       "name": "T24 bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-16T02:38:01.836106Z",
+      "updated_at": "2026-06-13T16:53:31.624712Z",
       "username": "t24-ops",
-      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
     },
     {
       "address": "treasury-db-1.northwind.internal:5432",
-      "created_at": "2026-06-16T02:37:31.710597Z",
+      "created_at": "2026-06-13T16:53:01.582925Z",
       "deleted_at": null,
-      "id": "94ba4c47-aa55-49b1-b992-20c021c268be",
+      "id": "ad1ca9a5-2265-49d6-a860-e8502c26bf03",
       "lease_ttl_seconds": 900,
       "name": "Treasury ledger (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-16T02:37:31.710597Z",
+      "updated_at": "2026-06-13T16:53:01.582925Z",
       "username": "treasury_ro",
-      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
     },
     {
       "address": "t24-prod-1.northwind.internal:22",
-      "created_at": "2026-06-16T02:37:02.615533Z",
+      "created_at": "2026-06-13T16:52:32.468788Z",
       "deleted_at": null,
-      "id": "df3d124a-4e02-4d60-a916-bbbd77c87c13",
+      "id": "c41481b7-fd3f-4602-8c31-8e871085b09e",
       "lease_ttl_seconds": 900,
       "name": "Temenos T24 core-banking host (t24-prod-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T02:37:02.615533Z",
+      "updated_at": "2026-06-13T16:52:32.468788Z",
       "username": "t24-admin",
-      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca"
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60"
     }
   ]
 }

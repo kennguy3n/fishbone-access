@@ -1,100 +1,60 @@
-=== RUN   TestEnrollIPThrottle
---- PASS: TestEnrollIPThrottle (0.00s)
-=== RUN   TestAgentEnrollListAndCrossTenantIsolation
---- PASS: TestAgentEnrollListAndCrossTenantIsolation (0.03s)
-=== RUN   TestAgentEnrollTokenIsOneShot
---- PASS: TestAgentEnrollTokenIsOneShot (0.03s)
-=== RUN   TestAgentBindUnbindTarget
---- PASS: TestAgentBindUnbindTarget (0.03s)
-=== RUN   TestAgentRevoke
---- PASS: TestAgentRevoke (0.03s)
-=== RUN   TestAgentMintUnavailableWithoutCA
---- PASS: TestAgentMintUnavailableWithoutCA (0.02s)
-=== RUN   TestBillingPlanDefaultsToTrial
---- PASS: TestBillingPlanDefaultsToTrial (0.03s)
-=== RUN   TestBillingStatementCurrentPeriodOverage
---- PASS: TestBillingStatementCurrentPeriodOverage (0.03s)
-=== RUN   TestBillingStatementInvalidPeriod
---- PASS: TestBillingStatementInvalidPeriod (0.03s)
-=== RUN   TestBillingStatementExplicitPeriodEmptyIsValid
---- PASS: TestBillingStatementExplicitPeriodEmptyIsValid (0.03s)
-=== RUN   TestBillingSetPlanRejectsUnknown
---- PASS: TestBillingSetPlanRejectsUnknown (0.02s)
-=== RUN   TestBillingSetPlanRejectsNegativeOverride
---- PASS: TestBillingSetPlanRejectsNegativeOverride (0.03s)
-=== RUN   TestBillingSetPlanRejectsInvertedOverride
---- PASS: TestBillingSetPlanRejectsInvertedOverride (0.02s)
-=== RUN   TestBillingPlanCrossTenantIsolation
---- PASS: TestBillingPlanCrossTenantIsolation (0.03s)
-=== RUN   TestBillingNotMountedWithoutReader
---- PASS: TestBillingNotMountedWithoutReader (0.03s)
-=== RUN   TestBillingHardDenyIsNotMetered
---- PASS: TestBillingHardDenyIsNotMetered (0.03s)
-=== RUN   TestBillingSelfServiceExemptFromHardCap
---- PASS: TestBillingSelfServiceExemptFromHardCap (0.03s)
 === RUN   TestPrivilegedAccessEndpoint
-{"time":"2026-06-16T02:42:21.545246011Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/privileged-access method=GET"}
+{"time":"2026-06-13T17:36:52.201614576Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/privileged-access method=GET"}
 --- PASS: TestPrivilegedAccessEndpoint (0.03s)
 === RUN   TestExportPackAuthzGate
-{"time":"2026-06-16T02:42:21.57322975Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.export] path=/api/v1/compliance/export method=POST"}
-{"time":"2026-06-16T02:42:21.57352975Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.export] path=/api/v1/compliance/export method=POST"}
+{"time":"2026-06-13T17:36:52.227797721Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.export] path=/api/v1/compliance/export method=POST"}
+{"time":"2026-06-13T17:36:52.228053748Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.export] path=/api/v1/compliance/export method=POST"}
 --- PASS: TestExportPackAuthzGate (0.03s)
 === RUN   TestCampaignCrossTenantIsolationHandler
---- PASS: TestCampaignCrossTenantIsolationHandler (0.03s)
+--- PASS: TestCampaignCrossTenantIsolationHandler (0.02s)
 === RUN   TestComplianceRoutesRBACGate
-{"time":"2026-06-16T02:42:21.634914482Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/evidence method=GET"}
-{"time":"2026-06-16T02:42:21.635299821Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/coverage method=GET"}
-{"time":"2026-06-16T02:42:21.635635989Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/chain/verify method=GET"}
-{"time":"2026-06-16T02:42:21.636005619Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/campaigns method=GET"}
-{"time":"2026-06-16T02:42:21.636296692Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.manage] path=/api/v1/compliance/campaigns method=POST"}
-{"time":"2026-06-16T02:42:21.636422036Z","level":"WARN","msg":"authz: permission denied role=auditor required=[compliance.manage] path=/api/v1/compliance/campaigns method=POST"}
-{"time":"2026-06-16T02:42:21.636543232Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.manage] path=/api/v1/compliance/campaigns/overdue-enforce method=POST"}
-{"time":"2026-06-16T02:42:21.636660631Z","level":"WARN","msg":"authz: permission denied role=auditor required=[compliance.manage] path=/api/v1/compliance/campaigns/overdue-enforce method=POST"}
---- PASS: TestComplianceRoutesRBACGate (0.03s)
+{"time":"2026-06-13T17:36:52.277294502Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/evidence method=GET"}
+{"time":"2026-06-13T17:36:52.277713724Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/coverage method=GET"}
+{"time":"2026-06-13T17:36:52.27799551Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/chain/verify method=GET"}
+{"time":"2026-06-13T17:36:52.278451641Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.read] path=/api/v1/compliance/campaigns method=GET"}
+{"time":"2026-06-13T17:36:52.278808867Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.manage] path=/api/v1/compliance/campaigns method=POST"}
+{"time":"2026-06-13T17:36:52.278975257Z","level":"WARN","msg":"authz: permission denied role=auditor required=[compliance.manage] path=/api/v1/compliance/campaigns method=POST"}
+{"time":"2026-06-13T17:36:52.279182704Z","level":"WARN","msg":"authz: permission denied role=operator required=[compliance.manage] path=/api/v1/compliance/campaigns/overdue-enforce method=POST"}
+{"time":"2026-06-13T17:36:52.279356258Z","level":"WARN","msg":"authz: permission denied role=auditor required=[compliance.manage] path=/api/v1/compliance/campaigns/overdue-enforce method=POST"}
+--- PASS: TestComplianceRoutesRBACGate (0.02s)
 === RUN   TestVerifyChainEndpointFullVsIncremental
---- PASS: TestVerifyChainEndpointFullVsIncremental (0.03s)
+--- PASS: TestVerifyChainEndpointFullVsIncremental (0.02s)
 === RUN   TestConnectorCatalogueListReturnsEveryProvider
---- PASS: TestConnectorCatalogueListReturnsEveryProvider (0.03s)
+--- PASS: TestConnectorCatalogueListReturnsEveryProvider (0.02s)
 === RUN   TestConnectorCatalogueCapabilityFilter
 --- PASS: TestConnectorCatalogueCapabilityFilter (0.02s)
 === RUN   TestConnectorCatalogueInvalidConnectedFilter
 --- PASS: TestConnectorCatalogueInvalidConnectedFilter (0.02s)
 === RUN   TestConnectorCatalogueConnectedFilterTriState
---- PASS: TestConnectorCatalogueConnectedFilterTriState (0.03s)
+--- PASS: TestConnectorCatalogueConnectedFilterTriState (0.02s)
 === RUN   TestConnectorCatalogueDetail
 --- PASS: TestConnectorCatalogueDetail (0.02s)
 === RUN   TestConnectorCatalogueFacets
 --- PASS: TestConnectorCatalogueFacets (0.02s)
 === RUN   TestConnectorSetupWizardFailOpen
-{"time":"2026-06-16T02:42:21.843460881Z","level":"WARN","msg":"aiclient: connector setup fallback for provider \"activecampaign\": aiclient: agent base URL not configured"}
+{"time":"2026-06-13T17:36:52.447508317Z","level":"WARN","msg":"aiclient: connector setup fallback for provider \"activecampaign\": aiclient: agent base URL not configured"}
 --- PASS: TestConnectorSetupWizardFailOpen (0.02s)
 === RUN   TestConnectorSetupWizardUnknownProvider
 --- PASS: TestConnectorSetupWizardUnknownProvider (0.02s)
-=== RUN   TestConnectorSetupSchemaCurated
---- PASS: TestConnectorSetupSchemaCurated (0.03s)
-=== RUN   TestConnectorSetupSchemaNoCuratedSchema
---- PASS: TestConnectorSetupSchemaNoCuratedSchema (0.03s)
-=== RUN   TestConnectorSetupSchemaUnknownProvider
---- PASS: TestConnectorSetupSchemaUnknownProvider (0.03s)
 === RUN   TestConnectorTestConnectivityMissingSerializesAsEmptyArray
 --- PASS: TestConnectorTestConnectivityMissingSerializesAsEmptyArray (0.02s)
 === RUN   TestConnectorCatalogueRequiresAuth
 --- PASS: TestConnectorCatalogueRequiresAuth (0.02s)
 === RUN   TestAccessRequestEndpointCrossTenantIsolation
-{"time":"2026-06-16T02:42:22.016521124Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
---- PASS: TestAccessRequestEndpointCrossTenantIsolation (0.03s)
+{"time":"2026-06-13T17:36:52.527542677Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
+--- PASS: TestAccessRequestEndpointCrossTenantIsolation (0.02s)
 === RUN   TestUnauthenticatedRejected
 --- PASS: TestUnauthenticatedRejected (0.02s)
 === RUN   TestSubresourceUnknownParentReturns404
 --- PASS: TestSubresourceUnknownParentReturns404 (0.02s)
 === RUN   TestPolicyPromoteRequiresMFA
---- PASS: TestPolicyPromoteRequiresMFA (0.03s)
+--- PASS: TestPolicyPromoteRequiresMFA (0.02s)
 === RUN   TestOptionalBodyEndpointAcceptsNoContentLength
-{"time":"2026-06-16T02:42:22.117358906Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
---- PASS: TestOptionalBodyEndpointAcceptsNoContentLength (0.03s)
+{"time":"2026-06-13T17:36:52.609982742Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
+--- PASS: TestOptionalBodyEndpointAcceptsNoContentLength (0.02s)
 === RUN   TestOptionalBodyChunkedBodyIsBound
-{"time":"2026-06-16T02:42:22.149341461Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
---- PASS: TestOptionalBodyChunkedBodyIsBound (0.03s)
+{"time":"2026-06-13T17:36:52.633398918Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
+--- PASS: TestOptionalBodyChunkedBodyIsBound (0.02s)
 === RUN   TestPacksListAndFilter
 --- PASS: TestPacksListAndFilter (0.02s)
 === RUN   TestPackGet
@@ -104,114 +64,89 @@
 === RUN   TestPauseRequiresPermission
 --- PASS: TestPauseRequiresPermission (0.02s)
 === RUN   TestPauseRequiresMFA
---- PASS: TestPauseRequiresMFA (0.03s)
+--- PASS: TestPauseRequiresMFA (0.02s)
 === RUN   TestPauseAndTerminateAuthorizedAudited
---- PASS: TestPauseAndTerminateAuthorizedAudited (0.03s)
+--- PASS: TestPauseAndTerminateAuthorizedAudited (0.02s)
 === RUN   TestSessionControlCrossTenantIsolation
---- PASS: TestSessionControlCrossTenantIsolation (0.03s)
+--- PASS: TestSessionControlCrossTenantIsolation (0.02s)
 === RUN   TestLeaseEndpointsHappyPath
-{"time":"2026-06-16T02:42:22.34967302Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
+{"time":"2026-06-13T17:36:52.807067727Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: skill \"access_risk_assessment\" returned HTTP 400: {\"error\":\"role is required and must be a string\"}"}
 --- PASS: TestLeaseEndpointsHappyPath (0.03s)
 === RUN   TestCreateTargetIdempotentHTTP
---- PASS: TestCreateTargetIdempotentHTTP (0.03s)
+--- PASS: TestCreateTargetIdempotentHTTP (0.02s)
 === RUN   TestRBACNonMemberFailsClosed
-{"time":"2026-06-16T02:42:22.404962549Z","level":"WARN","msg":"authz: membership denied workspace_id=70ced6d1-6853-4c9e-920e-fb9f2f09a50a user_id=user-stranger path=/api/v1/policies"}
---- PASS: TestRBACNonMemberFailsClosed (0.03s)
+{"time":"2026-06-13T17:36:52.853816475Z","level":"WARN","msg":"authz: membership denied workspace_id=9d709fae-1509-4a93-9978-58cdc429e3bf user_id=user-stranger path=/api/v1/policies"}
+--- PASS: TestRBACNonMemberFailsClosed (0.02s)
 === RUN   TestRBACAuditorReadAllowedWriteDenied
-{"time":"2026-06-16T02:42:22.433676801Z","level":"WARN","msg":"authz: permission denied role=auditor required=[policy.write] path=/api/v1/policies method=POST"}
---- PASS: TestRBACAuditorReadAllowedWriteDenied (0.03s)
+{"time":"2026-06-13T17:36:52.875880991Z","level":"WARN","msg":"authz: permission denied role=auditor required=[policy.write] path=/api/v1/policies method=POST"}
+--- PASS: TestRBACAuditorReadAllowedWriteDenied (0.02s)
 === RUN   TestRBACWorkflowGating
-{"time":"2026-06-16T02:42:22.459414157Z","level":"WARN","msg":"authz: permission denied role=auditor required=[workflow.edit] path=/api/v1/workflows method=POST"}
-{"time":"2026-06-16T02:42:22.459541183Z","level":"WARN","msg":"authz: permission denied role=auditor required=[workflow.edit] path=/api/v1/emergency-offboard method=POST"}
---- PASS: TestRBACWorkflowGating (0.03s)
+{"time":"2026-06-13T17:36:52.897208181Z","level":"WARN","msg":"authz: permission denied role=auditor required=[workflow.edit] path=/api/v1/workflows method=POST"}
+{"time":"2026-06-13T17:36:52.897338474Z","level":"WARN","msg":"authz: permission denied role=auditor required=[workflow.edit] path=/api/v1/emergency-offboard method=POST"}
+--- PASS: TestRBACWorkflowGating (0.02s)
 === RUN   TestRBACPAMTargetGating
-{"time":"2026-06-16T02:42:22.487332799Z","level":"WARN","msg":"authz: permission denied role=operator required=[pam.target.write] path=/api/v1/pam/targets method=POST"}
-{"time":"2026-06-16T02:42:22.487469183Z","level":"WARN","msg":"authz: permission denied role=auditor required=[pam.target.write] path=/api/v1/pam/targets method=POST"}
---- PASS: TestRBACPAMTargetGating (0.03s)
+{"time":"2026-06-13T17:36:52.919846738Z","level":"WARN","msg":"authz: permission denied role=operator required=[pam.target.write] path=/api/v1/pam/targets method=POST"}
+{"time":"2026-06-13T17:36:52.920026804Z","level":"WARN","msg":"authz: permission denied role=auditor required=[pam.target.write] path=/api/v1/pam/targets method=POST"}
+--- PASS: TestRBACPAMTargetGating (0.02s)
 === RUN   TestRBACConnectorGating
-{"time":"2026-06-16T02:42:22.514997982Z","level":"WARN","msg":"authz: permission denied role=operator required=[connector.manage] path=/api/v1/connectors method=POST"}
-{"time":"2026-06-16T02:42:22.515166927Z","level":"WARN","msg":"authz: permission denied role=auditor required=[connector.read] path=/api/v1/connectors method=GET"}
---- PASS: TestRBACConnectorGating (0.03s)
+{"time":"2026-06-13T17:36:52.942593606Z","level":"WARN","msg":"authz: permission denied role=operator required=[connector.manage] path=/api/v1/connectors method=POST"}
+{"time":"2026-06-13T17:36:52.94277281Z","level":"WARN","msg":"authz: permission denied role=auditor required=[connector.read] path=/api/v1/connectors method=GET"}
+--- PASS: TestRBACConnectorGating (0.02s)
 === RUN   TestRBACListRolesRequiresMembership
-{"time":"2026-06-16T02:42:22.540798161Z","level":"WARN","msg":"authz: membership denied workspace_id=bb32074e-58a8-40d7-9f92-1d299178904f user_id=user-stranger path=/api/v1/rbac/roles"}
---- PASS: TestRBACListRolesRequiresMembership (0.03s)
+{"time":"2026-06-13T17:36:52.96536848Z","level":"WARN","msg":"authz: membership denied workspace_id=6846f919-60ae-48d7-811f-f7a84becc20d user_id=user-stranger path=/api/v1/rbac/roles"}
+--- PASS: TestRBACListRolesRequiresMembership (0.02s)
 === RUN   TestRBACMyPermissions
-{"time":"2026-06-16T02:42:22.566555958Z","level":"WARN","msg":"authz: membership denied workspace_id=4deac63e-a547-4a6e-b6e9-1a0032efcf1f user_id=user-stranger path=/api/v1/rbac/permissions"}
---- PASS: TestRBACMyPermissions (0.03s)
+{"time":"2026-06-13T17:36:52.987604377Z","level":"WARN","msg":"authz: membership denied workspace_id=abd5b827-fe7a-4b84-bed1-836699569716 user_id=user-stranger path=/api/v1/rbac/permissions"}
+--- PASS: TestRBACMyPermissions (0.02s)
 === RUN   TestRBACManageGate
-{"time":"2026-06-16T02:42:22.593842397Z","level":"WARN","msg":"authz: permission denied role=auditor required=[rbac.manage] path=/api/v1/rbac/members/:userID method=PUT"}
---- PASS: TestRBACManageGate (0.03s)
+{"time":"2026-06-13T17:36:53.009002037Z","level":"WARN","msg":"authz: permission denied role=auditor required=[rbac.manage] path=/api/v1/rbac/members/:userID method=PUT"}
+--- PASS: TestRBACManageGate (0.02s)
 === RUN   TestRBACOwnerAssignsMember
 --- PASS: TestRBACOwnerAssignsMember (0.02s)
 === RUN   TestRBACOwnerEscalationForbidden
---- PASS: TestRBACOwnerEscalationForbidden (0.03s)
+--- PASS: TestRBACOwnerEscalationForbidden (0.02s)
 === RUN   TestRBACDeleteOwnerEscalationForbidden
---- PASS: TestRBACDeleteOwnerEscalationForbidden (0.03s)
+--- PASS: TestRBACDeleteOwnerEscalationForbidden (0.02s)
 === RUN   TestRBACMembersCrossTenantIsolation
---- PASS: TestRBACMembersCrossTenantIsolation (0.03s)
+--- PASS: TestRBACMembersCrossTenantIsolation (0.02s)
 === RUN   TestStepUpPromoteRequiresAssertion
---- PASS: TestStepUpPromoteRequiresAssertion (0.03s)
+--- PASS: TestStepUpPromoteRequiresAssertion (0.02s)
 === RUN   TestStepUpPromoteReplayDeniedAtHTTP
-{"time":"2026-06-16T02:42:22.75298242Z","level":"WARN","msg":"mfa: TOTPMFAVerifier: replay rejected workspace_id=8cd7e30e-3008-4dc2-95c8-70f9dc57f649 user_id=user-owner scope=policy.promote"}
-{"time":"2026-06-16T02:42:22.753021533Z","level":"WARN","msg":"mfa: step-up denied workspace_id=8cd7e30e-3008-4dc2-95c8-70f9dc57f649 user_id=user-owner scope=policy.promote"}
---- PASS: TestStepUpPromoteReplayDeniedAtHTTP (0.03s)
+{"time":"2026-06-13T17:36:53.138438734Z","level":"WARN","msg":"mfa: TOTPMFAVerifier: replay rejected workspace_id=377e0623-6d42-4fd8-9c79-ba89ada074d3 user_id=user-owner scope=policy.promote"}
+{"time":"2026-06-13T17:36:53.138466816Z","level":"WARN","msg":"mfa: step-up denied workspace_id=377e0623-6d42-4fd8-9c79-ba89ada074d3 user_id=user-owner scope=policy.promote"}
+--- PASS: TestStepUpPromoteReplayDeniedAtHTTP (0.02s)
 === RUN   TestStepUpPromoteBadCodeDenied
-{"time":"2026-06-16T02:42:22.778883685Z","level":"WARN","msg":"mfa: step-up denied workspace_id=bad38456-5cfc-4b28-b1a1-26f23b6949d7 user_id=user-owner scope=policy.promote"}
---- PASS: TestStepUpPromoteBadCodeDenied (0.03s)
+{"time":"2026-06-13T17:36:53.161728408Z","level":"WARN","msg":"mfa: step-up denied workspace_id=d4e92bf2-db86-4b23-a591-4962612d4747 user_id=user-owner scope=policy.promote"}
+--- PASS: TestStepUpPromoteBadCodeDenied (0.02s)
 === RUN   TestCreateRequestRunsAIReviewAndReturnsVerdict
---- PASS: TestCreateRequestRunsAIReviewAndReturnsVerdict (0.03s)
+--- PASS: TestCreateRequestRunsAIReviewAndReturnsVerdict (0.02s)
 === RUN   TestCreateRequestSelfServiceDefaultsTarget
---- PASS: TestCreateRequestSelfServiceDefaultsTarget (0.03s)
+--- PASS: TestCreateRequestSelfServiceDefaultsTarget (0.02s)
 === RUN   TestCreateRequestRequiresRole
-{"time":"2026-06-16T02:42:22.831426837Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: invoke \"access_anomaly_detection\": Post \"http://127.0.0.1:41429/a2a/invoke\": dial tcp 127.0.0.1:41429: connect: connection refused"}
+{"time":"2026-06-13T17:36:53.203392471Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: invoke \"access_anomaly_detection\": Post \"http://127.0.0.1:36527/a2a/invoke\": dial tcp 127.0.0.1:36527: connect: connection refused"}
 --- PASS: TestCreateRequestRequiresRole (0.02s)
 === RUN   TestHighRiskApprovalRequiresStepUp
-{"time":"2026-06-16T02:42:22.87806176Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
+{"time":"2026-06-13T17:36:53.243886654Z","level":"WARN","msg":"aiclient: risk assessment fallback (failClosed=false): aiclient: agent base URL not configured"}
 --- PASS: TestHighRiskApprovalRequiresStepUp (0.02s)
 === RUN   TestMediumRiskApprovalNoStepUp
-{"time":"2026-06-16T02:42:22.879549441Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: agent base URL not configured"}
---- PASS: TestMediumRiskApprovalNoStepUp (0.03s)
+{"time":"2026-06-13T17:36:53.245380268Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: agent base URL not configured"}
+--- PASS: TestMediumRiskApprovalNoStepUp (0.02s)
 === RUN   TestHealthAlwaysOK
 --- PASS: TestHealthAlwaysOK (0.00s)
 === RUN   TestReadyzReflectsFlag
 --- PASS: TestReadyzReflectsFlag (0.00s)
 === RUN   TestDegradedWhenNoValidator
+{"time":"2026-06-13T17:36:53.267213334Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: invoke \"access_anomaly_detection\": Post \"http://127.0.0.1:34681/a2a/invoke\": dial tcp 127.0.0.1:34681: connect: connection refused"}
 --- PASS: TestDegradedWhenNoValidator (0.00s)
 === RUN   TestWhoamiWithValidator
-{"time":"2026-06-16T02:42:22.904906718Z","level":"WARN","msg":"aiclient: anomaly detection fallback (empty): aiclient: invoke \"access_anomaly_detection\": Post \"http://127.0.0.1:33291/a2a/invoke\": dial tcp 127.0.0.1:33291: connect: connection refused"}
 --- PASS: TestWhoamiWithValidator (0.00s)
 === RUN   TestWhoamiNilClaimsFailsClosed
 --- PASS: TestWhoamiNilClaimsFailsClosed (0.00s)
 === RUN   TestListProvidersUnauthenticated
 --- PASS: TestListProvidersUnauthenticated (0.00s)
-=== RUN   TestRateLimiterWiredOnAuthenticatedSurface
---- PASS: TestRateLimiterWiredOnAuthenticatedSurface (0.00s)
-=== RUN   TestRateLimiterNotMountedInDegradedMode
---- PASS: TestRateLimiterNotMountedInDegradedMode (0.00s)
-=== RUN   TestUsageReadReturnsCurrentPeriod
---- PASS: TestUsageReadReturnsCurrentPeriod (0.02s)
-=== RUN   TestUsageReadCrossTenantIsolation
---- PASS: TestUsageReadCrossTenantIsolation (0.03s)
-=== RUN   TestUsageReadEmptyIsSuccess
---- PASS: TestUsageReadEmptyIsSuccess (0.04s)
-=== RUN   TestUsageReadNotMountedWithoutReader
---- PASS: TestUsageReadNotMountedWithoutReader (0.04s)
-=== RUN   TestServeRecordsActivityAndUsage
-{"time":"2026-06-16T02:42:23.042103831Z","level":"WARN","msg":"webaccess: upgrade failed: websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header"}
-{"time":"2026-06-16T02:42:23.042133807Z","level":"WARN","msg":"webaccess: upgrade failed: websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header"}
---- PASS: TestServeRecordsActivityAndUsage (0.00s)
-=== RUN   TestServeNoRecordWhenUnauthenticated
-=== RUN   TestServeNoRecordWhenUnauthenticated/missing_token
-=== RUN   TestServeNoRecordWhenUnauthenticated/no_workspace_for_tenant
---- PASS: TestServeNoRecordWhenUnauthenticated (0.00s)
-    --- PASS: TestServeNoRecordWhenUnauthenticated/missing_token (0.00s)
-    --- PASS: TestServeNoRecordWhenUnauthenticated/no_workspace_for_tenant (0.00s)
-=== RUN   TestServeNilRecorderAndMeter
-{"time":"2026-06-16T02:42:23.042404151Z","level":"WARN","msg":"webaccess: upgrade failed: websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header"}
---- PASS: TestServeNilRecorderAndMeter (0.00s)
 === RUN   TestEmergencyOffboardRecordsReasonInAudit
---- PASS: TestEmergencyOffboardRecordsReasonInAudit (0.03s)
+--- PASS: TestEmergencyOffboardRecordsReasonInAudit (0.02s)
 === RUN   TestEmergencyOffboardRequiresMFA
 --- PASS: TestEmergencyOffboardRequiresMFA (0.02s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/handlers	2.033s
+ok  	github.com/kennguy3n/fishbone-access/internal/handlers	1.155s

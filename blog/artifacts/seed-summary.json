@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-16T02:27:28.750826739Z",
+  "generated_at": "2026-06-13T16:42:41.528062797Z",
   "api_base": "http://localhost:8080",
   "workspaces": [
     {
@@ -9,7 +9,7 @@
       "region": "sg",
       "industry": "finance",
       "tenant_id": "tenant-sg-acme-payments",
-      "workspace_id": "32c32250-e1a1-4c23-931b-c16140544b33",
+      "workspace_id": "7eb57816-3d54-4b9a-b095-a853acc1370a",
       "locale": "en",
       "counts": {
         "members": 5,
@@ -30,35 +30,35 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "c13bd6f4-9dc0-480a-8486-3d94947bb847",
-        "campaign_id": "fc23678b-a776-4bf0-bdd5-86003f189b04",
-        "manual_connector_id": "03b0b72f-eaa9-4269-b220-db1449887a6f",
+        "review_id": "3fabe313-158e-41ae-bea0-1f5b0181f984",
+        "campaign_id": "7f0b8677-22d7-4ec5-aa87-2b713ee6692a",
+        "manual_connector_id": "b01fb102-1478-4b68-ba11-915a6faba5b7",
         "connector_ids": [
-          "03b0b72f-eaa9-4269-b220-db1449887a6f",
-          "064fe31a-1cde-492d-91a9-e4421ab11efb",
-          "0df93fb3-b25f-44fa-9c65-ff46d746eedd",
-          "99ce55d4-3a50-488c-aff5-ca1bb15d244f"
+          "1f28b34e-3a1d-4a51-a4b4-dc7ee64d62a5",
+          "b01fb102-1478-4b68-ba11-915a6faba5b7",
+          "65ebd439-1e8d-4ace-a28b-22017a56bccc",
+          "b89c301c-1d33-460d-907a-7d836ecb9b04"
         ],
         "policy_ids": [
-          "821ba3bb-bb6a-43ac-a5af-d6147efe440d",
-          "9d9ab993-8d88-47a5-a9b3-8a307ac6a1f1",
-          "3ea43f48-c96c-4038-b8ab-1717b0654f3e",
-          "84be253a-7b83-42ce-9d58-01237340b704",
-          "6a7c64b3-5cfd-46da-99af-4645c2c72171",
-          "d2768846-4962-442d-9d84-6779ef2a4467"
+          "25c7fc99-f13d-400d-9115-8764950abc32",
+          "e326c86a-f4eb-40dd-a03a-fbf43779ef78",
+          "3db4c3f4-47f5-4e4e-bfe7-e9dc034cdc86",
+          "7f47aa27-7367-4cd3-9ce5-ac0618b36c29",
+          "afd43299-1fa2-4eef-be7c-ff8afd7fb453",
+          "02ed7658-4016-4ccb-99e9-6ce99a1145da"
         ],
         "pam_target_ids": [
-          "39e74cca-8583-4ef2-ad08-4360749293b7",
-          "c0ba837c-fc9f-4700-be7c-80011188e85b"
+          "8fd829d9-00e7-4fa8-9440-e164909c81f2",
+          "bbc2e9bf-b6b5-41ee-9460-7069d20b2ed9"
         ],
-        "pam_lease_id": "25a50a56-d543-4b46-8848-741eea2a5093",
-        "pam_session_id": "4514afbb-75f7-4e89-adbc-c7c8f441aa25",
+        "pam_lease_id": "56ec1766-4868-4120-ba65-42f40c116c89",
+        "pam_session_id": "27eeb988-0912-4234-b407-46712aae6d7b",
         "contractor_grant_ids": [
-          "5f38791b-4886-4ca2-a89b-9fd875aa07ac",
-          "4d5fccbe-ab6b-428f-bb82-a0bf828c05aa"
+          "5dcdea77-6490-4fc2-b624-34660b02c9d9",
+          "58ca43ef-5ea2-4da5-9ff9-aa6016cfeee8"
         ],
         "sod_rule_ids": [
-          "745ed5f0-ac02-4db5-8e4e-a1ee478a47e5"
+          "4c0c9162-11a8-4d0b-a309-19f38a825f6d"
         ]
       }
     },
@@ -69,7 +69,7 @@
       "region": "us",
       "industry": "healthcare",
       "tenant_id": "tenant-us-globex-health",
-      "workspace_id": "0699aeba-00f9-4e52-a90d-f60fa57b15ae",
+      "workspace_id": "af1980e8-ae55-414e-9290-f46b66738e0b",
       "locale": "en",
       "counts": {
         "members": 5,
@@ -90,32 +90,32 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "05348938-3c69-4c2e-bcfe-aaf26158c019",
-        "campaign_id": "6e79ec30-90c7-4afd-8deb-89c42f4239b0",
-        "manual_connector_id": "3758596a-6968-4baf-a504-d2a33f69797e",
+        "review_id": "c497a6c8-a57b-46d8-b3db-2b3e07bd2f7d",
+        "campaign_id": "817a35d2-4549-476b-a7b2-805a934f4186",
+        "manual_connector_id": "ef706508-6926-42b1-8bf5-4ae8cc62a935",
         "connector_ids": [
-          "8d15909a-2b5b-4a78-8226-c7eb78dc6526",
-          "3758596a-6968-4baf-a504-d2a33f69797e",
-          "ec6adbeb-6ee7-4112-acc5-ab9dc855d1f7"
+          "8918415f-1386-46c6-a480-0056a476353e",
+          "ef706508-6926-42b1-8bf5-4ae8cc62a935",
+          "4416bf03-b1d3-42af-b0d3-2ba23139b1e6"
         ],
         "policy_ids": [
-          "8c14caeb-f7ab-49d0-ad78-28ac8046b26f",
-          "a6b315e1-84e4-41e3-8e35-5a50bf3060a5",
-          "96953661-b98b-4de7-b7ec-9f7acbba5d83",
-          "fca0eb01-548f-4860-b4fd-2f88e686912a",
-          "f1f1311b-30de-42e6-b48f-49b79a93320b"
+          "c4f937cf-5d53-4606-a394-934c545b1aa2",
+          "5138061a-6355-416a-8ad5-5bdfa50b07ed",
+          "79b64218-6364-424c-809e-2bf8fdb68e86",
+          "4de36ddf-148f-488d-881d-cccd6590d0c0",
+          "6bd87ddf-1576-4c6a-894d-5041b192591c"
         ],
         "pam_target_ids": [
-          "fdb8ae8e-4a0c-424e-92ae-8ec57440c4e2",
-          "7809b4ae-35dc-4c36-8fcd-c486cc4b573e"
+          "d78a139d-921c-483b-9388-d54c298a9989",
+          "9162e6de-7858-4f8b-b1f2-4897b5d698e3"
         ],
-        "pam_lease_id": "e2b4dcb4-3cec-4a10-8a30-c14e6c0d7538",
-        "pam_session_id": "8f721693-ae23-4770-a41f-29c0b13e5811",
+        "pam_lease_id": "ed42f87b-e4cd-4e01-a8ca-4f65fc7a1c9a",
+        "pam_session_id": "771ffa8a-8e66-4d95-a51e-fe72d1af8b82",
         "contractor_grant_ids": [
-          "592b40f2-572f-4555-aea4-5ecf9fa96a76"
+          "770e7f80-6625-44a8-a353-67d979d84c02"
         ],
         "sod_rule_ids": [
-          "cd644003-f352-4c51-bade-3d4d1fbbc96c"
+          "ea08ca06-ba78-49a2-88c1-af3ecbe4ae50"
         ]
       }
     },
@@ -126,7 +126,7 @@
       "region": "de",
       "industry": "retail",
       "tenant_id": "tenant-de-initech-retail",
-      "workspace_id": "a39e6010-741f-4a94-aa81-80a3715b2693",
+      "workspace_id": "40d95482-a5b5-4607-9fff-f38add1edc63",
       "locale": "de",
       "counts": {
         "members": 5,
@@ -147,36 +147,36 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "c255435a-2147-4e37-a138-72b96e8316c4",
-        "campaign_id": "e89e82fc-74eb-4897-aae3-421737f59440",
-        "manual_connector_id": "cc0ef0a7-30d2-48d1-a3d5-5398b32ca7c5",
+        "review_id": "f27f9668-0d76-416b-912f-806fb32aa2e0",
+        "campaign_id": "1494f6d6-3bf4-4474-a09a-51030322ab37",
+        "manual_connector_id": "14a1df7e-61e7-490b-948c-da1b6e4dbd7d",
         "connector_ids": [
-          "76c3ce5e-5843-4156-b9d9-046e368aaf4d",
-          "05400783-7e92-43f1-86a3-3bfa77be8c90",
-          "347997ed-a85f-451b-b0f6-8fd793231d5b",
-          "cc0ef0a7-30d2-48d1-a3d5-5398b32ca7c5"
+          "090fe26d-0253-4e12-91c1-9286c412225a",
+          "6d8b28a8-13b4-43ce-92c1-b43f76fcfc51",
+          "0808f345-b8ef-4117-9992-13ec8db8a0d6",
+          "14a1df7e-61e7-490b-948c-da1b6e4dbd7d"
         ],
         "policy_ids": [
-          "23b7990c-d671-4989-9901-dc87dfca8c56",
-          "2ac5f75e-e2eb-4720-b6ef-36b1cfdb5b56",
-          "ad1bdd0f-0419-44e3-8388-933515de7466",
-          "96ed261f-3aa7-4ab2-aefa-26bf87b050c6",
-          "1df77691-a6a7-4430-8e7e-eb3496678e56",
-          "e48ca1c7-e95c-45e8-9057-556e016786fe",
-          "b2aa1b39-7d7c-4c58-8add-ecef35b09b13",
-          "adeba0fa-af25-4bf2-9639-8a8a12e408e1"
+          "e077125d-477a-4212-9e98-bcef9b006950",
+          "9fd6f588-47b5-42a2-a331-cf1610b40e4b",
+          "c1643253-0426-4887-a844-ab3dcbd71bf3",
+          "b457a3da-d90e-4310-8e7a-cf785c16dd02",
+          "fb56963a-5032-4020-a976-5d7f771fc45c",
+          "4eb9242d-947a-4852-abc7-2849990fe24c",
+          "e4c45042-95dc-400e-88f0-a60c0ba78e8a",
+          "d844dd46-db2b-4f54-a9b1-638eb504c485"
         ],
         "pam_target_ids": [
-          "627d67fb-8b4f-4e1c-849e-3d86af9501c9",
-          "38d88668-913a-4f32-87a5-db542a072b8c"
+          "108753ec-323e-40b7-9568-f5bb6fb04a05",
+          "c84890fe-a966-4009-8c19-fb00e5a20236"
         ],
-        "pam_lease_id": "65b78879-04b2-4e29-9a24-d2ecf1f3bd7e",
-        "pam_session_id": "eeec6670-a5c6-4b4c-a0be-4de687961c1d",
+        "pam_lease_id": "03947647-9bfd-45c3-8155-fdd5a3ba17b8",
+        "pam_session_id": "96c5ba01-4e0b-4ebf-934e-de0fd292f9dd",
         "contractor_grant_ids": [
-          "41afa2d5-5f20-4346-b377-0ca2a683b632"
+          "73d38f15-00ad-4f44-977b-a0ad62cd6a1a"
         ],
         "sod_rule_ids": [
-          "d6ad771f-98ac-4dcd-b306-f4bb29650faf"
+          "8bff2d32-41ad-4b18-8519-31a4e7fcc85c"
         ]
       }
     },
@@ -187,7 +187,7 @@
       "region": "vn",
       "industry": "any",
       "tenant_id": "tenant-vn-umbrella-logistics",
-      "workspace_id": "14e2ff02-4214-487a-b0dd-f8be50c4423e",
+      "workspace_id": "4ec2b7ad-5408-4813-9127-fbf78b25bddc",
       "locale": "vi",
       "counts": {
         "members": 5,
@@ -208,28 +208,28 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "abfabaf4-6338-48b4-b07f-5c9993bad55f",
-        "campaign_id": "0c4f2fb7-6102-49dd-abae-918613e49be3",
-        "manual_connector_id": "5f8cb034-267a-46e7-bf27-2b6230d73b3b",
+        "review_id": "f98b12af-88e8-42ba-81b5-33ac00ff74f7",
+        "campaign_id": "e1b623e8-0499-428d-9a96-f59924e1396f",
+        "manual_connector_id": "45ba4ba9-20a6-4b9a-89f5-a9c84c1106ee",
         "connector_ids": [
-          "355cc1bb-4a7a-4bbb-83b0-cb1e6307e9a2",
-          "5f8cb034-267a-46e7-bf27-2b6230d73b3b",
-          "55d716c8-4661-4544-96ef-47830872eb0a"
+          "45ba4ba9-20a6-4b9a-89f5-a9c84c1106ee",
+          "e0918276-196d-41e0-8172-df9395b17dfc",
+          "78116d17-f30a-433e-b966-58ec0bec1e7d"
         ],
         "policy_ids": [
-          "87d9b26c-5b2d-4403-8f23-f81825c13eae",
-          "d3fe7990-f81e-489e-8cfe-0a4897f0ea15"
+          "fae35af8-237b-46bc-a2e2-e0148a4c76a4",
+          "940cad58-b396-46cd-b1e5-2713288d092a"
         ],
         "pam_target_ids": [
-          "3fa0948d-21d8-41a6-85ca-42c7c5dbf49c"
+          "923ae9c5-67c2-44ff-9079-68e7654aa40d"
         ],
-        "pam_lease_id": "128a8324-6e81-423d-b1f7-049ac58153fc",
-        "pam_session_id": "c7134789-126a-454c-af6d-c175e0c5a560",
+        "pam_lease_id": "6582f352-def0-40f4-ba6b-594c1be201af",
+        "pam_session_id": "089d3e39-48a0-42ab-8b53-92f946c680e7",
         "contractor_grant_ids": [
-          "be1b38dc-5760-4f5d-a8ca-d31a3da09d77"
+          "52cd0649-f39c-4d5b-9b95-ae5c82c92645"
         ],
         "sod_rule_ids": [
-          "566ee8c1-5d04-45ac-a03e-67c15cc74291"
+          "fb108347-a358-4e1e-83b9-f8cb753c9576"
         ]
       }
     },
@@ -240,7 +240,7 @@
       "region": "ae",
       "industry": "finance",
       "tenant_id": "tenant-ae-northwind-finance",
-      "workspace_id": "72b76f61-e22e-43fb-a1dc-36bff255c9ca",
+      "workspace_id": "340edba0-b440-43b0-be61-574b4654da60",
       "locale": "ar",
       "counts": {
         "members": 5,
@@ -261,33 +261,33 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "b18ca2a5-e55b-48cc-94be-e06a04428269",
-        "campaign_id": "1c0a5d57-ad9f-49a4-bcfb-1f66a8cf4104",
-        "manual_connector_id": "97eda4ae-b6ff-42de-baa8-49e563c01513",
+        "review_id": "5d694e16-8c3c-4e27-926b-d0a2996c3cbc",
+        "campaign_id": "adefd6bb-94d5-4b80-aede-1e5f7d0a4166",
+        "manual_connector_id": "8b332100-4c54-40c8-ba0b-e8d767525c25",
         "connector_ids": [
-          "97eda4ae-b6ff-42de-baa8-49e563c01513",
-          "97c15162-0425-4b0c-b6aa-b9d12e4c076d",
-          "bffc4149-b4dc-4dc7-bf40-dce5b6a690b1"
+          "8b332100-4c54-40c8-ba0b-e8d767525c25",
+          "e3180653-ebbc-4145-9ab6-71cb2dc9a7f5",
+          "cb83eea9-1480-429b-b3f4-b4b8e66bd17a"
         ],
         "policy_ids": [
-          "85e13b73-c6b5-46a7-9156-090842854f28",
-          "dc89da6a-6743-4a78-99ae-acebb5a1dae0",
-          "bc6253ac-c386-4f6a-8ada-b7898ac1d509",
-          "91ff00a5-16d2-4f32-9afe-9af62d66a71d",
-          "a4138004-74d0-4e5c-aa75-39edbc73fe62",
-          "33c083d1-d432-46c5-b78c-090dab9df6fa"
+          "7804ad04-0b8d-4291-9d30-489c953845f7",
+          "dbfd592d-2959-4f7b-8e42-26d974ff07a9",
+          "57e68592-4ece-4723-ab3f-849913d561fc",
+          "f878adbe-0b81-445b-94dc-f63a978d4674",
+          "80fea3b2-1939-4e5b-a79d-d5c71d8bf2f7",
+          "2eeaeafa-2da4-4150-84fb-cb37115e3340"
         ],
         "pam_target_ids": [
-          "df3d124a-4e02-4d60-a916-bbbd77c87c13",
-          "94ba4c47-aa55-49b1-b992-20c021c268be"
+          "c41481b7-fd3f-4602-8c31-8e871085b09e",
+          "ad1ca9a5-2265-49d6-a860-e8502c26bf03"
         ],
-        "pam_lease_id": "b5866ef6-9fbf-49f1-a16e-b52d2ea0668a",
-        "pam_session_id": "0f99b540-cde1-4827-84fb-dcee3f835eb3",
+        "pam_lease_id": "6719866c-8686-45ab-b954-551fe56d0ec3",
+        "pam_session_id": "a44bb3ea-6087-446f-b1e5-c94655dbfadd",
         "contractor_grant_ids": [
-          "38185e86-356c-4fe6-ac13-762899ba0b96"
+          "3da727a6-09db-46cf-9397-446418daef0e"
         ],
         "sod_rule_ids": [
-          "a14f29f9-7c17-47b0-9c5a-2e1f92e0d15e"
+          "2ce776ca-81b4-4c4c-9a50-883ac48208c8"
         ]
       }
     },
@@ -298,7 +298,7 @@
       "region": "au",
       "industry": "saas",
       "tenant_id": "tenant-au-contoso-saas",
-      "workspace_id": "005c22ba-0e64-47fb-a9e6-21cbbe2f7f60",
+      "workspace_id": "c2c210cd-53a6-4d35-b60c-e76e0259ec00",
       "locale": "en",
       "counts": {
         "members": 5,
@@ -319,34 +319,34 @@
         "sod_anomalies": 1
       },
       "ids": {
-        "review_id": "ad5f5808-2dbc-4b0a-8039-d283e4b7fae0",
-        "campaign_id": "8abd1273-be26-4c18-a1ee-341e5ee9d74a",
-        "manual_connector_id": "cfbd145e-bf7b-46e3-9597-7e893e27a810",
+        "review_id": "9b1cdf4c-b8a7-4a93-89eb-7897937ffb1e",
+        "campaign_id": "a770a7fe-d51b-458d-8f59-c9111439b2bc",
+        "manual_connector_id": "2983da27-098d-4df9-9f61-8cfd4ddff986",
         "connector_ids": [
-          "cfbd145e-bf7b-46e3-9597-7e893e27a810",
-          "3c5a89fa-712b-404f-9ebe-cbf5be7bf81d",
-          "7cb7dc92-f1ff-4740-bd1c-49e9026ec42f",
-          "43ae8a4f-7bcf-405a-85de-bc8e052be68c"
+          "655f6aea-56a8-43d2-9e06-e686fef039f7",
+          "e8e3468c-7bde-44b6-8628-d5d5f2741ef3",
+          "2983da27-098d-4df9-9f61-8cfd4ddff986",
+          "fe0b7433-6667-4893-93a6-45fb0efd1c18"
         ],
         "policy_ids": [
-          "48ff80e2-58b4-467a-848b-00893dd6bf3f",
-          "e8e5352c-bf35-41e3-bbe2-e643bbb3e79a",
-          "2aa7ad73-d5e0-4c0e-8f9e-df4353e9ebf4",
-          "3d524e0b-8d97-4dd5-b63c-81f95a62a03b",
-          "7a66a6c3-1df6-4ae1-9b3e-b6cd3bbaf815",
-          "bdb610cb-cc86-4e00-affc-b1ba8d1daa0a"
+          "5f0cf5bb-8d6a-48c1-bbb3-c602dbce02a5",
+          "ce1f4a01-4afe-47c2-956c-56a73638acce",
+          "bca9b954-aa9b-4852-93ff-89a00b4349c9",
+          "9530572c-6c93-4f5c-9dfe-cd6bdbe488a0",
+          "100a24b6-8c99-40be-a2fc-e54c0776ea82",
+          "55b8d931-e5f4-4d56-b267-ff4951d889d6"
         ],
         "pam_target_ids": [
-          "c10e6944-d513-4e5d-b0f3-1159aa6f51ca",
-          "151f06fc-9dac-4283-8fad-09a544695ac3"
+          "d69f602c-4db4-4dfd-9c77-a5cf660608d2",
+          "12c9604d-d1a7-413a-b97e-418241b15d51"
         ],
-        "pam_lease_id": "65a18faf-e14c-41b9-8d26-85b7ce70784e",
-        "pam_session_id": "3b47e4c7-01a6-429a-b16f-96769230297d",
+        "pam_lease_id": "c1106d29-dffa-4676-a5c4-f4baa91fbf01",
+        "pam_session_id": "96cad08a-6c2d-410e-bddb-8618640877f8",
         "contractor_grant_ids": [
-          "54080371-12c4-469b-812b-5d78aff0ce70"
+          "044440c9-0829-454c-875e-f8f419980d61"
         ],
         "sod_rule_ids": [
-          "4327c2b3-3245-4564-b4d7-5ff55a8b1afb"
+          "f94660ee-f436-4174-b1c8-21a01de10d9e"
         ]
       }
     }
