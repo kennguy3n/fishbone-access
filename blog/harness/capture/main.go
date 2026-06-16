@@ -245,12 +245,18 @@ func main() {
 		// screenshots) show. The manifest inside the ZIP still snapshots the chain
 		// as it stood at export time (one shorter) — by design, since exporting is
 		// the next event on the chain.
-		fwToken := e.framework
+		fwToken := ""
 		for _, fw := range frameworks {
 			if fw.query == e.framework {
 				fwToken = fw.token
 				break
 			}
+		}
+		if fwToken == "" {
+			// Fail loudly rather than silently writing coverage-<raw framework>.json,
+			// which would not overwrite the in-loop capture (keyed by fw.token) and
+			// would leave the committed payload one event behind the live console.
+			harnesskit.Fatalf("export framework %q is not in the frameworks lookup; add it so the post-export coverage re-capture matches the in-loop filename", e.framework)
 		}
 		cap.get(c, prefix+"chain-verify", "/api/v1/compliance/chain/verify")
 		cap.get(c, prefix+"coverage-"+fwToken, "/api/v1/compliance/coverage?framework="+url.QueryEscape(e.framework))
