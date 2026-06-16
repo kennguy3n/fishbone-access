@@ -266,10 +266,18 @@ func enumerateMySQL(ctx context.Context, address, username, password string, tim
 
 	queryCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	// account_locked / Super_priv exist on MySQL 5.7+ and MariaDB 10.x; the
+	// account_locked / Super_priv exist on MySQL 5.7.6+ and MariaDB 10.4.2+; the
 	// query is read-only and depends only on long-stable mysql.user columns.
 	rows, err := db.QueryContext(queryCtx, "SELECT User, Host, Super_priv, account_locked FROM mysql.user ORDER BY User, Host")
 	if err != nil {
+		// On legacy servers (MySQL <5.7.6, MariaDB <10.4.2) account_locked is
+		// absent, which the driver reports as ER_BAD_FIELD_ERROR (1054). Map it
+		// to a clear, actionable message so a non-expert SME operator sees
+		// "unsupported version" rather than an opaque SQL column error.
+		var myErr *mysql.MySQLError
+		if errors.As(err, &myErr) && myErr.Number == 1054 {
+			return nil, fmt.Errorf("%w: DB account enumeration requires MySQL 5.7.6+ or MariaDB 10.4.2+ (this server is missing the mysql.user.account_locked column)", ErrUnsupported)
+		}
 		return nil, fmt.Errorf("discovery: mysql query users: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
