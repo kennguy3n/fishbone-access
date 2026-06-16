@@ -81,19 +81,18 @@ func (s *S3ReplayStore) DeleteReplay(ctx context.Context, sessionID string) erro
 }
 
 // DeleteReplay removes the blob through the wrapped store; the encrypting
-// decorator holds no bytes of its own, so it simply delegates.
+// decorator holds no bytes of its own, so it simply delegates. inner is a
+// ReplayBackend (which embeds ReplayDeleter), so the deleter is guaranteed at
+// compile time — no runtime type assertion needed.
 func (s *EncryptingReplayStore) DeleteReplay(ctx context.Context, sessionID string) error {
-	deleter, ok := s.inner.(ReplayDeleter)
-	if !ok {
-		return errors.New("gateway: EncryptingReplayStore.DeleteReplay: inner store is not a ReplayDeleter")
-	}
-	return deleter.DeleteReplay(ctx, sessionID)
+	return s.inner.DeleteReplay(ctx, sessionID)
 }
 
 // Compile-time assertions that the production stores can be pruned.
+// (*EncryptingReplayStore is covered by the single ReplayBackend assertion in
+// replay_encrypt.go, which embeds ReplayDeleter.)
 var (
 	_ ReplayDeleter = (*FilesystemReplayStore)(nil)
 	_ ReplayDeleter = (*MemoryReplayStore)(nil)
 	_ ReplayDeleter = (*S3ReplayStore)(nil)
-	_ ReplayDeleter = (*EncryptingReplayStore)(nil)
 )

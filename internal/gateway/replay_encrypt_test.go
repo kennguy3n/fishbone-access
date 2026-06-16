@@ -61,7 +61,7 @@ func (m mapResolver) WorkspaceForSession(_ context.Context, sessionID string) (s
 	return ws, nil
 }
 
-func newEncStore(t *testing.T, inner replayBackend, res SessionWorkspaceResolver) *EncryptingReplayStore {
+func newEncStore(t *testing.T, inner ReplayBackend, res SessionWorkspaceResolver) *EncryptingReplayStore {
 	t.Helper()
 	s, err := NewEncryptingReplayStore(inner, fakeSealer{version: 3}, res)
 	if err != nil {

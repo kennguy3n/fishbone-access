@@ -60,25 +60,19 @@ const replayEnvelopeHeaderLen = 4 + 4
 // decorator seals them, so re-hashing a decrypted recording still matches the
 // audit-chain digest.
 type EncryptingReplayStore struct {
-	inner    replayBackend
+	inner    ReplayBackend
 	sealer   blobSealer
 	resolver SessionWorkspaceResolver
-}
-
-// replayBackend is a store that both persists (write) and fetches (read) a
-// recording. The concrete FilesystemReplayStore, S3ReplayStore, and
-// MemoryReplayStore all satisfy it, so the encrypting decorator can sit in front
-// of any of them on both the gateway write path and the control-plane read path.
-type replayBackend interface {
-	ReplayStore
-	ReplayReader
 }
 
 // NewEncryptingReplayStore wraps inner so recordings are sealed under a
 // per-workspace DEK. All three dependencies are required; a nil argument is a
 // programming error (the caller must wire the plain store when encryption is
-// not configured rather than pass nils here).
-func NewEncryptingReplayStore(inner replayBackend, sealer blobSealer, resolver SessionWorkspaceResolver) (*EncryptingReplayStore, error) {
+// not configured rather than pass nils here). inner is a full ReplayBackend
+// (store + reader + deleter) so the decorator can persist, fetch, AND prune
+// through it without a runtime type assertion — the deleter capability is
+// guaranteed at compile time, matching the ReplayBackend assertion below.
+func NewEncryptingReplayStore(inner ReplayBackend, sealer blobSealer, resolver SessionWorkspaceResolver) (*EncryptingReplayStore, error) {
 	if inner == nil {
 		return nil, errors.New("gateway: EncryptingReplayStore: inner store is required")
 	}
@@ -183,9 +177,8 @@ func isEncryptedReplay(stored []byte) bool {
 	return len(stored) >= replayEnvelopeHeaderLen && bytes.Equal(stored[:4], replayEnvelopeMagic)
 }
 
-// Ensure EncryptingReplayStore satisfies both sides of the store contract so it
-// can be wired as the write store (gateway) and the read store (control plane).
-var (
-	_ ReplayStore  = (*EncryptingReplayStore)(nil)
-	_ ReplayReader = (*EncryptingReplayStore)(nil)
-)
+// Ensure EncryptingReplayStore satisfies the full store contract (write + read +
+// delete) in one assertion, so it can be wired as the write store (gateway), the
+// read store (control plane), and the prune store (workflow engine) — and so the
+// inner-field deleter delegation in DeleteReplay is guaranteed at compile time.
+var _ ReplayBackend = (*EncryptingReplayStore)(nil)
