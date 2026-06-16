@@ -787,6 +787,35 @@ func TestOnboardAssetBindAndLinkFailureIsHardFailure(t *testing.T) {
 	if got.TargetID != nil {
 		t.Fatalf("asset should not be linked when link failed: %+v", got)
 	}
+	// But the created target must be recorded so the heal sweep can recover it
+	// deterministically (the target exists and is otherwise orphaned).
+	if got.PendingTargetID == nil {
+		t.Fatalf("pending_target_id not recorded for stranded asset: %+v", got)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count = %d, want 1 (created before bind)", c)
+	}
+
+	// A subsequent sweep (fresh ctx) heals the stranded asset by re-linking it
+	// to the exact target the onboard created — no duplicate, no orphan.
+	h.binder.hook = nil
+	res, err := h.engine.RunScheduledSweep(context.Background(), ws)
+	if err != nil {
+		t.Fatalf("heal sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	// Fresh struct: GORM's Take won't reset a pointer field to nil for a NULL
+	// column, so reusing `got` would keep the stale PendingTargetID.
+	var healedAsset models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&healedAsset)
+	if healedAsset.Status != models.DiscoveryStatusManaged || healedAsset.TargetID == nil || healedAsset.PendingTargetID != nil {
+		t.Fatalf("stranded asset not healed via pending target: %+v", healedAsset)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count after heal = %d, want 1 (no duplicate)", c)
+	}
 }
 
 // TestOnboardAssetTriggerRecordedInAudit verifies the onboard audit metadata
@@ -855,6 +884,84 @@ func TestReconcileStuckOnboardRelinksToCreatedTarget(t *testing.T) {
 	}
 	if c := h.auditCount(t, ws, "discovery.onboard"); c != 1 {
 		t.Fatalf("relink audit = %d, want 1", c)
+	}
+}
+
+// TestReconcileStuckOnboardRelinksViaPendingTargetDespiteAddressOverride locks
+// in the deterministic-recovery fix: when the operator overrode the address at
+// onboard time, the created target's address differs from the asset's, so the
+// endpoint heuristic cannot match them. OnboardAsset records the created target
+// in pending_target_id, so reconcile re-links to that exact target anyway —
+// instead of releasing the asset and orphaning the target permanently (which a
+// retry would then duplicate).
+func TestReconcileStuckOnboardRelinksViaPendingTargetDespiteAddressOverride(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	mfa := true
+	// Target created with the OVERRIDDEN address — different from the asset's
+	// discovered address, so the endpoint heuristic would never match it.
+	target, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "db-prod", Protocol: "ssh", Address: "10.0.0.99:22",
+		Username: "root", RequireMFA: &mfa, Secret: pam.Secret{Password: "x"}, Actor: "tester",
+	})
+	if err != nil {
+		t.Fatalf("create overridden target: %v", err)
+	}
+	// Asset stranded by a link-tx failure, still carrying its ORIGINAL address.
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.5:22", "ssh", "10.0.0.5:22", models.DiscoveryStatusManaged)
+	// OnboardAsset would have recorded the created target before the link failed.
+	if err := h.db.Model(&models.DiscoveredAsset{}).Where("id = ?", asset.ID).
+		Update("pending_target_id", target.ID).Error; err != nil {
+		t.Fatalf("seed pending_target_id: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not re-linked to created target despite address override: %+v", got)
+	}
+	if got.PendingTargetID != nil {
+		t.Fatalf("pending_target_id not cleared after relink: %+v", got.PendingTargetID)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count = %d, want 1 (no duplicate, no orphan)", c)
+	}
+}
+
+// TestReconcileStuckOnboardReleasesWhenPendingTargetMissing verifies that a
+// stranded asset whose recorded pending target no longer exists (rolled back or
+// deleted) is released back to unmanaged — clearing the stale pointer — so it
+// can be onboarded fresh without leaving it stuck.
+func TestReconcileStuckOnboardReleasesWhenPendingTargetMissing(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.7:22", "ssh", "10.0.0.7:22", models.DiscoveryStatusManaged)
+	// pending points at a target that was never committed / since removed.
+	if err := h.db.Model(&models.DiscoveredAsset{}).Where("id = ?", asset.ID).
+		Update("pending_target_id", uuid.New()).Error; err != nil {
+		t.Fatalf("seed pending_target_id: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusUnmanaged || got.TargetID != nil || got.PendingTargetID != nil {
+		t.Fatalf("asset not released/cleared: %+v", got)
 	}
 }
 

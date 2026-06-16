@@ -105,6 +105,15 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		return nil, e.mapVaultErr(err)
 	}
 
+	// Record the just-created target on the asset BEFORE bind/link, so that if
+	// the link fails (stranding the asset managed/target_id=NULL) the reconcile
+	// sweep can re-link deterministically to this exact target — even when the
+	// operator overrode the address so it no longer matches the asset's. This is
+	// a best-effort single-column update with no audit chain (far more robust
+	// than the link tx it backstops); if it fails, reconcile falls back to the
+	// endpoint heuristic, no worse than before this column existed.
+	e.recordPendingTarget(ctx, workspaceID, asset.ID, target.ID)
+
 	if agentID != nil && e.binder != nil {
 		if bindErr := e.binder.BindTarget(ctx, workspaceID, *agentID, target.ID, in.Actor); bindErr != nil {
 			// The target exists and is usable direct-dial. Link the asset to it
@@ -185,8 +194,22 @@ func (e *Engine) claimAssetForOnboard(ctx context.Context, workspaceID, assetID 
 func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) bool {
 	res := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
 		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
-		Update("status", models.DiscoveryStatusUnmanaged)
+		Updates(map[string]any{
+			"status":            models.DiscoveryStatusUnmanaged,
+			"pending_target_id": nil,
+		})
 	return res.Error == nil && res.RowsAffected == 1
+}
+
+// recordPendingTarget durably notes the target OnboardAsset just created on the
+// still-unlinked asset, so a subsequent link failure can be healed by re-linking
+// to this exact target rather than guessing by endpoint. Best-effort: guarded on
+// managed/target_id=NULL so it can never touch an already-linked asset, and any
+// error is ignored (the reconcile endpoint heuristic remains as a fallback).
+func (e *Engine) recordPendingTarget(ctx context.Context, workspaceID, assetID, targetID uuid.UUID) {
+	_ = e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
+		Update("pending_target_id", targetID).Error
 }
 
 // linkAssetTarget records the new target_id on an already-claimed (managed)
@@ -199,9 +222,10 @@ func (e *Engine) linkAssetTarget(ctx context.Context, workspaceID, assetID, targ
 		res := tx.Model(&models.DiscoveredAsset{}).
 			Where("workspace_id = ? AND id = ? AND target_id IS NULL", workspaceID, assetID).
 			Updates(map[string]any{
-				"target_id":      targetID,
-				"policy_matched": false,
-				"last_seen_at":   now,
+				"target_id":         targetID,
+				"pending_target_id": nil,
+				"policy_matched":    false,
+				"last_seen_at":      now,
 			})
 		if res.Error != nil {
 			return res.Error

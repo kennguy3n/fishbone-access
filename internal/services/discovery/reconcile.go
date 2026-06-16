@@ -201,7 +201,7 @@ func (e *Engine) reconcileStuckOnboards(ctx context.Context, workspaceID uuid.UU
 		return 0, nil
 	}
 
-	candidates, linked, err := e.targetEndpointIndex(ctx, workspaceID)
+	candidates, linked, existing, err := e.targetEndpointIndex(ctx, workspaceID)
 	if err != nil {
 		return 0, err
 	}
@@ -212,6 +212,40 @@ func (e *Engine) reconcileStuckOnboards(ctx context.Context, workspaceID uuid.UU
 			return healed, ctx.Err()
 		}
 		asset := stuck[i]
+
+		// Deterministic recovery: OnboardAsset records the target it created in
+		// pending_target_id before linking, so when present we re-link to that
+		// exact target regardless of any operator address override — the case
+		// the endpoint heuristic below could miss, orphaning the target.
+		if asset.PendingTargetID != nil {
+			pid := *asset.PendingTargetID
+			if _, isLinked := linked[pid]; isLinked {
+				// Already linked to another asset (a retry already onboarded, or
+				// a duplicate); never steal it. Leave for an operator.
+				continue
+			}
+			if _, ok := existing[pid]; !ok {
+				// The recorded target no longer exists (rolled back/deleted);
+				// nothing stands behind the claim, so release it (clearing the
+				// stale pointer) to let the asset be onboarded fresh.
+				if e.releaseAssetClaim(ctx, workspaceID, asset.ID) {
+					healed++
+				}
+				continue
+			}
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, pid, "system:reconcile", models.DiscoveryTriggerScheduled); linkErr != nil {
+				if errors.Is(linkErr, ErrNotFound) {
+					continue
+				}
+				return healed, fmt.Errorf("discovery: relink stuck asset %s: %w", asset.ID, linkErr)
+			}
+			linked[pid] = struct{}{}
+			healed++
+			continue
+		}
+
+		// Fallback for rows stranded before pending_target_id existed (or whose
+		// best-effort pending write failed): match the orphan target by endpoint.
 		matches := uniqueUnlinkedTargets(candidates, linked, asset.Address, asset.Protocol)
 		switch len(matches) {
 		case 1:
@@ -248,10 +282,11 @@ func (e *Engine) reconcileStuckOnboards(ctx context.Context, workspaceID uuid.UU
 }
 
 // targetEndpointIndex returns the workspace's PAM targets indexed by endpoint
-// (both raw address and port-normalized form, lowercased) plus the set of
-// target ids already linked to a discovered asset, so stuck-asset recovery can
-// find an orphan target without re-linking one that belongs to another asset.
-func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID) (map[string][]endpointTarget, map[uuid.UUID]struct{}, error) {
+// (both raw address and port-normalized form, lowercased), the set of all
+// existing target ids, and the set of target ids already linked to a discovered
+// asset — so stuck-asset recovery can re-link to its created target (verifying
+// the target still exists) without re-linking one that belongs to another asset.
+func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID) (map[string][]endpointTarget, map[uuid.UUID]struct{}, map[uuid.UUID]struct{}, error) {
 	var targets []struct {
 		ID       uuid.UUID
 		Address  string
@@ -260,9 +295,10 @@ func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID)
 	if err := e.db.WithContext(ctx).Model(&models.PAMTarget{}).
 		Where("workspace_id = ?", workspaceID).
 		Select("id", "address", "protocol").Scan(&targets).Error; err != nil {
-		return nil, nil, fmt.Errorf("discovery: load targets for reconcile: %w", err)
+		return nil, nil, nil, fmt.Errorf("discovery: load targets for reconcile: %w", err)
 	}
 	idx := make(map[string][]endpointTarget, len(targets)*2)
+	existing := make(map[uuid.UUID]struct{}, len(targets))
 	add := func(key string, t endpointTarget) {
 		if key == "" {
 			return
@@ -270,6 +306,7 @@ func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID)
 		idx[key] = append(idx[key], t)
 	}
 	for _, t := range targets {
+		existing[t.ID] = struct{}{}
 		if t.Address == "" {
 			continue
 		}
@@ -282,13 +319,13 @@ func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID)
 	if err := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
 		Where("workspace_id = ? AND target_id IS NOT NULL", workspaceID).
 		Pluck("target_id", &linkedIDs).Error; err != nil {
-		return nil, nil, fmt.Errorf("discovery: load linked targets for reconcile: %w", err)
+		return nil, nil, nil, fmt.Errorf("discovery: load linked targets for reconcile: %w", err)
 	}
 	linked := make(map[uuid.UUID]struct{}, len(linkedIDs))
 	for _, id := range linkedIDs {
 		linked[id] = struct{}{}
 	}
-	return idx, linked, nil
+	return idx, linked, existing, nil
 }
 
 // uniqueUnlinkedTargets returns the distinct target ids matching the asset's
