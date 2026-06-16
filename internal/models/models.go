@@ -435,6 +435,8 @@ func All() []any {
 		&TargetAgent{},
 		&AgentEnrollmentToken{},
 		&AgentReachableTarget{},
+		// Cross-replica HA: which replica owns each agent's live tunnel.
+		&AgentSessionDirectoryEntry{},
 		// Credential rotation (Session C).
 		&RotationPolicy{},
 		&RotationEvent{},

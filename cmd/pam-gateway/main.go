@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/ssh"
 	"gorm.io/gorm"
 
@@ -228,7 +229,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// agent's tunnel while every other target still dials directly. When no CA is
 	// configured the dialer is nil (proxies default to direct) and no relay
 	// listener is added — the feature stays entirely off.
-	agentDialer, relayListener, err := buildAgentRelay(ctx, cfg, gdb)
+	agentDialer, agentListeners, err := buildAgentRelay(ctx, cfg, gdb)
 	if err != nil {
 		return nil, err
 	}
@@ -300,9 +301,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		{Name: "mssql", Addr: ":1433", Handler: mssqlProxy},
 		{Name: "http", Addr: ":8080", Handler: webProxy},
 	}
-	if relayListener != nil {
-		listeners = append(listeners, *relayListener)
-	}
+	listeners = append(listeners, agentListeners...)
 	return listeners, nil
 }
 
@@ -312,7 +311,13 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 // listener is bound. The relay verifies agent client certificates against the
 // configured CA and presents a server certificate the same CA issued, so it
 // shares trust with the ztna-api enrollment signer across processes.
-func buildAgentRelay(ctx context.Context, cfg config.Config, gdb *gorm.DB) (gateway.TargetDialer, *gateway.Listener, error) {
+//
+// When the cross-replica forward plane is also configured (its own mTLS triad,
+// separate from the agent CA) the relay additionally claims/refreshes/releases
+// ownership of its tunnels in the durable session directory and an internal
+// forward listener is returned alongside the relay listener, so a dial that
+// lands on a replica NOT holding the tunnel is forwarded to the one that does.
+func buildAgentRelay(ctx context.Context, cfg config.Config, gdb *gorm.DB) (gateway.TargetDialer, []gateway.Listener, error) {
 	if !cfg.AgentBroker.Configured() {
 		logger.Warnf(ctx, "pam-gateway: outbound agent CA not configured; via-agent targets cannot be brokered")
 		return nil, nil, nil
@@ -328,12 +333,59 @@ func buildAgentRelay(ctx context.Context, cfg config.Config, gdb *gorm.DB) (gate
 		return nil, nil, fmt.Errorf("agent relay server cert: %w", err)
 	}
 	serverTLS := broker.NewRelayServerTLS(serverCert, ca)
-	relay := broker.NewRelay(broker.NewGormStore(gdb), serverTLS)
+
+	// Optional cross-replica HA forward plane. Its mTLS identity is loaded from a
+	// CA DISTINCT from the agent CA (replicas authenticate to each other, never
+	// with agent certs). When unconfigured the relay stays single-replica and a
+	// non-local agent fails closed exactly as before.
+	var relayOpts []broker.RelayOption
+	var forwardTLS *broker.ForwardTLS
+	if cfg.AgentBroker.CrossReplicaConfigured() {
+		forwardTLS, err = broker.LoadForwardTLS(cfg.AgentBroker.ForwardCACert, cfg.AgentBroker.ForwardCert, cfg.AgentBroker.ForwardKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("agent forward mTLS load: %w", err)
+		}
+		var dir broker.SessionDirectory = broker.NewGormSessionDirectory(gdb, cfg.AgentBroker.DirectoryStaleAfter)
+		// Optional Redis write-through fast-path for the owner-lookup read on the
+		// cross-replica dial path. Postgres stays authoritative; the cache is
+		// fail-open, so a malformed URL or Redis outage degrades to the direct
+		// Postgres read rather than crashing a 5,000-tenant fleet.
+		if cfg.DirectoryRedisActive() {
+			if opt, perr := redis.ParseURL(cfg.RedisURL); perr != nil {
+				logger.Warnf(ctx, "pam-gateway: ACCESS_REDIS_URL is malformed (%v); session directory falls back to direct Postgres reads", perr)
+			} else {
+				rdb := redis.NewClient(opt)
+				go func() {
+					<-ctx.Done()
+					if cerr := rdb.Close(); cerr != nil {
+						logger.Warnf(context.Background(), "pam-gateway: closing session-directory Redis client: %v", cerr)
+					}
+				}()
+				dir = broker.NewRedisSessionDirectory(dir, rdb, broker.RedisDirectoryConfig{
+					StaleAfter: cfg.AgentBroker.DirectoryStaleAfter,
+				})
+				logger.Infof(ctx, "pam-gateway: session-directory Redis fast-path enabled (fail-open; Postgres authoritative)")
+			}
+		}
+		fwdClient := broker.NewForwardClient(forwardTLS, agentRelayDialTimeout)
+		relayOpts = append(relayOpts, broker.WithCrossReplica(dir, fwdClient, cfg.AgentBroker.NodeID, cfg.AgentBroker.ForwardAddr))
+	}
+
+	relay := broker.NewRelay(broker.NewGormStore(gdb), serverTLS, relayOpts...)
 	dialer := gateway.NewBrokerDialer(relay, agentRelayDialTimeout)
-	listener := &gateway.Listener{Name: "agent-relay", Addr: cfg.AgentBroker.RelayListen, Handler: relay}
+	listeners := []gateway.Listener{{Name: "agent-relay", Addr: cfg.AgentBroker.RelayListen, Handler: relay}}
 	logger.Infof(ctx, "pam-gateway: outbound agent relay enabled on %s (advertise=%s, SANs=%v)",
 		cfg.AgentBroker.RelayListen, cfg.AgentBroker.RelayAddr, cfg.AgentBroker.RelayHosts)
-	return dialer, listener, nil
+
+	if forwardTLS != nil {
+		forwarder := broker.NewForwarder(relay, forwardTLS)
+		listeners = append(listeners, gateway.Listener{Name: "agent-forward", Addr: cfg.AgentBroker.ForwardListen, Handler: forwarder})
+		logger.Infof(ctx, "pam-gateway: cross-replica forward plane enabled node=%s listen=%s advertise=%s",
+			cfg.AgentBroker.NodeID, cfg.AgentBroker.ForwardListen, cfg.AgentBroker.ForwardAddr)
+	} else {
+		logger.Warnf(ctx, "pam-gateway: cross-replica forward plane OFF; via-agent dials resolve only on the replica holding the tunnel")
+	}
+	return dialer, listeners, nil
 }
 
 // buildSSHProxy assembles the SSH proxy, loading the SSH CA (when configured)

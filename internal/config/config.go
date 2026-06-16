@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // DatabaseDriver selects which backend implements the repository contracts that
@@ -421,11 +423,71 @@ type AgentBrokerConfig struct {
 	// for (SANs). Comma-separated. Read from ACCESS_AGENT_RELAY_HOSTS; defaults
 	// to "localhost,127.0.0.1" for dev.
 	RelayHosts []string
+
+	// --- Cross-replica session directory + forward plane (HA) ---------------
+	//
+	// In a multi-replica deployment an agent's tunnel terminates on exactly one
+	// pam-gateway replica, but a privileged session may be handled by another.
+	// These settings let a replica that does NOT hold a tunnel forward the dial
+	// to the replica that does, via a durable session directory and an internal
+	// replica-to-replica mTLS listener. The whole forward plane is OFF unless
+	// ForwardCACert + ForwardCert + ForwardKey are all set: a single-replica
+	// deployment pays nothing and a non-local agent simply fails closed as
+	// before — safe-by-default.
+
+	// NodeID is this replica's stable identity, written into the directory as
+	// the owner of the tunnels it holds. Read from ACCESS_AGENT_NODE_ID;
+	// defaults to the OS hostname (the pod name under Kubernetes), so a typical
+	// deployment needs no explicit value.
+	NodeID string
+	// ForwardListen is the bind address for the internal forward listener (plain
+	// TCP; the forwarder performs the inter-replica mTLS handshake itself). Read
+	// from ACCESS_AGENT_FORWARD_LISTEN; defaults to ":7444".
+	ForwardListen string
+	// ForwardAddr is the INTERNAL host:port peer replicas dial to reach this
+	// replica's forward listener (a pod IP / headless-service address, never
+	// exposed to tenants). Written into the directory so peers can forward here.
+	// Read from ACCESS_AGENT_FORWARD_ADDR. When empty the replica claims no
+	// ownership (it can still forward to others but cannot be forwarded to).
+	ForwardAddr string
+	// ForwardCACert / ForwardCert / ForwardKey are the inter-replica mTLS
+	// material — DELIBERATELY SEPARATE from the agent CA: replicas authenticate
+	// to each other, never with agent certificates. Each is an inline PEM value
+	// or a path. ForwardCACert is the CA every replica trusts; ForwardCert /
+	// ForwardKey are this replica's forward identity (valid for both client and
+	// server auth). Read from ACCESS_AGENT_FORWARD_CA / ACCESS_AGENT_FORWARD_CERT
+	// / ACCESS_AGENT_FORWARD_KEY. All three together gate the forward plane.
+	ForwardCACert string
+	ForwardCert   string
+	ForwardKey    string
+	// DirectoryStaleAfter is how long after a missed heartbeat an owner is
+	// treated as crashed: a forwarded dial against a stale owner fails closed,
+	// and global online state ignores it. Read from
+	// ACCESS_AGENT_DIRECTORY_STALE_AFTER; non-positive uses the broker's
+	// HealthOfflineAfter so the directory and the health surface agree.
+	DirectoryStaleAfter time.Duration
+	// DirectoryRedisFastPath opts the session directory into a Redis write-
+	// through cache in front of Postgres for the one hot read on the cross-
+	// replica dial path (owner lookup), mirroring the rate-limiter / usage
+	// shared-store toggles. Postgres stays the source of truth and the cache is
+	// FAIL-OPEN: a Redis outage degrades to a direct Postgres read, never to a
+	// wrong or failed routing decision. Read from ACCESS_AGENT_DIRECTORY_REDIS;
+	// defaults to false. ONLY honoured when ACCESS_REDIS_URL is also set (there
+	// is nothing to cache in without it).
+	DirectoryRedisFastPath bool
 }
 
 // Configured reports whether an agent CA certificate was supplied, which gates
 // the whole outbound-agent feature.
 func (c AgentBrokerConfig) Configured() bool { return c.CACert != "" }
+
+// CrossReplicaConfigured reports whether the inter-replica forward plane is
+// fully wired: all three mTLS values plus an advertised forward address must be
+// present, otherwise the relay stays single-replica (a non-local agent fails
+// closed) — safe-by-default.
+func (c AgentBrokerConfig) CrossReplicaConfigured() bool {
+	return c.ForwardCACert != "" && c.ForwardCert != "" && c.ForwardKey != "" && c.ForwardAddr != ""
+}
 
 // WebAccessConfig tunes the clientless browser-access bridge (web SSH terminal
 // and web database console). The feature is safe-by-default and fail-open at
@@ -628,11 +690,19 @@ func Load() Config {
 			Audience: getEnv("AUTH_JWT_AUDIENCE", "fishbone-access"),
 		},
 		AgentBroker: AgentBrokerConfig{
-			CACert:      os.Getenv("ACCESS_AGENT_CA_CERT"),
-			CAKey:       os.Getenv("ACCESS_AGENT_CA_KEY"),
-			RelayListen: getEnv("ACCESS_AGENT_RELAY_LISTEN", ":7443"),
-			RelayAddr:   os.Getenv("ACCESS_AGENT_RELAY_ADDR"),
-			RelayHosts:  getCSV("ACCESS_AGENT_RELAY_HOSTS", []string{"localhost", "127.0.0.1"}),
+			CACert:                 os.Getenv("ACCESS_AGENT_CA_CERT"),
+			CAKey:                  os.Getenv("ACCESS_AGENT_CA_KEY"),
+			RelayListen:            getEnv("ACCESS_AGENT_RELAY_LISTEN", ":7443"),
+			RelayAddr:              os.Getenv("ACCESS_AGENT_RELAY_ADDR"),
+			RelayHosts:             getCSV("ACCESS_AGENT_RELAY_HOSTS", []string{"localhost", "127.0.0.1"}),
+			NodeID:                 getEnv("ACCESS_AGENT_NODE_ID", defaultNodeID()),
+			ForwardListen:          getEnv("ACCESS_AGENT_FORWARD_LISTEN", ":7444"),
+			ForwardAddr:            os.Getenv("ACCESS_AGENT_FORWARD_ADDR"),
+			ForwardCACert:          os.Getenv("ACCESS_AGENT_FORWARD_CA"),
+			ForwardCert:            os.Getenv("ACCESS_AGENT_FORWARD_CERT"),
+			ForwardKey:             os.Getenv("ACCESS_AGENT_FORWARD_KEY"),
+			DirectoryStaleAfter:    getDuration("ACCESS_AGENT_DIRECTORY_STALE_AFTER", 0),
+			DirectoryRedisFastPath: getBool("ACCESS_AGENT_DIRECTORY_REDIS", false),
 		},
 	}
 }
@@ -706,7 +776,31 @@ func (c Config) Validate() error {
 	if (c.AgentBroker.CACert != "") != (c.AgentBroker.CAKey != "") {
 		return errors.New("config: ACCESS_AGENT_CA_CERT and ACCESS_AGENT_CA_KEY must both be set or both be empty")
 	}
+	// The inter-replica forward identity is meaningless without its CA and key
+	// (it must both present a certificate and verify peers). Reject a partial
+	// triad loudly rather than silently disabling the forward plane and leaving
+	// a multi-replica deployment failing brokered dials it expected to forward.
+	fwdParts := 0
+	for _, v := range []string{c.AgentBroker.ForwardCACert, c.AgentBroker.ForwardCert, c.AgentBroker.ForwardKey} {
+		if v != "" {
+			fwdParts++
+		}
+	}
+	if fwdParts != 0 && fwdParts != 3 {
+		return errors.New("config: ACCESS_AGENT_FORWARD_CA, ACCESS_AGENT_FORWARD_CERT and ACCESS_AGENT_FORWARD_KEY must all be set or all be empty")
+	}
 	return nil
+}
+
+// defaultNodeID is the replica identity used when ACCESS_AGENT_NODE_ID is unset:
+// the OS hostname, which is the pod name under Kubernetes and unique per replica
+// behind the load balancer. It falls back to a generated value only if the
+// hostname is unavailable, so two replicas never accidentally share an identity.
+func defaultNodeID() string {
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return h
+	}
+	return "pam-gateway-" + uuid.NewString()
 }
 
 // Warnings returns non-fatal misconfiguration notes the binary should log
@@ -795,6 +889,14 @@ func (c Config) RateLimitSharedStoreActive() bool {
 // RateLimitSharedStoreActive.
 func (c Config) UsageSharedStoreActive() bool {
 	return c.UsageMetering.Enabled && c.UsageMetering.SharedStore && c.RedisURL != ""
+}
+
+// DirectoryRedisActive reports whether the session-directory Redis fast-path
+// should be wired: the cross-replica forward plane is configured, the fast-path
+// is opted in, AND a Redis URL is present. Mirrors the other shared-store
+// gates; without all three the directory reads Postgres directly.
+func (c Config) DirectoryRedisActive() bool {
+	return c.AgentBroker.CrossReplicaConfigured() && c.AgentBroker.DirectoryRedisFastPath && c.RedisURL != ""
 }
 
 // Warnings reports tenancy knobs whose value will be silently overridden by a
