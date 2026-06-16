@@ -463,6 +463,12 @@ func (r *Relay) openStream(ctx context.Context, ac *agentConn, targetAddr string
 	return stream, nil
 }
 
+// directoryReadTimeout bounds the management-surface directory reads
+// (OnlineCount / IsOnline) so a stalled database pool degrades to the local-map
+// fallback instead of blocking the health surface indefinitely. These are not
+// on the hot dial path, so a generous bound is fine.
+const directoryReadTimeout = 5 * time.Second
+
 // OnlineCount reports how many agents are online for a workspace. With the HA
 // directory wired it reflects GLOBAL state (agents online on any replica),
 // reading the directory's fresh-owner count; it falls back to the local map if
@@ -470,7 +476,9 @@ func (r *Relay) openStream(ctx context.Context, ac *agentConn, targetAddr string
 // reporting zero. Without the directory it is the local count, as before.
 func (r *Relay) OnlineCount(workspaceID uuid.UUID) int {
 	if r.dir != nil {
-		if n, err := r.dir.OnlineCount(context.Background(), workspaceID); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), directoryReadTimeout)
+		defer cancel()
+		if n, err := r.dir.OnlineCount(ctx, workspaceID); err == nil {
 			return n
 		} else {
 			logger.Warnf(context.Background(), "broker: directory online-count workspace=%s: %v", workspaceID, err)
@@ -495,7 +503,9 @@ func (r *Relay) IsOnline(workspaceID, agentID uuid.UUID) bool {
 	if r.dir == nil {
 		return false
 	}
-	online, err := r.dir.IsOnline(context.Background(), workspaceID, agentID)
+	ctx, cancel := context.WithTimeout(context.Background(), directoryReadTimeout)
+	defer cancel()
+	online, err := r.dir.IsOnline(ctx, workspaceID, agentID)
 	if err != nil {
 		logger.Warnf(context.Background(), "broker: directory is-online agent=%s: %v", agentID, err)
 		return false

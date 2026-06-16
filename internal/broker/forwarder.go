@@ -79,8 +79,20 @@ var _ interface {
 func (f *Forwarder) Handle(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
+	// One overall budget bounds the whole forward setup — the TLS handshake AND
+	// the request/response exchange — clamped to any caller deadline. The calling
+	// replica (ForwardClient.Dial) bounds its entire end by a single dialTO, so
+	// sharing one deadline here keeps the owner's setup within that same budget
+	// instead of allowing up to 2× dialTO (which could outlive the caller). The
+	// live tunnel afterwards runs with no deadline so a long session is not torn
+	// down.
+	deadline := f.relay.now().Add(f.relay.dialTO)
+	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
+		deadline = d
+	}
+
 	tlsConn := tls.Server(conn, f.tls.ServerConfig())
-	hsCtx, cancel := context.WithTimeout(ctx, f.relay.dialTO)
+	hsCtx, cancel := context.WithDeadline(ctx, deadline)
 	err := tlsConn.HandshakeContext(hsCtx)
 	cancel()
 	if err != nil {
@@ -88,12 +100,6 @@ func (f *Forwarder) Handle(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	// Bound the request/response handshake by the dial timeout; the live tunnel
-	// runs with no deadline afterwards so a long session is not torn down.
-	deadline := f.relay.now().Add(f.relay.dialTO)
-	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
-		deadline = d
-	}
 	_ = tlsConn.SetDeadline(deadline)
 
 	var req ForwardRequest

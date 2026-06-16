@@ -876,6 +876,17 @@ func (c Config) Warnings() []string {
 				"the session directory is falling back to direct Postgres reads on the cross-replica dial path (correct, just without the Redis owner-lookup cache)")
 		}
 	}
+	// The inter-replica mTLS triad is present but ACCESS_AGENT_FORWARD_ADDR is
+	// not: Validate() passes (the triad is internally consistent), yet
+	// CrossReplicaConfigured() is false because peers have no address to forward
+	// to, so the forward plane stays OFF. Name the missing knob explicitly so a
+	// multi-replica operator who configured the certs but forgot the advertise
+	// address isn't left guessing why brokered dials still fail closed.
+	if c.AgentBroker.ForwardCACert != "" && c.AgentBroker.ForwardCert != "" &&
+		c.AgentBroker.ForwardKey != "" && c.AgentBroker.ForwardAddr == "" {
+		w = append(w, "ACCESS_AGENT_FORWARD_CA/CERT/KEY are set but ACCESS_AGENT_FORWARD_ADDR is empty; "+
+			"the cross-replica forward plane stays OFF (peers have no address to forward to) and a non-local agent fails closed — set the advertised forward address to enable HA brokering")
+	}
 	return w
 }
 
