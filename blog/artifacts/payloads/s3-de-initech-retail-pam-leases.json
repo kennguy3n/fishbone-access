@@ -2,25 +2,25 @@
   "leases": [
     {
       "approved_by": "de-initech-retail-owner",
-      "created_at": "2026-06-16T07:02:02.611702Z",
+      "created_at": "2026-06-16T07:50:03.120709Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T07:32:31.627217Z",
-      "granted_at": "2026-06-16T07:02:31.627217Z",
-      "id": "9b5a9bf5-03f5-4d5e-a64c-aaa3650515c0",
+      "expires_at": "2026-06-16T08:20:31.170551Z",
+      "granted_at": "2026-06-16T07:50:31.170551Z",
+      "id": "d3c67935-16af-429a-8354-556777a51371",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "de-initech-retail-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": true,
+      "risk_degraded": false,
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
-      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "risk_level": "low",
+      "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "de-initech-retail-owner",
-      "target_id": "ff440e19-dedc-4b28-8116-064350144571",
-      "updated_at": "2026-06-16T07:02:31.627217Z",
-      "workspace_id": "e8a12559-97bf-474b-8634-e5e025b1f3a0"
+      "target_id": "40ebcf0c-a269-4469-885d-95acdd282823",
+      "updated_at": "2026-06-16T07:50:31.170551Z",
+      "workspace_id": "cbd7dd41-f19f-4d5c-9c6f-cc7049bab090"
     }
   ]
 }

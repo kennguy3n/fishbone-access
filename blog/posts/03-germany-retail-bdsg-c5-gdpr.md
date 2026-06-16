@@ -125,7 +125,7 @@ both halves — `sod_anomalies = 1`, the `CC7.3` evidence
 
 Initech also opens a JIT-leased session to the POS bastion and records it through
 the production `IORecorder` — `pam_sessions = 1`, replayable over
-`GET /pam/sessions/7cb0324e-7fc5-4bcb-bcff-9cc7e2ae5f61/replay`, digest on the
+`GET /pam/sessions/4f86718e-4b4b-4a52-9992-5b98c91f32b9/replay`, digest on the
 chain. That is what covers `CC6.7` / `A.8.2` ("privileged access monitored").
 The honest residual: the captured commands are representative I/O against a
 bastion target (no live SSH daemon in the demo), proving the record-and-replay

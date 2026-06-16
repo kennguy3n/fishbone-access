@@ -4,17 +4,17 @@
       "agent": {
         "agent_version": "1.6.0",
         "cert_fingerprint": "5224b731e0ef150b52ab7142c71731a52046d1e16967878a390b9a54e902ee97",
-        "cert_not_after": "2027-06-16T07:03:31.841084Z",
+        "cert_not_after": "2027-06-16T07:51:31.487843Z",
         "cert_serial": "5224b731e0ef150b52ab7142c71731a5",
-        "created_at": "2026-06-16T07:03:31.841907Z",
+        "created_at": "2026-06-16T07:51:31.488424Z",
         "deleted_at": null,
-        "id": "44f3aa88-3fdd-4e42-9782-020ca6c9dfcc",
-        "last_seen_at": "2026-06-16T07:09:39.675579Z",
+        "id": "e53a228f-422f-4e79-938c-b26649cac182",
+        "last_seen_at": "2026-06-16T07:58:36.907052Z",
         "name": "vn-umbrella-logistics-edge-01",
         "platform": "linux/amd64",
         "status": "online",
-        "updated_at": "2026-06-16T07:09:39.676732Z",
-        "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+        "updated_at": "2026-06-16T07:58:36.908172Z",
+        "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
       },
       "health": "online"
     }

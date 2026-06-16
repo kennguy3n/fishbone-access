@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-16T07:03:02.094971Z",
-      "created_at": "2026-06-16T07:03:02.078446Z",
+      "closed_at": "2026-06-16T07:51:01.654292Z",
+      "created_at": "2026-06-16T07:51:01.637771Z",
       "deleted_at": null,
       "framework": "ISO 27001",
-      "id": "821bb80a-55b5-4885-a305-c3577d2feffd",
+      "id": "75b9f6aa-a6a0-4fd4-a4b6-a1107711dba2",
       "name": "Q2 2026 PDPD Decree 13 certification",
-      "scope_connector_id": "f51874e8-9376-4a50-befe-8c6145d48d56",
-      "started_at": "2026-06-16T07:03:02.078446Z",
+      "scope_connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "started_at": "2026-06-16T07:51:01.637771Z",
       "state": "closed",
-      "updated_at": "2026-06-16T07:03:02.094971Z",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "updated_at": "2026-06-16T07:51:01.654292Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     }
   ]
 }

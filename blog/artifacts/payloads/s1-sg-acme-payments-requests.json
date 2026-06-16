@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "4f788324-a61c-460b-8e4e-681e4a1d5812",
-      "created_at": "2026-06-16T06:56:31.709527Z",
+      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
+      "created_at": "2026-06-16T07:44:31.880455Z",
       "deleted_at": null,
-      "id": "04897010-d596-418f-a876-0768d26d4646",
+      "id": "b788bf15-c604-4881-8554-c738e957eeb4",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-16T06:56:31.739318Z",
-      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
+      "updated_at": "2026-06-16T07:44:31.912335Z",
+      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
     },
     {
-      "connector_id": "4f788324-a61c-460b-8e4e-681e4a1d5812",
-      "created_at": "2026-06-16T06:56:31.607248Z",
+      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
+      "created_at": "2026-06-16T07:44:31.782782Z",
       "deleted_at": null,
-      "id": "02066ff0-036b-428c-88a8-b04d8065dc91",
+      "id": "3c91f55b-7d4e-4046-957f-f5a2b9e7200b",
       "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "cde:pci-scope",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T06:56:31.622997Z",
-      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
+      "updated_at": "2026-06-16T07:44:31.796925Z",
+      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
     },
     {
-      "connector_id": "4f788324-a61c-460b-8e4e-681e4a1d5812",
-      "created_at": "2026-06-16T06:56:31.571385Z",
+      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
+      "created_at": "2026-06-16T07:44:31.737368Z",
       "deleted_at": null,
-      "id": "17a56930-0ac9-44c1-9660-cc65ceffdeb3",
+      "id": "07fe2b4c-4bf7-41ba-8266-c20264844b16",
       "justification": "Month-end reconciliation run for the finance close.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "ledger:reconcile",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T06:56:31.656259Z",
-      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
+      "updated_at": "2026-06-16T07:44:31.86696Z",
+      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
     },
     {
-      "connector_id": "4f788324-a61c-460b-8e4e-681e4a1d5812",
-      "created_at": "2026-06-16T06:56:31.524852Z",
+      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
+      "created_at": "2026-06-16T07:44:31.684007Z",
       "deleted_at": null,
-      "id": "d612182d-68c9-4490-8232-b796bb1b6f33",
+      "id": "9ca91e49-8f3e-463e-91f8-6b8e72e24c12",
       "justification": "Quarterly MAS TRM privileged-access recertification requires temporary ledger admin.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "ledger:admin",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T06:56:31.695999Z",
-      "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350"
+      "updated_at": "2026-06-16T07:44:31.829033Z",
+      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
     }
   ]
 }

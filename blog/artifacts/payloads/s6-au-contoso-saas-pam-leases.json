@@ -2,47 +2,47 @@
   "leases": [
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-16T07:08:31.78541Z",
+      "created_at": "2026-06-16T07:56:31.444738Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T07:39:01.834956Z",
-      "granted_at": "2026-06-16T07:09:01.834956Z",
-      "id": "dfda4da2-f1a4-4a3c-b7c6-c312185e96f8",
+      "expires_at": "2026-06-16T08:27:01.451567Z",
+      "granted_at": "2026-06-16T07:57:01.451567Z",
+      "id": "d02547f4-58b9-4152-9bd2-e7dc1d2ce562",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": true,
+      "risk_degraded": false,
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
-      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "risk_level": "low",
+      "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "372524b6-9f5c-4727-88b3-544c7b4ba634",
-      "updated_at": "2026-06-16T07:09:01.834956Z",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "target_id": "30f185e2-8abc-450e-9720-8d6a14612bac",
+      "updated_at": "2026-06-16T07:57:01.451567Z",
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     },
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-16T07:08:02.759346Z",
+      "created_at": "2026-06-16T07:56:02.31564Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T07:38:31.767382Z",
-      "granted_at": "2026-06-16T07:08:31.767382Z",
-      "id": "1c96e6b3-8cd3-46c7-b652-2aa4f57c9936",
+      "expires_at": "2026-06-16T08:26:31.421246Z",
+      "granted_at": "2026-06-16T07:56:31.421246Z",
+      "id": "6bd1a636-66b0-4d10-abd8-fa1d7b6688f0",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": true,
+      "risk_degraded": false,
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
-      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "risk_level": "low",
+      "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "09c9f959-c8c4-41dd-b4f3-51663d41bbd3",
-      "updated_at": "2026-06-16T07:08:31.767382Z",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "target_id": "29c0466f-bc88-4aad-8db7-e3739d1357d2",
+      "updated_at": "2026-06-16T07:56:31.421246Z",
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     }
   ]
 }

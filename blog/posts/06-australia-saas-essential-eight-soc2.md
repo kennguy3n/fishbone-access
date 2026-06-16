@@ -60,7 +60,7 @@ The committed manifest is the contract
   "framework": "SOC 2",
   "schema_version": "1.1",
   "generated_by": "au-contoso-saas-owner",
-  "content_sha256": "f5eff33453816b1961068196047ef5f9c1017287a8ea64e89e04b3176d2aa9cd",
+  "content_sha256": "dae7803b9cead986fd26c09d4e93b65a4d35d76fc863449260c634a37e804563",
   "chain_verification": { "length": 98, "ok": true, "status": "valid" },
   "coverage": { "framework": "SOC 2", "controls_covered": 6, "controls_total": 6, "evidence_total": 48 },
   "files": [
@@ -131,7 +131,7 @@ surface through the chain before exporting it:
   ([`s6-au-contoso-saas-sod-simulation.json`](../artifacts/payloads/s6-au-contoso-saas-sod-simulation.json),
   [`-sod-anomalies.json`](../artifacts/payloads/s6-au-contoso-saas-sod-anomalies.json)).
 - **The prod lease is followed by a recorded session** (`pam_sessions = 1`),
-  replayable over `GET /pam/sessions/e6187127-648c-49b4-a1ed-d9275461f939/replay`
+  replayable over `GET /pam/sessions/1028544b-947f-40c3-8426-5d6934710153/replay`
   and chained — the `CC6.7` evidence.
 - **The on-call SRE vendor** is a time-boxed contractor grant — sponsor named,
   expiry built in ([`s6-au-contoso-saas-contractor-grants.json`](../artifacts/payloads/s6-au-contoso-saas-contractor-grants.json)):

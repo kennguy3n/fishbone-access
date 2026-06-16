@@ -2,55 +2,55 @@
   "targets": [
     {
       "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-16T07:09:32.086434Z",
+      "created_at": "2026-06-16T07:57:31.690796Z",
       "deleted_at": null,
-      "id": "3979b9f9-1732-4aed-a0e5-123085eab52f",
+      "id": "a1fd2bb6-9fa1-4c51-b20e-ab250abc5c34",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:09:32.086434Z",
+      "updated_at": "2026-06-16T07:57:31.690796Z",
       "username": "svc_access",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     },
     {
       "address": "prod-bastion.contoso.internal:22",
-      "created_at": "2026-06-16T07:09:01.849429Z",
+      "created_at": "2026-06-16T07:57:01.467018Z",
       "deleted_at": null,
-      "id": "446227ea-65b8-4e98-8a45-1ebf31ea8516",
+      "id": "92cabb7d-bd61-41ff-81ce-fc0d7ab3556c",
       "lease_ttl_seconds": 1800,
       "name": "Prod bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-16T07:09:01.849429Z",
+      "updated_at": "2026-06-16T07:57:01.467018Z",
       "username": "sre",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     },
     {
       "address": "prod-db-1.contoso-saas.internal:5432",
-      "created_at": "2026-06-16T07:08:31.780243Z",
+      "created_at": "2026-06-16T07:56:31.435062Z",
       "deleted_at": null,
-      "id": "372524b6-9f5c-4727-88b3-544c7b4ba634",
+      "id": "30f185e2-8abc-450e-9720-8d6a14612bac",
       "lease_ttl_seconds": 1800,
       "name": "Production datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:08:31.780243Z",
+      "updated_at": "2026-06-16T07:56:31.435062Z",
       "username": "app_ro",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     },
     {
       "address": "prod-au-1.contoso-saas.internal:22",
-      "created_at": "2026-06-16T07:08:02.753072Z",
+      "created_at": "2026-06-16T07:56:02.307971Z",
       "deleted_at": null,
-      "id": "09c9f959-c8c4-41dd-b4f3-51663d41bbd3",
+      "id": "29c0466f-bc88-4aad-8db7-e3739d1357d2",
       "lease_ttl_seconds": 1800,
       "name": "GCP production VM (prod-au-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:08:02.753072Z",
+      "updated_at": "2026-06-16T07:56:02.307971Z",
       "username": "sre",
-      "workspace_id": "920daca6-b2fd-408d-b32a-2c8c878f21d6"
+      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
     }
   ]
 }

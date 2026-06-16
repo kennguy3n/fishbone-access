@@ -2,42 +2,42 @@
   "targets": [
     {
       "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-16T07:03:31.876193Z",
+      "created_at": "2026-06-16T07:51:31.524065Z",
       "deleted_at": null,
-      "id": "d93b18f6-6489-487f-9b4a-057e7914b8f2",
+      "id": "0b156ae2-3198-4171-8515-073bb734ce24",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:03:31.876193Z",
+      "updated_at": "2026-06-16T07:51:31.524065Z",
       "username": "svc_access",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     },
     {
       "address": "wms-bastion.umbrella.internal:22",
-      "created_at": "2026-06-16T07:03:02.74541Z",
+      "created_at": "2026-06-16T07:51:02.318215Z",
       "deleted_at": null,
-      "id": "b940783c-164b-497c-883a-122bdb9bb616",
+      "id": "c58ad3a8-c667-42c9-87c3-91c89a38a664",
       "lease_ttl_seconds": 1800,
       "name": "WMS bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-16T07:03:02.74541Z",
+      "updated_at": "2026-06-16T07:51:02.318215Z",
       "username": "wms-ops",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     },
     {
       "address": "wms-1.umbrella.internal:22",
-      "created_at": "2026-06-16T07:03:02.719516Z",
+      "created_at": "2026-06-16T07:51:02.292213Z",
       "deleted_at": null,
-      "id": "6c7fd793-b670-44db-a2f4-b90e25b48f83",
+      "id": "ae3ed2d4-96fa-4e51-aa3a-f0fad8391a1f",
       "lease_ttl_seconds": 1800,
       "name": "WMS application server (wms-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:03:02.719516Z",
+      "updated_at": "2026-06-16T07:51:02.292213Z",
       "username": "wms-ops",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     }
   ]
 }

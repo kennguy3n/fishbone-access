@@ -2451,7 +2451,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "c0ed37f1-3243-4d18-bae5-c1d1622748d7",
+      "connector_id": "aed3c70d-56af-4410-92bd-f5c3c2db880a",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,
@@ -2909,7 +2909,7 @@
     {
       "category": "IAM/SSO",
       "connected": true,
-      "connector_id": "f4917796-7486-4142-ab10-79750d552683",
+      "connector_id": "3056273a-a65c-4ec5-8f12-ff0b628f1fc5",
       "display_name": "Okta",
       "operational": {
         "access_audit_stream": true,
@@ -3535,7 +3535,7 @@
     {
       "category": "CRM",
       "connected": true,
-      "connector_id": "576f75aa-5c5d-452e-ade5-1c6541ce1aa7",
+      "connector_id": "fc56f713-78f1-4e47-a4e9-8264add41880",
       "display_name": "Salesforce",
       "operational": {
         "access_audit_stream": true,

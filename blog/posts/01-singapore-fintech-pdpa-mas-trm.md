@@ -209,7 +209,7 @@ against a registered bastion target: the JIT connect-token is redeemed, the
 operator's commands run through the **same `IORecorder` the live gateway uses**,
 and the session is **closed** with its recording anchored. `pam_sessions = 1` for
 this workspace, and the framed transcript is retrievable over
-`GET /pam/sessions/f35079ec-b768-4f47-9d94-f062bffef38e/replay`:
+`GET /pam/sessions/7a7cecd8-3b33-4fb6-88ff-7ca9c46adfac/replay`:
 
 ```json
 { "frames": [
@@ -461,7 +461,7 @@ SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 101, "ok": true, "status": "valid", "workspace_id": "b39c911b-0f79-4951-928e-339e84a47350" }
+{ "length": 101, "ok": true, "status": "valid", "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a

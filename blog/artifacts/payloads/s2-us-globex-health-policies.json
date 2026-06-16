@@ -1,7 +1,7 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-16T06:57:31.486035Z",
+      "created_at": "2026-06-16T07:45:31.657932Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -12,16 +12,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "ee047b76-a573-4b4e-b48a-44355827b277",
+      "id": "7c5831fc-064b-4660-93ad-377cce6b516e",
       "name": "Default-deny consumer data",
-      "promoted_at": "2026-06-16T06:57:31.522278Z",
+      "promoted_at": "2026-06-16T07:45:31.698123Z",
       "state": "active",
-      "updated_at": "2026-06-16T06:57:31.522278Z",
+      "updated_at": "2026-06-16T07:45:31.698123Z",
       "version": 1,
-      "workspace_id": "a86a0fc8-4c55-4511-a8d9-f7aa91d2900c"
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     },
     {
-      "created_at": "2026-06-16T06:57:31.484549Z",
+      "created_at": "2026-06-16T07:45:31.6561Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -33,16 +33,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "b16037dc-88c3-4752-8472-eaa6fd194312",
+      "id": "235daea8-f61e-4d92-a08a-b5890e292562",
       "name": "Authorised staff → consumer data",
-      "promoted_at": "2026-06-16T06:57:31.530202Z",
+      "promoted_at": "2026-06-16T07:45:31.706557Z",
       "state": "active",
-      "updated_at": "2026-06-16T06:57:31.530202Z",
+      "updated_at": "2026-06-16T07:45:31.706557Z",
       "version": 1,
-      "workspace_id": "a86a0fc8-4c55-4511-a8d9-f7aa91d2900c"
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     },
     {
-      "created_at": "2026-06-16T06:57:31.480136Z",
+      "created_at": "2026-06-16T07:45:31.651419Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -54,16 +54,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "4428ec9b-096f-4823-aca5-f15b062807dd",
+      "id": "6ad57f93-ff8a-4261-8b5f-2dfb3b2f5d57",
       "name": "Break-glass — on-call responders",
-      "promoted_at": "2026-06-16T06:57:31.538751Z",
+      "promoted_at": "2026-06-16T07:45:31.715436Z",
       "state": "active",
-      "updated_at": "2026-06-16T06:57:31.538751Z",
+      "updated_at": "2026-06-16T07:45:31.715436Z",
       "version": 1,
-      "workspace_id": "a86a0fc8-4c55-4511-a8d9-f7aa91d2900c"
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     },
     {
-      "created_at": "2026-06-16T06:57:31.478529Z",
+      "created_at": "2026-06-16T07:45:31.649798Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -74,16 +74,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "558bed37-d44f-4833-9dec-0f2903760d95",
+      "id": "c41c189a-272c-40ce-8b82-42e2339de023",
       "name": "Deny non-clinical staff to ePHI",
-      "promoted_at": "2026-06-16T06:58:01.59595Z",
+      "promoted_at": "2026-06-16T07:46:01.727414Z",
       "state": "active",
-      "updated_at": "2026-06-16T06:58:01.59595Z",
+      "updated_at": "2026-06-16T07:46:01.727414Z",
       "version": 1,
-      "workspace_id": "a86a0fc8-4c55-4511-a8d9-f7aa91d2900c"
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     },
     {
-      "created_at": "2026-06-16T06:57:31.47677Z",
+      "created_at": "2026-06-16T07:45:31.64788Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -96,13 +96,13 @@
         ]
       },
       "deleted_at": null,
-      "id": "1ef21888-020b-4068-adb0-4daa90370b67",
+      "id": "48813fb0-3c65-449c-a4f7-01dcca39ed82",
       "name": "Clinical staff → patient records",
-      "promoted_at": "2026-06-16T06:58:31.609629Z",
+      "promoted_at": "2026-06-16T07:46:31.741161Z",
       "state": "active",
-      "updated_at": "2026-06-16T06:58:31.609629Z",
+      "updated_at": "2026-06-16T07:46:31.741161Z",
       "version": 1,
-      "workspace_id": "a86a0fc8-4c55-4511-a8d9-f7aa91d2900c"
+      "workspace_id": "d645aebf-7859-43e2-b4ba-3ddd4c363709"
     }
   ]
 }

@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "f51874e8-9376-4a50-befe-8c6145d48d56",
-      "created_at": "2026-06-16T07:03:02.115115Z",
+      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "created_at": "2026-06-16T07:51:01.678427Z",
       "deleted_at": null,
-      "id": "b9060d9d-9381-4980-9c6d-f9b22a381545",
+      "id": "7cab5cc8-ded7-4713-a0c2-c7d387620717",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-16T07:03:02.145772Z",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "updated_at": "2026-06-16T07:51:01.708425Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     },
     {
-      "connector_id": "f51874e8-9376-4a50-befe-8c6145d48d56",
-      "created_at": "2026-06-16T07:03:02.030142Z",
+      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "created_at": "2026-06-16T07:51:01.582425Z",
       "deleted_at": null,
-      "id": "4dc8b87f-5a9b-48dc-9b1e-06ae84fb8b4f",
+      "id": "12611604-05e0-4eb7-a4a9-1161807d3cc9",
       "justification": "PDPD personal-data processing register review.",
       "requester_id": "vn-umbrella-logistics-owner",
       "resource_ref": "pii:decree13-register",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:03:02.045386Z",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "updated_at": "2026-06-16T07:51:01.60079Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     },
     {
-      "connector_id": "f51874e8-9376-4a50-befe-8c6145d48d56",
-      "created_at": "2026-06-16T07:03:01.996039Z",
+      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "created_at": "2026-06-16T07:51:01.545252Z",
       "deleted_at": null,
-      "id": "d4bd50c5-1995-4b56-b70c-88cd2ac93f86",
+      "id": "55a01da7-d8d7-41b3-b610-44bf6eb4d2f4",
       "justification": "Peak-season inventory reconciliation access.",
       "requester_id": "vn-umbrella-logistics-owner",
       "resource_ref": "wms:inventory",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:03:02.067221Z",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "updated_at": "2026-06-16T07:51:01.628682Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     },
     {
-      "connector_id": "f51874e8-9376-4a50-befe-8c6145d48d56",
-      "created_at": "2026-06-16T07:03:01.958963Z",
+      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "created_at": "2026-06-16T07:51:01.499905Z",
       "deleted_at": null,
-      "id": "8c777492-4de1-4c99-bf86-5d48ea91c7cd",
+      "id": "e1304114-a823-4adb-8e94-39d35f05a056",
       "justification": "Dispatcher onboarding under PDPD Decree 13 data-handling controls.",
       "requester_id": "vn-umbrella-logistics-owner",
       "resource_ref": "wms:dispatcher",
       "risk_factors": [
-        "ai_unavailable"
+        "long_duration_hours:720"
       ],
       "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:03:02.102757Z",
-      "workspace_id": "9b5d4510-e772-4c68-bb65-3c8bad89e076"
+      "updated_at": "2026-06-16T07:51:01.663896Z",
+      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
     }
   ]
 }
