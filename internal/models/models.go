@@ -441,5 +441,10 @@ func All() []any {
 		&RotationPolicy{},
 		&RotationEvent{},
 		&DynamicCredential{},
+		// Account/asset auto-discovery + auto-onboarding (Feature E).
+		&DiscoveredAsset{},
+		&DiscoveredAccount{},
+		&DiscoveryScan{},
+		&AutoOnboardingPolicy{},
 	}
 }

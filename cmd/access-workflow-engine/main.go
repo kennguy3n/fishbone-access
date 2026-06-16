@@ -34,6 +34,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/observability"
 	"github.com/kennguy3n/fishbone-access/internal/services/access/workflow_engine"
+	"github.com/kennguy3n/fishbone-access/internal/services/discovery"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
@@ -265,6 +266,39 @@ func run() error {
 		logger.Infof(ctx, "access-workflow-engine: credential rotation sweep DISABLED (ACCESS_ROTATION_ENABLED=false)")
 	}
 
+	// Account/asset auto-discovery + auto-onboarding sweep (Feature E). Each
+	// round re-enumerates connector inventory and evaluates the per-workspace
+	// auto-onboarding policy; a workspace with no enabled (opt-in) policy is a
+	// cheap no-op, so the sweep stays negligible at 5k tenants. It reuses the
+	// SAME connector resolver + PAM vault + per-workspace DEK path (connEnc) the
+	// API uses, so an auto-created target seals its credential identically to a
+	// manual onboard. Hibernation-gated and fail-open like the sweeps above;
+	// auto-onboarding only ever creates the managed target record — it never
+	// grants standing access (require-lease boundary). Disabled cleanly when
+	// ACCESS_DISCOVERY_SWEEP_ENABLED=false.
+	var discoverySweeper *discovery.Sweeper
+	if cfg.Discovery.ScheduledSweepEnabled {
+		discEngine := discovery.NewEngine(gdb, pam.NewVault(gdb, connEnc, nil),
+			discovery.WithConfig(discovery.Config{
+				ProbeTimeout:     cfg.Discovery.ProbeTimeout,
+				ProbeConcurrency: cfg.Discovery.ProbeConcurrency,
+				MaxProbeTargets:  cfg.Discovery.MaxProbeTargets,
+				DBDialTimeout:    cfg.Discovery.DBDialTimeout,
+				SweepInterval:    cfg.Discovery.SweepInterval,
+			}),
+			discovery.WithEncryptor(connEnc),
+			discovery.WithConnectorResolver(resolver),
+		)
+		discoverySweeper, err = discovery.NewSweeper(discEngine, workflow_engine.NewGormWorkspaceLister(gdb), discovery.Config{SweepInterval: cfg.Discovery.SweepInterval})
+		if err != nil {
+			return err
+		}
+		discoverySweeper.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("discovery_sweep") })
+		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep enabled (interval=%s)", cfg.Discovery.SweepInterval)
+	} else {
+		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep DISABLED (ACCESS_DISCOVERY_SWEEP_ENABLED=false)")
+	}
+
 	w := workers.New(queue, processor, workers.Config{})
 
 	logger.Infof(ctx, "access-workflow-engine: ready; draining workflow jobs + scheduling reviews")
@@ -293,6 +327,16 @@ func run() error {
 			defer wg.Done()
 			if rerr := rotationScheduler.Run(ctx); rerr != nil && !errors.Is(rerr, context.Canceled) {
 				logger.Errorf(context.Background(), "access-workflow-engine: rotation scheduler exited: %v", rerr)
+			}
+		}()
+	}
+
+	if discoverySweeper != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if rerr := discoverySweeper.Run(ctx); rerr != nil && !errors.Is(rerr, context.Canceled) {
+				logger.Errorf(context.Background(), "access-workflow-engine: discovery sweep exited: %v", rerr)
 			}
 		}()
 	}

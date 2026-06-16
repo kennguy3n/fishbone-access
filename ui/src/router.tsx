@@ -78,6 +78,9 @@ const Directory = lazyPage(() =>
 const PamTargets = lazyPage(() =>
   import("@/routes/PamTargets").then((m) => ({ default: m.PamTargets })),
 );
+const Discovery = lazyPage(() =>
+  import("@/routes/Discovery").then((m) => ({ default: m.Discovery })),
+);
 const Agents = lazyPage(() =>
   import("@/routes/Agents").then((m) => ({ default: m.Agents })),
 );
@@ -183,6 +186,7 @@ const appRoutes = [
   page("/workflows/$workflowId", WorkflowBuilder),
   page("/jml-runs", JmlRuns),
   page("/directory", Directory),
+  page("/discovery", Discovery),
   page("/pam/targets", PamTargets),
   page("/pam/agents", Agents),
   page("/pam/leases", PamLeases),
