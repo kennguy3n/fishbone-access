@@ -84,7 +84,7 @@ func (s *Service) Search(ctx context.Context, workspaceID uuid.UUID, q SearchQue
 		return SearchResult{}, fmt.Errorf("recordings: count search results: %w", err)
 	}
 
-	var rows []models.SessionRecording
+	rows := []models.SessionRecording{}
 	if total > 0 {
 		if err := base.
 			Order("started_at DESC NULLS LAST").

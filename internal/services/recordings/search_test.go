@@ -166,3 +166,26 @@ func TestSearchPaginationTotal(t *testing.T) {
 		t.Errorf("page size = %d, want 2", len(res.Recordings))
 	}
 }
+
+// A search with no matches must return a non-nil, empty slice (not nil), so the
+// JSON API serialises "recordings": [] rather than null — the console reads
+// .length on the array and a null would crash the page.
+func TestSearchNoMatchReturnsEmptySlice(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	svc := NewService(db)
+	res, err := svc.Search(context.Background(), ws, SearchQuery{Text: "no-such-command-anywhere"})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if res.Total != 0 {
+		t.Errorf("total = %d, want 0", res.Total)
+	}
+	if res.Recordings == nil {
+		t.Fatal("Recordings is nil; want a non-nil empty slice so the API returns [] not null")
+	}
+	if len(res.Recordings) != 0 {
+		t.Errorf("len(Recordings) = %d, want 0", len(res.Recordings))
+	}
+}
