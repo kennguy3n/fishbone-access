@@ -428,6 +428,9 @@ func All() []any {
 		&AccessAnomaly{},
 		&ContractorGrant{},
 		&ContractorGrantExtension{},
+		// Searchable session-recording forensic index + retention policy.
+		&SessionRecording{},
+		&RecordingRetentionPolicy{},
 		// Outbound connector agents + brokered dial.
 		&TargetAgent{},
 		&AgentEnrollmentToken{},

@@ -61,6 +61,7 @@ export const NAV: NavGroup[] = [
       { labelId: "nav.pam.leases", to: "/pam/leases", icon: "playbooks" },
       { labelId: "nav.pam.webAccess", to: "/pam/web-access", icon: "browser" },
       { labelId: "nav.pam.sessions", to: "/pam/sessions", icon: "troubleshoot" },
+      { labelId: "nav.pam.recordings", to: "/pam/recordings", icon: "audit" },
       { labelId: "nav.pam.rotation", to: "/pam/rotation", icon: "audit" },
     ],
   },

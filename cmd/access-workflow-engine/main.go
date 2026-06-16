@@ -225,6 +225,20 @@ func run() error {
 	}
 	reviewScheduler.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("review_sweep") })
 
+	// Session D: searchable session-recording forensic store. The background
+	// sweep indexes finished PAM sessions into the searchable projection and
+	// tiers expired replay blobs out of object storage per the retention policy,
+	// hibernation-gated and fail-open exactly like the review sweep above. nil
+	// (feature disabled) simply skips launching the loop.
+	// Reuse the connector encryptor main already built and validated (boot
+	// aborts above on a malformed key), and gate at-rest decryption on the same
+	// workspace KMS master key the gateway's write side uses, so the sweep never
+	// constructs a second encryptor from a divergent code path.
+	recordingSweeper, err := newRecordingSweeper(ctx, cfg.Recordings, gdb, gate, metrics, connEnc, cfg.KMSMasterKey != "")
+	if err != nil {
+		return err
+	}
+
 	// Credential-rotation sweep (Session C). It rotates due target credentials
 	// (interval + rotate-on-checkin) and reaps expired ephemeral DB credentials,
 	// re-sealing through the same PAM vault / per-workspace DEK path the API
@@ -263,6 +277,15 @@ func run() error {
 			logger.Errorf(context.Background(), "access-workflow-engine: review scheduler exited: %v", rerr)
 		}
 	}()
+	if recordingSweeper != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if rerr := recordingSweeper.Run(ctx); rerr != nil && !errors.Is(rerr, context.Canceled) {
+				logger.Errorf(context.Background(), "access-workflow-engine: recordings sweep exited: %v", rerr)
+			}
+		}()
+	}
 
 	if rotationScheduler != nil {
 		wg.Add(1)

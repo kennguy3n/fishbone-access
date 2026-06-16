@@ -4,6 +4,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { ReplayLaunch } from "@/components/ReplayLaunch";
 import {
   usePamSessions,
   useSessionReplay,
@@ -217,6 +218,7 @@ function SessionDetailModal({
           >
             {showReplay ? "Hide replay" : "View replay"}
           </button>
+          <ReplayLaunch sessionId={session.id} />
           {live && (
             <>
               {session.paused ? (

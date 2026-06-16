@@ -44,6 +44,15 @@ type Metrics struct {
 	hibernationDormant prometheus.Gauge
 	hibernationSkipped *prometheus.CounterVec
 	hibernationWakeups prometheus.Counter
+
+	// Session-recording forensic-store instruments. All AGGREGATE (no tenant id
+	// label) to hold cardinality at 5,000 tenants. recordingsIndexed/Pruned
+	// track the background index + retention-tiering sweeps; recordingsTamper is
+	// the security signal — a non-zero rate means a stored recording's bytes no
+	// longer match the SHA-256 anchored in the audit chain at capture.
+	recordingsIndexed prometheus.Counter
+	recordingsPruned  prometheus.Counter
+	recordingsTamper  prometheus.Counter
 }
 
 // NewMetrics builds the registry pre-loaded with the Go runtime and process
@@ -117,9 +126,28 @@ func NewMetrics() *Metrics {
 			Name:      "wake_events_total",
 			Help:      "Lazy wake transitions (dormant->active) driven by real tenant activity on the request path. A healthy fleet wakes tenants promptly and rarely; a spike means dormant tenants are returning. Aggregate only — never labelled by tenant id.",
 		}),
+		recordingsIndexed: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "recordings",
+			Name:      "indexed_total",
+			Help:      "Session recordings projected into the searchable forensic index by the background index sweep (fleet-wide). Aggregate only — never labelled by tenant id.",
+		}),
+		recordingsPruned: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "recordings",
+			Name:      "pruned_total",
+			Help:      "Recording replay blobs tiered out of object storage by the retention sweep, preserving the metadata row and audit event (fleet-wide). Aggregate only — never labelled by tenant id.",
+		}),
+		recordingsTamper: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "recordings",
+			Name:      "tamper_detected_total",
+			Help:      "Replay reads whose recomputed SHA-256 did NOT match the digest anchored in the audit chain at capture (fleet-wide). Any non-zero rate is a tamper/corruption alert. Aggregate only — never labelled by tenant id.",
+		}),
 	}
 	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen,
-		m.hibernationDormant, m.hibernationSkipped, m.hibernationWakeups)
+		m.hibernationDormant, m.hibernationSkipped, m.hibernationWakeups,
+		m.recordingsIndexed, m.recordingsPruned, m.recordingsTamper)
 	return m
 }
 
@@ -173,6 +201,35 @@ func (m *Metrics) IncPeriodicJobSkipped(worker string) {
 // transition, not per request).
 func (m *Metrics) IncWakeEvents() {
 	m.hibernationWakeups.Inc()
+}
+
+// AddRecordingsIndexed records n session recordings projected into the
+// searchable forensic index (fleet-wide aggregate, never per tenant). Wire it
+// as the background index sweep's post-round observer. A non-positive n is a
+// no-op.
+func (m *Metrics) AddRecordingsIndexed(n int) {
+	if n <= 0 {
+		return
+	}
+	m.recordingsIndexed.Add(float64(n))
+}
+
+// AddRecordingsPruned records n replay blobs tiered out of object storage by
+// the retention sweep (fleet-wide aggregate, never per tenant). A non-positive
+// n is a no-op.
+func (m *Metrics) AddRecordingsPruned(n int) {
+	if n <= 0 {
+		return
+	}
+	m.recordingsPruned.Add(float64(n))
+}
+
+// IncRecordingTamperDetected records one replay read whose recomputed SHA-256
+// did not match the digest anchored in the audit chain — a fleet-wide tamper /
+// corruption alarm, never labelled by tenant id. Wire it where the replay API
+// verifies a recording on read.
+func (m *Metrics) IncRecordingTamperDetected() {
+	m.recordingsTamper.Inc()
 }
 
 // IncQuotaBreach records an over-quota billing-enforcement decision, labelled by

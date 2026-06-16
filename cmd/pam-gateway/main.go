@@ -216,7 +216,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// run in every gateway process. Tied to ctx so it stops on shutdown.
 	go leases.RunExpirySweep(ctx, 0)
 
-	store, err := buildReplayStore(ctx)
+	store, err := buildReplayStore(ctx, cfg, gdb, enc)
 	if err != nil {
 		return nil, err
 	}
@@ -383,33 +383,38 @@ func buildSSHProxy(ctx context.Context, broker *pam.Broker, sessions *pam.Sessio
 	})
 }
 
-// buildReplayStore selects the session-replay backend from the environment: an
-// S3 bucket when PAM_REPLAY_S3_BUCKET is set, otherwise a filesystem store
-// under PAM_REPLAY_DIR (default ./pam-replays).
-func buildReplayStore(ctx context.Context) (gateway.ReplayStore, error) {
-	if bucket := os.Getenv("PAM_REPLAY_S3_BUCKET"); bucket != "" {
-		region := os.Getenv("PAM_REPLAY_S3_REGION")
-		var opts []gateway.S3Option
-		if ep := os.Getenv("PAM_REPLAY_S3_ENDPOINT"); ep != "" {
-			opts = append(opts, gateway.WithEndpointURL(ep), gateway.WithForcePathStyle(true))
-		}
-		store, err := gateway.NewS3ReplayStore(ctx, bucket, region, opts...)
-		if err != nil {
-			return nil, fmt.Errorf("s3 replay store: %w", err)
-		}
-		logger.Infof(ctx, "pam-gateway: replay store = s3://%s", bucket)
-		return store, nil
-	}
-	dir := os.Getenv("PAM_REPLAY_DIR")
-	if dir == "" {
-		dir = "./pam-replays"
-	}
-	store, err := gateway.NewFilesystemReplayStore(dir)
+// buildReplayStore selects the session-replay backend from the environment (an
+// S3 bucket when PAM_REPLAY_S3_BUCKET is set, otherwise a filesystem store under
+// PAM_REPLAY_DIR) and, when a per-workspace KMS key is configured, wraps it in
+// transparent at-rest encryption so the recording blob — which holds typed
+// secrets and query output — is sealed under the owning workspace's DEK in
+// addition to the SHA-256 the recorder anchors for integrity. With no KMS key
+// (dev/test) the plain store is used and behaviour is unchanged; the encrypting
+// decorator also passes pre-encryption plaintext recordings through unchanged,
+// so enabling a key never strands older blobs.
+func buildReplayStore(ctx context.Context, cfg config.Config, gdb *gorm.DB, enc access.CredentialEncryptor) (gateway.ReplayStore, error) {
+	base, err := gateway.OpenReplayStoreFromEnv(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("filesystem replay store: %w", err)
+		return nil, err
 	}
-	logger.Infof(ctx, "pam-gateway: replay store = file://%s", dir)
+	if !replayEncryptionConfigured(cfg) {
+		logger.Warnf(ctx, "pam-gateway: replay blob at-rest encryption DISABLED (no ACCESS_KMS_MASTER_KEY); recordings are integrity-hashed but stored as plaintext")
+		return base, nil
+	}
+	store, err := gateway.WrapWithEncryption(base, enc, gateway.NewGormSessionWorkspaceResolver(gdb))
+	if err != nil {
+		return nil, fmt.Errorf("replay at-rest encryption: %w", err)
+	}
+	logger.Infof(ctx, "pam-gateway: replay blob at-rest encryption ENABLED (per-workspace DEK)")
 	return store, nil
+}
+
+// replayEncryptionConfigured reports whether a per-workspace KMS master key is
+// configured. At-rest encryption uses the per-workspace derived DEK, so it is
+// enabled only with a KMS master key (not the single static credential DEK,
+// which is not workspace-scoped).
+func replayEncryptionConfigured(cfg config.Config) bool {
+	return cfg.KMSMasterKey != ""
 }
 
 // setupDatabase opens Postgres, applies SQL migrations, and returns the pool.

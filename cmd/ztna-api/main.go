@@ -34,6 +34,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/config"
+	"github.com/kennguy3n/fishbone-access/internal/gateway"
 	"github.com/kennguy3n/fishbone-access/internal/handlers"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/migrations"
@@ -336,6 +337,32 @@ func run() error {
 		return fmt.Errorf("connector credential encryptor init: %w", err)
 	}
 	deps.ConnectorEncryptor = connEnc
+
+	// Shared session-replay backend for the PAM session-replay endpoint and the
+	// recordings forensic store. Both read through this one reader so they agree
+	// on the storage location AND on at-rest decryption. When a per-workspace KMS
+	// master key is configured the env-selected store is wrapped in transparent
+	// per-workspace decryption (the gateway seals new blobs under the owning
+	// workspace's DEK); the decorator passes pre-encryption plaintext recordings
+	// through unchanged. With no DB (degraded boot) the reader is left nil and
+	// each handler falls back to its env builder. A backend that cannot be opened
+	// (e.g. misconfigured S3) is non-fatal: replay degrades to "unavailable"
+	// rather than blocking the whole API boot.
+	if deps.DB != nil {
+		if base, berr := gateway.OpenReplayStoreFromEnv(ctx); berr != nil {
+			logger.Warnf(ctx, "ztna-api: replay backend unavailable: %v (session replay + recordings frame stream degrade to unavailable)", berr)
+		} else if cfg.KMSMasterKey != "" {
+			reader, werr := gateway.WrapWithEncryption(base, connEnc, gateway.NewGormSessionWorkspaceResolver(deps.DB))
+			if werr != nil {
+				return fmt.Errorf("replay at-rest decryption init: %w", werr)
+			}
+			deps.ReplayReader = reader
+			logger.Infof(ctx, "ztna-api: replay backend = at-rest encrypted (per-workspace DEK)")
+		} else {
+			deps.ReplayReader = base
+			logger.Warnf(ctx, "ztna-api: replay backend = plaintext (no ACCESS_KMS_MASTER_KEY)")
+		}
+	}
 
 	// AI client (mTLS A2A) shared by the lifecycle risk review baked into the
 	// elevation request flow and the connector setup wizard. NewAIClientFromEnv

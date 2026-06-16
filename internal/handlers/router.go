@@ -18,6 +18,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/config"
+	"github.com/kennguy3n/fishbone-access/internal/gateway"
 	"github.com/kennguy3n/fishbone-access/internal/middleware"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
@@ -138,6 +139,15 @@ type Deps struct {
 	// assign its plan. It derives statements from the SAME usage rollup the meter
 	// writes. nil leaves the routes unmounted (tests/degraded boots).
 	BillingReader billingService
+	// ReplayReader, when set, is the shared session-replay backend the PAM
+	// session-replay endpoint and the recordings forensic store both read
+	// through, so they agree on the storage location AND on at-rest decryption.
+	// Production (cmd/ztna-api) wires the env-selected store wrapped in
+	// per-workspace decryption when a KMS key is configured; the encrypting
+	// decorator transparently opens sealed blobs and passes legacy plaintext
+	// through. nil falls back to the per-handler env builder (plaintext), so the
+	// pre-feature behaviour and the SQLite/degraded boots are unchanged.
+	ReplayReader gateway.ReplayReader
 	// AgentEnrollment, when set, backs the outbound connector agent enrollment:
 	// the public token-gated POST /api/v1/agents/enroll endpoint and the
 	// authenticated mint-token / revoke management routes. It is wired only when
@@ -304,6 +314,10 @@ func NewRouter(deps Deps) *gin.Engine {
 		newConnectorHandlers(deps).register(scoped)
 		pamH := newPAMHandlers(deps)
 		pamH.register(scoped)
+		// Session D: searchable session-recording forensic store (full-text
+		// search, replay player frame stream, retention policy). Additive — one
+		// constructor + register, mounted on the same tenant-scoped group.
+		newRecordingsHandlers(deps).register(scoped)
 		// Credential rotation reuses the PAM vault + lease service so it
 		// re-seals with the same per-workspace key path and validates leases
 		// against the same state machine (Session C).

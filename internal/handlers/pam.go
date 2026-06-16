@@ -107,7 +107,14 @@ func newPAMHandlers(deps Deps) *pamHandlers {
 
 	broker.SetLeaseValidator(leases)
 
-	replays := buildReplayReader()
+	// Prefer the shared, possibly-decrypting replay backend wired by main so the
+	// session-replay endpoint reads through the same path (and at-rest
+	// decryption) as the recordings forensic store. Fall back to the env builder
+	// for bare-Deps callers (tests/degraded boots), preserving prior behaviour.
+	replays := deps.ReplayReader
+	if replays == nil {
+		replays = buildReplayReader()
+	}
 
 	return &pamHandlers{
 		vault:    vault,

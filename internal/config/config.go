@@ -152,6 +152,13 @@ type Config struct {
 	// bill).
 	Billing BillingConfig
 
+	// Recordings tunes the searchable session-recording forensic store: the
+	// background index + retention-prune sweep cadence and the default
+	// retention window. It is safe-by-default (pruning OFF until a window is
+	// configured) so the feature never deletes forensic evidence without an
+	// explicit policy.
+	Recordings RecordingsConfig
+
 	// WebAccess holds the clientless browser-access bridge settings: the
 	// in-browser web-SSH terminal and the web database console served over a
 	// WebSocket on ztna-api. It reuses the PAM gateway's leasing,
@@ -223,6 +230,37 @@ type TenancyConfig struct {
 	// constrained tier) so an un-tiered tenant cannot consume an active
 	// tenant's share.
 	DefaultTier string
+}
+
+// RecordingsConfig tunes the searchable session-recording forensic store's
+// background sweep (cmd/access-workflow-engine). The sweep indexes finished PAM
+// sessions into the searchable projection and tiers expired replay blobs out of
+// object storage per the retention policy, hibernation-gated and fail-open like
+// the review sweep.
+type RecordingsConfig struct {
+	// SweepEnabled gates the background index + prune sweep. When false the
+	// engine runs no recordings maintenance (recordings are still searchable if
+	// indexed by a prior run, and the API still serves them) — an operator can
+	// disable the optimisation without code changes. Read from
+	// ACCESS_RECORDING_SWEEP_ENABLED; defaults to true.
+	SweepEnabled bool
+	// SweepInterval is how often a full index+prune round runs over all
+	// workspaces. Recordings are not latency-sensitive to index, so the default
+	// (1h) keeps fleet-wide cost negligible. Read from
+	// ACCESS_RECORDING_SWEEP_INTERVAL.
+	SweepInterval time.Duration
+	// DefaultRetentionDays is the plan/global retention window applied to a
+	// workspace with NO explicit override (the per-workspace policy always wins).
+	// 0 means "retain indefinitely", the safe default: the sweep never tiers a
+	// blob out until a tenant (or an operator, fleet-wide) opts into a finite
+	// window, so evidence is never deleted by default. Read from
+	// ACCESS_RECORDING_RETENTION_DAYS.
+	DefaultRetentionDays int
+	// IndexBatch and PruneBatch bound the per-workspace work each sweep round
+	// performs, so one busy tenant's backlog cannot monopolise a round. Read
+	// from ACCESS_RECORDING_INDEX_BATCH / ACCESS_RECORDING_PRUNE_BATCH.
+	IndexBatch int
+	PruneBatch int
 }
 
 // RotationConfig tunes the credential-rotation sweep run inside the workflow
@@ -560,6 +598,13 @@ func Load() Config {
 			Enabled:        getBool("ACCESS_BILLING_ENABLED", false),
 			EnforceHardCap: getBool("ACCESS_BILLING_ENFORCE_HARD_CAP", false),
 			CacheTTL:       getDuration("ACCESS_BILLING_CACHE_TTL", 30*time.Second),
+		},
+		Recordings: RecordingsConfig{
+			SweepEnabled:         getBool("ACCESS_RECORDING_SWEEP_ENABLED", true),
+			SweepInterval:        getDuration("ACCESS_RECORDING_SWEEP_INTERVAL", time.Hour),
+			DefaultRetentionDays: getInt("ACCESS_RECORDING_RETENTION_DAYS", 0),
+			IndexBatch:           getInt("ACCESS_RECORDING_INDEX_BATCH", 200),
+			PruneBatch:           getInt("ACCESS_RECORDING_PRUNE_BATCH", 200),
 		},
 		WebAccess: WebAccessConfig{
 			Enabled:       getBool("ACCESS_WEBACCESS_ENABLED", true),
