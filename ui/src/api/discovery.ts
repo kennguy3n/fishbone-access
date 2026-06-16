@@ -236,6 +236,10 @@ export const onboardAsset = async (
     // Use the full-response variant so we can read the X-Discovery-Warning
     // header the API sets on a partial success (target created, agent bind
     // failed) — apiRequest unwraps to `.data` and would drop it.
+    // NOTE: this relies on the SPA and API being same-origin (prod embeds the
+    // UI in the Go binary; dev uses the Vite proxy). If the SPA is ever served
+    // from a separate origin, the browser will strip this custom header unless
+    // it is added to Access-Control-Expose-Headers in the API's CORS setup.
     const res = await apiRequestFull<PamTarget>({
       url: `/discovery/assets/${id}/onboard`,
       method: "POST",
