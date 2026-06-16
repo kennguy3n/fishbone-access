@@ -30,7 +30,11 @@ import (
 //     before the agent stream opens — the same point a local dial checks it.
 //   - Exactly one AuditBrokerOpen per session: the owner (which opens the agent
 //     stream) audits; the calling replica does NOT, so a forwarded dial produces
-//     one broker-open event, never zero and never two.
+//     one broker-open event, never zero and never two. The event records that
+//     the broker OPENED the agent stream at this owner (access was established
+//     here); it is not a guarantee that bytes were subsequently relayed — in the
+//     narrow race where the caller's deadline elapses just as the owner finishes
+//     setup, the stream is opened (and audited) but torn down before use.
 //   - The forward dial is bounded by the relay's dial timeout, so a dial against
 //     a crashed owner fails closed instead of hanging.
 
