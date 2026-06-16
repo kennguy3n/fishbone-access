@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -157,7 +158,7 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 				RequireMFA: true,
 				Actor:      "system:auto-onboard",
 			})
-			if onbErr != nil {
+			if onbErr != nil && !errors.Is(onbErr, ErrAgentBindFailed) {
 				// A single onboarding failure (e.g. duplicate name) must not abort
 				// the whole sweep; flag the asset so it still surfaces as recommended.
 				if flagErr := e.flagPolicyMatched(ctx, workspaceID, asset.ID); flagErr != nil {
@@ -165,6 +166,9 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 				}
 				continue
 			}
+			// A bind failure (ErrAgentBindFailed) still created the target and
+			// linked the asset — it IS onboarded (direct-dial), so count it like
+			// a success rather than undercounting the sweep result.
 			onboarded++
 		}
 		if len(batch) < evalAssetBatchSize {

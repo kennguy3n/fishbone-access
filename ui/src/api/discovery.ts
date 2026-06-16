@@ -18,7 +18,7 @@ import {
   useQuery,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import { apiRequest } from "./http-client";
+import { apiRequest, apiRequestFull } from "./http-client";
 import { ApiError, toApiError, type PamTarget } from "./access";
 
 // ---------------------------------------------------------------------------
@@ -158,6 +158,14 @@ export interface OnboardAssetInput {
   lease_ttl_seconds?: number;
 }
 
+/**
+ * OnboardResult is the created PAM target plus an optional client-side warning.
+ * `_bindWarning` is set (from the `X-Discovery-Warning` response header) when
+ * onboarding succeeded but binding the target to its agent failed — the target
+ * is usable via direct dial and the bind can be retried from target settings.
+ */
+export type OnboardResult = PamTarget & { _bindWarning?: string };
+
 export interface SavePolicyInput {
   enabled: boolean;
   create_targets: boolean;
@@ -220,12 +228,25 @@ export const listDiscoveredAssets = (f: AssetFilters = {}) =>
 export const getDiscoveredAsset = (id: string) =>
   call<DiscoveredAsset>({ url: `/discovery/assets/${id}`, method: "GET" });
 
-export const onboardAsset = (id: string, body: OnboardAssetInput) =>
-  call<PamTarget>({
-    url: `/discovery/assets/${id}/onboard`,
-    method: "POST",
-    data: body,
-  });
+export const onboardAsset = async (
+  id: string,
+  body: OnboardAssetInput,
+): Promise<OnboardResult> => {
+  try {
+    // Use the full-response variant so we can read the X-Discovery-Warning
+    // header the API sets on a partial success (target created, agent bind
+    // failed) — apiRequest unwraps to `.data` and would drop it.
+    const res = await apiRequestFull<PamTarget>({
+      url: `/discovery/assets/${id}/onboard`,
+      method: "POST",
+      data: body,
+    });
+    const warning = res.headers["x-discovery-warning"];
+    return warning ? { ...res.data, _bindWarning: String(warning) } : res.data;
+  } catch (err) {
+    throw toApiError(err);
+  }
+};
 
 export const ignoreAsset = (id: string) =>
   call<{ status: string }>({
@@ -349,7 +370,7 @@ export function useAutoOnboardingPolicy(
 }
 
 export function useOnboardAsset(id: string) {
-  return useMutation<PamTarget, ApiError, OnboardAssetInput>({
+  return useMutation<OnboardResult, ApiError, OnboardAssetInput>({
     mutationFn: (body) => onboardAsset(id, body),
   });
 }

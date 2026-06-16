@@ -163,6 +163,43 @@ func TestDiscoveryOnboardCreatesTarget(t *testing.T) {
 	}
 }
 
+// TestDiscoveryOnboardBindFailureReturnsPartialSuccess proves that when the
+// agent bind fails (here: an agent_id that doesn't exist), the onboard is still
+// a success — the target is created, the asset is linked, the response is 201
+// with the target body, and an X-Discovery-Warning header flags the missing
+// bind — rather than a 500 that hides the created target.
+func TestDiscoveryOnboardBindFailureReturnsPartialSuccess(t *testing.T) {
+	env := newDiscoveryTestEnv(t)
+	assetID, ws := seedDiscoveredAsset(t, env.db, "tenant-a", "host:10.0.0.6:22")
+	missingAgent := uuid.New()
+
+	w := do(t, env.router, http.MethodPost, "/api/v1/discovery/assets/"+assetID.String()+"/onboard", "tok-admin", map[string]any{
+		"username": "root", "password": "hunter2", "require_mfa": true, "agent_id": missingAgent.String(),
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("onboard with failing bind: want 201, got %d (%s)", w.Code, w.Body.String())
+	}
+	if warn := w.Header().Get("X-Discovery-Warning"); warn == "" {
+		t.Fatalf("expected X-Discovery-Warning header on partial success, got none")
+	}
+	var target models.PAMTarget
+	if err := json.Unmarshal(w.Body.Bytes(), &target); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// The target was created and the asset linked despite the bind failure.
+	var got models.DiscoveredAsset
+	if err := env.db.Where("workspace_id = ? AND id = ?", ws, assetID).Take(&got).Error; err != nil {
+		t.Fatalf("reload asset: %v", err)
+	}
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not linked after bind failure: %+v", got)
+	}
+	// The target is direct-dial (no agent bound), as the bind failed.
+	if target.ViaAgentID != nil {
+		t.Fatalf("target should be direct-dial after bind failure, got via_agent_id=%v", target.ViaAgentID)
+	}
+}
+
 // TestDiscoveryDispositionEchoesNormalizedStatus proves the disposition handler
 // returns the status the engine actually persisted (trimmed), not the raw
 // request body, so a client syncing its cache from the response can't drift.

@@ -673,9 +673,13 @@ func TestOnboardAssetBindFailureStillLinksTarget(t *testing.T) {
 	target, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
 		Username: "root", Secret: pam.Secret{Password: "hunter2"}, AgentID: &agentID, RequireMFA: true, Actor: "tester",
 	})
-	// The bind failure must be surfaced...
+	// The bind failure must be surfaced, tagged as a partial success so callers
+	// (handler/scheduler) can treat the onboard as done rather than a hard fail.
 	if err == nil || !strings.Contains(err.Error(), "agent offline") {
 		t.Fatalf("expected surfaced bind error, got %v", err)
+	}
+	if !errors.Is(err, ErrAgentBindFailed) {
+		t.Fatalf("bind failure should wrap ErrAgentBindFailed, got %v", err)
 	}
 	// ...but the target must exist and the asset must be linked to it (not stuck).
 	if target == nil {

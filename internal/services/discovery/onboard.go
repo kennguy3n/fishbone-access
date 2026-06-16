@@ -108,7 +108,11 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 			// and invisible to the sweep (it filters status='unmanaged'). Then
 			// surface the bind failure rather than silently dropping the agent
 			// association.
-			bindWrap := fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr)
+			// Mark the failure with ErrAgentBindFailed so callers can recognise
+			// this as a partial success (target created + linked, agent bind
+			// missing) and respond accordingly instead of treating it as a hard
+			// failure that hides the created target.
+			bindWrap := errors.Join(ErrAgentBindFailed, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr))
 			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); linkErr != nil {
 				return target, errors.Join(bindWrap, linkErr)
 			}

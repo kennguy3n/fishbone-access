@@ -290,6 +290,16 @@ func (h *discoveryHandlers) onboardAsset(c *gin.Context) {
 	}
 	target, err := h.engine.OnboardAsset(c.Request.Context(), ws, assetID, in)
 	if err != nil {
+		// Partial success: the target was created and the asset linked + audited,
+		// but binding it to the agent failed. The onboard itself succeeded (the
+		// target is usable direct-dial and the bind can be retried), so return
+		// 201 with the target plus a warning header instead of a 500 that hides
+		// the created target and leaves a retry to hit 409 Conflict.
+		if errors.Is(err, discovery.ErrAgentBindFailed) && target != nil {
+			c.Header("X-Discovery-Warning", "agent-bind-failed: target created with direct dial; re-bind from target settings")
+			c.JSON(http.StatusCreated, target)
+			return
+		}
 		h.fail(c, err)
 		return
 	}

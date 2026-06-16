@@ -76,19 +76,36 @@ export function OnboardAssetModal({
   const submit = async () => {
     if (!valid) return;
     try {
-      await onboardMut.mutateAsync({
+      const result = await onboardMut.mutateAsync({
         ...draft,
         name: draft.name?.trim(),
         address: draft.address?.trim(),
         username: draft.username?.trim() || undefined,
         agent_id: draft.agent_id || undefined,
       });
-      toast.success(
-        intl.formatMessage({
-          id: "discovery.onboard.success",
-          defaultMessage: "Asset onboarded as a managed PAM target",
-        }),
-      );
+      if (result._bindWarning) {
+        // Partial success: the target was created and is usable via direct
+        // dial, but binding it to the selected agent failed. Tell the operator
+        // exactly that so they know it's onboarded and how to finish the bind.
+        toast.info(
+          intl.formatMessage({
+            id: "discovery.onboard.bindWarning.title",
+            defaultMessage: "Onboarded, but agent binding failed",
+          }),
+          intl.formatMessage({
+            id: "discovery.onboard.bindWarning.detail",
+            defaultMessage:
+              "The PAM target was created and will use direct dial. You can re-bind it to an agent from the target's settings.",
+          }),
+        );
+      } else {
+        toast.success(
+          intl.formatMessage({
+            id: "discovery.onboard.success",
+            defaultMessage: "Asset onboarded as a managed PAM target",
+          }),
+        );
+      }
       onDone();
     } catch (err) {
       const msg =
