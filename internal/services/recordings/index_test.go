@@ -162,6 +162,52 @@ func TestIndexSessionTamperDetected(t *testing.T) {
 	}
 }
 
+// TestIndexSessionNoTamperWhenAnchorHasNoDigest guards against a false-positive
+// tamper alarm: when the recording audit event EXISTS but carries no SHA-256
+// (the gateway anchored the event without a digest), there is nothing to verify
+// against, so enrichment must NOT flag tampering. Without the
+// `anchor.SHA256 != ""` guard the counter would fire fleet-wide for every such
+// recording.
+func TestIndexSessionNoTamperWhenAnchorHasNoDigest(t *testing.T) {
+	t.Parallel()
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "acme")
+	target := seedTarget(t, db, ws, "db", "ssh")
+	start := time.Now().Add(-time.Hour).UTC()
+	end := start.Add(time.Minute)
+	session := seedSession(t, db, ws, target, "mallory@acme.io", "ssh", models.PAMSessionClosed, start, &end)
+
+	blob, _ := buildBlob(t, frame('I', start, "uptime\r"))
+	// Anchor the recording event but with an EMPTY digest (Found=true, SHA256="").
+	seedRecordingAnchor(t, db, ws, session, "", int64(len(blob)), false)
+
+	store := newFakeStore()
+	store.put(session.String(), blob)
+	metrics := &fakeMetrics{}
+	svc := NewService(db, WithReplayReader(store), WithMetrics(metrics))
+
+	if err := svc.IndexSession(context.Background(), ws, session); err != nil {
+		t.Fatalf("IndexSession: %v", err)
+	}
+	var rec models.SessionRecording
+	if err := db.Where("session_id = ?", session).First(&rec).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if rec.SHA256Verified {
+		t.Error("sha256_verified = true, want false (no anchor digest to verify against)")
+	}
+	if _, _, tamper := metrics.snapshot(); tamper != 0 {
+		t.Errorf("tamper metric = %d, want 0 (no digest must not be treated as tampering)", tamper)
+	}
+	// Enrichment is fail-open: the blob was still decoded for frame count + search.
+	if rec.FrameCount != 1 {
+		t.Errorf("frame count = %d, want 1 (enrichment still runs without an anchor digest)", rec.FrameCount)
+	}
+	if !strings.Contains(rec.SearchText, "uptime") {
+		t.Errorf("search text missing keystrokes: %q", rec.SearchText)
+	}
+}
+
 func TestIndexClosedSessionsSkipsActiveAndCountsAggregate(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)

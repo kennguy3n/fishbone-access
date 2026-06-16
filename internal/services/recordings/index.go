@@ -173,7 +173,13 @@ func (s *Service) enrichFromBlob(ctx context.Context, row *models.SessionRecordi
 	if row.SHA256 == "" {
 		row.SHA256 = decoded.SHA256
 	}
-	if anchor.Found {
+	// Only treat a digest mismatch as tampering when an anchor digest actually
+	// exists to compare against. A found audit event with an EMPTY SHA256 (the
+	// gateway recorded the session but anchored no digest) leaves
+	// decoded.SHA256Verified == false simply because there was nothing to
+	// verify — firing the tamper counter there is a false positive. This mirrors
+	// the `anchored := rec.SHA256 != ""` guard on the LoadFrames read path.
+	if anchor.Found && anchor.SHA256 != "" {
 		row.SHA256Verified = decoded.SHA256Verified
 		if !decoded.SHA256Verified && s.metrics != nil {
 			s.metrics.IncRecordingTamperDetected()
