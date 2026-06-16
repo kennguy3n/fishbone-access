@@ -212,8 +212,11 @@ func (d *GormSessionDirectory) Lookup(ctx context.Context, workspaceID, agentID 
 // OnlineCount counts agents in a workspace with a fresh owner anywhere.
 func (d *GormSessionDirectory) OnlineCount(ctx context.Context, workspaceID uuid.UUID) (int, error) {
 	var n int64
+	// Use >= so the staleness boundary matches fresh() (now-lastSeen <= staleAfter):
+	// otherwise an agent exactly on the boundary would count as online via IsOnline
+	// yet be excluded here, making OnlineCount disagree with the per-agent check.
 	if err := d.db.WithContext(ctx).Model(&models.AgentSessionDirectoryEntry{}).
-		Where("workspace_id = ? AND last_seen_at > ?", workspaceID, d.now().Add(-d.staleAfter)).
+		Where("workspace_id = ? AND last_seen_at >= ?", workspaceID, d.now().Add(-d.staleAfter)).
 		Count(&n).Error; err != nil {
 		return 0, err
 	}

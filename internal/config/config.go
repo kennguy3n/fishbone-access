@@ -871,6 +871,10 @@ func (c Config) Warnings() []string {
 			w = append(w, "ACCESS_USAGE_METERING_SHARED_STORE is set but ACCESS_REDIS_URL is empty; "+
 				"usage metering is falling back to the per-replica additive UPSERT into Postgres (still cross-replica correct, just not consolidated through Redis)")
 		}
+		if c.AgentBroker.CrossReplicaConfigured() && c.AgentBroker.DirectoryRedisFastPath {
+			w = append(w, "ACCESS_AGENT_DIRECTORY_REDIS is set but ACCESS_REDIS_URL is empty; "+
+				"the session directory is falling back to direct Postgres reads on the cross-replica dial path (correct, just without the Redis owner-lookup cache)")
+		}
 	}
 	return w
 }

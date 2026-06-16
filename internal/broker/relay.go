@@ -189,13 +189,25 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 	id := ac.identity
 	scanner := scanControl(control)
 	registered := false
+	// ownershipLost is set when a heartbeat's CAS reveals another replica took
+	// over this agent (it reconnected elsewhere). In that case the agent is NOT
+	// offline — its tunnel merely migrated — so we must drop our local tunnel
+	// WITHOUT touching shared state: the new owner already marked it online, and
+	// emitting OnDisconnect here would both flip its status to offline and append
+	// a misleading AgentOffline event to the immutable audit chain. The directory
+	// row and its ownership likewise belong to the new owner now (our Release CAS
+	// would no-op anyway), so we leave them untouched.
+	ownershipLost := false
 	defer func() {
 		if registered {
 			r.deregister(ac)
+			if ownershipLost {
+				logger.Infof(ctx, "broker: tunnel migrated to another replica workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
+				return
+			}
 			// Clear our directory ownership so peers stop forwarding to a tunnel
-			// we no longer hold. CAS-conditioned on (node, epoch): if the agent
-			// already reconnected elsewhere and took over, this is a no-op and we
-			// must not delete the new owner's claim.
+			// we no longer hold. CAS-conditioned on (node, epoch) so a superseded
+			// owner can never delete a newer owner's claim.
 			if r.dir != nil && ac.ownerEpoch != 0 {
 				if err := r.dir.Release(context.WithoutCancel(ctx), id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
 					logger.Warnf(ctx, "broker: release ownership agent=%s: %v", id.AgentID, err)
@@ -255,6 +267,7 @@ func (r *Relay) serveControl(ctx context.Context, ac *agentConn, control net.Con
 				if err := r.dir.Refresh(ctx, id.WorkspaceID, id.AgentID, r.nodeID, ac.ownerEpoch); err != nil {
 					if errors.Is(err, ErrOwnershipLost) {
 						logger.Infof(ctx, "broker: ownership lost, dropping stale tunnel workspace=%s agent=%s", id.WorkspaceID, id.AgentID)
+						ownershipLost = true
 						return
 					}
 					logger.Warnf(ctx, "broker: refresh ownership agent=%s: %v", id.AgentID, err)
