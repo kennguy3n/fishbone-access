@@ -127,12 +127,27 @@ func (f *Forwarder) Handle(ctx context.Context, conn net.Conn) {
 		_ = writeJSONLine(tlsConn, ForwardResponse{OK: false, Error: "agent unavailable"})
 		return
 	}
-	stream, err := f.relay.openStream(ctx, ac, req.Target)
+	// Open the agent stream within the SAME overall setup budget. openStream would
+	// otherwise mint its own fresh dialTO deadline, and because ctx carries none it
+	// would run independently of the tlsConn setup deadline set above — a slow open
+	// could let that deadline expire mid-setup and fail the OK write *after* the
+	// stream already opened, wasting it and leaving a phantom broker-open audit.
+	// Clamping to the shared deadline keeps handshake + request + open within one
+	// dialTO.
+	dialCtx, dialCancel := context.WithDeadline(ctx, deadline)
+	stream, err := f.relay.openStream(dialCtx, ac, req.Target)
+	dialCancel()
 	if err != nil {
 		_ = writeJSONLine(tlsConn, ForwardResponse{OK: false, Error: "open stream failed"})
 		return
 	}
 	defer stream.Close()
+
+	// The agent stream is open: the forward connection now becomes a live tunnel,
+	// so clear the setup deadline BEFORE the going-live audit + OK write + relay.
+	// A slow-but-successful open must not be able to expire the deadline and tear
+	// down the OK write (or, later, a long-lived session).
+	_ = tlsConn.SetDeadline(time.Time{})
 
 	// The owner opens the agent stream, so the owner records the SINGLE
 	// broker-open audit event (the calling replica must not, to avoid a double
@@ -145,9 +160,7 @@ func (f *Forwarder) Handle(ctx context.Context, conn net.Conn) {
 		logger.Warnf(ctx, "broker: forward write response: %v", err)
 		return
 	}
-	// Live tunnel: clear the handshake deadline and relay bytes both ways until
-	// either end closes or ctx is cancelled.
-	_ = tlsConn.SetDeadline(time.Time{})
+	// Live tunnel: relay bytes both ways until either end closes or ctx cancelled.
 	relayBytes(ctx, tlsConn, stream)
 }
 
