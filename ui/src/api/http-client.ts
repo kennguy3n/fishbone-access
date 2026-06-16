@@ -58,6 +58,22 @@ export const apiRequest = <T>(
   }).then(({ data }: AxiosResponse<T>) => data);
 
 /**
+ * apiRequestFull behaves like apiRequest but returns the full AxiosResponse so
+ * callers can read response headers (e.g. the X-Discovery-Warning the onboard
+ * endpoint sets on a partial success) that apiRequest discards when it unwraps
+ * to `.data`. The shared instance still applies the bearer token,
+ * Accept-Language negotiation, and 401 handling.
+ */
+export const apiRequestFull = <T>(
+  config: AxiosRequestConfig,
+  options?: AxiosRequestConfig,
+): Promise<AxiosResponse<T>> =>
+  instance<T>({
+    ...config,
+    ...options,
+  });
+
+/**
  * apiDownload performs a request whose body is a binary attachment (e.g. the
  * evidence-pack ZIP) and returns the full response so callers can read the
  * Content-Disposition filename and any custom digest header — information that

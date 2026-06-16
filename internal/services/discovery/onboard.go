@@ -37,6 +37,10 @@ type OnboardAssetInput struct {
 	LeaseTTL time.Duration
 	// Actor is the iam-core subject performing the onboard (audited).
 	Actor string
+	// Trigger records what drove the onboard in the audit metadata
+	// (manual operator click vs. scheduled auto-onboard sweep). Empty defaults
+	// to manual so direct API callers don't have to set it.
+	Trigger string
 }
 
 // OnboardAsset promotes a discovered asset into a managed PAM target. It creates
@@ -79,6 +83,7 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 	if agentID == nil {
 		agentID = asset.AgentID
 	}
+	trigger := firstNonEmpty(in.Trigger, models.DiscoveryTriggerManual)
 	requireMFA := in.RequireMFA
 
 	target, err := e.vault.CreateTarget(ctx, pam.CreateTargetInput{
@@ -100,16 +105,49 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		return nil, e.mapVaultErr(err)
 	}
 
+	// Record the just-created target on the asset BEFORE bind/link, so that if
+	// the link fails (stranding the asset managed/target_id=NULL) the reconcile
+	// sweep can re-link deterministically to this exact target — even when the
+	// operator overrode the address so it no longer matches the asset's. This is
+	// a best-effort single-column update with no audit chain (far more robust
+	// than the link tx it backstops); if it fails, reconcile falls back to the
+	// endpoint heuristic, no worse than before this column existed.
+	e.recordPendingTarget(ctx, workspaceID, asset.ID, target.ID)
+
 	if agentID != nil && e.binder != nil {
 		if bindErr := e.binder.BindTarget(ctx, workspaceID, *agentID, target.ID, in.Actor); bindErr != nil {
-			// The target exists and is usable direct-dial; surface the bind
-			// failure rather than silently dropping the agent association.
-			return target, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr)
+			// The target exists and is usable direct-dial. Link the asset to it
+			// FIRST so a bind failure can't strand the asset as managed with a
+			// NULL target_id — which would make it un-onboardable (ErrConflict)
+			// and invisible to the sweep (it filters status='unmanaged').
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, trigger); linkErr != nil {
+				// The link itself failed, so the asset was NOT successfully
+				// onboarded (it is managed with a NULL target_id — the same rare
+				// local-tx residual as the non-bind link path below). This is a
+				// HARD failure, not a partial success: deliberately do NOT tag
+				// ErrAgentBindFailed, so callers surface it (handler 500, sweep
+				// flags + skips the onboarded count) instead of falsely reporting
+				// success on a stranded asset. Wrap linkErr with %v (not %w): a
+				// link failure is an internal residual, so we must not leak a
+				// sentinel (e.g. ErrNotFound from a concurrent reconcile race)
+				// that the handler would map to 404/409 instead of 500.
+				return target, fmt.Errorf("discovery: onboarded target link failed after bind error (bind=%v): %v", bindErr, linkErr)
+			}
+			// Link succeeded: the target is created and the asset is linked +
+			// audited — only the agent association is missing. Tag the failure
+			// with ErrAgentBindFailed so callers recognise it as a partial
+			// success (handler 201 + warning, sweep counts it onboarded) rather
+			// than a hard failure that hides the usable direct-dial target.
+			return target, errors.Join(ErrAgentBindFailed, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr))
 		}
 	}
 
-	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); err != nil {
-		return target, err
+	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, trigger); err != nil {
+		// Same rationale as the bind+link path above: surface a link failure as
+		// an internal error (handler 500) rather than leaking a sentinel like
+		// ErrNotFound — from a concurrent reconcile that already linked the
+		// target_id — which the handler would otherwise map to a misleading 404.
+		return target, fmt.Errorf("discovery: onboarded target link failed: %v", err)
 	}
 	return target, nil
 }
@@ -147,12 +185,31 @@ func (e *Engine) claimAssetForOnboard(ctx context.Context, workspaceID, assetID 
 // releaseAssetClaim reverts a claim made by claimAssetForOnboard when target
 // creation fails, returning the asset to unmanaged so it can be retried. It is
 // best-effort and guarded on target_id IS NULL so it can never clobber a target
-// that was successfully linked. Any error is swallowed: the caller is already
-// returning the more important target-creation error.
-func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) {
+// that was successfully linked. Any error is swallowed: the create-failure
+// caller is already returning the more important target-creation error.
+//
+// Returns true only when it actually flipped a row back to unmanaged, so the
+// reconcile sweep can avoid counting a no-op (DB error, or a row a concurrent
+// linker already moved) as a heal.
+func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) bool {
+	res := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
+		Updates(map[string]any{
+			"status":            models.DiscoveryStatusUnmanaged,
+			"pending_target_id": nil,
+		})
+	return res.Error == nil && res.RowsAffected == 1
+}
+
+// recordPendingTarget durably notes the target OnboardAsset just created on the
+// still-unlinked asset, so a subsequent link failure can be healed by re-linking
+// to this exact target rather than guessing by endpoint. Best-effort: guarded on
+// managed/target_id=NULL so it can never touch an already-linked asset, and any
+// error is ignored (the reconcile endpoint heuristic remains as a fallback).
+func (e *Engine) recordPendingTarget(ctx context.Context, workspaceID, assetID, targetID uuid.UUID) {
 	_ = e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
 		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
-		Update("status", models.DiscoveryStatusUnmanaged).Error
+		Update("pending_target_id", targetID).Error
 }
 
 // linkAssetTarget records the new target_id on an already-claimed (managed)
@@ -165,9 +222,10 @@ func (e *Engine) linkAssetTarget(ctx context.Context, workspaceID, assetID, targ
 		res := tx.Model(&models.DiscoveredAsset{}).
 			Where("workspace_id = ? AND id = ? AND target_id IS NULL", workspaceID, assetID).
 			Updates(map[string]any{
-				"target_id":      targetID,
-				"policy_matched": false,
-				"last_seen_at":   now,
+				"target_id":         targetID,
+				"pending_target_id": nil,
+				"policy_matched":    false,
+				"last_seen_at":      now,
 			})
 		if res.Error != nil {
 			return res.Error

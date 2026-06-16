@@ -3,10 +3,12 @@ package discovery
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,6 +140,24 @@ func (h *harness) targetCount(t *testing.T, ws uuid.UUID) int64 {
 	return n
 }
 
+// auditMeta returns the parsed metadata of the most recent audit event for an
+// action in a workspace, for asserting trigger/labels.
+func (h *harness) auditMeta(t *testing.T, ws uuid.UUID, action string) map[string]any {
+	t.Helper()
+	var ev models.AuditEvent
+	if err := h.db.Where("workspace_id = ? AND action = ?", ws, action).
+		Order("chain_seq DESC").Take(&ev).Error; err != nil {
+		t.Fatalf("load audit %q: %v", action, err)
+	}
+	m := map[string]any{}
+	if len(ev.Metadata) > 0 {
+		if err := json.Unmarshal(ev.Metadata, &m); err != nil {
+			t.Fatalf("unmarshal audit meta: %v", err)
+		}
+	}
+	return m
+}
+
 // --- fakes -----------------------------------------------------------------
 
 type fakeDialer struct {
@@ -162,10 +182,17 @@ func (f *fakeDialer) DialThroughAgent(_ context.Context, _, _ uuid.UUID, addr st
 type fakeBinder struct {
 	calls int
 	err   error
+	// hook, if set, runs after the call is recorded but before the error is
+	// returned. Tests use it to simulate a side effect of the bind (e.g.
+	// cancelling the context) so the subsequent linkAssetTarget fails.
+	hook func()
 }
 
 func (f *fakeBinder) BindTarget(_ context.Context, _, _, _ uuid.UUID, _ string) error {
 	f.calls++
+	if f.hook != nil {
+		f.hook()
+	}
 	return f.err
 }
 
@@ -437,6 +464,32 @@ func TestReconcileClassifiesPortNormalized(t *testing.T) {
 	}
 }
 
+func TestReconcileClassifiesCaseInsensitive(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	requireMFA := true
+	// Target stored with a mixed-case hostname; discovery reports it lowercased.
+	// Hostnames are case-insensitive per RFC, so it must still classify managed.
+	if _, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "mixed-case-pg", Protocol: "postgres", Address: "DB.Acme:5432",
+		Username: "root", RequireMFA: &requireMFA, Secret: pam.Secret{Password: "pw"}, Actor: "tester",
+	}); err != nil {
+		t.Fatalf("create mixed-case target: %v", err)
+	}
+	specs := []access.DiscoveredAssetSpec{
+		{ExternalID: "db:db.acme:5432", Kind: access.AssetKindDatabase, Name: "db.acme", Protocol: "postgres", Address: "db.acme:5432"},
+	}
+	if _, _, err := h.engine.reconcileAssets(ctx, ws, models.DiscoverySourceAgentSweep, specs, nil, nil); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var managed int64
+	h.db.Model(&models.DiscoveredAsset{}).Where("workspace_id = ? AND status = ?", ws, models.DiscoveryStatusManaged).Count(&managed)
+	if managed != 1 {
+		t.Fatalf("managed=%d, want 1 (mixed-case host should match lowercased discovery)", managed)
+	}
+}
+
 func TestNormalizeEndpoint(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -653,6 +706,319 @@ func TestOnboardAsset(t *testing.T) {
 	// Re-onboard is a conflict.
 	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
 		t.Errorf("re-onboard: err = %v, want ErrConflict", err)
+	}
+}
+
+// TestOnboardAssetBindFailureStillLinksTarget locks in the fix for the
+// BindTarget-strands-asset bug: when the agent bind fails AFTER the target is
+// created, the asset must still be linked to the target (status=managed,
+// target_id set) so it is neither un-onboardable nor invisible to the sweep —
+// while the bind failure is still surfaced to the caller.
+func TestOnboardAssetBindFailureStillLinksTarget(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.7:22", "ssh", "10.0.0.7:22", models.DiscoveryStatusUnmanaged)
+	agentID := uuid.New()
+	h.binder.err = errors.New("agent offline")
+
+	target, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "hunter2"}, AgentID: &agentID, RequireMFA: true, Actor: "tester",
+	})
+	// The bind failure must be surfaced, tagged as a partial success so callers
+	// (handler/scheduler) can treat the onboard as done rather than a hard fail.
+	if err == nil || !strings.Contains(err.Error(), "agent offline") {
+		t.Fatalf("expected surfaced bind error, got %v", err)
+	}
+	if !errors.Is(err, ErrAgentBindFailed) {
+		t.Fatalf("bind failure should wrap ErrAgentBindFailed, got %v", err)
+	}
+	// ...but the target must exist and the asset must be linked to it (not stuck).
+	if target == nil {
+		t.Fatalf("target should still be created on bind failure")
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not linked after bind failure (stuck managed/NULL): %+v", got)
+	}
+	// The onboard link audit event must still have been appended.
+	if c := h.auditCount(t, ws, "discovery.onboard"); c != 1 {
+		t.Fatalf("onboard audit = %d, want 1", c)
+	}
+	// The asset is fully onboarded, so a retry is a conflict (not a stuck loop).
+	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
+		t.Errorf("re-onboard after bind failure: err = %v, want ErrConflict", err)
+	}
+}
+
+// TestOnboardAssetBindAndLinkFailureIsHardFailure guards the boundary of the
+// partial-success contract: when the agent bind fails AND the follow-up link
+// also fails, the asset was NOT actually onboarded (managed with a NULL
+// target_id), so the error must NOT be tagged ErrAgentBindFailed — otherwise
+// the handler/scheduler would report a 201/onboarded for a stranded asset.
+// The bind hook cancels the context so the subsequent linkAssetTarget tx fails
+// deterministically (CreateTarget already committed before the bind).
+func TestOnboardAssetBindAndLinkFailureIsHardFailure(t *testing.T) {
+	h := newHarness(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.8:22", "ssh", "10.0.0.8:22", models.DiscoveryStatusUnmanaged)
+	agentID := uuid.New()
+	h.binder.err = errors.New("agent offline")
+	h.binder.hook = cancel // cancel after the bind so linkAssetTarget fails
+
+	_, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "hunter2"}, AgentID: &agentID, RequireMFA: true, Actor: "tester",
+	})
+	if err == nil {
+		t.Fatalf("expected hard failure when both bind and link fail")
+	}
+	// Must be a HARD failure: callers key off ErrAgentBindFailed to report a
+	// partial success, which would be wrong here (asset wasn't linked).
+	if errors.Is(err, ErrAgentBindFailed) {
+		t.Fatalf("both-fail case must NOT be a partial success, got ErrAgentBindFailed: %v", err)
+	}
+	// The asset must not be linked (target_id NULL) — same residual as the
+	// non-bind link-failure path; it is not falsely reported as onboarded.
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.TargetID != nil {
+		t.Fatalf("asset should not be linked when link failed: %+v", got)
+	}
+	// But the created target must be recorded so the heal sweep can recover it
+	// deterministically (the target exists and is otherwise orphaned).
+	if got.PendingTargetID == nil {
+		t.Fatalf("pending_target_id not recorded for stranded asset: %+v", got)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count = %d, want 1 (created before bind)", c)
+	}
+
+	// A subsequent sweep (fresh ctx) heals the stranded asset by re-linking it
+	// to the exact target the onboard created — no duplicate, no orphan.
+	h.binder.hook = nil
+	res, err := h.engine.RunScheduledSweep(context.Background(), ws)
+	if err != nil {
+		t.Fatalf("heal sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	// Fresh struct: GORM's Take won't reset a pointer field to nil for a NULL
+	// column, so reusing `got` would keep the stale PendingTargetID.
+	var healedAsset models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&healedAsset)
+	if healedAsset.Status != models.DiscoveryStatusManaged || healedAsset.TargetID == nil || healedAsset.PendingTargetID != nil {
+		t.Fatalf("stranded asset not healed via pending target: %+v", healedAsset)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count after heal = %d, want 1 (no duplicate)", c)
+	}
+}
+
+// TestOnboardAssetTriggerRecordedInAudit verifies the onboard audit metadata
+// records the supplied Trigger — manual by default for direct API callers,
+// scheduled when the auto-onboard sweep drives it — instead of a hardcoded
+// "manual".
+func TestOnboardAssetTriggerRecordedInAudit(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+
+	// Default (no Trigger) -> manual.
+	a1 := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.5:22", "ssh", "10.0.0.5:22", models.DiscoveryStatusUnmanaged)
+	if _, err := h.engine.OnboardAsset(ctx, ws, a1.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); err != nil {
+		t.Fatalf("manual onboard: %v", err)
+	}
+	if got := h.auditMeta(t, ws, "discovery.onboard")["trigger"]; got != models.DiscoveryTriggerManual {
+		t.Fatalf("manual trigger = %v, want %q", got, models.DiscoveryTriggerManual)
+	}
+
+	// Explicit scheduled trigger (as evaluatePolicy passes) -> scheduled.
+	a2 := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.6:22", "ssh", "10.0.0.6:22", models.DiscoveryStatusUnmanaged)
+	if _, err := h.engine.OnboardAsset(ctx, ws, a2.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "system:auto-onboard", Trigger: models.DiscoveryTriggerScheduled}); err != nil {
+		t.Fatalf("scheduled onboard: %v", err)
+	}
+	if got := h.auditMeta(t, ws, "discovery.onboard")["trigger"]; got != models.DiscoveryTriggerScheduled {
+		t.Fatalf("scheduled trigger = %v, want %q", got, models.DiscoveryTriggerScheduled)
+	}
+}
+
+// TestReconcileStuckOnboardRelinksToCreatedTarget locks in the self-healing
+// reconcile for the rare residual: an asset stranded managed/target_id=NULL (a
+// link-tx failure mid-onboard) is re-linked to the PAM target the onboard
+// already created — no duplicate target, recovery audited — rather than left
+// permanently un-onboardable.
+func TestReconcileStuckOnboardRelinksToCreatedTarget(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	mfa := true
+	// The orphan PAM target the failed onboard already created.
+	target, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "10.0.0.5:22", Protocol: "ssh", Address: "10.0.0.5:22",
+		Username: "root", RequireMFA: &mfa, Secret: pam.Secret{Password: "x"}, Actor: "tester",
+	})
+	if err != nil {
+		t.Fatalf("create orphan target: %v", err)
+	}
+	// The asset stranded by the link-tx failure: managed, target_id NULL.
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.5:22", "ssh", "10.0.0.5:22", models.DiscoveryStatusManaged)
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not re-linked to created target: %+v", got)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count = %d, want 1 (no duplicate)", c)
+	}
+	if c := h.auditCount(t, ws, "discovery.onboard"); c != 1 {
+		t.Fatalf("relink audit = %d, want 1", c)
+	}
+}
+
+// TestReconcileStuckOnboardRelinksViaPendingTargetDespiteAddressOverride locks
+// in the deterministic-recovery fix: when the operator overrode the address at
+// onboard time, the created target's address differs from the asset's, so the
+// endpoint heuristic cannot match them. OnboardAsset records the created target
+// in pending_target_id, so reconcile re-links to that exact target anyway —
+// instead of releasing the asset and orphaning the target permanently (which a
+// retry would then duplicate).
+func TestReconcileStuckOnboardRelinksViaPendingTargetDespiteAddressOverride(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	mfa := true
+	// Target created with the OVERRIDDEN address — different from the asset's
+	// discovered address, so the endpoint heuristic would never match it.
+	target, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+		WorkspaceID: ws, Name: "db-prod", Protocol: "ssh", Address: "10.0.0.99:22",
+		Username: "root", RequireMFA: &mfa, Secret: pam.Secret{Password: "x"}, Actor: "tester",
+	})
+	if err != nil {
+		t.Fatalf("create overridden target: %v", err)
+	}
+	// Asset stranded by a link-tx failure, still carrying its ORIGINAL address.
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.5:22", "ssh", "10.0.0.5:22", models.DiscoveryStatusManaged)
+	// OnboardAsset would have recorded the created target before the link failed.
+	if err := h.db.Model(&models.DiscoveredAsset{}).Where("id = ?", asset.ID).
+		Update("pending_target_id", target.ID).Error; err != nil {
+		t.Fatalf("seed pending_target_id: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not re-linked to created target despite address override: %+v", got)
+	}
+	if got.PendingTargetID != nil {
+		t.Fatalf("pending_target_id not cleared after relink: %+v", got.PendingTargetID)
+	}
+	if c := h.targetCount(t, ws); c != 1 {
+		t.Fatalf("target count = %d, want 1 (no duplicate, no orphan)", c)
+	}
+}
+
+// TestReconcileStuckOnboardReleasesWhenPendingTargetMissing verifies that a
+// stranded asset whose recorded pending target no longer exists (rolled back or
+// deleted) is released back to unmanaged — clearing the stale pointer — so it
+// can be onboarded fresh without leaving it stuck.
+func TestReconcileStuckOnboardReleasesWhenPendingTargetMissing(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.7:22", "ssh", "10.0.0.7:22", models.DiscoveryStatusManaged)
+	// pending points at a target that was never committed / since removed.
+	if err := h.db.Model(&models.DiscoveredAsset{}).Where("id = ?", asset.ID).
+		Update("pending_target_id", uuid.New()).Error; err != nil {
+		t.Fatalf("seed pending_target_id: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusUnmanaged || got.TargetID != nil || got.PendingTargetID != nil {
+		t.Fatalf("asset not released/cleared: %+v", got)
+	}
+}
+
+// TestReconcileStuckOnboardReleasesWhenNoTarget verifies that a stranded asset
+// with no matching target (target creation never committed) is released back to
+// unmanaged so it reappears as an onboarding candidate — a retry then creates a
+// fresh target with no duplicate.
+func TestReconcileStuckOnboardReleasesWhenNoTarget(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.9:22", "ssh", "10.0.0.9:22", models.DiscoveryStatusManaged)
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 1 {
+		t.Fatalf("healed = %d, want 1", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusUnmanaged || got.TargetID != nil {
+		t.Fatalf("asset not released to unmanaged: %+v", got)
+	}
+}
+
+// TestReconcileStuckOnboardLeavesAmbiguousMatch verifies the safety guard: when
+// more than one unlinked target shares the asset's endpoint, reconcile refuses
+// to guess (which could bind the wrong credential) and leaves the asset stuck
+// for operator attention.
+func TestReconcileStuckOnboardLeavesAmbiguousMatch(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	mfa := true
+	for _, name := range []string{"t-a", "t-b"} {
+		if _, err := h.vault.CreateTarget(ctx, pam.CreateTargetInput{
+			WorkspaceID: ws, Name: name, Protocol: "ssh", Address: "10.0.0.5:22",
+			Username: "root", RequireMFA: &mfa, Secret: pam.Secret{Password: "x"}, Actor: "tester",
+		}); err != nil {
+			t.Fatalf("create target %s: %v", name, err)
+		}
+	}
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.5:22", "ssh", "10.0.0.5:22", models.DiscoveryStatusManaged)
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Healed != 0 {
+		t.Fatalf("healed = %d, want 0 (ambiguous left for operator)", res.Healed)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.TargetID != nil || got.Status != models.DiscoveryStatusManaged {
+		t.Fatalf("ambiguous asset should be left stuck: %+v", got)
 	}
 }
 

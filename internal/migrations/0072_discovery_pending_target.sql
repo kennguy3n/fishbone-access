@@ -1,0 +1,24 @@
+-- 0072_discovery_pending_target: durable pointer for deterministic onboard heal.
+--
+-- OnboardAsset claims the asset (unmanaged -> managed), creates the PAM target,
+-- then links the asset to it (sets target_id). If the link transaction fails
+-- (a local DB error, or the bind+link double-failure path), the asset is left
+-- managed/target_id=NULL and the created target is orphaned. reconcileStuckOnboards
+-- recovered this by matching the asset's address to an unlinked target — but the
+-- operator may override the target address at onboard time (OnboardAssetInput.Address),
+-- so the asset's address need not equal the created target's address, and the
+-- endpoint match could miss: the asset would be released and the target orphaned
+-- permanently (with a duplicate created on the next retry).
+--
+-- pending_target_id records the exact target the onboard created, written right
+-- after creation and cleared atomically when the link succeeds. The heal sweep
+-- prefers it, re-linking deterministically regardless of any address override;
+-- the endpoint heuristic remains only as a fallback for rows written before this
+-- column existed. Nullable add with no default and no FK constraint -> no table
+-- rewrite and no lock on pam_targets (the value is transient and reconcile
+-- validates the target still exists before linking).
+--
+-- No RLS policy block required: discovered_assets already carries
+-- tenant_isolation + FORCE ROW LEVEL SECURITY from 0070, and this only adds a
+-- column to that existing table.
+ALTER TABLE discovered_assets ADD COLUMN IF NOT EXISTS pending_target_id UUID;

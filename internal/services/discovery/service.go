@@ -50,6 +50,14 @@ var (
 	// (e.g. enumerating accounts on a non-database target, or asset inventory on
 	// a connector with no inventory API).
 	ErrUnsupported = errors.New("discovery: unsupported")
+	// ErrAgentBindFailed signals a PARTIAL success from OnboardAsset: the PAM
+	// target was created and the discovered asset linked to it (audited), but
+	// binding the target to its outbound agent failed. The target is fully
+	// usable via direct dial and the agent association can be retried from
+	// target settings, so callers must treat the onboard as done (e.g. 201 +
+	// warning, counted as onboarded) rather than a hard failure. Returned
+	// alongside a non-nil *PAMTarget.
+	ErrAgentBindFailed = errors.New("discovery: agent bind failed")
 )
 
 // Config tunes the discovery engine. It is safe-by-default: zero values fall

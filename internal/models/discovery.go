@@ -92,6 +92,13 @@ type DiscoveredAsset struct {
 	ConnectorID *uuid.UUID `gorm:"type:uuid" json:"connector_id,omitempty"`
 	// TargetID links to the PAMTarget once the asset is onboarded.
 	TargetID *uuid.UUID `gorm:"type:uuid" json:"target_id,omitempty"`
+	// PendingTargetID records the PAMTarget that OnboardAsset created while the
+	// asset is still being linked. It is set right after target creation and
+	// cleared atomically when the link succeeds; if the link fails, the
+	// reconcile sweep uses it to re-link the stranded asset deterministically to
+	// the exact target the onboard created — regardless of any address override
+	// — instead of relying on an endpoint heuristic that an override could miss.
+	PendingTargetID *uuid.UUID `gorm:"type:uuid" json:"-"`
 	// Metadata carries source-specific facts (cloud region, instance type, OS,
 	// db engine, tags) shown in the asset detail drawer. Never holds secrets.
 	Metadata datatypes.JSON `json:"metadata,omitempty"`

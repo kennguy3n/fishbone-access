@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,8 +42,9 @@ func (e *Engine) reconcileAssets(ctx context.Context, workspaceID uuid.UUID, sou
 		if spec.Address != "" {
 			// Match on the raw address first, then on the port-normalized form
 			// so a target registered without an explicit port still classifies
-			// a discovered host:port as managed (and vice-versa).
-			if _, ok := managed[spec.Address]; ok {
+			// a discovered host:port as managed (and vice-versa). Lowercase the
+			// raw probe to match the (now case-insensitive) managedAddresses keys.
+			if _, ok := managed[strings.ToLower(strings.TrimSpace(spec.Address))]; ok {
 				status = models.DiscoveryStatusManaged
 			} else if _, ok := managed[normalizeEndpoint(spec.Address, protocol)]; ok {
 				status = models.DiscoveryStatusManaged
@@ -144,12 +146,217 @@ func (e *Engine) managedAddresses(ctx context.Context, workspaceID uuid.UUID) (m
 		if r.Address == "" {
 			continue
 		}
-		set[r.Address] = struct{}{}
+		// Lowercase the raw key (hostnames are case-insensitive per RFC) so this
+		// path classifies mixed-case addresses the same way the normalized form
+		// and targetEndpointIndex already do.
+		set[strings.ToLower(strings.TrimSpace(r.Address))] = struct{}{}
 		if n := normalizeEndpoint(r.Address, r.Protocol); n != "" {
 			set[n] = struct{}{}
 		}
 	}
 	return set, nil
+}
+
+// healStuckBatchSize bounds how many stranded assets one sweep recovers, keeping
+// the reconcile pass's memory and transaction count constant regardless of fleet
+// size; any remainder is picked up by the next sweep. Stranded assets are rare
+// (a local-tx failure mid-onboard), so a modest cap is ample.
+const healStuckBatchSize = 200
+
+// endpointTarget is a PAM target indexed by its endpoint for stuck-asset recovery.
+type endpointTarget struct {
+	id       uuid.UUID
+	protocol string
+}
+
+// reconcileStuckOnboards recovers assets left in the rare managed/target_id=NULL
+// state — a PAM target was created during OnboardAsset but the follow-up
+// linkAssetTarget transaction failed (a local DB error, or the bind+link
+// double-failure path). Such an asset is un-onboardable (the status check
+// returns ErrConflict) and invisible to the policy sweep (which filters
+// status='unmanaged'), so without this it would stay stuck until manual
+// intervention. For each stranded asset we recover idempotently:
+//   - re-link it to the target the onboard already created, identified
+//     deterministically by (workspace, normalized endpoint, protocol) when
+//     exactly one such target exists and is not already linked to another asset; or
+//   - if no orphan target matches, release the claim back to unmanaged so the
+//     asset reappears as an onboarding candidate (a retry then creates a fresh
+//     target — no duplicate, because none existed).
+//
+// Ambiguous matches (more than one unlinked candidate target at the same
+// endpoint) are deliberately left untouched so an asset is never linked to the
+// wrong target/credential; they need operator attention. Returns the number of
+// assets recovered (re-linked or released).
+func (e *Engine) reconcileStuckOnboards(ctx context.Context, workspaceID uuid.UUID) (int, error) {
+	var stuck []models.DiscoveredAsset
+	if err := e.db.WithContext(ctx).
+		Where("workspace_id = ? AND status = ? AND target_id IS NULL", workspaceID, models.DiscoveryStatusManaged).
+		Order("id").Limit(healStuckBatchSize).Find(&stuck).Error; err != nil {
+		return 0, fmt.Errorf("discovery: load stuck onboards: %w", err)
+	}
+	if len(stuck) == 0 {
+		// Common case on a healthy sweep: the partial index makes this an
+		// index-only scan that returns nothing, so we never build the target
+		// index below.
+		return 0, nil
+	}
+
+	candidates, linked, existing, err := e.targetEndpointIndex(ctx, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+
+	healed := 0
+	for i := range stuck {
+		if ctx.Err() != nil {
+			return healed, ctx.Err()
+		}
+		asset := stuck[i]
+
+		// Deterministic recovery: OnboardAsset records the target it created in
+		// pending_target_id before linking, so when present we re-link to that
+		// exact target regardless of any operator address override — the case
+		// the endpoint heuristic below could miss, orphaning the target.
+		if asset.PendingTargetID != nil {
+			pid := *asset.PendingTargetID
+			if _, isLinked := linked[pid]; isLinked {
+				// Already linked to another asset (a retry already onboarded, or
+				// a duplicate); never steal it. Leave for an operator.
+				continue
+			}
+			if _, ok := existing[pid]; !ok {
+				// The recorded target no longer exists (rolled back/deleted);
+				// nothing stands behind the claim, so release it (clearing the
+				// stale pointer) to let the asset be onboarded fresh.
+				if e.releaseAssetClaim(ctx, workspaceID, asset.ID) {
+					healed++
+				}
+				continue
+			}
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, pid, "system:reconcile", models.DiscoveryTriggerScheduled); linkErr != nil {
+				if errors.Is(linkErr, ErrNotFound) {
+					continue
+				}
+				return healed, fmt.Errorf("discovery: relink stuck asset %s: %w", asset.ID, linkErr)
+			}
+			linked[pid] = struct{}{}
+			healed++
+			continue
+		}
+
+		// Fallback for rows stranded before pending_target_id existed (or whose
+		// best-effort pending write failed): match the orphan target by endpoint.
+		matches := uniqueUnlinkedTargets(candidates, linked, asset.Address, asset.Protocol)
+		switch len(matches) {
+		case 1:
+			// Re-link to the already-created target (idempotent: linkAssetTarget
+			// guards on target_id IS NULL). Record it linked so a second stranded
+			// asset at the same endpoint can't also claim it.
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, matches[0], "system:reconcile", models.DiscoveryTriggerScheduled); linkErr != nil {
+				if errors.Is(linkErr, ErrNotFound) {
+					// Raced with a concurrent linker/onboarder — the asset is no
+					// longer managed/NULL; leave it for the next sweep.
+					continue
+				}
+				return healed, fmt.Errorf("discovery: relink stuck asset %s: %w", asset.ID, linkErr)
+			}
+			linked[matches[0]] = struct{}{}
+			healed++
+		case 0:
+			// No target stands behind the claim; release it so it can be onboarded
+			// again (release is guarded on managed/target_id=NULL, so it can never
+			// clobber a concurrently-linked asset). Only count it healed when the
+			// row was actually flipped, so a swallowed DB error or a concurrent
+			// linker's row doesn't inflate the Healed metric — the next sweep
+			// retries either way.
+			if e.releaseAssetClaim(ctx, workspaceID, asset.ID) {
+				healed++
+			}
+		default:
+			// Ambiguous: multiple unlinked targets share this endpoint. Leave it
+			// for an operator rather than risk linking the wrong credential.
+			continue
+		}
+	}
+	return healed, nil
+}
+
+// targetEndpointIndex returns the workspace's PAM targets indexed by endpoint
+// (both raw address and port-normalized form, lowercased), the set of all
+// existing target ids, and the set of target ids already linked to a discovered
+// asset — so stuck-asset recovery can re-link to its created target (verifying
+// the target still exists) without re-linking one that belongs to another asset.
+func (e *Engine) targetEndpointIndex(ctx context.Context, workspaceID uuid.UUID) (map[string][]endpointTarget, map[uuid.UUID]struct{}, map[uuid.UUID]struct{}, error) {
+	var targets []struct {
+		ID       uuid.UUID
+		Address  string
+		Protocol string
+	}
+	if err := e.db.WithContext(ctx).Model(&models.PAMTarget{}).
+		Where("workspace_id = ?", workspaceID).
+		Select("id", "address", "protocol").Scan(&targets).Error; err != nil {
+		return nil, nil, nil, fmt.Errorf("discovery: load targets for reconcile: %w", err)
+	}
+	idx := make(map[string][]endpointTarget, len(targets)*2)
+	existing := make(map[uuid.UUID]struct{}, len(targets))
+	add := func(key string, t endpointTarget) {
+		if key == "" {
+			return
+		}
+		idx[key] = append(idx[key], t)
+	}
+	for _, t := range targets {
+		existing[t.ID] = struct{}{}
+		if t.Address == "" {
+			continue
+		}
+		et := endpointTarget{id: t.ID, protocol: strings.ToLower(strings.TrimSpace(t.Protocol))}
+		add(strings.ToLower(strings.TrimSpace(t.Address)), et)
+		add(normalizeEndpoint(t.Address, t.Protocol), et)
+	}
+
+	var linkedIDs []uuid.UUID
+	if err := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+		Where("workspace_id = ? AND target_id IS NOT NULL", workspaceID).
+		Pluck("target_id", &linkedIDs).Error; err != nil {
+		return nil, nil, nil, fmt.Errorf("discovery: load linked targets for reconcile: %w", err)
+	}
+	linked := make(map[uuid.UUID]struct{}, len(linkedIDs))
+	for _, id := range linkedIDs {
+		linked[id] = struct{}{}
+	}
+	return idx, linked, existing, nil
+}
+
+// uniqueUnlinkedTargets returns the distinct target ids matching the asset's
+// endpoint (raw or port-normalized) and protocol that are not already linked to
+// another asset. Protocol must match when both sides declare one, so a stranded
+// asset is never re-linked to a different service at the same host:port.
+func uniqueUnlinkedTargets(idx map[string][]endpointTarget, linked map[uuid.UUID]struct{}, address, protocol string) []uuid.UUID {
+	proto := strings.ToLower(strings.TrimSpace(protocol))
+	seen := make(map[uuid.UUID]struct{})
+	var out []uuid.UUID
+	consider := func(key string) {
+		if key == "" {
+			return
+		}
+		for _, t := range idx[key] {
+			if proto != "" && t.protocol != "" && t.protocol != proto {
+				continue
+			}
+			if _, isLinked := linked[t.id]; isLinked {
+				continue
+			}
+			if _, dup := seen[t.id]; dup {
+				continue
+			}
+			seen[t.id] = struct{}{}
+			out = append(out, t.id)
+		}
+	}
+	consider(strings.ToLower(strings.TrimSpace(address)))
+	consider(normalizeEndpoint(address, protocol))
+	return out
 }
 
 // reconcileAccounts upserts a batch of enumerated DB accounts for one database
