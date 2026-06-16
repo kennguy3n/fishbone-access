@@ -116,7 +116,12 @@ func (e *Engine) SavePolicy(ctx context.Context, workspaceID uuid.UUID, in Polic
 	policy.UpdatedBy = in.Actor
 
 	if in.Credential != nil {
-		hasSecret := strings.TrimSpace(in.Credential.Password) != "" || in.Credential.PrivateKey != "" || in.Credential.Token != ""
+		// Trim every secret-bearing field for the presence check so a
+		// whitespace-only value (which is not real credential material) can't be
+		// mistaken for a supplied secret — consistent across password/key/token.
+		hasSecret := strings.TrimSpace(in.Credential.Password) != "" ||
+			strings.TrimSpace(in.Credential.PrivateKey) != "" ||
+			strings.TrimSpace(in.Credential.Token) != ""
 		username := strings.TrimSpace(in.Credential.Username)
 		switch {
 		case hasSecret:

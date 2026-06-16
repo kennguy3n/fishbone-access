@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net"
 	"sort"
 	"testing"
@@ -899,6 +900,37 @@ func TestRunScheduledSweepFlagOnly(t *testing.T) {
 	h.db.Model(&models.DiscoveredAsset{}).Where("workspace_id = ? AND policy_matched = ?", ws, true).Count(&flagged)
 	if flagged != 2 {
 		t.Fatalf("flagged = %d, want 2", flagged)
+	}
+}
+
+// TestRunScheduledSweepPaginatesUnmanaged seeds more unmanaged assets than a
+// single keyset page (evalAssetBatchSize) so the policy evaluation must cross a
+// page boundary. Every matching asset must be flagged exactly once — proving the
+// bounded iteration covers the whole inventory and never loops.
+func TestRunScheduledSweepPaginatesUnmanaged(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	const total = evalAssetBatchSize + 37
+	for i := 0; i < total; i++ {
+		ext := fmt.Sprintf("host:10.1.%d.%d:22", i/256, i%256)
+		h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, ext, "ssh", fmt.Sprintf("10.1.%d.%d:22", i/256, i%256), models.DiscoveryStatusUnmanaged)
+	}
+	if _, err := h.engine.SavePolicy(ctx, ws, PolicyInput{Enabled: true, Rules: []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}}, Actor: "tester"}); err != nil {
+		t.Fatalf("save policy: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.PolicyMatched != total {
+		t.Fatalf("matched = %d, want %d", res.PolicyMatched, total)
+	}
+	var flagged int64
+	h.db.Model(&models.DiscoveredAsset{}).Where("workspace_id = ? AND policy_matched = ?", ws, true).Count(&flagged)
+	if flagged != int64(total) {
+		t.Fatalf("flagged = %d, want %d", flagged, total)
 	}
 }
 

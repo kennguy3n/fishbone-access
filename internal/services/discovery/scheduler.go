@@ -10,6 +10,11 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
 
+// evalAssetBatchSize bounds how many unmanaged assets a single policy-evaluation
+// page loads into memory, keeping the sweep's footprint constant regardless of
+// inventory size (important at 5k-tenant scale where sweeps run unattended).
+const evalAssetBatchSize = 500
+
 // ScheduledSweepResult summarises one workspace's scheduled sweep.
 type ScheduledSweepResult struct {
 	ConnectorsScanned int
@@ -89,13 +94,6 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 		return 0, 0, nil
 	}
 
-	var assets []models.DiscoveredAsset
-	if err := e.db.WithContext(ctx).
-		Where("workspace_id = ? AND status = ?", workspaceID, models.DiscoveryStatusUnmanaged).
-		Find(&assets).Error; err != nil {
-		return 0, 0, fmt.Errorf("discovery: load unmanaged assets: %w", err)
-	}
-
 	createMode := policy.CreateTargets && policy.CredentialEnvelope != ""
 	var credential pam.Secret
 	if createMode {
@@ -105,48 +103,74 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 		}
 	}
 
-	for i := range assets {
+	// Keyset-paginate the workspace's unmanaged assets so memory stays bounded
+	// regardless of how large the inventory grows (a single workspace can
+	// accumulate thousands of unmanaged candidates). Iterating by ascending id
+	// moves the cursor strictly forward: onboarded assets leave the
+	// status=unmanaged set entirely, and flag-only matches stay behind the
+	// cursor, so neither is re-processed and the loop always terminates.
+	var lastID uuid.UUID
+	for {
 		if ctx.Err() != nil {
 			return matched, onboarded, ctx.Err()
 		}
-		asset := assets[i]
-		rule, ok := firstMatchingRule(&asset, rules)
-		if !ok {
-			continue
+		q := e.db.WithContext(ctx).
+			Where("workspace_id = ? AND status = ?", workspaceID, models.DiscoveryStatusUnmanaged)
+		if lastID != uuid.Nil {
+			q = q.Where("id > ?", lastID)
 		}
-		matched++
-		if !createMode {
-			if err := e.flagPolicyMatched(ctx, workspaceID, asset.ID); err != nil {
-				return matched, onboarded, err
+		var batch []models.DiscoveredAsset
+		if err := q.Order("id").Limit(evalAssetBatchSize).Find(&batch).Error; err != nil {
+			return matched, onboarded, fmt.Errorf("discovery: load unmanaged assets: %w", err)
+		}
+		if len(batch) == 0 {
+			return matched, onboarded, nil
+		}
+		for i := range batch {
+			if ctx.Err() != nil {
+				return matched, onboarded, ctx.Err()
 			}
-			continue
-		}
-		agentID := rule.AgentID
-		if agentID == nil {
-			agentID = policy.DefaultAgentID
-		}
-		if agentID == nil {
-			agentID = asset.AgentID
-		}
-		requireMFA := true
-		_, onbErr := e.OnboardAsset(ctx, workspaceID, asset.ID, OnboardAssetInput{
-			Username:   credential.Username,
-			Secret:     credential,
-			AgentID:    agentID,
-			RequireMFA: requireMFA,
-			Actor:      "system:auto-onboard",
-		})
-		if onbErr != nil {
-			// A single onboarding failure (e.g. duplicate name) must not abort
-			// the whole sweep; flag the asset so it still surfaces as recommended.
-			if flagErr := e.flagPolicyMatched(ctx, workspaceID, asset.ID); flagErr != nil {
-				return matched, onboarded, flagErr
+			asset := batch[i]
+			lastID = asset.ID
+			rule, ok := firstMatchingRule(&asset, rules)
+			if !ok {
+				continue
 			}
-			continue
+			matched++
+			if !createMode {
+				if err := e.flagPolicyMatched(ctx, workspaceID, asset.ID); err != nil {
+					return matched, onboarded, err
+				}
+				continue
+			}
+			agentID := rule.AgentID
+			if agentID == nil {
+				agentID = policy.DefaultAgentID
+			}
+			if agentID == nil {
+				agentID = asset.AgentID
+			}
+			_, onbErr := e.OnboardAsset(ctx, workspaceID, asset.ID, OnboardAssetInput{
+				Username:   credential.Username,
+				Secret:     credential,
+				AgentID:    agentID,
+				RequireMFA: true,
+				Actor:      "system:auto-onboard",
+			})
+			if onbErr != nil {
+				// A single onboarding failure (e.g. duplicate name) must not abort
+				// the whole sweep; flag the asset so it still surfaces as recommended.
+				if flagErr := e.flagPolicyMatched(ctx, workspaceID, asset.ID); flagErr != nil {
+					return matched, onboarded, flagErr
+				}
+				continue
+			}
+			onboarded++
 		}
-		onboarded++
+		if len(batch) < evalAssetBatchSize {
+			return matched, onboarded, nil
+		}
 	}
-	return matched, onboarded, nil
 }
 
 func (e *Engine) flagPolicyMatched(ctx context.Context, workspaceID, assetID uuid.UUID) error {
