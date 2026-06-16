@@ -100,8 +100,10 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
         }))
         .filter((r) => r.name),
     };
-    // Only send a credential when the operator typed a new password; an empty
-    // password with a username present clears the sealed credential.
+    // Send a credential block when the operator typed a new password (reseal)
+    // or edited the username. A username-only change preserves the existing
+    // sealed secret server-side; the secret is only cleared by an explicit
+    // empty-username + empty-password save.
     if (draft.credential_password.trim() || draft.credential_username.trim()) {
       body.credential = {
         username: draft.credential_username.trim(),

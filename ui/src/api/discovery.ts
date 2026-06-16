@@ -173,7 +173,12 @@ export interface SavePolicyInput {
   };
 }
 
-export type AccountDisposition = "ignored" | "pending" | "managed" | "orphan";
+// Operator dispositions accepted by the backend DispositionAccount endpoint
+// (internal/services/discovery/onboard.go): ignore a discovered account, or
+// reclassify it back to unmanaged/orphan. "managed" is never set by hand — an
+// account becomes managed only when a real grant exists — and there is no
+// "pending" state, so neither belongs in this contract.
+export type AccountDisposition = "ignored" | "unmanaged" | "orphan";
 
 // ---------------------------------------------------------------------------
 // Transport

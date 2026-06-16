@@ -26,6 +26,7 @@ import {
   type DiscoveredAsset,
   type DiscoveredAccount,
   type DiscoveryScan,
+  type AccountDisposition,
 } from "@/api/discovery";
 import { OnboardAssetModal } from "./discovery/OnboardAssetModal";
 import { RunDiscoveryModal } from "./discovery/RunDiscoveryModal";
@@ -620,7 +621,7 @@ function AccountsTab({ canWrite }: { canWrite: boolean }) {
 
   const disposition = async (
     a: DiscoveredAccount,
-    status: "ignored" | "pending",
+    status: AccountDisposition,
   ) => {
     try {
       await dispositionMut.mutateAsync({ id: a.id, status });

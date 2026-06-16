@@ -672,6 +672,74 @@ func TestPolicyDefaultAndSave(t *testing.T) {
 	}
 }
 
+// TestSavePolicyCredentialPreservation locks in the credential lifecycle so a
+// username-only edit never silently wipes the sealed secret, while an explicit
+// empty-username + empty-secret save still reverts the policy to flag-only.
+func TestSavePolicyCredentialPreservation(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+
+	base := func(cred *pam.Secret) PolicyInput {
+		return PolicyInput{
+			Enabled:    true,
+			Rules:      []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}},
+			Credential: cred,
+			Actor:      "tester",
+		}
+	}
+
+	// Seal an initial credential and capture the envelope.
+	if _, err := h.engine.SavePolicy(ctx, ws, base(&pam.Secret{Username: "root", Password: "s3cret"})); err != nil {
+		t.Fatalf("seal initial: %v", err)
+	}
+	var sealed models.AutoOnboardingPolicy
+	h.db.Where("workspace_id = ?", ws).Take(&sealed)
+	if sealed.CredentialEnvelope == "" {
+		t.Fatalf("expected sealed envelope after initial save")
+	}
+
+	// Username-only edit (no secret) must KEEP the sealed envelope unchanged
+	// and only update the non-secret username.
+	view, err := h.engine.SavePolicy(ctx, ws, base(&pam.Secret{Username: "svc-onboard"}))
+	if err != nil {
+		t.Fatalf("username-only edit: %v", err)
+	}
+	if !view.HasCredential || view.CredentialUser != "svc-onboard" {
+		t.Fatalf("username-only view = %+v, want has_credential + renamed user", view)
+	}
+	var afterRename models.AutoOnboardingPolicy
+	h.db.Where("workspace_id = ?", ws).Take(&afterRename)
+	if afterRename.CredentialEnvelope != sealed.CredentialEnvelope || afterRename.CredentialKeyVer != sealed.CredentialKeyVer {
+		t.Fatalf("username-only edit changed the sealed secret: env %q->%q ver %d->%d",
+			sealed.CredentialEnvelope, afterRename.CredentialEnvelope, sealed.CredentialKeyVer, afterRename.CredentialKeyVer)
+	}
+
+	// A new password reseals: the envelope must change.
+	if _, err := h.engine.SavePolicy(ctx, ws, base(&pam.Secret{Username: "svc-onboard", Password: "rotated"})); err != nil {
+		t.Fatalf("reseal: %v", err)
+	}
+	var resealed models.AutoOnboardingPolicy
+	h.db.Where("workspace_id = ?", ws).Take(&resealed)
+	if resealed.CredentialEnvelope == afterRename.CredentialEnvelope {
+		t.Fatalf("reseal did not change the envelope")
+	}
+
+	// Explicit clear: empty username + empty secret reverts to flag-only.
+	view, err = h.engine.SavePolicy(ctx, ws, base(&pam.Secret{}))
+	if err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if view.HasCredential {
+		t.Fatalf("explicit clear left a credential: %+v", view)
+	}
+	var cleared models.AutoOnboardingPolicy
+	h.db.Where("workspace_id = ?", ws).Take(&cleared)
+	if cleared.CredentialEnvelope != "" || cleared.CredentialUsername != "" || cleared.CredentialKeyVer != 0 {
+		t.Fatalf("clear left residue: %+v", cleared)
+	}
+}
+
 // --- scheduled sweep / policy evaluation -----------------------------------
 
 func TestRunScheduledSweepFlagOnly(t *testing.T) {

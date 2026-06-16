@@ -116,18 +116,31 @@ func (e *Engine) SavePolicy(ctx context.Context, workspaceID uuid.UUID, in Polic
 	policy.UpdatedBy = in.Actor
 
 	if in.Credential != nil {
-		if strings.TrimSpace(in.Credential.Password) == "" && in.Credential.PrivateKey == "" && in.Credential.Token == "" {
-			policy.CredentialUsername = ""
-			policy.CredentialEnvelope = ""
-			policy.CredentialKeyVer = 0
-		} else {
+		hasSecret := strings.TrimSpace(in.Credential.Password) != "" || in.Credential.PrivateKey != "" || in.Credential.Token != ""
+		username := strings.TrimSpace(in.Credential.Username)
+		switch {
+		case hasSecret:
+			// A new/replacement secret was supplied: seal it (with whatever
+			// username accompanies it) and swap in the fresh envelope.
 			envelope, ver, sealErr := e.sealPolicyCredential(ctx, workspaceID, policy.ID, *in.Credential)
 			if sealErr != nil {
 				return PolicyView{}, sealErr
 			}
-			policy.CredentialUsername = strings.TrimSpace(in.Credential.Username)
+			policy.CredentialUsername = username
 			policy.CredentialEnvelope = envelope
 			policy.CredentialKeyVer = ver
+		case username != "" && policy.CredentialEnvelope != "":
+			// Username-only edit while a sealed secret already exists: update the
+			// non-secret username in place and KEEP the sealed secret. Renaming
+			// the login must never silently wipe the credential — the operator
+			// has to clear the secret explicitly (no username + no secret).
+			policy.CredentialUsername = username
+		default:
+			// No secret supplied and either no username or no existing credential
+			// to attach it to: explicit revert to flag-only — clear everything.
+			policy.CredentialUsername = ""
+			policy.CredentialEnvelope = ""
+			policy.CredentialKeyVer = 0
 		}
 	}
 

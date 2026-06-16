@@ -68,7 +68,7 @@ const (
 // (manually or by policy) target_id is set and status becomes managed.
 type DiscoveredAsset struct {
 	Base
-	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:uq_discovered_assets_identity,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
+	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;index:idx_discovered_assets_ws_status,priority:1;uniqueIndex:uq_discovered_assets_identity,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
 	// Source is one of the DiscoverySource* constants.
 	Source string `gorm:"not null;uniqueIndex:uq_discovered_assets_identity,priority:2,where:deleted_at IS NULL" json:"source"`
 	// ExternalID is the source-stable identity used as the upsert key — e.g.
@@ -103,7 +103,7 @@ type DiscoveredAsset struct {
 	// advances on every sweep that still sees it; a stale LastSeenAt is how the
 	// UI flags assets that may have been decommissioned upstream.
 	FirstSeenAt time.Time `gorm:"not null" json:"first_seen_at"`
-	LastSeenAt  time.Time `gorm:"not null;index:idx_discovered_assets_ws_status,priority:1" json:"last_seen_at"`
+	LastSeenAt  time.Time `gorm:"not null;index:idx_discovered_assets_ws_status,priority:3,sort:desc" json:"last_seen_at"`
 }
 
 // TableName pins the singular table name created by migration 0070 so GORM's
@@ -117,7 +117,7 @@ func (DiscoveredAsset) TableName() string { return "discovered_assets" }
 // target_id, username).
 type DiscoveredAccount struct {
 	Base
-	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:uq_discovered_accounts_identity,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
+	WorkspaceID uuid.UUID `gorm:"type:uuid;not null;index:idx_discovered_accounts_ws_status,priority:1;uniqueIndex:uq_discovered_accounts_identity,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
 	// TargetID is the PAM database target the account was enumerated on.
 	TargetID uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:uq_discovered_accounts_identity,priority:2,where:deleted_at IS NULL" json:"target_id"`
 	// Username is the DB role/user name (the upsert key within a target).
@@ -135,7 +135,7 @@ type DiscoveredAccount struct {
 	// (createrole, replication, member_of …) for the detail drawer.
 	Attributes  datatypes.JSON `json:"attributes,omitempty"`
 	FirstSeenAt time.Time      `gorm:"not null" json:"first_seen_at"`
-	LastSeenAt  time.Time      `gorm:"not null;index:idx_discovered_accounts_ws_status,priority:1" json:"last_seen_at"`
+	LastSeenAt  time.Time      `gorm:"not null;index:idx_discovered_accounts_ws_status,priority:3,sort:desc" json:"last_seen_at"`
 }
 
 func (DiscoveredAccount) TableName() string { return "discovered_accounts" }
