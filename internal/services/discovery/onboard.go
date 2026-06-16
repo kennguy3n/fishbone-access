@@ -57,6 +57,18 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		return nil, fmt.Errorf("%w: asset is already onboarded", ErrConflict)
 	}
 
+	// Atomically claim the asset (unmanaged -> managed) BEFORE creating the
+	// target. This is a compare-and-swap on status that closes the TOCTOU race
+	// between the status check and target creation: when the auto-onboard sweep
+	// runs on multiple replicas (or two operators click Onboard at once), only
+	// the first claim wins — the rest match zero rows, get ErrConflict, and
+	// never create an orphan PAM target. target_id is linked once the target
+	// exists; reconcile never downgrades a managed row, so the brief
+	// managed/target_id=NULL window is safe.
+	if err := e.claimAssetForOnboard(ctx, workspaceID, asset.ID); err != nil {
+		return nil, err
+	}
+
 	protocol := firstNonEmpty(in.Protocol, asset.Protocol)
 	if protocol == "" {
 		protocol = defaultProtocolForKind(kindForProtocol(asset.Protocol))
@@ -81,6 +93,10 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		Actor:       in.Actor,
 	})
 	if err != nil {
+		// No target stands behind the claim; release it back to unmanaged so the
+		// asset reappears as an onboarding candidate instead of being stuck
+		// managed with no target.
+		e.releaseAssetClaim(ctx, workspaceID, asset.ID)
 		return nil, e.mapVaultErr(err)
 	}
 
@@ -92,22 +108,63 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 		}
 	}
 
-	if err := e.markAssetManaged(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); err != nil {
+	if err := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); err != nil {
 		return target, err
 	}
 	return target, nil
 }
 
-// markAssetManaged links an asset to its new target and flips it managed, then
-// appends the discovery.onboard audit event in the same transaction so the
-// inventory state change and its audit row commit atomically.
-func (e *Engine) markAssetManaged(ctx context.Context, workspaceID, assetID, targetID uuid.UUID, actor, trigger string) error {
+// claimAssetForOnboard atomically transitions an asset from unmanaged to managed
+// so only one of several concurrent onboarders proceeds to create a PAM target.
+// The guarded UPDATE acts as a compare-and-swap on status: a second caller
+// matches zero rows and gets ErrConflict (the asset is gone -> ErrNotFound),
+// fixing the TOCTOU race before an orphan target can be created. target_id is
+// filled in later by linkAssetTarget.
+func (e *Engine) claimAssetForOnboard(ctx context.Context, workspaceID, assetID uuid.UUID) error {
+	res := e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+		Where("workspace_id = ? AND id = ? AND status = ?", workspaceID, assetID, models.DiscoveryStatusUnmanaged).
+		Update("status", models.DiscoveryStatusManaged)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		// Disambiguate: a missing row is ErrNotFound, an existing non-unmanaged
+		// row means another onboarder won the claim (or it is already managed).
+		var existing models.DiscoveredAsset
+		if err := e.db.WithContext(ctx).
+			Where("workspace_id = ? AND id = ?", workspaceID, assetID).
+			Take(&existing).Error; err != nil {
+			if isNotFound(err) {
+				return ErrNotFound
+			}
+			return err
+		}
+		return fmt.Errorf("%w: asset is already onboarded", ErrConflict)
+	}
+	return nil
+}
+
+// releaseAssetClaim reverts a claim made by claimAssetForOnboard when target
+// creation fails, returning the asset to unmanaged so it can be retried. It is
+// best-effort and guarded on target_id IS NULL so it can never clobber a target
+// that was successfully linked. Any error is swallowed: the caller is already
+// returning the more important target-creation error.
+func (e *Engine) releaseAssetClaim(ctx context.Context, workspaceID, assetID uuid.UUID) {
+	_ = e.db.WithContext(ctx).Model(&models.DiscoveredAsset{}).
+		Where("workspace_id = ? AND id = ? AND status = ? AND target_id IS NULL", workspaceID, assetID, models.DiscoveryStatusManaged).
+		Update("status", models.DiscoveryStatusUnmanaged).Error
+}
+
+// linkAssetTarget records the new target_id on an already-claimed (managed)
+// asset and appends the discovery.onboard audit event in the same transaction,
+// so the link and its audit row commit atomically. The target_id IS NULL guard
+// makes it idempotent and keeps it from overwriting a concurrently-linked target.
+func (e *Engine) linkAssetTarget(ctx context.Context, workspaceID, assetID, targetID uuid.UUID, actor, trigger string) error {
 	now := e.now()
 	return e.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&models.DiscoveredAsset{}).
-			Where("workspace_id = ? AND id = ?", workspaceID, assetID).
+			Where("workspace_id = ? AND id = ? AND target_id IS NULL", workspaceID, assetID).
 			Updates(map[string]any{
-				"status":         models.DiscoveryStatusManaged,
 				"target_id":      targetID,
 				"policy_matched": false,
 				"last_seen_at":   now,

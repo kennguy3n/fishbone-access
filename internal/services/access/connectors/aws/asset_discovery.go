@@ -24,6 +24,11 @@ import (
 const (
 	ec2APIVersion = "2016-11-15"
 	rdsAPIVersion = "2014-10-31"
+	// awsAssetMaxPages bounds the EC2 NextToken / RDS Marker pagination walk so
+	// a pathological token loop cannot spin forever, mirroring azureAssetMaxPages
+	// in the Azure connector. 50 pages covers 50k EC2 (1000/page) and 5k RDS
+	// (100/page), far beyond any single SME account.
+	awsAssetMaxPages = 50
 )
 
 // DiscoverAssets implements access.AssetDiscoverer. It returns the union of EC2
@@ -92,7 +97,10 @@ func (c *AWSAccessConnector) callQuery(ctx context.Context, cfg Config, secrets 
 // ---- EC2 ----
 
 type ec2DescribeInstancesResponse struct {
-	XMLName        xml.Name `xml:"DescribeInstancesResponse"`
+	XMLName xml.Name `xml:"DescribeInstancesResponse"`
+	// NextToken is present when the result set spans multiple pages; EC2
+	// DescribeInstances returns at most 1000 instances per page.
+	NextToken      string `xml:"nextToken"`
 	ReservationSet struct {
 		Items []struct {
 			InstancesSet struct {
@@ -126,70 +134,83 @@ type ec2Instance struct {
 
 func (c *AWSAccessConnector) discoverEC2(ctx context.Context, cfg Config, secrets Secrets) ([]access.DiscoveredAssetSpec, error) {
 	out := make([]access.DiscoveredAssetSpec, 0, 16)
-	params := url.Values{}
-	params.Set("Action", "DescribeInstances")
-	params.Set("Version", ec2APIVersion)
-	// Only running/pending instances are reachable targets; a terminated box is
-	// not onboardable. Filter server-side so a large fleet does not page back
-	// stopped/terminated noise.
-	params.Set("Filter.1.Name", "instance-state-name")
-	params.Set("Filter.1.Value.1", "running")
-	params.Set("Filter.1.Value.2", "pending")
-
-	body, err := c.callQuery(ctx, cfg, secrets, "ec2", params)
-	if err != nil {
-		return nil, err
-	}
-	var resp ec2DescribeInstancesResponse
-	if err := xml.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("aws: decode DescribeInstances: %w", err)
-	}
-	for _, res := range resp.ReservationSet.Items {
-		for _, inst := range res.InstancesSet.Items {
-			if inst.InstanceID == "" {
-				continue
-			}
-			// Prefer the private address: discovery onboards targets reached
-			// through an in-network agent, not over the public internet.
-			host := inst.PrivateIPAddress
-			if host == "" {
-				host = inst.IPAddress
-			}
-			isWindows := strings.EqualFold(inst.Platform, "windows") ||
-				strings.Contains(strings.ToLower(inst.PlatformDetails), "windows")
-			protocol, port := "ssh", "22"
-			if isWindows {
-				protocol, port = "rdp", "3389"
-			}
-			address := host
-			if host != "" {
-				address = host + ":" + port
-			}
-			name := tagValue(inst.TagSet.Items, "Name")
-			if name == "" {
-				name = inst.InstanceID
-			}
-			meta := map[string]string{
-				"instance_type": inst.InstanceType,
-				"state":         inst.InstanceState.Name,
-				"az":            inst.Placement.AvailabilityZone,
-			}
-			if inst.Architecture != "" {
-				meta["architecture"] = inst.Architecture
-			}
-			if inst.PlatformDetails != "" {
-				meta["platform"] = inst.PlatformDetails
-			}
-			out = append(out, access.DiscoveredAssetSpec{
-				ExternalID: "ec2:" + inst.InstanceID,
-				Kind:       access.AssetKindHost,
-				Name:       name,
-				Protocol:   protocol,
-				Address:    address,
-				Region:     cfg.Region,
-				Metadata:   meta,
-			})
+	// EC2 DescribeInstances pages via NextToken (max 1000 instances/page). Walk
+	// every page so accounts with large fleets do not silently lose targets
+	// beyond the first page, bounded by awsAssetMaxPages.
+	token := ""
+	for page := 0; page < awsAssetMaxPages; page++ {
+		params := url.Values{}
+		params.Set("Action", "DescribeInstances")
+		params.Set("Version", ec2APIVersion)
+		// Only running/pending instances are reachable targets; a terminated box is
+		// not onboardable. Filter server-side so a large fleet does not page back
+		// stopped/terminated noise.
+		params.Set("Filter.1.Name", "instance-state-name")
+		params.Set("Filter.1.Value.1", "running")
+		params.Set("Filter.1.Value.2", "pending")
+		if token != "" {
+			params.Set("NextToken", token)
 		}
+
+		body, err := c.callQuery(ctx, cfg, secrets, "ec2", params)
+		if err != nil {
+			return nil, err
+		}
+		var resp ec2DescribeInstancesResponse
+		if err := xml.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("aws: decode DescribeInstances: %w", err)
+		}
+		for _, res := range resp.ReservationSet.Items {
+			for _, inst := range res.InstancesSet.Items {
+				if inst.InstanceID == "" {
+					continue
+				}
+				// Prefer the private address: discovery onboards targets reached
+				// through an in-network agent, not over the public internet.
+				host := inst.PrivateIPAddress
+				if host == "" {
+					host = inst.IPAddress
+				}
+				isWindows := strings.EqualFold(inst.Platform, "windows") ||
+					strings.Contains(strings.ToLower(inst.PlatformDetails), "windows")
+				protocol, port := "ssh", "22"
+				if isWindows {
+					protocol, port = "rdp", "3389"
+				}
+				address := host
+				if host != "" {
+					address = host + ":" + port
+				}
+				name := tagValue(inst.TagSet.Items, "Name")
+				if name == "" {
+					name = inst.InstanceID
+				}
+				meta := map[string]string{
+					"instance_type": inst.InstanceType,
+					"state":         inst.InstanceState.Name,
+					"az":            inst.Placement.AvailabilityZone,
+				}
+				if inst.Architecture != "" {
+					meta["architecture"] = inst.Architecture
+				}
+				if inst.PlatformDetails != "" {
+					meta["platform"] = inst.PlatformDetails
+				}
+				out = append(out, access.DiscoveredAssetSpec{
+					ExternalID: "ec2:" + inst.InstanceID,
+					Kind:       access.AssetKindHost,
+					Name:       name,
+					Protocol:   protocol,
+					Address:    address,
+					Region:     cfg.Region,
+					Metadata:   meta,
+				})
+			}
+		}
+		if resp.NextToken == "" {
+			break
+		}
+		token = resp.NextToken
 	}
 	return out, nil
 }
@@ -211,6 +232,9 @@ func tagValue(items []struct {
 type rdsDescribeDBInstancesResponse struct {
 	XMLName xml.Name `xml:"DescribeDBInstancesResponse"`
 	Result  struct {
+		// Marker is present when the result set spans multiple pages; RDS
+		// DescribeDBInstances returns at most 100 instances per page.
+		Marker      string `xml:"Marker"`
 		DBInstances struct {
 			Items []rdsDBInstance `xml:"DBInstance"`
 		} `xml:"DBInstances"`
@@ -232,47 +256,60 @@ type rdsDBInstance struct {
 
 func (c *AWSAccessConnector) discoverRDS(ctx context.Context, cfg Config, secrets Secrets) ([]access.DiscoveredAssetSpec, error) {
 	out := make([]access.DiscoveredAssetSpec, 0, 8)
-	params := url.Values{}
-	params.Set("Action", "DescribeDBInstances")
-	params.Set("Version", rdsAPIVersion)
+	// RDS DescribeDBInstances pages via Marker (max 100 instances/page). Walk
+	// every page so accounts with many databases do not silently lose targets
+	// beyond the first page, bounded by awsAssetMaxPages.
+	marker := ""
+	for page := 0; page < awsAssetMaxPages; page++ {
+		params := url.Values{}
+		params.Set("Action", "DescribeDBInstances")
+		params.Set("Version", rdsAPIVersion)
+		if marker != "" {
+			params.Set("Marker", marker)
+		}
 
-	body, err := c.callQuery(ctx, cfg, secrets, "rds", params)
-	if err != nil {
-		return nil, err
-	}
-	var resp rdsDescribeDBInstancesResponse
-	if err := xml.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("aws: decode DescribeDBInstances: %w", err)
-	}
-	for _, db := range resp.Result.DBInstances.Items {
-		if db.DBInstanceIdentifier == "" {
-			continue
+		body, err := c.callQuery(ctx, cfg, secrets, "rds", params)
+		if err != nil {
+			return nil, err
 		}
-		protocol := rdsEngineProtocol(db.Engine)
-		address := db.Endpoint.Address
-		if address != "" && db.Endpoint.Port > 0 {
-			address = fmt.Sprintf("%s:%d", db.Endpoint.Address, db.Endpoint.Port)
+		var resp rdsDescribeDBInstancesResponse
+		if err := xml.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("aws: decode DescribeDBInstances: %w", err)
 		}
-		// The DbiResourceId is immutable across renames; prefer it as the
-		// idempotency key and fall back to the identifier when absent.
-		ext := db.DbiResourceID
-		if ext == "" {
-			ext = db.DBInstanceIdentifier
+		for _, db := range resp.Result.DBInstances.Items {
+			if db.DBInstanceIdentifier == "" {
+				continue
+			}
+			protocol := rdsEngineProtocol(db.Engine)
+			address := db.Endpoint.Address
+			if address != "" && db.Endpoint.Port > 0 {
+				address = fmt.Sprintf("%s:%d", db.Endpoint.Address, db.Endpoint.Port)
+			}
+			// The DbiResourceId is immutable across renames; prefer it as the
+			// idempotency key and fall back to the identifier when absent.
+			ext := db.DbiResourceID
+			if ext == "" {
+				ext = db.DBInstanceIdentifier
+			}
+			out = append(out, access.DiscoveredAssetSpec{
+				ExternalID: "rds:" + ext,
+				Kind:       access.AssetKindDatabase,
+				Name:       db.DBInstanceIdentifier,
+				Protocol:   protocol,
+				Address:    address,
+				Region:     cfg.Region,
+				Metadata: map[string]string{
+					"engine":         db.Engine,
+					"engine_version": db.EngineVersion,
+					"status":         db.DBInstanceStatus,
+					"instance_class": db.DBInstanceClass,
+				},
+			})
 		}
-		out = append(out, access.DiscoveredAssetSpec{
-			ExternalID: "rds:" + ext,
-			Kind:       access.AssetKindDatabase,
-			Name:       db.DBInstanceIdentifier,
-			Protocol:   protocol,
-			Address:    address,
-			Region:     cfg.Region,
-			Metadata: map[string]string{
-				"engine":         db.Engine,
-				"engine_version": db.EngineVersion,
-				"status":         db.DBInstanceStatus,
-				"instance_class": db.DBInstanceClass,
-			},
-		})
+		if resp.Result.Marker == "" {
+			break
+		}
+		marker = resp.Result.Marker
 	}
 	return out, nil
 }

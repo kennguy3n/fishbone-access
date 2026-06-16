@@ -127,6 +127,16 @@ func (h *harness) auditCount(t *testing.T, ws uuid.UUID, action string) int64 {
 	return n
 }
 
+func (h *harness) targetCount(t *testing.T, ws uuid.UUID) int64 {
+	t.Helper()
+	var n int64
+	if err := h.db.Model(&models.PAMTarget{}).
+		Where("workspace_id = ?", ws).Count(&n).Error; err != nil {
+		t.Fatalf("count targets: %v", err)
+	}
+	return n
+}
+
 // --- fakes -----------------------------------------------------------------
 
 type fakeDialer struct {
@@ -234,6 +244,7 @@ func TestExpandHosts(t *testing.T) {
 	}{
 		{name: "dedup hosts", hosts: []string{"10.0.0.1", "10.0.0.1", " 10.0.0.2 "}, want: []string{"10.0.0.1", "10.0.0.2"}},
 		{name: "slash30 drops network+broadcast", cidrs: []string{"10.0.0.0/30"}, want: []string{"10.0.0.1", "10.0.0.2"}},
+		{name: "slash31 keeps both hosts (RFC 3021)", cidrs: []string{"10.0.0.0/31"}, want: []string{"10.0.0.0", "10.0.0.1"}},
 		{name: "slash32 single host", cidrs: []string{"10.0.0.5/32"}, want: []string{"10.0.0.5"}},
 		{name: "ipv6 rejected", cidrs: []string{"fe80::/120"}, wantErr: true},
 		{name: "larger than /24 rejected", cidrs: []string{"10.0.0.0/23"}, wantErr: true},
@@ -438,6 +449,9 @@ func TestNormalizeEndpoint(t *testing.T) {
 		{"lowercases host", "DB.Internal:5432", "postgres", "db.internal:5432"},
 		{"unknown protocol host-only", "10.0.0.9", "weird", "10.0.0.9"},
 		{"ipv6 with port", "[2001:db8::1]:22", "ssh", "[2001:db8::1]:22"},
+		{"bracketed ipv6 fills default port", "[2001:db8::1]", "ssh", "[2001:db8::1]:22"},
+		{"bracketed ipv6 unknown protocol unwraps", "[2001:db8::1]", "weird", "2001:db8::1"},
+		{"bare ipv6 fills default port", "2001:db8::1", "ssh", "[2001:db8::1]:22"},
 		{"trims whitespace", "  10.0.0.9:22 ", "ssh", "10.0.0.9:22"},
 		{"empty stays empty", "", "ssh", ""},
 	}
@@ -638,6 +652,60 @@ func TestOnboardAsset(t *testing.T) {
 	// Re-onboard is a conflict.
 	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
 		t.Errorf("re-onboard: err = %v, want ErrConflict", err)
+	}
+}
+
+// TestOnboardAssetClaimBlocksConcurrentOnboard locks in the TOCTOU fix: the
+// asset is claimed (unmanaged -> managed) atomically BEFORE the target is
+// created, so a second onboarder that raced through the same status check loses
+// the claim with ErrConflict and never creates an orphan PAM target. The
+// in-memory SQLite harness can't share one DB across goroutines, so this drives
+// the exact interleave deterministically through the claim CAS rather than with
+// real concurrency.
+func TestOnboardAssetClaimBlocksConcurrentOnboard(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.9:22", "ssh", "10.0.0.9:22", models.DiscoveryStatusUnmanaged)
+
+	// Caller A wins the claim and is mid-onboard (its target is not created yet).
+	if err := h.engine.claimAssetForOnboard(ctx, ws, asset.ID); err != nil {
+		t.Fatalf("first claim: %v", err)
+	}
+
+	// Caller B raced through the same unmanaged status check; its full onboard
+	// must now lose the claim with ErrConflict and create NO PAM target.
+	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester",
+	}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("racing onboard: err = %v, want ErrConflict", err)
+	}
+	if n := h.targetCount(t, ws); n != 0 {
+		t.Fatalf("orphan target created by losing onboarder: count = %d, want 0", n)
+	}
+
+	// Releasing A's claim (e.g. its own target creation failed) returns the
+	// asset to the candidate list so it can be retried cleanly.
+	h.engine.releaseAssetClaim(ctx, ws, asset.ID)
+	var reverted models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&reverted)
+	if reverted.Status != models.DiscoveryStatusUnmanaged || reverted.TargetID != nil {
+		t.Fatalf("release did not revert claim: %+v", reverted)
+	}
+
+	target, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "hunter2"}, Actor: "tester",
+	})
+	if err != nil {
+		t.Fatalf("retry onboard: %v", err)
+	}
+	if n := h.targetCount(t, ws); n != 1 {
+		t.Fatalf("target count after retry = %d, want 1", n)
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not linked after retry: %+v", got)
 	}
 }
 

@@ -256,8 +256,11 @@ func incIP(ip net.IP) {
 
 func isNetworkOrBroadcast(ip net.IP, ipnet *net.IPNet) bool {
 	ones, bits := ipnet.Mask.Size()
-	if bits-ones == 0 {
-		return false // /32: the single host is usable
+	if bits-ones <= 1 {
+		// /32 (single host) and, per RFC 3021, /31 point-to-point links have no
+		// reserved network/broadcast address — every address is usable. Without
+		// this a /31 would skip both addresses and yield an empty host list.
+		return false
 	}
 	network := ip.Mask(ipnet.Mask)
 	if ip.Equal(network) {

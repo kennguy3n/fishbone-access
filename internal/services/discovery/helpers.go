@@ -71,11 +71,18 @@ func normalizeEndpoint(address, protocol string) string {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		// No (or malformed) port present: treat the whole value as host and
-		// fill the protocol default when we recognize it.
-		if dp := defaultPortForProtocol(protocol); dp != "" {
-			return strings.ToLower(net.JoinHostPort(address, dp))
+		// fill the protocol default when we recognize it. Strip a surrounding
+		// bracket pair from a bracketed IPv6 literal first ("[::1]" -> "::1") so
+		// JoinHostPort, which re-adds brackets for colon-bearing hosts, does not
+		// double-bracket it ("[[::1]]:22").
+		hostOnly := address
+		if strings.HasPrefix(hostOnly, "[") && strings.HasSuffix(hostOnly, "]") {
+			hostOnly = hostOnly[1 : len(hostOnly)-1]
 		}
-		return strings.ToLower(address)
+		if dp := defaultPortForProtocol(protocol); dp != "" {
+			return strings.ToLower(net.JoinHostPort(hostOnly, dp))
+		}
+		return strings.ToLower(hostOnly)
 	}
 	return strings.ToLower(net.JoinHostPort(host, port))
 }
