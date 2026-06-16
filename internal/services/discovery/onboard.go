@@ -102,9 +102,17 @@ func (e *Engine) OnboardAsset(ctx context.Context, workspaceID, assetID uuid.UUI
 
 	if agentID != nil && e.binder != nil {
 		if bindErr := e.binder.BindTarget(ctx, workspaceID, *agentID, target.ID, in.Actor); bindErr != nil {
-			// The target exists and is usable direct-dial; surface the bind
-			// failure rather than silently dropping the agent association.
-			return target, fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr)
+			// The target exists and is usable direct-dial. Link the asset to it
+			// FIRST so a bind failure can't strand the asset as managed with a
+			// NULL target_id — which would make it un-onboardable (ErrConflict)
+			// and invisible to the sweep (it filters status='unmanaged'). Then
+			// surface the bind failure rather than silently dropping the agent
+			// association.
+			bindWrap := fmt.Errorf("discovery: bind onboarded target to agent: %w", bindErr)
+			if linkErr := e.linkAssetTarget(ctx, workspaceID, asset.ID, target.ID, in.Actor, models.DiscoveryTriggerManual); linkErr != nil {
+				return target, errors.Join(bindWrap, linkErr)
+			}
+			return target, bindWrap
 		}
 	}
 

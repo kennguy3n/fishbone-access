@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -653,6 +654,45 @@ func TestOnboardAsset(t *testing.T) {
 	// Re-onboard is a conflict.
 	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
 		t.Errorf("re-onboard: err = %v, want ErrConflict", err)
+	}
+}
+
+// TestOnboardAssetBindFailureStillLinksTarget locks in the fix for the
+// BindTarget-strands-asset bug: when the agent bind fails AFTER the target is
+// created, the asset must still be linked to the target (status=managed,
+// target_id set) so it is neither un-onboardable nor invisible to the sweep —
+// while the bind failure is still surfaced to the caller.
+func TestOnboardAssetBindFailureStillLinksTarget(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	asset := h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.7:22", "ssh", "10.0.0.7:22", models.DiscoveryStatusUnmanaged)
+	agentID := uuid.New()
+	h.binder.err = errors.New("agent offline")
+
+	target, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{
+		Username: "root", Secret: pam.Secret{Password: "hunter2"}, AgentID: &agentID, RequireMFA: true, Actor: "tester",
+	})
+	// The bind failure must be surfaced...
+	if err == nil || !strings.Contains(err.Error(), "agent offline") {
+		t.Fatalf("expected surfaced bind error, got %v", err)
+	}
+	// ...but the target must exist and the asset must be linked to it (not stuck).
+	if target == nil {
+		t.Fatalf("target should still be created on bind failure")
+	}
+	var got models.DiscoveredAsset
+	h.db.Where("id = ?", asset.ID).Take(&got)
+	if got.Status != models.DiscoveryStatusManaged || got.TargetID == nil || *got.TargetID != target.ID {
+		t.Fatalf("asset not linked after bind failure (stuck managed/NULL): %+v", got)
+	}
+	// The onboard link audit event must still have been appended.
+	if c := h.auditCount(t, ws, "discovery.onboard"); c != 1 {
+		t.Fatalf("onboard audit = %d, want 1", c)
+	}
+	// The asset is fully onboarded, so a retry is a conflict (not a stuck loop).
+	if _, err := h.engine.OnboardAsset(ctx, ws, asset.ID, OnboardAssetInput{Username: "root", Secret: pam.Secret{Password: "x"}, Actor: "tester"}); !errors.Is(err, ErrConflict) {
+		t.Errorf("re-onboard after bind failure: err = %v, want ErrConflict", err)
 	}
 }
 
