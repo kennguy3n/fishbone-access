@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
@@ -51,6 +54,7 @@ type SessionManager struct {
 	db         *gorm.DB
 	evaluator  *CommandPolicyEvaluator
 	controller LiveController
+	ai         *aiclient.AIClient
 	now        func() time.Time
 }
 
@@ -66,6 +70,14 @@ func (m *SessionManager) SetClock(now func() time.Time) {
 	if now != nil {
 		m.now = now
 	}
+}
+
+// SetRiskScorer attaches the AI client used to score a privileged session's
+// command stream when it ends (advisory, fail-open). A nil client — or one that
+// is not Configured() — leaves session-risk scoring off entirely, so a
+// deployment without the agent pays no cost and emits no fallback noise.
+func (m *SessionManager) SetRiskScorer(ai *aiclient.AIClient) {
+	m.ai = ai
 }
 
 // LogCommand evaluates command against policy, persists a command row with the
@@ -439,7 +451,8 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 	// together) both read state=active, but only the UPDATE that actually flips
 	// the row affects a row; the loser sees 0 rows and skips the audit append,
 	// so the chain gets exactly one end event instead of a duplicate.
-	return m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var ended bool
+	if err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&models.PAMSession{}).
 			Where("workspace_id = ? AND id = ? AND state = ?", workspaceID, sessionID, models.PAMSessionActive).
 			Updates(updates)
@@ -450,6 +463,7 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 			// Lost the race / already ended: nothing to audit.
 			return nil
 		}
+		ended = true
 		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
 			WorkspaceID: workspaceID,
 			Actor:       actor,
@@ -457,7 +471,247 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 			TargetRef:   session.TargetID.String(),
 			Metadata:    md,
 		})
+	}); err != nil {
+		return err
+	}
+
+	// Post-session advisory risk scoring runs only on the writer that actually
+	// ended the session (ended==true), and strictly AFTER the close commits so
+	// the AI round-trip never holds the end-session transaction open. It is
+	// fail-open and best-effort: a scoring failure is logged inside the helper
+	// and never propagates to the close result.
+	if ended {
+		m.assessSessionRisk(ctx, &session)
+		m.analyzeBehaviour(ctx, &session)
+	}
+	return nil
+}
+
+// sessionRiskMaxCommands bounds how many of a session's commands are fed to the
+// PAM session-risk skill. A privileged session's transcript can be long; the
+// most recent slice is enough signal for scoring and keeps the payload (and the
+// agent round-trip) bounded.
+const sessionRiskMaxCommands = 200
+
+// assessSessionRisk scores a just-ended session's command stream through the
+// pam_session_risk_assessment skill and records the verdict as a
+// pam.session.risk_assessed audit event. It is advisory and fail-open: scoring
+// is skipped entirely when no AI client is configured (no fallback noise on
+// deployments without the agent), a degraded/agent-down result is dropped
+// rather than recorded as a synthetic signal, and any persistence error is
+// logged, never propagated — a session's clean teardown must not depend on the
+// AI agent being reachable.
+func (m *SessionManager) assessSessionRisk(ctx context.Context, session *models.PAMSession) {
+	if m.ai == nil || !m.ai.Configured() {
+		return
+	}
+	commands, err := m.recentCommands(ctx, session.WorkspaceID, session.ID, sessionRiskMaxCommands)
+	if err != nil {
+		logger.Warnf(ctx, "pam: session risk scoring: load commands for %s: %v", session.ID, err)
+		return
+	}
+	risk := aiclient.AssessSessionRiskWithFallback(ctx, m.ai, m.resolveAITier(ctx, session.WorkspaceID), aiclient.SessionRiskInput{
+		UserExternalID: session.Subject,
+		TargetRef:      session.TargetID.String(),
+		Commands:       commands,
+		SourceIP:       session.ClientAddr,
+	}, false)
+	if risk.Degraded {
+		// Agent unreachable: advisory absence of a signal, not a synthetic one.
+		return
+	}
+	now := m.now()
+	md, err := marshalMeta(map[string]any{
+		"session_id":     session.ID.String(),
+		"risk_score":     risk.Score,
+		"risk_factors":   risk.Factors,
+		"recommendation": risk.Recommendation,
 	})
+	if err != nil {
+		logger.Warnf(ctx, "pam: session risk scoring: marshal metadata for %s: %v", session.ID, err)
+		return
+	}
+	if err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
+			WorkspaceID: session.WorkspaceID,
+			Actor:       session.Subject,
+			Action:      "pam.session.risk_assessed",
+			TargetRef:   session.TargetID.String(),
+			Metadata:    md,
+		})
+	}); err != nil {
+		logger.Warnf(ctx, "pam: session risk scoring: append audit for %s: %v", session.ID, err)
+	}
+}
+
+// behaviourMaxSessions bounds how many of a user's recent privileged sessions
+// feed the behavioural-analytics skill: enough history to establish a baseline
+// without an unbounded scan as a long-tenured user's session count grows.
+const behaviourMaxSessions = 50
+
+// analyzeBehaviour runs post-session behavioural analytics for the session's
+// user (advisory, fail-open). Like assessSessionRisk it is a no-op without a
+// configured agent, and any error is logged rather than propagated to the close.
+func (m *SessionManager) analyzeBehaviour(ctx context.Context, session *models.PAMSession) {
+	if m.ai == nil || !m.ai.Configured() {
+		return
+	}
+	if _, err := m.AnalyzeUserBehaviour(ctx, session.WorkspaceID, session.Subject); err != nil {
+		logger.Warnf(ctx, "pam: behavioural analytics for %s: %v", session.Subject, err)
+	}
+}
+
+// AnalyzeUserBehaviour scores a user's recent privileged sessions through the
+// pam_behavioural_analytics skill and records each returned anomaly as a
+// pam.session.behaviour_anomaly audit event, returning the anomalies. It builds
+// the skill's baseline (the user's habitual targets and average command volume)
+// from the same recent-session window. It is advisory and fail-open: with no
+// configured agent it is a no-op, an agent outage yields no anomalies (the
+// absence of a signal, not a synthetic one), and a per-anomaly persistence error
+// is logged without aborting the rest. Exported so a periodic per-user job can
+// drive it in addition to the post-session hook.
+func (m *SessionManager) AnalyzeUserBehaviour(ctx context.Context, workspaceID uuid.UUID, userExternalID string) ([]aiclient.AnomalyEvent, error) {
+	if m.ai == nil || !m.ai.Configured() {
+		return nil, nil
+	}
+	if workspaceID == uuid.Nil || userExternalID == "" {
+		return nil, fmt.Errorf("%w: workspace_id and user are required", ErrValidation)
+	}
+	var sessions []models.PAMSession
+	if err := m.db.WithContext(ctx).
+		Where("workspace_id = ? AND subject = ? AND ended_at IS NOT NULL", workspaceID, userExternalID).
+		Order("started_at desc").
+		Limit(behaviourMaxSessions).
+		Find(&sessions).Error; err != nil {
+		return nil, fmt.Errorf("pam: load user sessions: %w", err)
+	}
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]uuid.UUID, len(sessions))
+	for i, s := range sessions {
+		ids[i] = s.ID
+	}
+	type sessionCount struct {
+		SessionID uuid.UUID
+		N         int
+	}
+	var counts []sessionCount
+	if err := m.db.WithContext(ctx).
+		Model(&models.PAMSessionCommand{}).
+		Select("session_id, count(*) as n").
+		Where("workspace_id = ? AND session_id IN ?", workspaceID, ids).
+		Group("session_id").
+		Scan(&counts).Error; err != nil {
+		return nil, fmt.Errorf("pam: count session commands: %w", err)
+	}
+	countByID := make(map[uuid.UUID]int, len(counts))
+	for _, c := range counts {
+		countByID[c.SessionID] = c.N
+	}
+
+	behaviourSessions := make([]aiclient.BehaviourSession, 0, len(sessions))
+	targetSet := make(map[string]struct{}, len(sessions))
+	totalCommands := 0
+	for _, s := range sessions {
+		duration := 0
+		if s.EndedAt != nil {
+			duration = int(s.EndedAt.Sub(s.StartedAt).Minutes())
+		}
+		n := countByID[s.ID]
+		totalCommands += n
+		target := s.TargetID.String()
+		targetSet[target] = struct{}{}
+		behaviourSessions = append(behaviourSessions, aiclient.BehaviourSession{
+			StartHour:    s.StartedAt.Hour(),
+			DurationMin:  duration,
+			CommandCount: n,
+			Target:       target,
+		})
+	}
+	targets := make([]string, 0, len(targetSet))
+	for target := range targetSet {
+		targets = append(targets, target)
+	}
+	sort.Strings(targets)
+
+	anomalies := aiclient.AnalyzeBehaviourWithFallback(ctx, m.ai, m.resolveAITier(ctx, workspaceID), aiclient.BehaviourAnalyticsInput{
+		UserExternalID: userExternalID,
+		Sessions:       behaviourSessions,
+		Baseline: &aiclient.BehaviourBaseline{
+			Targets:         targets,
+			AvgCommandCount: float64(totalCommands) / float64(len(sessions)),
+		},
+	})
+	if len(anomalies) == 0 {
+		return nil, nil
+	}
+
+	now := m.now()
+	for _, anomaly := range anomalies {
+		md, err := marshalMeta(map[string]any{
+			"user_external_id": userExternalID,
+			"kind":             anomaly.Kind,
+			"severity":         anomaly.Severity,
+			"reason":           anomaly.Reason,
+			"confidence":       anomaly.Confidence,
+		})
+		if err != nil {
+			logger.Warnf(ctx, "pam: behavioural anomaly: marshal metadata for %s: %v", userExternalID, err)
+			continue
+		}
+		if err := m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return lifecycle.AppendAuditTx(ctx, tx, now, lifecycle.AuditInput{
+				WorkspaceID: workspaceID,
+				Actor:       userExternalID,
+				Action:      "pam.session.behaviour_anomaly",
+				TargetRef:   anomaly.Kind,
+				Metadata:    md,
+			})
+		}); err != nil {
+			logger.Warnf(ctx, "pam: behavioural anomaly: append audit for %s: %v", userExternalID, err)
+		}
+	}
+	return anomalies, nil
+}
+
+// recentCommands loads up to limit of a session's logged commands in transcript
+// (seq) order for risk scoring. Denied commands are included — an attempt that
+// policy blocked is itself a risk signal.
+func (m *SessionManager) recentCommands(ctx context.Context, workspaceID, sessionID uuid.UUID, limit int) ([]string, error) {
+	var commands []string
+	if err := m.db.WithContext(ctx).
+		Model(&models.PAMSessionCommand{}).
+		Where("workspace_id = ? AND session_id = ?", workspaceID, sessionID).
+		Order("seq").
+		Limit(limit).
+		Pluck("command", &commands).Error; err != nil {
+		return nil, fmt.Errorf("pam: load session commands: %w", err)
+	}
+	return commands, nil
+}
+
+// resolveAITier maps the session's workspace plan to the AI agent tier, matching
+// the lifecycle risk-review resolver: pro → local_4b, ultimate → local_8b,
+// everything else (and any lookup error) → deterministic, so a plan lookup
+// failure degrades to the cheapest tier rather than blocking scoring.
+func (m *SessionManager) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
+	var ws models.Workspace
+	if err := m.db.WithContext(ctx).
+		Select("plan").
+		Where("id = ?", workspaceID).
+		Take(&ws).Error; err != nil {
+		return "deterministic"
+	}
+	switch strings.TrimSpace(strings.ToLower(ws.Plan)) {
+	case "pro":
+		return "local_4b"
+	case "ultimate":
+		return "local_8b"
+	default:
+		return "deterministic"
+	}
 }
 
 // ExpireLeases flips a workspace's pending connect tokens whose lease window has

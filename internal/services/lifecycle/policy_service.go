@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 )
 
 // SimulationResult is the combined output of a policy simulation: the impact
@@ -33,6 +34,7 @@ type PolicyService struct {
 	impact   *ImpactResolver
 	conflict *ConflictDetector
 	sod      *SodEngine
+	ai       *aiclient.AIClient
 	now      func() time.Time
 }
 
@@ -51,6 +53,55 @@ func NewPolicyService(db *gorm.DB) *PolicyService {
 func (s *PolicyService) SetClock(now func() time.Time) {
 	if now != nil {
 		s.now = now
+	}
+}
+
+// SetRecommender attaches the AI client used by Recommend. It is optional: with
+// no client (or an unconfigured one) Recommend returns an empty advisory rather
+// than failing, so policy authoring never depends on the agent being reachable.
+func (s *PolicyService) SetRecommender(ai *aiclient.AIClient) {
+	s.ai = ai
+}
+
+// PolicyRecommendationInput is the contract for Recommend: the resource a policy
+// would govern, the roles in scope, and free-text context describing intent.
+type PolicyRecommendationInput struct {
+	Resource string
+	Roles    []string
+	Context  string
+}
+
+// Recommend consults the policy_recommendation skill for a human-readable
+// rationale to guide an operator drafting a policy. It is advisory and
+// fail-open: with no configured agent it returns an empty string (callers treat
+// an empty recommendation as "no AI guidance available"), and an agent outage is
+// logged inside the aiclient fallback rather than surfaced as an error.
+func (s *PolicyService) Recommend(ctx context.Context, workspaceID uuid.UUID, in PolicyRecommendationInput) string {
+	if s.ai == nil || !s.ai.Configured() {
+		return ""
+	}
+	return aiclient.RecommendPolicyWithFallback(ctx, s.ai, s.resolveAITier(ctx, workspaceID), aiclient.PolicyRecommendationInput{
+		WorkspaceID: workspaceID.String(),
+		Resource:    strings.TrimSpace(in.Resource),
+		Roles:       in.Roles,
+		Context:     strings.TrimSpace(in.Context),
+	})
+}
+
+// resolveAITier maps the workspace's plan to the AI tier the agent uses to pick
+// a model, failing safe to "deterministic" on a missing/unknown workspace.
+func (s *PolicyService) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
+	var ws models.Workspace
+	if err := s.db.WithContext(ctx).Select("plan").Where("id = ?", workspaceID).Take(&ws).Error; err != nil {
+		return "deterministic"
+	}
+	switch strings.TrimSpace(strings.ToLower(ws.Plan)) {
+	case "pro":
+		return "local_4b"
+	case "ultimate":
+		return "local_8b"
+	default:
+		return "deterministic"
 	}
 }
 

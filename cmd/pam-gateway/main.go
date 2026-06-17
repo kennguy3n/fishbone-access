@@ -199,6 +199,11 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	if !ai.Configured() {
 		logger.Warnf(ctx, "pam-gateway: AI agent not configured; lease risk scoring uses deterministic fallback")
 	}
+	// Score each privileged session's command stream when it ends (advisory,
+	// fail-open): the verdict lands as a pam.session.risk_assessed audit event.
+	// A nil/unconfigured client leaves this off, so an agent-less deployment
+	// pays nothing.
+	sessions.SetRiskScorer(ai)
 	leases := pam.NewPAMLeaseService(gdb, ai)
 	leases.SetSessionTerminator(sessions)
 	broker.SetLeaseValidator(leases)
