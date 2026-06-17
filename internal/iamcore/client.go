@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,12 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/config"
 )
+
+// ErrNotFound is wrapped into the error returned by management calls when
+// iam-core responds 404. Callers use errors.Is(err, ErrNotFound) to treat an
+// "already gone" resource as a non-fatal, idempotent outcome — e.g. deleting a
+// connection that no longer exists is the desired end state, not a failure.
+var ErrNotFound = errors.New("iamcore: resource not found")
 
 // tokenMintTimeout bounds a single client_credentials mint. The mint runs on a
 // context detached from any one caller's request (see accessToken), so it needs
@@ -194,7 +201,13 @@ func (c *ManagementClient) do(ctx context.Context, method, path string, body, ou
 	status, err := c.doAttempt(ctx, method, path, body, out)
 	if err != nil && status == http.StatusUnauthorized {
 		c.invalidateToken()
-		_, err = c.doAttempt(ctx, method, path, body, out)
+		status, err = c.doAttempt(ctx, method, path, body, out)
+	}
+	// Surface a 404 as the typed ErrNotFound sentinel (keeping the original
+	// detail) so callers can distinguish "already gone" from a transient
+	// failure and handle it idempotently.
+	if err != nil && status == http.StatusNotFound {
+		return fmt.Errorf("%w: %v", ErrNotFound, err)
 	}
 	return err
 }

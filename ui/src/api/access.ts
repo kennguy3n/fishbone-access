@@ -882,6 +882,8 @@ export interface AccessConnector {
   status: string;
   config?: Record<string, unknown> | null;
   last_synced_at?: string | null;
+  /** id of the federated iam-core SSO Connection; empty when SSO is not federated. */
+  sso_connection_id?: string;
   created_at: string;
   updated_at: string;
 }

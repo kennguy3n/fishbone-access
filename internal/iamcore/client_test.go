@@ -3,6 +3,7 @@ package iamcore
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -241,6 +242,30 @@ func TestPersistent401RetriesOnce(t *testing.T) {
 	}
 	if got := calls.Load(); got != 2 {
 		t.Errorf("management calls = %d, want 2 (initial attempt + one retry)", got)
+	}
+}
+
+// TestDeleteConnectionNotFoundSentinel locks the typed 404 mapping: when
+// iam-core reports a connection is already gone, the error must be
+// errors.Is(err, ErrNotFound) so idempotent callers (RemoveSSOFederation) can
+// treat "already deleted" as success instead of wedging in a stuck state.
+func TestDeleteConnectionNotFoundSentinel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "tok", "expires_in": 3600})
+	})
+	mux.HandleFunc("/api/v1/management/connections/conn-gone", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":"connection not found"}`, http.StatusNotFound)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	c := NewManagementClient(config.IAMCoreConfig{
+		Issuer: srv.URL, ClientID: "id", ClientSecret: "sec", Audience: "mgmt",
+	}, srv.Client())
+
+	err := c.DeleteConnection(context.Background(), "conn-gone")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("DeleteConnection on a 404 = %v, want errors.Is(ErrNotFound)", err)
 	}
 }
 

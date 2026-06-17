@@ -58,6 +58,12 @@ type Deps struct {
 	// switch (layer 3). Usually the *iamcore.ManagementClient; nil in degraded
 	// boots, in which case that kill-switch layer reports "skipped".
 	Disabler lifecycle.IdentityDisabler
+	// SSOConnections creates/removes iam-core SSO Connections for the connector
+	// SSO federation surface (POST/DELETE /connectors/{id}/sso). Usually the
+	// *iamcore.ManagementClient (same client as Disabler); nil when iam-core
+	// management is not configured, in which case the SSO endpoints fail-soft
+	// with 503 rather than panicking.
+	SSOConnections access.ConnectionConfigurator
 	// WorkspaceResolver is the tenant→workspace lookup RequireTenant runs on
 	// every authenticated request. When set (production wires the pgxpool
 	// adapter here) it takes precedence; when nil and DB is present, NewRouter

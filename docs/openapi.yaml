@@ -1041,6 +1041,37 @@ paths:
                   job_id: { type: string }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /connectors/{connectorID}/sso:
+    parameters: [ { $ref: "#/components/parameters/ConnectorIDPath" } ]
+    post:
+      tags: [sso]
+      summary: Federate the connector's IdP single sign-on into iam-core
+      description: >
+        Reads the connector's advertised SSO metadata and creates (or
+        re-creates, idempotently) the corresponding iam-core SSO Connection,
+        recording its id on the connector so teardown can remove it. The
+        registered client secret is never echoed back. Distinct from
+        /sso-status, which only reports whether SSO is enforced.
+      responses:
+        "200":
+          description: SSO federated (connection created)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SSOConnection" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    delete:
+      tags: [sso]
+      summary: Tear down the connector's iam-core SSO Connection
+      description: >
+        Removes the federated iam-core SSO Connection and clears the recorded
+        id. Idempotent: a connector with no federated connection returns 204.
+      responses:
+        "204": { description: SSO federation removed (or nothing to remove) }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /pam/targets:
     get:
       tags: [pam]
@@ -1605,6 +1636,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    ServiceUnavailable:
+      description: Feature not configured for this deployment (e.g. iam-core management credentials absent)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
   schemas:
     Error:
       type: object
@@ -2032,6 +2068,17 @@ components:
         supported: { type: boolean }
         enforced: { type: boolean }
         details: { type: string }
+    SSOConnection:
+      type: object
+      description: >
+        Safe projection of the iam-core SSO Connection created by federation.
+        Federation secrets (the registered OIDC client_secret, etc.) are never
+        included.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        strategy: { type: string, description: "iam-core connection strategy (e.g. oidc, saml, microsoft, google-oauth2)" }
+        enabled: { type: boolean }
     AccessConnector:
       type: object
       description: A workspace's connector instance. Secrets are never serialized.
@@ -2043,6 +2090,7 @@ components:
         status: { type: string }
         config: { type: object, additionalProperties: true }
         last_synced_at: { type: string, format: date-time, nullable: true }
+        sso_connection_id: { type: string, description: "id of the federated iam-core SSO Connection; empty when SSO is not federated" }
     UserFacingCapabilities:
       type: object
       properties:

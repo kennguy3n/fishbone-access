@@ -398,8 +398,15 @@ func run() error {
 	// layer reports "skipped" when iam-core is set up for JWT validation only,
 	// instead of a non-nil client that fails every BlockUser call (which would
 	// report the layer "failed").
+	//
+	// The same client also backs connector SSO federation
+	// (POST/DELETE /connectors/{id}/sso), which creates and removes iam-core
+	// SSO Connections, so both deps are wired from one client. When management
+	// is not configured the SSO endpoints fail-soft with 503.
 	if cfg.IAMCore.ManagementConfigured() {
-		deps.Disabler = iamcore.NewManagementClient(cfg.IAMCore, nil)
+		mc := iamcore.NewManagementClient(cfg.IAMCore, nil)
+		deps.Disabler = mc
+		deps.SSOConnections = mc
 	}
 
 	deps.Ready = ready

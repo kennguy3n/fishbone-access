@@ -212,6 +212,11 @@ type AccessConnector struct {
 	SecretEnvelope   string         `json:"-"`
 	SecretKeyVersion int            `gorm:"not null;default:1" json:"-"`
 	LastSyncedAt     *time.Time     `json:"last_synced_at,omitempty"`
+	// SSOConnectionID is the id of the iam-core SSO Connection this connector
+	// federates (created via the SSO federation service). Empty when the
+	// connector does not federate SSO. It is persisted so teardown can remove
+	// the iam-core connection (no orphans) and re-configuration is idempotent.
+	SSOConnectionID string `gorm:"not null;default:''" json:"sso_connection_id,omitempty"`
 }
 
 // AccessJob is a unit of background work (sync, provision, revoke) for the

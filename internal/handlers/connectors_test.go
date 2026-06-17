@@ -1,13 +1,135 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
+
+// fakeSSOConnections is an in-memory access.ConnectionConfigurator for the
+// connector SSO federation handler tests. It records the created connection and
+// the last deleted id so the endpoint behaviour can be asserted without a live
+// iam-core.
+type fakeSSOConnections struct {
+	created   *iamcore.Connection
+	deletedID string
+}
+
+func (f *fakeSSOConnections) CreateConnection(_ context.Context, conn iamcore.Connection) (*iamcore.Connection, error) {
+	conn.ID = "conn-xyz"
+	f.created = &conn
+	return &conn, nil
+}
+func (f *fakeSSOConnections) DeleteConnection(_ context.Context, id string) error {
+	f.deletedID = id
+	return nil
+}
+func (f *fakeSSOConnections) TestConnection(context.Context, string) error         { return nil }
+func (f *fakeSSOConnections) ToggleConnection(context.Context, string, bool) error { return nil }
+
+// createOktaConnector creates an okta connector via the API and returns its id.
+func createOktaConnector(t *testing.T, r http.Handler) string {
+	t.Helper()
+	wc := do(t, r, http.MethodPost, "/api/v1/connectors", "tok-a", map[string]any{
+		"provider": "okta",
+		"secrets":  map[string]any{"sso_client_id": "cid", "sso_client_secret": "sec"},
+	})
+	if wc.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body=%s", wc.Code, wc.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(wc.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+	return created.ID
+}
+
+// TestConnectorSSOFederationEndpoints exercises the full POST/DELETE
+// /connectors/{id}/sso surface against a wired (fake) iam-core configurator: a
+// federating connector returns 200 with a SAFE projection (no client_secret),
+// and DELETE tears the connection down (204).
+func TestConnectorSSOFederationEndpoints(t *testing.T) {
+	access.SwapConnector(t, "okta", &access.MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*access.SSOMetadata, error) {
+			return &access.SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	})
+	deps := lifecycleTestDeps(t)
+	fake := &fakeSSOConnections{}
+	deps.SSOConnections = fake
+	r := NewRouter(deps)
+	id := createOktaConnector(t, r)
+
+	// POST → 200, federated.
+	w := do(t, r, http.MethodPost, "/api/v1/connectors/"+id+"/sso", "tok-a", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("configure sso status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `"strategy":"oidc"`) {
+		t.Errorf("response missing strategy: %s", body)
+	}
+	// The registered client_secret must never be echoed back.
+	if strings.Contains(body, "sec") || strings.Contains(body, "client_secret") {
+		t.Errorf("federation secret leaked in response body: %s", body)
+	}
+	if fake.created == nil {
+		t.Fatal("no iam-core connection was created")
+	}
+
+	// DELETE → 204, connection removed.
+	wd := do(t, r, http.MethodDelete, "/api/v1/connectors/"+id+"/sso", "tok-a", nil)
+	if wd.Code != http.StatusNoContent {
+		t.Fatalf("remove sso status = %d, want 204; body=%s", wd.Code, wd.Body.String())
+	}
+	if fake.deletedID != "conn-xyz" {
+		t.Errorf("deleted connection = %q, want conn-xyz", fake.deletedID)
+	}
+}
+
+// TestConnectorSSOFederationDisabled pins that a deployment without iam-core
+// management credentials (no SSOConnections wired) fails-soft with 503, never a
+// panic.
+func TestConnectorSSOFederationDisabled(t *testing.T) {
+	access.SwapConnector(t, "okta", &access.MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*access.SSOMetadata, error) {
+			return &access.SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	})
+	r := NewRouter(lifecycleTestDeps(t)) // no SSOConnections
+	id := createOktaConnector(t, r)
+
+	w := do(t, r, http.MethodPost, "/api/v1/connectors/"+id+"/sso", "tok-a", nil)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("configure sso (disabled) status = %d, want 503; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestConnectorSSOFederationUnsupported pins that a connector which does not
+// advertise SSO metadata returns 422 (not a 500/panic) when federation is wired.
+func TestConnectorSSOFederationUnsupported(t *testing.T) {
+	access.SwapConnector(t, "okta", &access.MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*access.SSOMetadata, error) {
+			return nil, nil // does not federate
+		},
+	})
+	deps := lifecycleTestDeps(t)
+	deps.SSOConnections = &fakeSSOConnections{}
+	r := NewRouter(deps)
+	id := createOktaConnector(t, r)
+
+	w := do(t, r, http.MethodPost, "/api/v1/connectors/"+id+"/sso", "tok-a", nil)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("configure sso (unsupported) status = %d, want 422; body=%s", w.Code, w.Body.String())
+	}
+}
 
 // TestConnectorCatalogueListReturnsEveryProvider asserts the catalogue endpoint
 // surfaces one entry per curated connector and that the response is tenant
