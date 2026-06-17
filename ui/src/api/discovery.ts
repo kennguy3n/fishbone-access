@@ -125,6 +125,18 @@ export interface AutoOnboardRule {
   agent_id?: string | null;
 }
 
+/**
+ * Bounded target set the scheduled ACTIVE network sweep probes through its agent
+ * (discovery.ActiveSweepTargets). Hosts/CIDRs are expanded server-side (the
+ * /24-or-smaller, IPv4-only rule the manual sweep enforces); empty ports falls
+ * back to the default privileged-service set.
+ */
+export interface ActiveSweepTargets {
+  hosts?: string[];
+  cidrs?: string[];
+  ports?: number[];
+}
+
 /** Non-secret policy view (discovery.PolicyView) — never carries the credential. */
 export interface PolicyView {
   enabled: boolean;
@@ -134,6 +146,10 @@ export interface PolicyView {
   default_agent_id?: string | null;
   credential_username?: string;
   has_credential: boolean;
+  /** Scheduled active network sweep (gated independently of `enabled`). */
+  active_sweep_enabled: boolean;
+  active_sweep_agent_id?: string | null;
+  active_sweep_targets: ActiveSweepTargets;
   updated_by?: string;
   updated_at?: string;
 }
@@ -171,6 +187,11 @@ export interface SavePolicyInput {
   create_targets: boolean;
   rules: AutoOnboardRule[];
   default_agent_id?: string;
+  /** Scheduled active network sweep. When enabled the agent + at least one
+   *  expandable host/cidr are required (validated server-side). */
+  active_sweep_enabled?: boolean;
+  active_sweep_agent_id?: string;
+  active_sweep_targets?: ActiveSweepTargets;
   /** Optional onboarding credential. Omit to leave any sealed credential
    *  untouched; send with an empty password to clear it (flag-only mode). */
   credential?: {
