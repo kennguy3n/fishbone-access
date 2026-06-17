@@ -165,40 +165,138 @@ func NewPeriodicRunner(gate HibernationGate, budgets budgetResolver, sched *Fair
 	return &PeriodicRunner{gate: gate, budgets: budgets, sched: sched}
 }
 
+// shouldRun applies the hibernation gate FAIL-OPEN: a nil gate or any gate
+// error runs the tenant; only a confident dormant classification skips it.
+// Deferring real work because a classification read hiccuped would be worse
+// than running it.
+func (p *PeriodicRunner) shouldRun(ctx context.Context, workspaceID uuid.UUID) bool {
+	if p.gate == nil {
+		return true
+	}
+	run, err := p.gate.ShouldRunPeriodic(ctx, workspaceID)
+	if err != nil {
+		return true
+	}
+	return run
+}
+
+// maxPerTenant resolves the tenant's per-tenant concurrency cap FAIL-OPEN: a
+// nil budget resolver or any read error imposes no per-tenant cap (0), so the
+// global ceiling alone bounds total work rather than a transient read error
+// wedging a tenant.
+func (p *PeriodicRunner) maxPerTenant(ctx context.Context, workspaceID uuid.UUID) int {
+	if p.budgets == nil {
+		return 0
+	}
+	b, err := p.budgets.BudgetFor(ctx, workspaceID)
+	if err != nil {
+		return 0
+	}
+	return b.MaxConcurrentSyncs
+}
+
 // RunForTenant runs job for one tenant iff it is awake and a fair-scheduling
-// slot is available within the tenant's budget:
+// slot is available within the tenant's budget. It is the SINGLE-TENANT,
+// NON-BLOCKING form — a busy slot is skipped immediately (the caller retries on
+// the next tick). For a whole sweep of many tenants, prefer Sweep, which fans
+// the work out with bounded fair concurrency.
 //
 //   - dormant tenant            → (OutcomeSkippedDormant, nil), job not called
 //   - at concurrency budget     → (OutcomeSkippedBudget, nil), job not called
 //   - otherwise                 → (OutcomeRan, job(ctx)), slot released after
-//
-// A gate error is treated fail-open (the job runs): deferring real work because
-// a classification read hiccuped would be worse than running it.
 func (p *PeriodicRunner) RunForTenant(ctx context.Context, workspaceID uuid.UUID, job func(context.Context) error) (Outcome, error) {
-	if p.gate != nil {
-		run, err := p.gate.ShouldRunPeriodic(ctx, workspaceID)
-		if err == nil && !run {
-			return OutcomeSkippedDormant, nil
-		}
-		// err != nil ⇒ fail open and fall through to run.
+	if !p.shouldRun(ctx, workspaceID) {
+		return OutcomeSkippedDormant, nil
 	}
-
-	maxPerTenant := 0
-	if p.budgets != nil {
-		if b, err := p.budgets.BudgetFor(ctx, workspaceID); err == nil {
-			maxPerTenant = b.MaxConcurrentSyncs
-		}
-		// On a budget read error, fall back to no per-tenant cap; the global
-		// ceiling still bounds total work.
-	}
-
 	if p.sched != nil {
-		release, ok := p.sched.TryAcquire(workspaceID, maxPerTenant)
+		release, ok := p.sched.TryAcquire(workspaceID, p.maxPerTenant(ctx, workspaceID))
 		if !ok {
 			return OutcomeSkippedBudget, nil
 		}
 		defer release()
 	}
-
 	return OutcomeRan, job(ctx)
+}
+
+// Job is one unit of periodic work tagged with the workspace that owns it. The
+// same workspace may own MANY jobs in a single sweep (e.g. one per due rotation
+// target); Sweep gates the workspace once and bounds that workspace's
+// concurrent jobs by its per-tenant budget.
+type Job struct {
+	WorkspaceID uuid.UUID
+	Run         func(context.Context) error
+}
+
+// Sweep runs every job with bounded fair concurrency, BLOCKING until all
+// launched jobs finish or ctx is cancelled. It is the fleet-scale form of
+// RunForTenant: the hibernation gate is consulted once per workspace (a dormant
+// workspace's jobs are skipped), each workspace's concurrent jobs are capped by
+// its MaxConcurrentSyncs budget, and total in-flight across the fleet is capped
+// by the global ceiling — so one tenant's burst, or the whole fleet waking at
+// once, cannot exhaust the DB pool / upstreams. Work that fits the budget runs
+// in parallel; work that does not is deferred, not dropped.
+//
+// obs observes each job's terminal Outcome (and, for OutcomeRan, the job's own
+// error) for metrics/logging. Because jobs run concurrently, obs MAY be invoked
+// from multiple goroutines and so MUST be safe for concurrent use (a counter
+// increment or a structured log line is fine). obs may be nil.
+//
+// A per-tenant-cap rejection is NOT a failure: that job is skipped this sweep
+// (OutcomeSkippedBudget) and the caller is expected to re-enumerate it next
+// tick — periodic work is idempotent and stays selected while still due. A
+// cancelled ctx stops launching further jobs; already-launched jobs are still
+// awaited.
+//
+// With a nil scheduler (degraded build) Sweep runs each job inline and
+// unbounded, preserving "work still happens" over "work is bounded".
+func (p *PeriodicRunner) Sweep(ctx context.Context, jobs []Job, obs func(Outcome, error)) {
+	report := func(out Outcome, err error) {
+		if obs != nil {
+			obs(out, err)
+		}
+	}
+	// Gate + cap are resolved once per workspace per sweep (a workspace can own
+	// many jobs); the launch loop is single-goroutine so these caches need no
+	// locking.
+	gateCache := map[uuid.UUID]bool{}
+	capCache := map[uuid.UUID]int{}
+	var wg sync.WaitGroup
+	for _, j := range jobs {
+		if ctx.Err() != nil {
+			break
+		}
+		run, seen := gateCache[j.WorkspaceID]
+		if !seen {
+			run = p.shouldRun(ctx, j.WorkspaceID)
+			gateCache[j.WorkspaceID] = run
+		}
+		if !run {
+			report(OutcomeSkippedDormant, nil)
+			continue
+		}
+		if p.sched == nil {
+			report(OutcomeRan, j.Run(ctx))
+			continue
+		}
+		capPerTenant, seen := capCache[j.WorkspaceID]
+		if !seen {
+			capPerTenant = p.maxPerTenant(ctx, j.WorkspaceID)
+			capCache[j.WorkspaceID] = capPerTenant
+		}
+		release, err := p.sched.Acquire(ctx, j.WorkspaceID, capPerTenant)
+		if err != nil {
+			if ctx.Err() != nil {
+				break // cancelled while waiting for a global slot
+			}
+			report(OutcomeSkippedBudget, nil) // per-tenant cap; retry next tick
+			continue
+		}
+		wg.Add(1)
+		go func(j Job, release func()) {
+			defer wg.Done()
+			defer release()
+			report(OutcomeRan, j.Run(ctx))
+		}(j, release)
+	}
+	wg.Wait()
 }
