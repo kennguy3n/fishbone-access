@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"testing"
 	"time"
@@ -32,9 +33,12 @@ func TestForwardOnlyDialerFailsClosed(t *testing.T) {
 	ctx := context.Background()
 	ws, agent := uuid.New(), uuid.New()
 	// A non-nil forward client with a tight timeout for the "owner unreachable"
-	// case; its TLS is never touched because the TCP dial to a dead port fails
-	// first. For the directory-only cases it is never dialed at all.
-	fwd := NewForwardClient(nil, 200*time.Millisecond)
+	// case. It carries a non-nil (empty) client TLS config so the dial fails
+	// closed deterministically regardless of whether the dead port refuses the
+	// TCP connect (the common case) or — in an unusual sandbox where the port is
+	// open — the TLS handshake fails: never a nil-pointer panic. For the
+	// directory-only cases it is never dialed at all.
+	fwd := NewForwardClient(&ForwardTLS{client: &tls.Config{}}, 200*time.Millisecond)
 
 	cases := []struct {
 		name string
