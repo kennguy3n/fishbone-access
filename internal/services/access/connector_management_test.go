@@ -426,3 +426,318 @@ func TestConnectorManagementDisconnect(t *testing.T) {
 		t.Error("SecretEnvelope was not cleared on disconnect")
 	}
 }
+
+// newMgmtWithSSO builds a management service whose SSO federation is backed by
+// the supplied in-memory ConnectionConfigurator, so the connector SSO endpoints
+// can be exercised without a live iam-core.
+func newMgmtWithSSO(t *testing.T, conns ConnectionConfigurator) *ConnectorManagementService {
+	t.Helper()
+	db := newTestDB(t)
+	return NewConnectorManagementService(db, PassthroughEncryptor{}, workers.NewPostgresQueue(db),
+		WithSSOFederation(NewSSOFederationService(conns)))
+}
+
+// TestConnectorManagementConfigureSSOFederation pins the happy path: the
+// connector's advertised SSO metadata is federated into an iam-core Connection,
+// the connection's id is persisted on the row (so teardown can remove it), and
+// no federation secret is leaked back through the connection name.
+func TestConnectorManagementConfigureSSOFederation(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration", EntityID: "idp-entity"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock) // "okta" → iam-core strategy "oidc"
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+
+	row, err := svc.Create(ctx, CreateConnectorInput{
+		WorkspaceID: ws,
+		Provider:    "okta",
+		DisplayName: "Corp Okta",
+		Secrets:     map[string]interface{}{"sso_client_id": "cid", "sso_client_secret": "sec"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	conn, err := svc.ConfigureSSOFederation(ctx, ws, row.ID)
+	if err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+	if conn.ID != "conn-123" {
+		t.Errorf("connection id = %q, want conn-123", conn.ID)
+	}
+	if conn.Strategy != "oidc" {
+		t.Errorf("strategy = %q, want oidc", conn.Strategy)
+	}
+	if mock.GetSSOMetadataCalls != 1 {
+		t.Errorf("GetSSOMetadata called %d times, want 1", mock.GetSSOMetadataCalls)
+	}
+	wantName := "shieldnet-okta-" + ws.String()
+	if fake.created == nil || fake.created.Name != wantName {
+		t.Errorf("created connection name = %v, want %q", fake.created, wantName)
+	}
+	if fake.created.Options["client_id"] != "cid" {
+		t.Errorf("client_id option = %v, want cid", fake.created.Options["client_id"])
+	}
+	// The connection id must be persisted so teardown can remove it.
+	got, err := svc.Get(ctx, ws, row.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.SSOConnectionID != "conn-123" {
+		t.Errorf("SSOConnectionID = %q, want conn-123 (persisted)", got.SSOConnectionID)
+	}
+}
+
+// TestConnectorManagementConfigureSSOUnsupported pins that a connector which
+// does not federate SSO (GetSSOMetadata → nil) surfaces ErrSSOFederationUnsupported
+// (handler → 422) and persists no connection id.
+func TestConnectorManagementConfigureSSOUnsupported(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return nil, nil
+		},
+	}
+	SwapConnector(t, "test-provider", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider", Secrets: map[string]interface{}{"k": "v"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); !errors.Is(err, ErrSSOFederationUnsupported) {
+		t.Errorf("ConfigureSSOFederation err = %v, want ErrSSOFederationUnsupported", err)
+	}
+	if fake.created != nil {
+		t.Error("no iam-core connection should be created for a non-federating connector")
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.SSOConnectionID != "" {
+		t.Errorf("SSOConnectionID = %q, want empty (nothing federated)", got.SSOConnectionID)
+	}
+}
+
+// TestConnectorManagementConfigureSSODisabled pins that when SSO federation is
+// not wired (no iam-core management client), the endpoint fails-soft with
+// ErrSSOFederationDisabled (handler → 503) rather than panicking — for both a
+// service built with no SSO option and one built around a nil configurator.
+func TestConnectorManagementConfigureSSODisabled(t *testing.T) {
+	SwapConnector(t, "test-provider", &MockAccessConnector{})
+	ctx := context.Background()
+
+	// (a) No WithSSOFederation option at all.
+	svc := newMgmtService(t)
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "test-provider"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); !errors.Is(err, ErrSSOFederationDisabled) {
+		t.Errorf("ConfigureSSOFederation (no sso) err = %v, want ErrSSOFederationDisabled", err)
+	}
+	if err := svc.RemoveSSOFederation(ctx, ws, row.ID); !errors.Is(err, ErrSSOFederationDisabled) {
+		t.Errorf("RemoveSSOFederation (no sso) err = %v, want ErrSSOFederationDisabled", err)
+	}
+
+	// (b) WithSSOFederation around a nil configurator (the production wiring when
+	// iam-core management is unconfigured): the federation service itself must
+	// fail-soft, never nil-panic.
+	svc2 := newMgmtWithSSO(t, nil)
+	ws2 := uuid.New()
+	row2, err := svc2.Create(ctx, CreateConnectorInput{WorkspaceID: ws2, Provider: "test-provider"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc2.ConfigureSSOFederation(ctx, ws2, row2.ID); !errors.Is(err, ErrSSOFederationDisabled) {
+		t.Errorf("ConfigureSSOFederation (nil configurator) err = %v, want ErrSSOFederationDisabled", err)
+	}
+}
+
+// TestConnectorManagementConfigureSSOReconfigureRemovesStale pins that
+// re-configuring a connector that already has a federated connection removes the
+// stale connection first (so iam-core never collides on the stable name and no
+// connection is orphaned) and records the freshly-created id.
+func TestConnectorManagementConfigureSSOReconfigureRemovesStale(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// Pretend a prior federation exists on the row.
+	if err := svc.db.Model(&models.AccessConnector{}).Where("id = ?", row.ID).Update("sso_connection_id", "stale-conn").Error; err != nil {
+		t.Fatalf("seed stale connection id: %v", err)
+	}
+
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+	if fake.deletedID != "stale-conn" {
+		t.Errorf("stale connection deleted = %q, want stale-conn", fake.deletedID)
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.SSOConnectionID != "conn-123" {
+		t.Errorf("SSOConnectionID = %q, want conn-123 (re-federated)", got.SSOConnectionID)
+	}
+}
+
+// TestConnectorManagementConfigureSSORollbackOnPersistFailure pins that if the
+// iam-core connection is created but persisting its id fails, the orphaned
+// connection is rolled back (removed) so a retry is not blocked by a duplicate
+// name and no un-removable connection is leaked.
+func TestConnectorManagementConfigureSSORollbackOnPersistFailure(t *testing.T) {
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			// Drop the table here — inside ConfigureSSO, after loadConnector /
+			// openConnector but before the sso_connection_id UPDATE — so the
+			// persist write fails while the connection has already been created.
+			if e := svc.db.WithContext(ctx).Exec("DROP TABLE access_connectors").Error; e != nil {
+				t.Fatalf("drop table: %v", e)
+			}
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err == nil {
+		t.Fatal("ConfigureSSOFederation: expected persist failure, got nil")
+	}
+	if fake.deletedID != "conn-123" {
+		t.Errorf("created connection not rolled back: deletedID = %q, want conn-123", fake.deletedID)
+	}
+}
+
+// TestConnectorManagementRemoveSSOFederation pins the explicit teardown
+// endpoint: it removes the iam-core connection, clears the recorded id, and is
+// idempotent (a second call is a no-op, never a redundant delete).
+func TestConnectorManagementRemoveSSOFederation(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+
+	if err := svc.RemoveSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("RemoveSSOFederation: %v", err)
+	}
+	if fake.deletedID != "conn-123" {
+		t.Errorf("removed connection = %q, want conn-123", fake.deletedID)
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.SSOConnectionID != "" {
+		t.Errorf("SSOConnectionID = %q, want empty after removal", got.SSOConnectionID)
+	}
+
+	// Idempotent: a second removal with nothing federated must not call
+	// DeleteConnection again.
+	fake.deletedID = "sentinel"
+	if err := svc.RemoveSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("RemoveSSOFederation (idempotent): %v", err)
+	}
+	if fake.deletedID != "sentinel" {
+		t.Errorf("idempotent removal must not delete again: deletedID = %q", fake.deletedID)
+	}
+}
+
+// TestConnectorManagementDisconnectRemovesSSO pins that disconnecting a
+// connector tears down its federated iam-core connection (no orphan) and clears
+// the recorded id on the soft-deleted row.
+func TestConnectorManagementDisconnectRemovesSSO(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+
+	if err := svc.Disconnect(ctx, ws, row.ID); err != nil {
+		t.Fatalf("Disconnect: %v", err)
+	}
+	if fake.deletedID != "conn-123" {
+		t.Errorf("disconnect did not remove federated connection: deletedID = %q, want conn-123", fake.deletedID)
+	}
+	var raw models.AccessConnector
+	if err := svc.db.Unscoped().First(&raw, "id = ?", row.ID).Error; err != nil {
+		t.Fatalf("load soft-deleted row: %v", err)
+	}
+	if raw.SSOConnectionID != "" {
+		t.Error("SSOConnectionID was not cleared on disconnect")
+	}
+}
+
+// TestConnectorManagementConfigureSSOTenantIsolation pins that a workspace can
+// never federate (or tear down) another tenant's connector.
+func TestConnectorManagementConfigureSSOTenantIsolation(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	wsA, wsB := uuid.New(), uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: wsA, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if _, err := svc.ConfigureSSOFederation(ctx, wsB, row.ID); !errors.Is(err, ErrConnectorRowNotFound) {
+		t.Errorf("cross-tenant ConfigureSSOFederation err = %v, want ErrConnectorRowNotFound", err)
+	}
+	if err := svc.RemoveSSOFederation(ctx, wsB, row.ID); !errors.Is(err, ErrConnectorRowNotFound) {
+		t.Errorf("cross-tenant RemoveSSOFederation err = %v, want ErrConnectorRowNotFound", err)
+	}
+	// And nothing was federated as a side effect.
+	if fake.created != nil {
+		t.Error("cross-tenant call must not create an iam-core connection")
+	}
+}

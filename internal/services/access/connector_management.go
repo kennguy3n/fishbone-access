@@ -10,6 +10,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 )
@@ -57,6 +58,26 @@ type ConnectorManagementService struct {
 	db    *gorm.DB
 	enc   CredentialEncryptor
 	queue JobEnqueuer
+	// sso federates customer IdP single sign-on by creating/removing an
+	// iam-core Connection from a connector's advertised SSO metadata. It is
+	// optional: when nil (or built without an iam-core connection client) the
+	// SSO endpoints fail-soft with ErrSSOFederationDisabled rather than
+	// panicking, so a deployment without iam-core management credentials still
+	// serves the rest of the connector surface.
+	sso *SSOFederationService
+}
+
+// ManagementOption customises a ConnectorManagementService at construction. It
+// keeps NewConnectorManagementService backwards-compatible: existing callers
+// pass no options and get the previous behaviour.
+type ManagementOption func(*ConnectorManagementService)
+
+// WithSSOFederation wires the SSO federation service so ConfigureSSOFederation /
+// RemoveSSOFederation can create and tear down iam-core SSO connections. A nil
+// service (or one without an iam-core connection client) leaves SSO federation
+// disabled (ErrSSOFederationDisabled), never a panic.
+func WithSSOFederation(sso *SSOFederationService) ManagementOption {
+	return func(s *ConnectorManagementService) { s.sso = sso }
 }
 
 // NewConnectorManagementService builds the service. enc seals/opens connector
@@ -64,7 +85,7 @@ type ConnectorManagementService struct {
 // missing DEK wiring errors loudly rather than persisting plaintext or
 // panicking). queue schedules sync/provision/revoke jobs (may be nil if the
 // caller never triggers background work).
-func NewConnectorManagementService(db *gorm.DB, enc CredentialEncryptor, queue JobEnqueuer) *ConnectorManagementService {
+func NewConnectorManagementService(db *gorm.DB, enc CredentialEncryptor, queue JobEnqueuer, opts ...ManagementOption) *ConnectorManagementService {
 	// A nil encryptor must fail CLOSED, not nil-panic mid-Create/openConnector:
 	// substitute the disabled encryptor so a forgotten DEK wiring surfaces as a
 	// loud ErrSecretsDisabled (never a plaintext write or a crash). The
@@ -75,7 +96,11 @@ func NewConnectorManagementService(db *gorm.DB, enc CredentialEncryptor, queue J
 	if enc == nil {
 		enc = NewDisabledEncryptor()
 	}
-	return &ConnectorManagementService{db: db, enc: enc, queue: queue}
+	s := &ConnectorManagementService{db: db, enc: enc, queue: queue}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // CreateConnectorInput is the payload for Create.
@@ -258,18 +283,134 @@ func (s *ConnectorManagementService) TriggerSync(ctx context.Context, workspaceI
 	return s.queue.Enqueue(ctx, row.WorkspaceID, row.ID, JobTypeSyncIdentities, payload)
 }
 
+// ConfigureSSOFederation federates the connector's customer IdP into iam-core:
+// it reads the connector's advertised SSO metadata and creates the
+// corresponding iam-core Connection, persisting its id on the connector row so
+// teardown can remove it. It is workspace-scoped so a caller can never federate
+// another tenant's connector.
+//
+// Re-configuration is idempotent: if the connector already has a federated
+// connection, the stale one is removed (best-effort) before the fresh one is
+// created, so re-running with updated IdP metadata never orphans the previous
+// connection or collides on its stable, workspace-scoped name.
+//
+// It returns ErrSSOFederationDisabled when the deployment has no iam-core
+// connection client (handler → 503), ErrSSOFederationUnsupported when the
+// connector does not advertise SSO metadata (handler → 422), and
+// ErrSSOStrategyUnknown when no iam-core strategy resolves (handler → 422).
+func (s *ConnectorManagementService) ConfigureSSOFederation(ctx context.Context, workspaceID, connectorID uuid.UUID) (*iamcore.Connection, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("access: ConnectorManagementService not initialised")
+	}
+	// Fail-soft when SSO federation is not wired (no iam-core management
+	// credentials in this deployment), rather than nil-panicking.
+	if s.sso == nil {
+		return nil, ErrSSOFederationDisabled
+	}
+	row, err := s.loadConnector(ctx, s.db, workspaceID, connectorID)
+	if err != nil {
+		return nil, err
+	}
+	connector, err := GetAccessConnector(row.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("access: ConfigureSSOFederation: %w", err)
+	}
+	cfg, secrets, err := s.openConnector(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Re-configuration: remove the previously-federated connection first so a
+	// stable, workspace-scoped connection name never collides in iam-core and
+	// no connection is orphaned. Best-effort — a delete failure (e.g. the old
+	// connection was already removed in iam-core) must not block re-federating.
+	if row.SSOConnectionID != "" {
+		if rmErr := s.sso.RemoveSSO(ctx, row.SSOConnectionID); rmErr != nil {
+			logger.Warnf(ctx, "access: ConfigureSSOFederation: remove stale sso connection %s for connector %s (workspace %s): %v", row.SSOConnectionID, row.ID, workspaceID, rmErr)
+		}
+	}
+
+	created, err := s.sso.ConfigureSSO(ctx, ConfigureSSOInput{
+		WorkspaceID: workspaceID,
+		Provider:    row.Provider,
+		DisplayName: row.DisplayName,
+		Connector:   connector,
+		Config:      cfg,
+		Secrets:     secrets,
+	})
+	if err != nil {
+		// ErrSSOFederationUnsupported / ErrSSOStrategyUnknown / ErrSSOFederationDisabled
+		// flow through untouched so the handler can map them to the right status.
+		return nil, err
+	}
+	if err := s.db.WithContext(ctx).
+		Model(&models.AccessConnector{}).
+		Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
+		Update("sso_connection_id", created.ID).Error; err != nil {
+		// The iam-core connection was created but we failed to record its id.
+		// Roll it back so a retry is not blocked by a duplicate-name conflict
+		// and we do not leak an untracked (un-removable) connection.
+		if rbErr := s.sso.RemoveSSO(ctx, created.ID); rbErr != nil {
+			logger.Errorf(ctx, "access: ConfigureSSOFederation: rollback sso connection %s after persist failure for connector %s (workspace %s): %v", created.ID, row.ID, workspaceID, rbErr)
+		}
+		return nil, fmt.Errorf("access: persist sso connection id: %w", err)
+	}
+	return created, nil
+}
+
+// RemoveSSOFederation tears down the connector's iam-core SSO connection and
+// clears the recorded id. It is workspace-scoped and idempotent: a connector
+// with no federated connection is a no-op (nil error). It returns
+// ErrSSOFederationDisabled when SSO federation is not wired.
+func (s *ConnectorManagementService) RemoveSSOFederation(ctx context.Context, workspaceID, connectorID uuid.UUID) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("access: ConnectorManagementService not initialised")
+	}
+	if s.sso == nil {
+		return ErrSSOFederationDisabled
+	}
+	row, err := s.loadConnector(ctx, s.db, workspaceID, connectorID)
+	if err != nil {
+		return err
+	}
+	if row.SSOConnectionID == "" {
+		return nil
+	}
+	if err := s.sso.RemoveSSO(ctx, row.SSOConnectionID); err != nil {
+		return fmt.Errorf("access: RemoveSSOFederation: %w", err)
+	}
+	if err := s.db.WithContext(ctx).
+		Model(&models.AccessConnector{}).
+		Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
+		Update("sso_connection_id", "").Error; err != nil {
+		return fmt.Errorf("access: clear sso connection id: %w", err)
+	}
+	return nil
+}
+
 // Disconnect soft-deletes a connector after verifying it belongs to the
 // workspace. The encrypted secret envelope is cleared so a soft-deleted row
-// retains no recoverable credentials.
+// retains no recoverable credentials, and any federated iam-core SSO connection
+// is torn down so disconnecting never leaves an orphaned connection behind.
 func (s *ConnectorManagementService) Disconnect(ctx context.Context, workspaceID, connectorID uuid.UUID) error {
 	row, err := s.loadConnector(ctx, s.db, workspaceID, connectorID)
 	if err != nil {
 		return err
 	}
+	// Best-effort teardown of the federated iam-core connection BEFORE the
+	// soft-delete clears its id. A failure here (iam-core unreachable) must not
+	// block the operator from disconnecting the connector — the orphaned
+	// connection is logged for ops to reconcile rather than wedging teardown on
+	// an external dependency.
+	if row.SSOConnectionID != "" && s.sso != nil {
+		if rmErr := s.sso.RemoveSSO(ctx, row.SSOConnectionID); rmErr != nil {
+			logger.Warnf(ctx, "access: Disconnect: remove sso connection %s for connector %s (workspace %s): %v", row.SSOConnectionID, row.ID, workspaceID, rmErr)
+		}
+	}
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.AccessConnector{}).
 			Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
-			Updates(map[string]any{"secret_envelope": "", "status": ConnectorStatusPending}).Error; err != nil {
+			Updates(map[string]any{"secret_envelope": "", "sso_connection_id": "", "status": ConnectorStatusPending}).Error; err != nil {
 			return fmt.Errorf("access: clear connector secrets: %w", err)
 		}
 		if err := tx.Where("id = ? AND workspace_id = ?", row.ID, workspaceID).
