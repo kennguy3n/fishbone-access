@@ -91,6 +91,204 @@ func (v *TOTPMFAVerifier) SealTOTPSecret(workspaceID uuid.UUID, userID, base32Se
 	return sealed, nil
 }
 
+// TOTPEnrollment is the one-time provisioning payload returned by
+// BeginEnrollment. It is sensitive: OtpauthURL embeds the shared secret, so it
+// is shown to the enrolling user exactly once (to render the QR / key) and
+// never persisted in plaintext or logged. The matching secret is already sealed
+// in an unverified user_totp_secrets row by the time this is returned.
+type TOTPEnrollment struct {
+	// Secret is the base32-encoded shared secret, for manual entry when a user
+	// cannot scan the QR code.
+	Secret string
+	// OtpauthURL is the otpauth://totp/... provisioning URI the client renders
+	// as a QR code for the authenticator app.
+	OtpauthURL string
+}
+
+// TOTPStatus reports a user's TOTP enrolment state for the account MFA summary.
+type TOTPStatus struct {
+	// Verified is true when the user has a confirmed, active TOTP secret usable
+	// for step-up (a BeginEnrollment that was completed by FinishEnrollment).
+	Verified bool
+	// Pending is true when an unverified secret is awaiting FinishEnrollment.
+	Pending bool
+}
+
+// BeginEnrollment provisions a fresh TOTP secret for (workspace, user): it
+// generates an RFC 6238 secret, seals it into a new UNVERIFIED
+// user_totp_secrets row, and returns the otpauth provisioning URI for the
+// client to display. Any prior unverified (abandoned) row for the user is
+// cleared first; an already-verified secret is left untouched so the user keeps
+// working step-up until FinishEnrollment confirms the new one. issuer and
+// accountName label the credential in the authenticator app.
+func (v *TOTPMFAVerifier) BeginEnrollment(ctx context.Context, workspaceID uuid.UUID, userID, issuer, accountName string) (*TOTPEnrollment, error) {
+	if workspaceID == uuid.Nil || userID == "" {
+		return nil, errors.New("mfa: TOTPMFAVerifier: workspace and user are required")
+	}
+	if issuer == "" {
+		issuer = "ShieldNet Access"
+	}
+	if accountName == "" {
+		accountName = userID
+	}
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      issuer,
+		AccountName: accountName,
+		Period:      totpPeriodSeconds,
+		Digits:      otp.DigitsSix,
+		Algorithm:   otp.AlgorithmSHA1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("mfa: TOTPMFAVerifier: generate secret: %w", err)
+	}
+	sealed, err := v.SealTOTPSecret(workspaceID, userID, key.Secret())
+	if err != nil {
+		return nil, err
+	}
+	if err := v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Drop any abandoned, never-confirmed attempt so a user only ever has
+		// one pending secret at a time.
+		if err := tx.Where("workspace_id = ? AND user_id = ? AND verified = ?", workspaceID, userID, false).
+			Delete(&models.UserTOTPSecret{}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&models.UserTOTPSecret{
+			WorkspaceID: workspaceID,
+			UserID:      userID,
+			Secret:      sealed,
+			Verified:    false,
+		}).Error
+	}); err != nil {
+		return nil, fmt.Errorf("mfa: TOTPMFAVerifier: store pending secret: %w", err)
+	}
+	return &TOTPEnrollment{Secret: key.Secret(), OtpauthURL: key.URL()}, nil
+}
+
+// FinishEnrollment confirms a pending TOTP secret by validating a code the user
+// generated from it, proving their authenticator is configured. On success the
+// pending row becomes the single active verified secret and any prior verified
+// secret for the user is disabled, so exactly one secret is live. Returns
+// ErrMFAFailed when there is no pending secret or the code is wrong.
+func (v *TOTPMFAVerifier) FinishEnrollment(ctx context.Context, workspaceID uuid.UUID, userID, code string) error {
+	if workspaceID == uuid.Nil || userID == "" {
+		return fmt.Errorf("%w: workspace and user are required", ErrMFAFailed)
+	}
+	code = strings.TrimSpace(code)
+	if len(code) != 6 {
+		return fmt.Errorf("%w: TOTP code must be exactly 6 digits", ErrMFAFailed)
+	}
+	for _, c := range code {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("%w: TOTP code must contain only digits", ErrMFAFailed)
+		}
+	}
+
+	var pending models.UserTOTPSecret
+	err := v.db.WithContext(ctx).
+		Where("workspace_id = ? AND user_id = ? AND verified = ?", workspaceID, userID, false).
+		Order("created_at DESC").
+		First(&pending).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("%w: no pending TOTP enrollment", ErrMFAFailed)
+		}
+		return fmt.Errorf("mfa: TOTPMFAVerifier: load pending secret: %w", err)
+	}
+
+	plainSecret, err := v.enc.Open(pending.Secret, totpSecretAAD(workspaceID, userID))
+	if err != nil {
+		return fmt.Errorf("mfa: TOTPMFAVerifier: open pending secret: %w", err)
+	}
+	ok, vErr := totp.ValidateCustom(code, string(plainSecret), v.now(), totp.ValidateOpts{
+		Period:    totpPeriodSeconds,
+		Skew:      totpSkewSteps,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
+	})
+	if vErr != nil {
+		logger.Warnf(ctx, "mfa: TOTPMFAVerifier: enrollment validate error workspace_id=%s user_id=%s: %v", workspaceID, userID, vErr)
+	}
+	if !ok {
+		return fmt.Errorf("%w: invalid TOTP code", ErrMFAFailed)
+	}
+
+	if err := v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Anti-replay: burn the confirmation code in the same transaction that
+		// activates the secret, so the very code that proved enrolment cannot
+		// also satisfy a step-up within its remaining validity window — the
+		// single-use invariant VerifyStepUp enforces. A conflict means the code
+		// was already used; rolling back keeps the secret pending so the user
+		// can retry with a fresh code.
+		claim := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.PAMTOTPUsedCode{
+			WorkspaceID: workspaceID,
+			UserID:      userID,
+			CodeHash:    hashCode(code),
+			UsedAt:      v.now(),
+		})
+		if claim.Error != nil {
+			return claim.Error
+		}
+		if claim.RowsAffected == 0 {
+			return fmt.Errorf("%w: TOTP code already used", ErrMFAFailed)
+		}
+		// Retire any previously verified secret so exactly one remains active.
+		if err := tx.Model(&models.UserTOTPSecret{}).
+			Where("workspace_id = ? AND user_id = ? AND verified = ? AND id <> ?", workspaceID, userID, true, pending.ID).
+			Update("disabled_at", v.now()).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.UserTOTPSecret{}).
+			Where("id = ?", pending.ID).
+			Updates(map[string]any{"verified": true, "disabled_at": nil}).Error
+	}); err != nil {
+		// A replay (ErrMFAFailed) is a clean user-facing denial; surface it as
+		// such rather than wrapping it as an internal "confirm secret" fault.
+		if errors.Is(err, ErrMFAFailed) {
+			return err
+		}
+		return fmt.Errorf("mfa: TOTPMFAVerifier: confirm secret: %w", err)
+	}
+	logger.Infof(ctx, "mfa: TOTPMFAVerifier: TOTP enrolled workspace_id=%s user_id=%s", workspaceID, userID)
+	return nil
+}
+
+// DisableTOTP removes a user's TOTP factor: it disables any verified secret and
+// clears pending attempts. It is idempotent (no error when nothing is enrolled).
+func (v *TOTPMFAVerifier) DisableTOTP(ctx context.Context, workspaceID uuid.UUID, userID string) error {
+	if workspaceID == uuid.Nil || userID == "" {
+		return errors.New("mfa: TOTPMFAVerifier: workspace and user are required")
+	}
+	return v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("workspace_id = ? AND user_id = ? AND verified = ?", workspaceID, userID, false).
+			Delete(&models.UserTOTPSecret{}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.UserTOTPSecret{}).
+			Where("workspace_id = ? AND user_id = ? AND verified = ? AND disabled_at IS NULL", workspaceID, userID, true).
+			Update("disabled_at", v.now()).Error
+	})
+}
+
+// Status reports whether the user has a verified and/or pending TOTP secret, for
+// the account MFA-methods summary.
+func (v *TOTPMFAVerifier) Status(ctx context.Context, workspaceID uuid.UUID, userID string) (TOTPStatus, error) {
+	if workspaceID == uuid.Nil || userID == "" {
+		return TOTPStatus{}, errors.New("mfa: TOTPMFAVerifier: workspace and user are required")
+	}
+	var verified, pending int64
+	if err := v.db.WithContext(ctx).Model(&models.UserTOTPSecret{}).
+		Where("workspace_id = ? AND user_id = ? AND verified = ? AND disabled_at IS NULL", workspaceID, userID, true).
+		Count(&verified).Error; err != nil {
+		return TOTPStatus{}, fmt.Errorf("mfa: TOTPMFAVerifier: status: %w", err)
+	}
+	if err := v.db.WithContext(ctx).Model(&models.UserTOTPSecret{}).
+		Where("workspace_id = ? AND user_id = ? AND verified = ?", workspaceID, userID, false).
+		Count(&pending).Error; err != nil {
+		return TOTPStatus{}, fmt.Errorf("mfa: TOTPMFAVerifier: status: %w", err)
+	}
+	return TOTPStatus{Verified: verified > 0, Pending: pending > 0}, nil
+}
+
 // SetClock overrides the time source. Test-only; a nil function restores
 // time.Now. Used to drive deterministic code generation/expiry in tests.
 func (v *TOTPMFAVerifier) SetClock(now func() time.Time) {

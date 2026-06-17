@@ -35,6 +35,7 @@ tags:
   - name: sso
   - name: connectors
   - name: pam
+  - name: mfa
 paths:
   /me:
     get:
@@ -1329,6 +1330,214 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /mfa/methods:
+    get:
+      tags: [mfa]
+      summary: Report the caller's step-up MFA enrolment across factors
+      description: |
+        Self-service: returns the authenticated subject's enrolment state for
+        every configured factor (TOTP and/or WebAuthn). A factor block reports
+        `configured: false` when its verifier is not wired server-side. Used by
+        the account security page and to offer the user only the factors they
+        actually hold at a step-up prompt.
+      responses:
+        "200":
+          description: Per-factor enrolment status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totp:
+                    type: object
+                    properties:
+                      configured: { type: boolean }
+                      verified: { type: boolean }
+                      pending: { type: boolean }
+                  webauthn:
+                    type: object
+                    properties:
+                      configured: { type: boolean }
+                      credentials:
+                        type: array
+                        items: { $ref: "#/components/schemas/WebAuthnCredential" }
+
+  /mfa/totp/enroll/begin:
+    post:
+      tags: [mfa]
+      summary: Begin TOTP enrolment
+      description: |
+        Provisions a fresh RFC 6238 secret, seals it server-side in an
+        unverified row, and returns the shared secret + `otpauth://` URI for QR
+        rendering or manual entry. The secret is shown exactly once and never
+        logged; an existing verified factor keeps working until
+        `/mfa/totp/enroll/finish` confirms the new one.
+      responses:
+        "200":
+          description: Provisioning material (shown once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret: { type: string, description: Base32 shared secret }
+                  otpauth_url: { type: string, description: otpauth:// provisioning URI }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/totp/enroll/finish:
+    post:
+      tags: [mfa]
+      summary: Confirm TOTP enrolment with a code
+      description: |
+        Validates a 6-digit code generated from the pending secret, proving the
+        authenticator is configured, then activates it as the single live
+        factor. A wrong/expired code is a `400` (client-correctable).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: 6-digit TOTP code }
+      responses:
+        "200":
+          description: Enrolment confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verified: { type: boolean }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/totp/disable:
+    post:
+      tags: [mfa]
+      summary: Remove the caller's TOTP factor
+      description: Idempotent; disables any verified secret and clears pending attempts.
+      responses:
+        "200":
+          description: Disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disabled: { type: boolean }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/webauthn/register/begin:
+    post:
+      tags: [mfa]
+      summary: Begin WebAuthn/FIDO2 credential registration
+      description: |
+        Returns W3C `PublicKeyCredentialCreationOptions` (under `publicKey`) for
+        `navigator.credentials.create()`. The outstanding challenge is single-use
+        and short-lived; already-registered credentials are excluded to prevent
+        double enrolment.
+      responses:
+        "200":
+          description: Credential-creation options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  publicKey: { type: object, description: PublicKeyCredentialCreationOptions }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/webauthn/register/finish:
+    post:
+      tags: [mfa]
+      summary: Complete WebAuthn registration
+      description: |
+        Submits the attestation from `navigator.credentials.create()`. The server
+        cryptographically validates it against the outstanding challenge and
+        stores the credential (public key sealed at rest, workspace-scoped).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                friendly_name: { type: string, description: User label for the authenticator }
+                credential: { type: object, description: Raw PublicKeyCredential attestation JSON }
+      responses:
+        "201":
+          description: Credential registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  friendly_name: { type: string }
+                  created_at: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/webauthn/stepup/begin:
+    post:
+      tags: [mfa]
+      summary: Begin a WebAuthn step-up assertion
+      description: |
+        Returns W3C `PublicKeyCredentialRequestOptions` (under `publicKey`) for
+        `navigator.credentials.get()`. The resulting assertion is submitted on
+        the next high-risk request via the `X-MFA-Assertion` header, where the
+        step-up gate verifies it. The challenge is single-use and short-lived.
+      responses:
+        "200":
+          description: Assertion request options
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  publicKey: { type: object, description: PublicKeyCredentialRequestOptions }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /mfa/webauthn/credentials:
+    get:
+      tags: [mfa]
+      summary: List the caller's registered WebAuthn credentials
+      description: |
+        Returns a sanitized view of each enrolled credential — never the sealed
+        envelope, raw credential id, AAGUID, or any key material.
+      responses:
+        "200":
+          description: Registered credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  credentials:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebAuthnCredential" }
+
+  /mfa/webauthn/credentials/{id}:
+    parameters: [ { $ref: "#/components/parameters/IDPath" } ]
+    delete:
+      tags: [mfa]
+      summary: Remove a registered WebAuthn credential
+      description: Workspace- and subject-scoped; deleting an unknown credential is `404`.
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1422,6 +1631,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: Factor not configured server-side, or secret storage (DEK) unavailable
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     ServiceUnavailable:
       description: Feature not configured for this deployment (e.g. iam-core management credentials absent)
       content:
@@ -1432,6 +1646,20 @@ components:
       type: object
       properties:
         error: { type: string }
+    WebAuthnCredential:
+      type: object
+      description: |
+        Sanitized public view of an enrolled WebAuthn credential. Deliberately
+        omits the sealed envelope, raw credential id, AAGUID, and public key.
+      properties:
+        id: { type: string, format: uuid }
+        friendly_name: { type: string }
+        sign_count: { type: integer, format: int64 }
+        clone_warning:
+          type: boolean
+          description: Set when the authenticator's signature counter regressed (possible cloning).
+        last_used_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
     CreateAccessRequest:
       type: object
       required: [resource_ref, role]

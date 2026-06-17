@@ -4,6 +4,7 @@ import { PageHeader, Card, Badge } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useMe } from "@/api/access";
+import { SecurityCard } from "./SecurityCard";
 import {
   getStoredChoice,
   resolveTheme,
@@ -148,6 +149,8 @@ export function Settings() {
             <p className="muted">Session details unavailable.</p>
           )}
         </Card>
+
+        <SecurityCard />
       </div>
     </>
   );

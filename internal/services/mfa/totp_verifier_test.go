@@ -322,6 +322,210 @@ func TestCleanupExpiredUsedCodes(t *testing.T) {
 	}
 }
 
+// TestTOTPEnrollmentLifecycle drives the full self-service enrollment flow:
+// begin issues a sealed pending secret + provisioning URI, status reflects
+// pending, finishing with a valid code activates it, and step-up then succeeds
+// with a fresh code from the same secret.
+func TestTOTPEnrollmentLifecycle(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	enr, err := v.BeginEnrollment(context.Background(), ws, user, "", "")
+	if err != nil {
+		t.Fatalf("begin enrollment: %v", err)
+	}
+	if enr.Secret == "" || enr.OtpauthURL == "" {
+		t.Fatalf("enrollment missing secret/url: %+v", enr)
+	}
+
+	// A pending (unverified, sealed) row exists; step-up must NOT yet pass.
+	st, err := v.Status(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !st.Pending || st.Verified {
+		t.Fatalf("status after begin = %+v, want pending only", st)
+	}
+	var pending models.UserTOTPSecret
+	if err := db.Where("workspace_id = ? AND user_id = ?", ws, user).First(&pending).Error; err != nil {
+		t.Fatalf("load pending: %v", err)
+	}
+	if pending.Secret == enr.Secret {
+		t.Fatal("pending secret stored in plaintext; want sealed ciphertext")
+	}
+
+	// Finishing with a valid code activates the secret.
+	if err := v.FinishEnrollment(context.Background(), ws, user, codeAt(t, enr.Secret, now)); err != nil {
+		t.Fatalf("finish enrollment: %v", err)
+	}
+	st, err = v.Status(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("status after finish: %v", err)
+	}
+	if !st.Verified || st.Pending {
+		t.Fatalf("status after finish = %+v, want verified only", st)
+	}
+
+	// Step-up now succeeds with a fresh code (advance one step so it's not the
+	// same code that the finish flow would have burned).
+	later := now.Add(31 * time.Second)
+	v.SetClock(func() time.Time { return later })
+	if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(codeAt(t, enr.Secret, later))); err != nil {
+		t.Fatalf("verify step-up after enrollment: %v", err)
+	}
+}
+
+// TestTOTPFinishEnrollmentBurnsCode proves the code that confirms enrollment is
+// consumed in the anti-replay table, so the same code cannot then satisfy a
+// step-up within its remaining validity window — keeping the single-use
+// invariant uniform with VerifyStepUp.
+func TestTOTPFinishEnrollmentBurnsCode(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	enr, err := v.BeginEnrollment(context.Background(), ws, user, "", "")
+	if err != nil {
+		t.Fatalf("begin enrollment: %v", err)
+	}
+	code := codeAt(t, enr.Secret, now)
+	if err := v.FinishEnrollment(context.Background(), ws, user, code); err != nil {
+		t.Fatalf("finish enrollment: %v", err)
+	}
+
+	// The confirmation code was claimed exactly once, stored hashed (not verbatim).
+	var used []models.PAMTOTPUsedCode
+	if err := db.Find(&used).Error; err != nil {
+		t.Fatalf("load used: %v", err)
+	}
+	if len(used) != 1 {
+		t.Fatalf("used rows = %d, want 1 (the enrollment code)", len(used))
+	}
+	if used[0].CodeHash == code || used[0].CodeHash == "" {
+		t.Fatalf("code must be stored hashed, got %q", used[0].CodeHash)
+	}
+
+	// Replaying that same, still-time-valid code for a step-up must be rejected.
+	if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(code)); !errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("step-up with burned enrollment code err = %v, want ErrMFAFailed", err)
+	}
+}
+
+// TestTOTPFinishEnrollmentWrongCode proves an incorrect confirmation code is
+// rejected and the secret stays pending (not activated).
+func TestTOTPFinishEnrollmentWrongCode(t *testing.T) {
+	v, _ := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	if _, err := v.BeginEnrollment(context.Background(), ws, user, "", ""); err != nil {
+		t.Fatalf("begin enrollment: %v", err)
+	}
+	if err := v.FinishEnrollment(context.Background(), ws, user, "000000"); !errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("finish with wrong code err = %v, want ErrMFAFailed", err)
+	}
+	st, err := v.Status(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if st.Verified || !st.Pending {
+		t.Fatalf("status after failed finish = %+v, want still pending", st)
+	}
+}
+
+// TestTOTPFinishEnrollmentNoPending proves finishing without an outstanding
+// enrollment fails closed.
+func TestTOTPFinishEnrollmentNoPending(t *testing.T) {
+	v, _ := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+	if err := v.FinishEnrollment(context.Background(), ws, user, codeAt(t, testSecret, now)); !errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("finish with no pending err = %v, want ErrMFAFailed", err)
+	}
+}
+
+// TestTOTPBeginEnrollmentReplacesPending proves repeated begins leave only one
+// pending row (an abandoned attempt is cleared).
+func TestTOTPBeginEnrollmentReplacesPending(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	if _, err := v.BeginEnrollment(context.Background(), ws, user, "", ""); err != nil {
+		t.Fatalf("begin 1: %v", err)
+	}
+	if _, err := v.BeginEnrollment(context.Background(), ws, user, "", ""); err != nil {
+		t.Fatalf("begin 2: %v", err)
+	}
+	var pending int64
+	db.Model(&models.UserTOTPSecret{}).Where("workspace_id = ? AND user_id = ? AND verified = ?", ws, user, false).Count(&pending)
+	if pending != 1 {
+		t.Fatalf("pending rows = %d, want 1", pending)
+	}
+}
+
+// TestTOTPBeginEnrollmentKeepsVerifiedActive proves re-enrolling does not
+// disrupt an existing verified secret until the new one is confirmed: the old
+// secret still satisfies step-up while a new pending secret exists.
+func TestTOTPBeginEnrollmentKeepsVerifiedActive(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	// An existing verified secret usable for step-up.
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
+	// Re-enroll: a new pending secret is provisioned but not yet confirmed.
+	if _, err := v.BeginEnrollment(context.Background(), ws, user, "", ""); err != nil {
+		t.Fatalf("begin re-enrollment: %v", err)
+	}
+	st, err := v.Status(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !st.Verified || !st.Pending {
+		t.Fatalf("status during re-enrollment = %+v, want verified AND pending", st)
+	}
+	// The old verified secret still satisfies step-up.
+	if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(codeAt(t, testSecret, now))); err != nil {
+		t.Fatalf("old secret must still work during re-enrollment: %v", err)
+	}
+}
+
+// TestTOTPDisable proves disabling removes the factor: step-up fails afterward
+// and status reports neither verified nor pending. It is idempotent.
+func TestTOTPDisable(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+	seedSecret(t, db, v, ws, user, testSecret, true, nil)
+
+	if err := v.DisableTOTP(context.Background(), ws, user); err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+	st, err := v.Status(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if st.Verified || st.Pending {
+		t.Fatalf("status after disable = %+v, want none", st)
+	}
+	if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(codeAt(t, testSecret, now))); !errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("step-up after disable err = %v, want ErrMFAFailed", err)
+	}
+	// Idempotent: a second disable is a no-op.
+	if err := v.DisableTOTP(context.Background(), ws, user); err != nil {
+		t.Fatalf("second disable: %v", err)
+	}
+}
+
 // TestStartUsedCodeCleanupLoopStops proves the loop exits promptly on context
 // cancellation without logging spurious errors (no panic / goroutine leak), and
 // that the returned join handle blocks until the goroutine has fully exited —
