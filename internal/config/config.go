@@ -954,6 +954,20 @@ func (c Config) Warnings() []string {
 		w = append(w, "ACCESS_AGENT_FORWARD_CA/CERT/KEY are set but ACCESS_AGENT_FORWARD_ADDR is empty; "+
 			"the cross-replica forward plane stays OFF (peers have no address to forward to) and a non-local agent fails closed — set the advertised forward address to enable HA brokering")
 	}
+	// The forward path is multi-hop (directory lookup → owning replica → mTLS →
+	// yamux → agent dial), so its dial budget should be at least as wide as the
+	// single-hop per-target probe. A ForwardTimeout tighter than ProbeTimeout is
+	// not fatal (the sweep is best-effort and never fails — it only risks
+	// artificially low reachability counts), so this is a loud-at-boot warning
+	// rather than a Validate() error, mirroring the forward-plane note above.
+	if c.Discovery.ForwardTimeout > 0 && c.Discovery.ForwardTimeout < c.Discovery.ProbeTimeout {
+		w = append(w, fmt.Sprintf(
+			"ACCESS_DISCOVERY_FORWARD_TIMEOUT=%s is tighter than ACCESS_DISCOVERY_PROBE_TIMEOUT=%s; "+
+				"the cross-replica forward path is multi-hop (wider than a direct probe), so a forward "+
+				"timeout below the per-target probe timeout may yield artificially low reachability counts "+
+				"on high-latency fleets (sweeps are best-effort and never fail on this)",
+			c.Discovery.ForwardTimeout, c.Discovery.ProbeTimeout))
+	}
 	return w
 }
 
