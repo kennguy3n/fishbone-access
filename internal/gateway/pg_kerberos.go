@@ -32,9 +32,10 @@ type KerberosSettings struct {
 
 // RegisterPostgresGSSProvider validates the local Kerberos material (krb5.conf
 // parses, keytab is readable) and registers a pgconn GSS provider backed by
-// gokrb5. The KDC login itself is deferred to the first upstream GSS handshake
-// and then performed exactly once and shared across connections, so a KDC
-// outage degrades only Kerberos dials rather than failing gateway boot.
+// gokrb5. The KDC login itself is deferred to the first upstream GSS handshake;
+// only a SUCCESSFUL login is memoized and shared across connections, so a KDC
+// outage degrades only Kerberos dials (and recovers on its own once the KDC is
+// back) rather than failing gateway boot or wedging permanently.
 //
 // pgconn's provider registry is process-global (a single NewGSSFunc), which
 // matches the gateway's single-service-identity model. Call it once at boot.
@@ -55,31 +56,39 @@ func RegisterPostgresGSSProvider(s KerberosSettings) error {
 	return nil
 }
 
-// pgKerberosProvider holds the validated Kerberos material and lazily logs in
-// once, sharing the authenticated client across every upstream connection.
+// pgKerberosProvider holds the validated Kerberos material and lazily logs in,
+// sharing the authenticated client across every upstream connection.
 type pgKerberosProvider struct {
 	conf     *krbconfig.Config
 	keytab   *keytab.Keytab
 	username string
 	realm    string
 
-	once     sync.Once
-	client   *krbclient.Client
-	loginErr error
+	mu     sync.Mutex
+	client *krbclient.Client
 }
 
-// login performs the keytab login exactly once. The gokrb5 client renews its
-// own TGT thereafter, so a single shared client serves all connections.
+// login performs the keytab login lazily and memoizes only SUCCESS. A transient
+// KDC failure (network blip, brief KDC restart) is returned to the caller but
+// NOT cached, so the next upstream GSS dial retries the login — once the KDC
+// recovers, Kerberos targets work again without a gateway restart. (sync.Once
+// would have cached the first error forever, turning a momentary outage into
+// permanent degradation, contradicting the "a KDC outage degrades only Kerberos
+// targets" goal.) The mutex serializes concurrent first-dials so the login runs
+// once, not once-per-racing-connection; the gokrb5 client renews its own TGT
+// thereafter, so the single shared client then serves all connections.
 func (p *pgKerberosProvider) login() (*krbclient.Client, error) {
-	p.once.Do(func() {
-		cl := krbclient.NewWithKeytab(p.username, p.realm, p.keytab, p.conf, krbclient.DisablePAFXFAST(true))
-		if err := cl.Login(); err != nil {
-			p.loginErr = fmt.Errorf("gateway: kerberos login as %s@%s: %w", p.username, p.realm, err)
-			return
-		}
-		p.client = cl
-	})
-	return p.client, p.loginErr
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.client != nil {
+		return p.client, nil
+	}
+	cl := krbclient.NewWithKeytab(p.username, p.realm, p.keytab, p.conf, krbclient.DisablePAFXFAST(true))
+	if err := cl.Login(); err != nil {
+		return nil, fmt.Errorf("gateway: kerberos login as %s@%s: %w", p.username, p.realm, err)
+	}
+	p.client = cl
+	return p.client, nil
 }
 
 // newGSS is the pgconn.NewGSSFunc. pgconn calls it once per upstream connection
@@ -150,8 +159,14 @@ func (c *pgKerberosContext) Continue(inToken []byte) (bool, []byte, error) {
 }
 
 // applyKerberosUpstreamAuth configures GSSAPI/Kerberos authentication on cfg
-// when the target opts into it via its config — auth_mode=kerberos|gssapi, or
-// an explicit krb_spn / krb_service. It returns true when Kerberos was applied.
+// when the target EXPLICITLY opts into it via auth_mode=kerberos|gssapi. It
+// returns true when Kerberos was applied. The krb_spn / krb_service keys only
+// *parameterize* an already-opted-in target (explicit SPN / per-target service
+// override); on a target without auth_mode they are ignored, NOT treated as an
+// implicit opt-in. Requiring the explicit flag avoids a footgun: a stray
+// krb_spn/krb_service key (copy-paste, schema confusion) on an otherwise
+// password-authenticated target would otherwise silently drop its vault
+// password (below) and surface a confusing GSSAPI error instead of just working.
 //
 // A Kerberos target carries no upstream password: the gateway proves identity
 // with its service ticket via the registered GSS provider, so cfg.Password is
@@ -163,11 +178,11 @@ func (c *pgKerberosContext) Continue(inToken []byte) (bool, []byte, error) {
 // has Kerberos turned off.
 func applyKerberosUpstreamAuth(cfg *pgconn.Config, targetCfg map[string]string, defaultService string) bool {
 	mode := strings.ToLower(strings.TrimSpace(targetCfg["auth_mode"]))
-	spn := strings.TrimSpace(targetCfg["krb_spn"])
-	service := strings.TrimSpace(targetCfg["krb_service"])
-	if mode != "kerberos" && mode != "gssapi" && spn == "" && service == "" {
+	if mode != "kerberos" && mode != "gssapi" {
 		return false
 	}
+	spn := strings.TrimSpace(targetCfg["krb_spn"])
+	service := strings.TrimSpace(targetCfg["krb_service"])
 	if spn != "" {
 		cfg.KerberosSpn = spn
 	}

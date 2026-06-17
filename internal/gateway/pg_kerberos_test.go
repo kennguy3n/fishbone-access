@@ -29,8 +29,10 @@ func TestApplyKerberosUpstreamAuth(t *testing.T) {
 		{name: "no kerberos keys", cfg: map[string]string{"database": "app"}, defaultSvc: "postgres", wantApplied: false},
 		{name: "auth_mode kerberos uses default service", cfg: map[string]string{"auth_mode": "kerberos"}, defaultSvc: "postgres", wantApplied: true, wantSrv: "postgres"},
 		{name: "auth_mode gssapi case-insensitive", cfg: map[string]string{"auth_mode": "GSSAPI"}, defaultSvc: "pg", wantApplied: true, wantSrv: "pg"},
-		{name: "explicit spn", cfg: map[string]string{"krb_spn": "postgres/db.example.com"}, defaultSvc: "postgres", wantApplied: true, wantSpn: "postgres/db.example.com", wantSrv: "postgres"},
-		{name: "explicit service overrides default", cfg: map[string]string{"krb_service": "pgprod"}, defaultSvc: "postgres", wantApplied: true, wantSrv: "pgprod"},
+		{name: "auth_mode with explicit spn", cfg: map[string]string{"auth_mode": "kerberos", "krb_spn": "postgres/db.example.com"}, defaultSvc: "postgres", wantApplied: true, wantSpn: "postgres/db.example.com", wantSrv: "postgres"},
+		{name: "auth_mode with explicit service overrides default", cfg: map[string]string{"auth_mode": "kerberos", "krb_service": "pgprod"}, defaultSvc: "postgres", wantApplied: true, wantSrv: "pgprod"},
+		{name: "spn without auth_mode is ignored (no implicit opt-in, password kept)", cfg: map[string]string{"krb_spn": "postgres/db.example.com"}, defaultSvc: "postgres", wantApplied: false},
+		{name: "service without auth_mode is ignored (no implicit opt-in, password kept)", cfg: map[string]string{"krb_service": "pgprod"}, defaultSvc: "postgres", wantApplied: false},
 		{name: "no default service leaves srv empty", cfg: map[string]string{"auth_mode": "kerberos"}, defaultSvc: "", wantApplied: true, wantSrv: ""},
 		{name: "whitespace-only keys ignored", cfg: map[string]string{"krb_spn": "  ", "auth_mode": "  "}, defaultSvc: "postgres", wantApplied: false},
 	}

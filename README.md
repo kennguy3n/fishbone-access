@@ -81,16 +81,24 @@ over TLS; the gateway declines operator-side GSS *encryption* in favour of TLS
 its keytab principal and authenticates to a target cluster's `gss` `pg_hba` rule
 via SPNEGO/Kerberos instead of a vault password. The KDC login is lazy (deferred
 to the first such connection), so a KDC outage degrades only Kerberos targets
-rather than failing gateway boot.
+rather than failing gateway boot. Only a *successful* login is memoized: a
+transient KDC failure is returned to the caller but not cached, so once the KDC
+recovers the next connection logs in and Kerberos targets work again without a
+gateway restart.
 
-A target opts in through its `config` JSON:
+A target opts in through its `config` JSON. `auth_mode` is the explicit,
+required opt-in — the `krb_spn` / `krb_service` keys only *parameterize* a target
+that has already opted in; on their own (no `auth_mode`) they are ignored, not
+treated as an implicit opt-in, so a stray SPN/service key never silently drops a
+password-authenticated target's vault password.
 
-- `auth_mode`: `kerberos` (or `gssapi`) — use the gateway's service ticket
-  instead of the stored password.
+- `auth_mode`: `kerberos` (or `gssapi`) — **required** to opt in; use the
+  gateway's service ticket instead of the stored password.
 - `krb_spn`: explicit service principal name, e.g. `postgres/db.example.com`.
-  When set it wins; otherwise the SPN is built as `<service>/<target-host>`.
+  When set (on an opted-in target) it wins; otherwise the SPN is built as
+  `<service>/<target-host>`. Ignored unless `auth_mode` is set.
 - `krb_service`: per-target override of `ACCESS_PG_KERBEROS_SERVICE` for the
-  SPN's service component.
+  SPN's service component. Ignored unless `auth_mode` is set.
 
 #### Credential encryption keys
 
