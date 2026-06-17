@@ -344,25 +344,18 @@ func (s *RiskReviewService) RecordApprovalAnomalies(ctx context.Context, workspa
 }
 
 // resolveAITier maps the workspace's plan to the AI tier the agent uses to pick
-// a model. Base plans (and unknown/missing workspaces) run the deterministic
-// path; Pro and Ultimate select the 4B and 8B local models. A failed lookup
-// fails safe to "deterministic" rather than guessing a higher tier.
+// a model via the shared aiclient.TierForPlan mapping. A failed lookup passes an
+// empty plan, which fails safe to the deterministic tier rather than guessing a
+// higher one.
 func (s *RiskReviewService) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
 	var ws models.Workspace
 	if err := s.db.WithContext(ctx).
 		Select("plan").
 		Where("id = ?", workspaceID).
 		Take(&ws).Error; err != nil {
-		return "deterministic"
+		return aiclient.TierForPlan("")
 	}
-	switch strings.TrimSpace(strings.ToLower(ws.Plan)) {
-	case "pro":
-		return "local_4b"
-	case "ultimate":
-		return "local_8b"
-	default:
-		return "deterministic"
-	}
+	return aiclient.TierForPlan(ws.Plan)
 }
 
 // withSensitiveFactor appends the sensitive_resource risk factor (which forces
