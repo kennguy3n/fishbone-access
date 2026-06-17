@@ -14,6 +14,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -1342,9 +1343,12 @@ func mustProvision(t *testing.T, reqSvc *AccessRequestService, prov *AccessProvi
 	return g
 }
 
-// fakeDisabler records BlockUser calls.
+// fakeDisabler records BlockUser calls. When err is non-nil it is returned
+// from every BlockUser call (after recording it) so tests can exercise the
+// iam-core disable layer's failure and "already gone" paths.
 type fakeDisabler struct {
 	blocked map[string]int
+	err     error
 }
 
 func (d *fakeDisabler) BlockUser(_ context.Context, userID string) error {
@@ -1352,7 +1356,83 @@ func (d *fakeDisabler) BlockUser(_ context.Context, userID string) error {
 		d.blocked = map[string]int{}
 	}
 	d.blocked[userID]++
+	return d.err
+}
+
+// killSwitchLayer returns the result for a named layer, or nil if absent.
+func killSwitchLayer(res *LeaverResult, layer string) *KillSwitchLayerResult {
+	for i := range res.Layers {
+		if res.Layers[i].Layer == layer {
+			return &res.Layers[i]
+		}
+	}
 	return nil
+}
+
+// A leaver who no longer exists in iam-core is the kill switch's desired end
+// state, so a 404 (wrapped as ErrNotFound) from BlockUser must count as success
+// — not a failure that flips Errored and blocks downstream layers' callers.
+func TestKillSwitchIAMCoreDisableTreatsMissingUserAsSuccess(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	disabler := &fakeDisabler{err: fmt.Errorf("%w: 404", iamcore.ErrNotFound)}
+	jml := NewJMLService(db, reqSvc, NewWorkflowService(reqSvc), prov, fc, disabler)
+	ctx := context.Background()
+
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-leaver")
+
+	res, err := jml.HandleLeaver(ctx, ws, SCIMEvent{Method: "DELETE", UserExternalID: "ext-leaver"})
+	if err != nil {
+		t.Fatalf("HandleLeaver: %v", err)
+	}
+	if res.Errored {
+		t.Fatalf("a user already absent in iam-core must not fail the kill switch: %+v", res.Layers)
+	}
+	if disabler.blocked["ext-leaver"] != 1 {
+		t.Fatalf("expected BlockUser called once, got %d", disabler.blocked["ext-leaver"])
+	}
+	layer := killSwitchLayer(res, LayerIAMCoreDisable)
+	if layer == nil {
+		t.Fatalf("iam-core disable layer missing: %+v", res.Layers)
+	}
+	if layer.Status != LayerStatusDone {
+		t.Fatalf("iam-core disable layer = %q (%s), want %q", layer.Status, layer.Detail, LayerStatusDone)
+	}
+}
+
+// The carve-out is narrow: a non-404 BlockUser error (e.g. iam-core down) must
+// still fail the layer and flip Errored so ops are not told a live user was
+// disabled when they were not.
+func TestKillSwitchIAMCoreDisableFailsOnNonNotFoundError(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	connID := seedConnector(t, db, ws, "fake")
+	reqSvc := NewAccessRequestService(db)
+	fc := &fakeConnector{}
+	prov := NewAccessProvisioningService(db, reqSvc, fc)
+	prov.SetRetryPolicy(1, func(int) time.Duration { return 0 })
+	disabler := &fakeDisabler{err: errors.New("iam-core unreachable")}
+	jml := NewJMLService(db, reqSvc, NewWorkflowService(reqSvc), prov, fc, disabler)
+	ctx := context.Background()
+
+	mustProvision(t, reqSvc, prov, ws, connID, "ext-leaver")
+
+	res, err := jml.HandleLeaver(ctx, ws, SCIMEvent{Method: "DELETE", UserExternalID: "ext-leaver"})
+	if err == nil {
+		t.Fatal("expected an error because the iam-core disable layer failed")
+	}
+	if !res.Errored {
+		t.Fatalf("expected Errored=true on a non-404 BlockUser failure: %+v", res.Layers)
+	}
+	layer := killSwitchLayer(res, LayerIAMCoreDisable)
+	if layer == nil || layer.Status != LayerStatusFailed {
+		t.Fatalf("iam-core disable layer = %+v, want status %q", layer, LayerStatusFailed)
+	}
 }
 
 func TestSchedulerExpirySweepAcrossWorkspaces(t *testing.T) {
