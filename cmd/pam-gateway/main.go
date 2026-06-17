@@ -132,7 +132,7 @@ func run() error {
 		return fmt.Errorf("pam-gateway: unsupported ACCESS_DATABASE_DRIVER %q", cfg.DatabaseDriver)
 	}
 
-	listeners, err := buildListeners(ctx, cfg, gdb, auditor)
+	listeners, sessions, err := buildListeners(ctx, cfg, gdb, auditor)
 	if err != nil {
 		return fmt.Errorf("build listeners: %w", err)
 	}
@@ -142,13 +142,17 @@ func run() error {
 	if err := sup.Run(ctx); err != nil {
 		return fmt.Errorf("supervisor: %w", err)
 	}
+	// Listeners have stopped; flush any in-flight detached post-session advisory
+	// scoring before the deferred database pool close so those audit writes are
+	// not lost on shutdown.
+	sessions.Drain()
 	logger.Infof(context.Background(), "pam-gateway: shut down cleanly")
 	return nil
 }
 
 // buildListeners constructs the PAM services and the ten protocol
 // ConnHandlers, returning the supervisor listener set.
-func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, auditor database.AuditAppender) ([]gateway.Listener, error) {
+func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, auditor database.AuditAppender) ([]gateway.Listener, *pam.SessionManager, error) {
 	// Credential encryptor seals/opens per-target upstream credentials.
 	// FromConfig prefers the per-workspace KMS master key (a distinct DEK per
 	// workspace) and falls back to the single static DEK; with neither set it
@@ -156,7 +160,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// be opened in a misconfigured boot.
 	enc, err := access.CredentialEncryptorFromConfig(cfg.KMSMasterKey, cfg.KMSKeyVersion, cfg.CredentialDEK)
 	if err != nil {
-		return nil, fmt.Errorf("credential encryptor init: %w", err)
+		return nil, nil, fmt.Errorf("credential encryptor init: %w", err)
 	}
 
 	// Step-up MFA gate: wired only when iam-core is configured. When nil, a
@@ -166,7 +170,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	if cfg.IAMCore.Configured() {
 		v, verr := iamcore.NewValidator(ctx, cfg.IAMCore)
 		if verr != nil {
-			return nil, fmt.Errorf("iam-core validator init: %w", verr)
+			return nil, nil, fmt.Errorf("iam-core validator init: %w", verr)
 		}
 		stepUp = pam.NewStepUpGate(v, stepUpMaxAge())
 		logger.Infof(ctx, "pam-gateway: step-up MFA enabled (issuer=%s)", cfg.IAMCore.Issuer)
@@ -194,7 +198,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// lease tears down any session still brokering its credential.
 	ai, err := aiclient.NewAIClientFromEnv()
 	if err != nil {
-		return nil, fmt.Errorf("ai client init: %w", err)
+		return nil, nil, fmt.Errorf("ai client init: %w", err)
 	}
 	if !ai.Configured() {
 		logger.Warnf(ctx, "pam-gateway: AI agent not configured; lease risk scoring uses deterministic fallback")
@@ -224,7 +228,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 
 	store, err := buildReplayStore(ctx, cfg, gdb, enc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Outbound connector agent relay. When an agent CA is configured this builds
@@ -236,31 +240,31 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// listener is added — the feature stays entirely off.
 	agentDialer, agentListeners, err := buildAgentRelay(ctx, cfg, gdb)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sshProxy, err := buildSSHProxy(ctx, broker, sessions, hub, store, agentDialer)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Optional verified keypair for the operator-facing DB/k8s listeners. When
 	// unset each proxy mints an ephemeral self-signed cert so the operator hop is
 	// still encrypted (clients connect with sslmode=require / equivalent).
 	proxyTLS, err := buildProxyTLSConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	myProxy, err := gateway.NewMySQLProxy(gateway.MySQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	k8sProxy, err := gateway.NewK8sExecProxy(gateway.K8sExecProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// The remaining protocol proxies. Each follows the same pattern as the
@@ -271,27 +275,27 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	// RDP Security ("tls"/"nla"); reuse the shared operator-facing keypair.
 	rdpProxy, err := gateway.NewRDPProxy(gateway.RDPProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	vncProxy, err := gateway.NewVNCProxy(gateway.VNCProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	mongoProxy, err := gateway.NewMongoProxy(gateway.MongoProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	redisProxy, err := gateway.NewRedisProxy(gateway.RedisProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	mssqlProxy, err := gateway.NewMSSQLProxy(gateway.MSSQLProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	webProxy, err := gateway.NewWebProxy(gateway.WebProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, Dialer: agentDialer})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	listeners := []gateway.Listener{
@@ -307,7 +311,7 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 		{Name: "http", Addr: ":8080", Handler: webProxy},
 	}
 	listeners = append(listeners, agentListeners...)
-	return listeners, nil
+	return listeners, sessions, nil
 }
 
 // buildAgentRelay constructs the outbound connector agent relay and a broker

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,6 +57,9 @@ type SessionManager struct {
 	controller LiveController
 	ai         *aiclient.AIClient
 	now        func() time.Time
+	// bg tracks in-flight detached post-session advisory scoring so a graceful
+	// shutdown (Drain) can wait for those audit writes instead of dropping them.
+	bg sync.WaitGroup
 }
 
 // NewSessionManager wires a manager. evaluator may be nil (commands are then
@@ -476,15 +480,52 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 	}
 
 	// Post-session advisory risk scoring runs only on the writer that actually
-	// ended the session (ended==true), and strictly AFTER the close commits so
-	// the AI round-trip never holds the end-session transaction open. It is
-	// fail-open and best-effort: a scoring failure is logged inside the helper
-	// and never propagates to the close result.
+	// ended the session (ended==true). It is dispatched to a detached background
+	// goroutine so two AI round-trips (up to the client's per-call timeout each)
+	// never add latency to the teardown hot path. It is fail-open and
+	// best-effort: a scoring failure is logged inside the helper and never
+	// propagates to the close result.
 	if ended {
-		m.assessSessionRisk(ctx, &session)
-		m.analyzeBehaviour(ctx, &session)
+		m.scoreSessionAsync(ctx, &session)
 	}
 	return nil
+}
+
+// postSessionScoringTimeout is the outer ceiling on the detached advisory
+// scoring that runs after a session closes. The two skills each carry their own
+// per-call timeout in the AI client; this bound guarantees a wedged agent can
+// never keep a background goroutine (and its DB handle) alive indefinitely.
+const postSessionScoringTimeout = 45 * time.Second
+
+// scoreSessionAsync dispatches the post-session advisory skills (risk scoring +
+// behavioural analytics) to a detached background goroutine, so a slow or
+// unreachable AI agent never blocks session teardown. The goroutine runs on a
+// context detached from the caller's (the proxy connection is already gone) but
+// retaining its values, bounded by postSessionScoringTimeout. It is a no-op
+// without a configured agent. Drain waits for in-flight runs at shutdown.
+func (m *SessionManager) scoreSessionAsync(ctx context.Context, session *models.PAMSession) {
+	if m.ai == nil || !m.ai.Configured() {
+		return
+	}
+	snapshot := *session
+	detached := context.WithoutCancel(ctx)
+	m.bg.Add(1)
+	go func() {
+		defer m.bg.Done()
+		bgCtx, cancel := context.WithTimeout(detached, postSessionScoringTimeout)
+		defer cancel()
+		m.assessSessionRisk(bgCtx, &snapshot)
+		m.analyzeBehaviour(bgCtx, &snapshot)
+	}()
+}
+
+// Drain blocks until all in-flight detached post-session scoring goroutines
+// have finished. The gateway calls it during graceful shutdown — after the
+// listeners stop and before the database pool closes — so advisory audit writes
+// are flushed rather than lost; tests use it to await the detached scoring
+// deterministically.
+func (m *SessionManager) Drain() {
+	m.bg.Wait()
 }
 
 // sessionRiskMaxCommands bounds how many of a session's commands are fed to the
@@ -676,18 +717,24 @@ func (m *SessionManager) AnalyzeUserBehaviour(ctx context.Context, workspaceID u
 	return anomalies, nil
 }
 
-// recentCommands loads up to limit of a session's logged commands in transcript
-// (seq) order for risk scoring. Denied commands are included — an attempt that
-// policy blocked is itself a risk signal.
+// recentCommands loads up to limit of a session's logged commands for risk
+// scoring, returning them in transcript (ascending seq) order. When a session's
+// transcript is longer than limit it is the MOST RECENT commands that matter, so
+// the query selects the tail (Order seq DESC + Limit) and the slice is reversed
+// back to ascending order for the scorer. Denied commands are included — an
+// attempt that policy blocked is itself a risk signal.
 func (m *SessionManager) recentCommands(ctx context.Context, workspaceID, sessionID uuid.UUID, limit int) ([]string, error) {
 	var commands []string
 	if err := m.db.WithContext(ctx).
 		Model(&models.PAMSessionCommand{}).
 		Where("workspace_id = ? AND session_id = ?", workspaceID, sessionID).
-		Order("seq").
+		Order("seq DESC").
 		Limit(limit).
 		Pluck("command", &commands).Error; err != nil {
 		return nil, fmt.Errorf("pam: load session commands: %w", err)
+	}
+	for i, j := 0, len(commands)-1; i < j; i, j = i+1, j-1 {
+		commands[i], commands[j] = commands[j], commands[i]
 	}
 	return commands, nil
 }

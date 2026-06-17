@@ -118,6 +118,7 @@ func TestSessionManagerScoresSessionRiskOnClose(t *testing.T) {
 	if err := mgr.CloseSession(context.Background(), ws, leased.Session.ID); err != nil {
 		t.Fatalf("CloseSession: %v", err)
 	}
+	mgr.Drain() // post-close scoring is detached; wait for it before asserting.
 
 	if got := countAudits(t, db, ws, "pam.session.risk_assessed"); got != 1 {
 		t.Fatalf("want exactly 1 pam.session.risk_assessed audit, got %d", got)
@@ -168,6 +169,7 @@ func TestSessionManagerRecordsBehaviourAnomaliesOnClose(t *testing.T) {
 	if err := mgr.CloseSession(context.Background(), ws, leased.Session.ID); err != nil {
 		t.Fatalf("CloseSession: %v", err)
 	}
+	mgr.Drain() // post-close scoring is detached; wait for it before asserting.
 
 	if got := countAudits(t, db, ws, "pam.session.behaviour_anomaly"); got != 1 {
 		t.Fatalf("want 1 pam.session.behaviour_anomaly audit, got %d", got)
@@ -222,6 +224,7 @@ func TestSessionManagerNoRiskScoringWhenUnconfigured(t *testing.T) {
 	if err := mgr.CloseSession(context.Background(), ws, leased.Session.ID); err != nil {
 		t.Fatalf("CloseSession: %v", err)
 	}
+	mgr.Drain()
 
 	if got := countAudits(t, db, ws, "pam.session.closed"); got != 1 {
 		t.Fatalf("want 1 pam.session.closed audit, got %d", got)
@@ -252,6 +255,7 @@ func TestSessionManagerDegradedScoringNotPersisted(t *testing.T) {
 	if err := mgr.CloseSession(context.Background(), ws, leased.Session.ID); err != nil {
 		t.Fatalf("CloseSession: %v", err)
 	}
+	mgr.Drain() // wait for the detached scoring to finish (and fail) before asserting.
 	if got := countAudits(t, db, ws, "pam.session.risk_assessed"); got != 0 {
 		t.Fatalf("degraded scoring must not persist; got %d risk audits", got)
 	}
