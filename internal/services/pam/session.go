@@ -58,12 +58,20 @@ type SessionManager struct {
 	now        func() time.Time
 	// bg tracks in-flight detached post-session advisory scoring so a graceful
 	// shutdown (Drain) can wait for those audit writes instead of dropping them.
-	// The Add/Wait pairing is safe because every endSession call originates from
-	// a supervisor-managed protocol handler, and the gateway only calls Drain
-	// after sup.Run returns (i.e. after all handlers have finished): each Add(1)
-	// thus happens-before Wait. A future caller that ends sessions outside the
-	// supervisor's lifecycle would need to be drained on that path too.
-	bg sync.WaitGroup
+	//
+	// drainMu/draining make the bg.Add vs bg.Wait pairing safe without relying on
+	// the caller's lifecycle. endSession is reached not only from supervisor-
+	// managed protocol handlers but also from the lease expiry sweeper and the
+	// session reconciler — long-lived goroutines that are not part of the
+	// supervisor's wait group — so a late Add could otherwise race a returned
+	// Wait (a WaitGroup misuse that can panic). Drain sets draining under drainMu
+	// before bg.Wait, and scoreSessionAsync takes drainMu to either register
+	// (Add) before draining flips or skip once it has. A session that ends during
+	// drain therefore skips its best-effort advisory scoring rather than risking
+	// the race; in-flight runs are still awaited and flushed.
+	drainMu  sync.Mutex
+	draining bool
+	bg       sync.WaitGroup
 }
 
 // NewSessionManager wires a manager. evaluator may be nil (commands are then
@@ -524,7 +532,16 @@ func (m *SessionManager) scoreSessionAsync(ctx context.Context, session *models.
 	snapshot := *session
 	detached := context.WithoutCancel(ctx)
 	timeout := m.scoringTimeout()
+	// Register under drainMu so the Add cannot race a Drain that has already
+	// begun waiting: once draining is set, new scoring is skipped (best-effort)
+	// rather than Add-ing onto a WaitGroup whose Wait may have returned.
+	m.drainMu.Lock()
+	if m.draining {
+		m.drainMu.Unlock()
+		return
+	}
 	m.bg.Add(1)
+	m.drainMu.Unlock()
 	go func() {
 		defer m.bg.Done()
 		bgCtx, cancel := context.WithTimeout(detached, timeout)
@@ -538,8 +555,12 @@ func (m *SessionManager) scoreSessionAsync(ctx context.Context, session *models.
 // have finished. The gateway calls it during graceful shutdown — after the
 // listeners stop and before the database pool closes — so advisory audit writes
 // are flushed rather than lost; tests use it to await the detached scoring
-// deterministically.
+// deterministically. It first flips draining (under drainMu) so any scoring
+// dispatched after this point is skipped instead of racing the Wait below.
 func (m *SessionManager) Drain() {
+	m.drainMu.Lock()
+	m.draining = true
+	m.drainMu.Unlock()
 	m.bg.Wait()
 }
 
