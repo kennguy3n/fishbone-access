@@ -273,6 +273,7 @@ export const qk = {
     ["certification-campaign", id, "items", reviewer ?? ""] as const,
   revocationPreview: (id: string) =>
     ["certification-campaign", id, "revocation-preview"] as const,
+  mfaMethods: ["mfa", "methods"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -2193,5 +2194,304 @@ async function toApiErrorFromBlob(err: unknown): Promise<ApiError> {
 export function useExportEvidencePack() {
   return useMutation<ExportedPack, ApiError, ExportPackInput>({
     mutationFn: exportEvidencePack,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Step-up MFA — self-service enrolment (TOTP + WebAuthn/FIDO2)
+//
+// These power the account-security surface and feed the X-MFA-Assertion header
+// (STEP_UP_ASSERTION_HEADER) that the high-risk endpoints (promote / connect /
+// takeover / compliance export) require. The server keeps the WebAuthn private
+// material sealed at rest and only ever returns the sanitized credential view
+// below, so nothing here exposes key material.
+// ---------------------------------------------------------------------------
+
+export interface TOTPFactorStatus {
+  configured: boolean;
+  verified: boolean;
+  pending: boolean;
+}
+
+/** Sanitized public view of a registered authenticator (no key material). */
+export interface WebAuthnCredentialView {
+  id: string;
+  friendly_name: string;
+  sign_count: number;
+  clone_warning: boolean;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface WebAuthnFactorStatus {
+  configured: boolean;
+  credentials: WebAuthnCredentialView[];
+}
+
+export interface MFAMethods {
+  totp: TOTPFactorStatus;
+  webauthn: WebAuthnFactorStatus;
+}
+
+/** TOTP provisioning material — shown to the operator exactly once. */
+export interface TOTPEnrollment {
+  secret: string;
+  otpauth_url: string;
+}
+
+export const getMFAMethods = () =>
+  call<MFAMethods>({ url: "/mfa/methods", method: "GET" });
+
+export const beginTOTPEnrollment = () =>
+  call<TOTPEnrollment>({ url: "/mfa/totp/enroll/begin", method: "POST" });
+
+export const finishTOTPEnrollment = (code: string) =>
+  call<{ verified: boolean }>({
+    url: "/mfa/totp/enroll/finish",
+    method: "POST",
+    data: { code },
+  });
+
+export const disableTOTP = () =>
+  call<{ disabled: boolean }>({ url: "/mfa/totp/disable", method: "POST" });
+
+export const listWebAuthnCredentials = () =>
+  call<{ credentials: WebAuthnCredentialView[] }>({
+    url: "/mfa/webauthn/credentials",
+    method: "GET",
+  }).then((r) => r.credentials ?? []);
+
+export const deleteWebAuthnCredential = (id: string) =>
+  call<{ deleted: boolean }>({
+    url: `/mfa/webauthn/credentials/${encodeURIComponent(id)}`,
+    method: "DELETE",
+  });
+
+// --- WebAuthn browser ceremony plumbing ---
+//
+// The control plane speaks the W3C JSON form (go-webauthn): binary fields
+// (challenge, credential ids, user handle) are base64url strings on the wire,
+// but `navigator.credentials` needs/produces ArrayBuffers. These helpers do the
+// exact, lossless conversion in both directions.
+
+interface CredentialCreationOptionsJSON {
+  publicKey: {
+    challenge: string;
+    rp: { id?: string; name: string };
+    user: { id: string; name: string; displayName: string };
+    pubKeyCredParams: { type: "public-key"; alg: number }[];
+    timeout?: number;
+    excludeCredentials?: {
+      type: "public-key";
+      id: string;
+      transports?: string[];
+    }[];
+    authenticatorSelection?: AuthenticatorSelectionCriteria;
+    attestation?: AttestationConveyancePreference;
+  };
+}
+
+interface CredentialRequestOptionsJSON {
+  publicKey: {
+    challenge: string;
+    timeout?: number;
+    rpId?: string;
+    allowCredentials?: {
+      type: "public-key";
+      id: string;
+      transports?: string[];
+    }[];
+    userVerification?: UserVerificationRequirement;
+  };
+}
+
+function base64urlToBuffer(value: string): ArrayBuffer {
+  const padded = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(value.length + ((4 - (value.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function bufferToBase64url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1)
+    binary += String.fromCharCode(bytes[i]);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/** True when this browser exposes the WebAuthn API. */
+export const webAuthnSupported = (): boolean =>
+  typeof window !== "undefined" &&
+  typeof window.PublicKeyCredential !== "undefined";
+
+const ceremonyAborted = (err: unknown): boolean =>
+  err instanceof DOMException &&
+  (err.name === "NotAllowedError" || err.name === "AbortError");
+
+async function performWebAuthnRegistration(
+  options: CredentialCreationOptionsJSON,
+): Promise<string> {
+  const pk = options.publicKey;
+  const publicKey: PublicKeyCredentialCreationOptions = {
+    ...pk,
+    challenge: base64urlToBuffer(pk.challenge),
+    user: { ...pk.user, id: base64urlToBuffer(pk.user.id) },
+    excludeCredentials: pk.excludeCredentials?.map((c) => ({
+      type: c.type,
+      id: base64urlToBuffer(c.id),
+      transports: c.transports as AuthenticatorTransport[] | undefined,
+    })),
+  };
+  let credential: PublicKeyCredential | null;
+  try {
+    credential = (await navigator.credentials.create({
+      publicKey,
+    })) as PublicKeyCredential | null;
+  } catch (err) {
+    if (ceremonyAborted(err))
+      throw new ApiError(0, "Security-key registration was cancelled.");
+    throw new ApiError(0, "Security-key registration failed.");
+  }
+  if (!credential)
+    throw new ApiError(0, "Security-key registration produced no credential.");
+  const response = credential.response as AuthenticatorAttestationResponse;
+  return JSON.stringify({
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    response: {
+      attestationObject: bufferToBase64url(response.attestationObject),
+      clientDataJSON: bufferToBase64url(response.clientDataJSON),
+    },
+    clientExtensionResults: credential.getClientExtensionResults(),
+  });
+}
+
+async function performWebAuthnAssertion(
+  options: CredentialRequestOptionsJSON,
+): Promise<string> {
+  const pk = options.publicKey;
+  const publicKey: PublicKeyCredentialRequestOptions = {
+    ...pk,
+    challenge: base64urlToBuffer(pk.challenge),
+    allowCredentials: pk.allowCredentials?.map((c) => ({
+      type: c.type,
+      id: base64urlToBuffer(c.id),
+      transports: c.transports as AuthenticatorTransport[] | undefined,
+    })),
+  };
+  let credential: PublicKeyCredential | null;
+  try {
+    credential = (await navigator.credentials.get({
+      publicKey,
+    })) as PublicKeyCredential | null;
+  } catch (err) {
+    if (ceremonyAborted(err))
+      throw new ApiError(0, "Step-up verification was cancelled.");
+    throw new ApiError(0, "Step-up verification failed.");
+  }
+  if (!credential)
+    throw new ApiError(0, "Step-up verification produced no assertion.");
+  const response = credential.response as AuthenticatorAssertionResponse;
+  return JSON.stringify({
+    id: credential.id,
+    rawId: bufferToBase64url(credential.rawId),
+    type: credential.type,
+    response: {
+      authenticatorData: bufferToBase64url(response.authenticatorData),
+      clientDataJSON: bufferToBase64url(response.clientDataJSON),
+      signature: bufferToBase64url(response.signature),
+      userHandle: response.userHandle
+        ? bufferToBase64url(response.userHandle)
+        : undefined,
+    },
+    clientExtensionResults: credential.getClientExtensionResults(),
+  });
+}
+
+/**
+ * registerWebAuthnCredential runs the full enrolment ceremony: ask the server
+ * for creation options, drive `navigator.credentials.create()`, and post the
+ * attestation back for cryptographic verification + storage.
+ */
+export async function registerWebAuthnCredential(
+  friendlyName: string,
+): Promise<WebAuthnCredentialView> {
+  const options = await call<CredentialCreationOptionsJSON>({
+    url: "/mfa/webauthn/register/begin",
+    method: "POST",
+  });
+  const attestation = await performWebAuthnRegistration(options);
+  return call<WebAuthnCredentialView>({
+    url: "/mfa/webauthn/register/finish",
+    method: "POST",
+    data: {
+      friendly_name: friendlyName.trim() || "Security key",
+      credential: JSON.parse(attestation),
+    },
+  });
+}
+
+/**
+ * getWebAuthnStepUpAssertion runs a step-up assertion ceremony and returns the
+ * serialized assertion to send as the X-MFA-Assertion header on the next
+ * high-risk request (e.g. promotePolicy / exportEvidencePack). Throws an
+ * ApiError if the user has no registered credential or cancels the prompt.
+ */
+export async function getWebAuthnStepUpAssertion(): Promise<string> {
+  const options = await call<CredentialRequestOptionsJSON>({
+    url: "/mfa/webauthn/stepup/begin",
+    method: "POST",
+  });
+  return performWebAuthnAssertion(options);
+}
+
+// --- hooks ---
+
+export function useMFAMethods(
+  options?: Partial<UseQueryOptions<MFAMethods, ApiError>>,
+) {
+  return useQuery<MFAMethods, ApiError>({
+    queryKey: qk.mfaMethods,
+    queryFn: getMFAMethods,
+    ...options,
+  });
+}
+
+export function useBeginTOTPEnrollment() {
+  return useMutation<TOTPEnrollment, ApiError, void>({
+    mutationFn: beginTOTPEnrollment,
+  });
+}
+
+export function useFinishTOTPEnrollment() {
+  return useMutation<{ verified: boolean }, ApiError, string>({
+    mutationFn: finishTOTPEnrollment,
+  });
+}
+
+export function useDisableTOTP() {
+  return useMutation<{ disabled: boolean }, ApiError, void>({
+    mutationFn: disableTOTP,
+  });
+}
+
+export function useRegisterWebAuthn() {
+  return useMutation<WebAuthnCredentialView, ApiError, string>({
+    mutationFn: registerWebAuthnCredential,
+  });
+}
+
+export function useDeleteWebAuthnCredential() {
+  return useMutation<{ deleted: boolean }, ApiError, string>({
+    mutationFn: deleteWebAuthnCredential,
   });
 }

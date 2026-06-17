@@ -70,10 +70,23 @@ type Deps struct {
 	// RequirePermission gates no-op, preserving the pre-RBAC behavior. The
 	// production ztna-api always wires this, so enforcement is always on there.
 	RBAC *authz.RBACService
-	// StepUpMFA verifies a fresh step-up assertion (TOTP today; WebAuthn-ready)
-	// for the highest-risk actions. When nil the RequireStepUpMFA gates are not
+	// StepUpMFA verifies a fresh step-up assertion (TOTP and/or WebAuthn) for
+	// the highest-risk actions. When nil the RequireStepUpMFA gates are not
 	// mounted; production wires the composite verifier.
 	StepUpMFA mfa.MFAVerifier
+	// TOTP is the concrete TOTP verifier backing the self-service TOTP
+	// enrolment surface (POST /mfa/totp/...). It is the SAME verifier wired as a
+	// leg of the StepUpMFA composite, so a code enrolled here verifies at the
+	// step-up gate. nil leaves the TOTP enrolment routes unmounted (degraded
+	// boots / no encryptor); production wires it whenever a DB is present.
+	TOTP *mfa.TOTPMFAVerifier
+	// WebAuthn is the concrete WebAuthn verifier backing the self-service
+	// FIDO2/WebAuthn enrolment + management surface (POST /mfa/webauthn/...). It
+	// is the SAME verifier wired as the WebAuthn leg of the StepUpMFA composite.
+	// nil leaves the WebAuthn routes unmounted; production wires it only when a
+	// relying party is configured (ACCESS_WEBAUTHN_RP_ID + origins) and the
+	// encryptor can seal credentials.
+	WebAuthn *mfa.WebAuthnMFAVerifier
 	// ConnectorEncryptor seals/opens connector secrets for the connector
 	// management surface. It is the access-stack encryptor (the same one the
 	// access-connector-worker uses) so a connector created via the API is
@@ -317,6 +330,11 @@ func NewRouter(deps Deps) *gin.Engine {
 			newRBACHandlers(deps.RBAC).register(scoped)
 		}
 		newLifecycleHandlers(deps).register(scoped, deps.StepUpMFA)
+		// Self-service step-up MFA enrolment + management (TOTP and WebAuthn).
+		// Mounted whenever at least one factor verifier is wired so a user can
+		// enrol the credential the step-up gates above require; a no-op when
+		// neither is configured (degraded boots).
+		newMFAHandlers(deps).register(scoped)
 		newConnectorHandlers(deps).register(scoped)
 		pamH := newPAMHandlers(deps)
 		pamH.register(scoped)

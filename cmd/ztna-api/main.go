@@ -408,17 +408,19 @@ func run() error {
 	// only exist when a DB is configured, so they are wired only in the
 	// non-degraded path. The RBACService caches memberships per workspace
 	// (DefaultCacheTTL) to keep the per-request permission resolve off the DB.
-	// The composite step-up verifier today carries only a TOTP leg (the repo
-	// has no WebAuthn enrolment yet) and enforces single-use replay protection;
-	// a background loop tied to the signal context prunes expired used-code
-	// rows. AuthzMiddleware and the high-risk step-up gates are mounted by the
-	// router only when these deps are non-nil.
+	// The composite step-up verifier carries a TOTP leg always and a
+	// phishing-resistant WebAuthn/FIDO2 leg when a relying party is configured;
+	// both enforce single-use replay protection, and background loops tied to
+	// the signal context prune expired used-code and challenge rows.
+	// AuthzMiddleware and the high-risk step-up gates are mounted by the router
+	// only when these deps are non-nil.
 	if deps.DB != nil {
 		deps.RBAC = authz.NewRBACService(deps.DB, authz.DefaultCacheTTL)
 		totpVerifier, err := mfa.NewTOTPMFAVerifier(deps.DB, deps.Encryptor)
 		if err != nil {
 			return fmt.Errorf("totp verifier init: %w", err)
 		}
+		deps.TOTP = totpVerifier
 		// Give the cleanup loop its own cancellable context and join it on the
 		// way out, mirroring the scheduler below, so the goroutine is guaranteed
 		// to have stopped before the deferred DB-pool close runs (the pool's
@@ -430,16 +432,53 @@ func run() error {
 			cleanupCancel()
 			joinCleanup()
 		}()
-		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(nil, totpVerifier)
-		if crypto.IsPassthrough(deps.Encryptor) {
+
+		// WebAuthn leg: wired only when a relying party is configured AND the
+		// encryptor can actually seal credentials. A passthrough encryptor
+		// would 503 on every enrolment (it refuses to seal the credential), so
+		// leave the leg nil and stay TOTP-only rather than expose a surface
+		// that cannot persist anything.
+		var webauthnVerifier *mfa.WebAuthnMFAVerifier
+		if cfg.WebAuthn.Configured() && !crypto.IsPassthrough(deps.Encryptor) {
+			webauthnVerifier, err = mfa.NewWebAuthnMFAVerifier(deps.DB, deps.Encryptor, mfa.WebAuthnSettings{
+				RPID:          cfg.WebAuthn.RPID,
+				RPDisplayName: cfg.WebAuthn.RPDisplayName,
+				RPOrigins:     cfg.WebAuthn.RPOrigins,
+			})
+			if err != nil {
+				return fmt.Errorf("webauthn verifier init: %w", err)
+			}
+			deps.WebAuthn = webauthnVerifier
+			waCleanupCtx, waCleanupCancel := context.WithCancel(ctx)
+			joinWACleanup := webauthnVerifier.StartChallengeCleanupLoop(waCleanupCtx, mfa.DefaultWebAuthnChallengeCleanupInterval)
+			defer func() {
+				waCleanupCancel()
+				joinWACleanup()
+			}()
+		}
+
+		// Compose the gate. NewCompositeMFAVerifier must receive an untyped-nil
+		// interface for an absent leg — passing a typed-nil *WebAuthnMFAVerifier
+		// would make the composite's "leg != nil" check true and dispatch onto a
+		// nil pointer — so only assign the leg when the verifier exists.
+		var webauthnLeg mfa.MFAVerifier
+		if webauthnVerifier != nil {
+			webauthnLeg = webauthnVerifier
+		}
+		deps.StepUpMFA = mfa.NewCompositeMFAVerifier(webauthnLeg, totpVerifier)
+
+		switch {
+		case crypto.IsPassthrough(deps.Encryptor):
 			// No key at all ⇒ the encryptor refuses to seal/open, so TOTP
 			// enrolment and every VerifyStepUp fail closed with
 			// ErrSecretsDisabled (503). The gate stays wired (fail-closed is
 			// correct), but make the degraded posture loud at boot rather than
 			// only surfacing on the first promote attempt.
-			logger.Warnf(ctx, "ztna-api: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; step-up TOTP MFA wired but DISABLED (enrolment + verification will 503 until a key is configured)")
-		} else {
-			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled")
+			logger.Warnf(ctx, "ztna-api: neither ACCESS_KMS_MASTER_KEY nor ACCESS_CREDENTIAL_DEK set; step-up MFA wired but DISABLED (enrolment + verification will 503 until a key is configured)")
+		case webauthnVerifier != nil:
+			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up MFA enabled (TOTP + WebAuthn relying party %q)", cfg.WebAuthn.RPID)
+		default:
+			logger.Infof(ctx, "ztna-api: RBAC authorization + step-up TOTP MFA enabled (WebAuthn not configured; set ACCESS_WEBAUTHN_RP_ID + ACCESS_WEBAUTHN_RP_ORIGINS to enable a phishing-resistant factor)")
 		}
 	}
 

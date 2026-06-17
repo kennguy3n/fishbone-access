@@ -192,6 +192,11 @@ type Config struct {
 	// listen/advertise addresses). OFF by default.
 	AgentBroker AgentBrokerConfig
 
+	// WebAuthn holds the WebAuthn/FIDO2 relying-party settings for the step-up
+	// MFA WebAuthn verifier. OFF by default: when unset the composite step-up
+	// gate carries only its TOTP leg.
+	WebAuthn WebAuthnConfig
+
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
 }
@@ -577,6 +582,39 @@ type DevAuthConfig struct {
 // Configured reports whether a dev HMAC secret was supplied.
 func (c DevAuthConfig) Configured() bool { return c.Secret != "" }
 
+// WebAuthnConfig configures the WebAuthn/FIDO2 relying party for step-up MFA.
+// WebAuthn binds every credential and assertion to the relying-party identity,
+// so these values are security-load-bearing: a mismatch between the configured
+// RP and the origin the browser actually sees makes every ceremony fail (and a
+// too-broad RPID would let a sibling subdomain assert). They are therefore
+// explicit configuration with no silent default.
+type WebAuthnConfig struct {
+	// RPID is the relying-party identifier — the registrable domain the
+	// credential is scoped to, WITHOUT scheme or port (e.g. "access.example.com"
+	// or the parent "example.com"). The browser requires the page's effective
+	// domain to be the RPID or a subdomain of it. Read from
+	// ACCESS_WEBAUTHN_RP_ID.
+	RPID string
+	// RPDisplayName is the human-readable relying-party name shown by some
+	// authenticators during enrolment (e.g. "ShieldNet Access"). Read from
+	// ACCESS_WEBAUTHN_RP_DISPLAY_NAME; defaults to "ShieldNet Access".
+	RPDisplayName string
+	// RPOrigins is the allow-list of fully-qualified origins (scheme + host +
+	// optional port, e.g. "https://access.example.com") a ceremony may be
+	// completed from. An assertion whose origin is not listed is rejected, so
+	// this must enumerate every origin the UI is served from. Read from
+	// ACCESS_WEBAUTHN_RP_ORIGINS (comma-separated).
+	RPOrigins []string
+}
+
+// Configured reports whether the minimum WebAuthn settings are present to stand
+// up a relying party: an RPID and at least one allowed origin. When false the
+// WebAuthn verifier is left unwired and the composite step-up gate carries only
+// its TOTP leg.
+func (c WebAuthnConfig) Configured() bool {
+	return c.RPID != "" && len(c.RPOrigins) > 0
+}
+
 // IAMCoreConfig configures integration with uneycom/iam-core, the upstream
 // OAuth2/OIDC identity provider. See docs/iam-core-integration.md.
 type IAMCoreConfig struct {
@@ -748,6 +786,11 @@ func Load() Config {
 			ForwardKey:             os.Getenv("ACCESS_AGENT_FORWARD_KEY"),
 			DirectoryStaleAfter:    getDuration("ACCESS_AGENT_DIRECTORY_STALE_AFTER", 0),
 			DirectoryRedisFastPath: getBool("ACCESS_AGENT_DIRECTORY_REDIS", false),
+		},
+		WebAuthn: WebAuthnConfig{
+			RPID:          os.Getenv("ACCESS_WEBAUTHN_RP_ID"),
+			RPDisplayName: getEnv("ACCESS_WEBAUTHN_RP_DISPLAY_NAME", "ShieldNet Access"),
+			RPOrigins:     getCSV("ACCESS_WEBAUTHN_RP_ORIGINS", nil),
 		},
 	}
 }
