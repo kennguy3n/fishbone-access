@@ -374,6 +374,11 @@ type savePolicyRequest struct {
 	CreateTargets  bool                        `json:"create_targets"`
 	Rules          []discovery.AutoOnboardRule `json:"rules"`
 	DefaultAgentID string                      `json:"default_agent_id"`
+	// ActiveSweep* configure the scheduled active network sweep. Empty/absent
+	// leaves it OFF. ActiveSweepAgentID is parsed like DefaultAgentID.
+	ActiveSweepEnabled bool                         `json:"active_sweep_enabled"`
+	ActiveSweepAgentID string                       `json:"active_sweep_agent_id"`
+	ActiveSweepTargets discovery.ActiveSweepTargets `json:"active_sweep_targets"`
 	// Credential is optional. When present it sets/replaces the sealed
 	// onboarding credential; an explicit empty password/key/token clears it.
 	Credential *policyCredential `json:"credential"`
@@ -396,10 +401,12 @@ func (h *discoveryHandlers) savePolicy(c *gin.Context) {
 		return
 	}
 	in := discovery.PolicyInput{
-		Enabled:       req.Enabled,
-		CreateTargets: req.CreateTargets,
-		Rules:         req.Rules,
-		Actor:         actor(c),
+		Enabled:            req.Enabled,
+		CreateTargets:      req.CreateTargets,
+		Rules:              req.Rules,
+		ActiveSweepEnabled: req.ActiveSweepEnabled,
+		ActiveSweepTargets: req.ActiveSweepTargets,
+		Actor:              actor(c),
 	}
 	if raw := strings.TrimSpace(req.DefaultAgentID); raw != "" {
 		parsed, err := uuid.Parse(raw)
@@ -408,6 +415,14 @@ func (h *discoveryHandlers) savePolicy(c *gin.Context) {
 			return
 		}
 		in.DefaultAgentID = &parsed
+	}
+	if raw := strings.TrimSpace(req.ActiveSweepAgentID); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid active_sweep_agent_id"})
+			return
+		}
+		in.ActiveSweepAgentID = &parsed
 	}
 	if req.Credential != nil {
 		in.Credential = &pam.Secret{

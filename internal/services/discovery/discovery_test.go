@@ -1241,6 +1241,108 @@ func TestSavePolicyCredentialPreservation(t *testing.T) {
 	}
 }
 
+// TestSavePolicyActiveSweepRoundTrip locks in that the scheduled active-sweep
+// configuration persists and decodes back through the policy view, independent
+// of the auto-onboarding flag.
+func TestSavePolicyActiveSweepRoundTrip(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	agent := uuid.New()
+
+	view, err := h.engine.SavePolicy(ctx, ws, PolicyInput{
+		Rules:              []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}},
+		ActiveSweepEnabled: true,
+		ActiveSweepAgentID: &agent,
+		ActiveSweepTargets: ActiveSweepTargets{Hosts: []string{"10.0.0.1"}, CIDRs: []string{"10.0.1.0/30"}, Ports: []int{22, 5432}},
+		Actor:              "tester",
+	})
+	if err != nil {
+		t.Fatalf("save active-sweep policy: %v", err)
+	}
+	if !view.ActiveSweepEnabled || view.ActiveSweepAgentID == nil || *view.ActiveSweepAgentID != agent {
+		t.Fatalf("save view = %+v, want active sweep enabled + agent", view)
+	}
+
+	// The targets must survive a round-trip through the JSONB column.
+	got, err := h.engine.GetPolicy(ctx, ws)
+	if err != nil {
+		t.Fatalf("get policy: %v", err)
+	}
+	if !got.ActiveSweepEnabled || got.ActiveSweepAgentID == nil || *got.ActiveSweepAgentID != agent {
+		t.Fatalf("get view = %+v, want active sweep config", got)
+	}
+	if strings.Join(got.ActiveSweepTargets.Hosts, ",") != "10.0.0.1" ||
+		strings.Join(got.ActiveSweepTargets.CIDRs, ",") != "10.0.1.0/30" {
+		t.Fatalf("targets = %+v", got.ActiveSweepTargets)
+	}
+	if len(got.ActiveSweepTargets.Ports) != 2 || got.ActiveSweepTargets.Ports[0] != 22 || got.ActiveSweepTargets.Ports[1] != 5432 {
+		t.Fatalf("ports = %v, want [22 5432]", got.ActiveSweepTargets.Ports)
+	}
+
+	// Disabling keeps the stored targets (so a later re-enable re-validates the
+	// same set) but clears the live gate.
+	if _, err := h.engine.SavePolicy(ctx, ws, PolicyInput{
+		Rules:              []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}},
+		ActiveSweepEnabled: false,
+		ActiveSweepTargets: got.ActiveSweepTargets,
+		Actor:              "tester",
+	}); err != nil {
+		t.Fatalf("disable active sweep: %v", err)
+	}
+	off, err := h.engine.GetPolicy(ctx, ws)
+	if err != nil {
+		t.Fatalf("get policy after disable: %v", err)
+	}
+	if off.ActiveSweepEnabled {
+		t.Fatalf("active sweep still enabled after disable")
+	}
+	if len(off.ActiveSweepTargets.Ports) != 2 {
+		t.Fatalf("disable dropped stored targets: %+v", off.ActiveSweepTargets)
+	}
+}
+
+// TestSavePolicyActiveSweepValidation covers the active-sweep validation matrix:
+// target well-formedness is enforced always; the operational preconditions
+// (agent, expandable host, fan-out cap) only when the sweep is enabled.
+func TestSavePolicyActiveSweepValidation(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	agent := uuid.New()
+	rules := []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}}
+
+	cases := []struct {
+		name string
+		in   PolicyInput
+	}{
+		{"enabled without agent", PolicyInput{Rules: rules, ActiveSweepEnabled: true, ActiveSweepTargets: ActiveSweepTargets{Hosts: []string{"10.0.0.1"}}, Actor: "t"}},
+		{"enabled without hosts or cidrs", PolicyInput{Rules: rules, ActiveSweepEnabled: true, ActiveSweepAgentID: &agent, Actor: "t"}},
+		{"invalid cidr", PolicyInput{Rules: rules, ActiveSweepEnabled: true, ActiveSweepAgentID: &agent, ActiveSweepTargets: ActiveSweepTargets{CIDRs: []string{"not-a-cidr"}}, Actor: "t"}},
+		{"cidr too large", PolicyInput{Rules: rules, ActiveSweepEnabled: true, ActiveSweepAgentID: &agent, ActiveSweepTargets: ActiveSweepTargets{CIDRs: []string{"10.0.0.0/16"}}, Actor: "t"}},
+		{"port out of range", PolicyInput{Rules: rules, ActiveSweepEnabled: true, ActiveSweepAgentID: &agent, ActiveSweepTargets: ActiveSweepTargets{Hosts: []string{"10.0.0.1"}, Ports: []int{70000}}, Actor: "t"}},
+		// Well-formedness is checked even while DISABLED, so a malformed port is
+		// rejected up front rather than persisted and failing only on enable.
+		{"port out of range while disabled", PolicyInput{Rules: rules, ActiveSweepEnabled: false, ActiveSweepTargets: ActiveSweepTargets{Ports: []int{0}}, Actor: "t"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := h.engine.SavePolicy(ctx, ws, tc.in); !errors.Is(err, ErrValidation) {
+				t.Fatalf("err = %v, want ErrValidation", err)
+			}
+		})
+	}
+
+	// Fan-out cap (enabled): /29 expands to 6 hosts * 2 ports = 12 > cap 4.
+	h.engine.cfg.MaxProbeTargets = 4
+	if _, err := h.engine.SavePolicy(ctx, ws, PolicyInput{
+		Rules: rules, ActiveSweepEnabled: true, ActiveSweepAgentID: &agent,
+		ActiveSweepTargets: ActiveSweepTargets{CIDRs: []string{"10.0.0.0/29"}, Ports: []int{22, 3389}}, Actor: "t",
+	}); !errors.Is(err, ErrValidation) {
+		t.Fatalf("fan-out cap: err = %v, want ErrValidation", err)
+	}
+}
+
 // --- scheduled sweep / policy evaluation -----------------------------------
 
 func TestRunScheduledSweepFlagOnly(t *testing.T) {
@@ -1339,6 +1441,87 @@ func TestRunScheduledSweepNoPolicyIsNoop(t *testing.T) {
 	}
 	if res != (ScheduledSweepResult{}) {
 		t.Fatalf("no-policy sweep = %+v, want zero", res)
+	}
+}
+
+// TestRunScheduledSweepActiveSweep proves the scheduled sweep runs the active
+// network sweep through the configured agent, gated on its OWN flag: here the
+// auto-onboarding policy is DISABLED, yet the active sweep still probes and folds
+// its freshly-discovered assets into the result.
+func TestRunScheduledSweepActiveSweep(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	agent := uuid.New()
+	h.dialer.open["10.0.0.1:22"] = true
+	h.dialer.open["10.0.0.2:22"] = true // 10.0.0.3:22 stays closed
+
+	if _, err := h.engine.SavePolicy(ctx, ws, PolicyInput{
+		Enabled:            false,
+		Rules:              []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}},
+		ActiveSweepEnabled: true,
+		ActiveSweepAgentID: &agent,
+		ActiveSweepTargets: ActiveSweepTargets{Hosts: []string{"10.0.0.1", "10.0.0.2", "10.0.0.3"}, Ports: []int{22}},
+		Actor:              "tester",
+	}); err != nil {
+		t.Fatalf("save policy: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.ActiveSweepProbed != 3 {
+		t.Fatalf("probed = %d, want 3", res.ActiveSweepProbed)
+	}
+	if res.ActiveSweepReachable != 2 || res.AssetsNew != 2 {
+		t.Fatalf("reachable=%d new=%d, want 2/2", res.ActiveSweepReachable, res.AssetsNew)
+	}
+	if c := h.auditCount(t, ws, "discovery.agent_sweep"); c != 1 {
+		t.Fatalf("agent_sweep audit = %d, want 1", c)
+	}
+	// Onboarding evaluation must NOT have run (policy disabled).
+	if res.PolicyMatched != 0 {
+		t.Fatalf("policy matched = %d, want 0 (onboarding disabled)", res.PolicyMatched)
+	}
+}
+
+// TestRunScheduledSweepActiveSweepNoDialerSkips proves that without an agent
+// dialer wired (the workflow engine has no forward plane configured) the active
+// sweep is skipped cleanly — no probe, no audit — while the auto-onboarding
+// evaluation still runs.
+func TestRunScheduledSweepActiveSweepNoDialerSkips(t *testing.T) {
+	h := newHarness(t)
+	h.engine.dialer = nil
+	ctx := context.Background()
+	ws := seedWorkspace(t, h.db, "acme")
+	agent := uuid.New()
+	h.seedAsset(t, ws, models.DiscoverySourceAgentSweep, "host:10.0.0.9:22", "ssh", "10.0.0.9:22", models.DiscoveryStatusUnmanaged)
+
+	if _, err := h.engine.SavePolicy(ctx, ws, PolicyInput{
+		Enabled:            true,
+		Rules:              []AutoOnboardRule{{Name: "ssh", Protocols: []string{"ssh"}}},
+		ActiveSweepEnabled: true,
+		ActiveSweepAgentID: &agent,
+		ActiveSweepTargets: ActiveSweepTargets{Hosts: []string{"10.0.0.1"}, Ports: []int{22}},
+		Actor:              "tester",
+	}); err != nil {
+		t.Fatalf("save policy: %v", err)
+	}
+
+	res, err := h.engine.RunScheduledSweep(ctx, ws)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.ActiveSweepProbed != 0 || res.ActiveSweepReachable != 0 {
+		t.Fatalf("active sweep ran without a dialer: %+v", res)
+	}
+	if c := h.auditCount(t, ws, "discovery.agent_sweep"); c != 0 {
+		t.Fatalf("agent_sweep audit = %d, want 0", c)
+	}
+	// The onboarding evaluation must still run.
+	if res.PolicyMatched != 1 {
+		t.Fatalf("policy matched = %d, want 1 (onboarding must still run)", res.PolicyMatched)
 	}
 }
 

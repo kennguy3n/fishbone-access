@@ -22,9 +22,16 @@ interface Draft {
   credential_username: string;
   credential_password: string;
   has_credential: boolean;
+  active_sweep_enabled: boolean;
+  active_sweep_agent_id: string;
+  // Comma-separated free text in the form; parsed to arrays on save.
+  active_sweep_hosts: string;
+  active_sweep_cidrs: string;
+  active_sweep_ports: string;
 }
 
 function toDraft(p: PolicyView): Draft {
+  const t = p.active_sweep_targets ?? {};
   return {
     enabled: p.enabled,
     create_targets: p.create_targets,
@@ -33,7 +40,20 @@ function toDraft(p: PolicyView): Draft {
     credential_username: p.credential_username ?? "",
     credential_password: "",
     has_credential: p.has_credential,
+    active_sweep_enabled: p.active_sweep_enabled,
+    active_sweep_agent_id: p.active_sweep_agent_id ?? "",
+    active_sweep_hosts: (t.hosts ?? []).join(", "),
+    active_sweep_cidrs: (t.cidrs ?? []).join(", "),
+    active_sweep_ports: (t.ports ?? []).join(", "),
   };
+}
+
+// Split a comma/space-separated list into trimmed, non-empty tokens.
+function splitList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -99,6 +119,15 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
           cidrs: r.cidrs?.map((c) => c.trim()).filter(Boolean),
         }))
         .filter((r) => r.name),
+      active_sweep_enabled: draft.active_sweep_enabled,
+      active_sweep_agent_id: draft.active_sweep_agent_id || undefined,
+      active_sweep_targets: {
+        hosts: splitList(draft.active_sweep_hosts),
+        cidrs: splitList(draft.active_sweep_cidrs),
+        ports: splitList(draft.active_sweep_ports)
+          .map((p) => Number(p))
+          .filter((n) => Number.isFinite(n)),
+      },
     };
     // Send a credential block whenever the operator typed a new password
     // (reseal), edited the username, OR a sealed credential already exists. The
@@ -308,6 +337,141 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
                   defaultMessage: "Set a credential",
                 })
               }
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card
+        title={intl.formatMessage({
+          id: "discovery.policy.activeSweep.title",
+          defaultMessage: "Active network sweep",
+        })}
+        subtitle={intl.formatMessage({
+          id: "discovery.policy.activeSweep.subtitle",
+          defaultMessage:
+            "On each scheduled sweep, actively probe the hosts/CIDRs below through an agent to discover privileged services — independent of connector inventory.",
+        })}
+        actions={
+          draft.active_sweep_enabled ? (
+            <Badge tone="ok" dot>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.on"
+                defaultMessage="Enabled"
+              />
+            </Badge>
+          ) : (
+            <Badge tone="neutral">
+              <FormattedMessage
+                id="discovery.policy.activeSweep.off"
+                defaultMessage="Disabled"
+              />
+            </Badge>
+          )
+        }
+      >
+        <label
+          className="field"
+          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+        >
+          <input
+            type="checkbox"
+            checked={draft.active_sweep_enabled}
+            style={{ width: "auto" }}
+            onChange={(e) =>
+              setDraft({ ...draft, active_sweep_enabled: e.target.checked })
+            }
+          />
+          <span>
+            <FormattedMessage
+              id="discovery.policy.activeSweep.enable"
+              defaultMessage="Run a scheduled active sweep for this workspace"
+            />{" "}
+            <HelpTooltip>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.help"
+                defaultMessage="Probes are sent THROUGH the selected agent (never directly from the control plane) to well-known privileged-service ports. The host × port fan-out is capped server-side."
+              />
+            </HelpTooltip>
+          </span>
+        </label>
+
+        <div className="field-row">
+          <label className="field">
+            <span>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.agent"
+                defaultMessage="Sweep agent"
+              />
+            </span>
+            <select
+              value={draft.active_sweep_agent_id}
+              onChange={(e) =>
+                setDraft({ ...draft, active_sweep_agent_id: e.target.value })
+              }
+            >
+              <option value="">
+                {intl.formatMessage({
+                  id: "discovery.policy.activeSweep.agent.none",
+                  defaultMessage: "Select an agent…",
+                })}
+              </option>
+              {agents.map((a) => (
+                <option key={a.agent.id} value={a.agent.id}>
+                  {a.agent.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="field-row">
+          <label className="field">
+            <span>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.hosts"
+                defaultMessage="Hosts (comma-separated)"
+              />
+            </span>
+            <input
+              value={draft.active_sweep_hosts}
+              onChange={(e) =>
+                setDraft({ ...draft, active_sweep_hosts: e.target.value })
+              }
+              placeholder="10.0.0.10, 10.0.0.11"
+            />
+          </label>
+          <label className="field">
+            <span>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.cidrs"
+                defaultMessage="CIDRs (comma-separated)"
+              />
+            </span>
+            <input
+              value={draft.active_sweep_cidrs}
+              onChange={(e) =>
+                setDraft({ ...draft, active_sweep_cidrs: e.target.value })
+              }
+              placeholder="10.0.0.0/24"
+            />
+          </label>
+        </div>
+
+        <div className="field-row">
+          <label className="field">
+            <span>
+              <FormattedMessage
+                id="discovery.policy.activeSweep.ports"
+                defaultMessage="Ports (comma-separated, blank = defaults)"
+              />
+            </span>
+            <input
+              value={draft.active_sweep_ports}
+              onChange={(e) =>
+                setDraft({ ...draft, active_sweep_ports: e.target.value })
+              }
+              placeholder="22, 3389, 5432"
             />
           </label>
         </div>

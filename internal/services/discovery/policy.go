@@ -36,6 +36,19 @@ type AutoOnboardRule struct {
 	AgentID *uuid.UUID `json:"agent_id,omitempty"`
 }
 
+// ActiveSweepTargets is the bounded target set the scheduled ACTIVE sweep
+// probes through ActiveSweepAgentID. Hosts and CIDRs are expanded (the same
+// /24-or-smaller, IPv4-only rule the manual AgentSweep enforces) to a
+// de-duplicated host list; Ports, when empty, falls back to the default
+// privileged-service port set. The host*port fan-out is capped by
+// Config.MaxProbeTargets at save time so a scheduled sweep can never enumerate
+// an unbounded address space.
+type ActiveSweepTargets struct {
+	Hosts []string `json:"hosts,omitempty"`
+	CIDRs []string `json:"cidrs,omitempty"`
+	Ports []int    `json:"ports,omitempty"`
+}
+
 // PolicyView is the non-secret API representation of an AutoOnboardingPolicy.
 // It never carries the sealed credential — only HasCredential + the non-secret
 // username — so the editor can show whether a credential is configured without
@@ -48,8 +61,13 @@ type PolicyView struct {
 	DefaultAgentID *uuid.UUID        `json:"default_agent_id,omitempty"`
 	CredentialUser string            `json:"credential_username,omitempty"`
 	HasCredential  bool              `json:"has_credential"`
-	UpdatedBy      string            `json:"updated_by,omitempty"`
-	UpdatedAt      time.Time         `json:"updated_at,omitempty"`
+	// ActiveSweepEnabled / ActiveSweepAgentID / ActiveSweepTargets describe the
+	// scheduled active network sweep (gated independently of Enabled).
+	ActiveSweepEnabled bool               `json:"active_sweep_enabled"`
+	ActiveSweepAgentID *uuid.UUID         `json:"active_sweep_agent_id,omitempty"`
+	ActiveSweepTargets ActiveSweepTargets `json:"active_sweep_targets"`
+	UpdatedBy          string             `json:"updated_by,omitempty"`
+	UpdatedAt          time.Time          `json:"updated_at,omitempty"`
 }
 
 // PolicyInput is the operator-supplied policy update. A nil Credential leaves
@@ -60,8 +78,15 @@ type PolicyInput struct {
 	CreateTargets  bool
 	Rules          []AutoOnboardRule
 	DefaultAgentID *uuid.UUID
-	Credential     *pam.Secret
-	Actor          string
+	// ActiveSweepEnabled / ActiveSweepAgentID / ActiveSweepTargets configure the
+	// scheduled active network sweep. When ActiveSweepEnabled is true an agent
+	// and at least one expandable host/cidr are required and the host*port
+	// fan-out must stay within Config.MaxProbeTargets.
+	ActiveSweepEnabled bool
+	ActiveSweepAgentID *uuid.UUID
+	ActiveSweepTargets ActiveSweepTargets
+	Credential         *pam.Secret
+	Actor              string
 }
 
 // GetPolicy returns the workspace's policy as a non-secret view, synthesising a
@@ -75,7 +100,7 @@ func (e *Engine) GetPolicy(ctx context.Context, workspaceID uuid.UUID) (PolicyVi
 		return PolicyView{}, err
 	}
 	if policy == nil {
-		return PolicyView{Enabled: false, CreateTargets: false, RequireLease: true, Rules: []AutoOnboardRule{}}, nil
+		return PolicyView{Enabled: false, CreateTargets: false, RequireLease: true, Rules: []AutoOnboardRule{}, ActiveSweepTargets: ActiveSweepTargets{}}, nil
 	}
 	return e.policyView(policy)
 }
@@ -92,9 +117,16 @@ func (e *Engine) SavePolicy(ctx context.Context, workspaceID uuid.UUID, in Polic
 	if err := validateRules(in.Rules); err != nil {
 		return PolicyView{}, err
 	}
+	if err := e.validateActiveSweep(in); err != nil {
+		return PolicyView{}, err
+	}
 	rulesJSON, err := json.Marshal(in.Rules)
 	if err != nil {
 		return PolicyView{}, fmt.Errorf("discovery: marshal rules: %w", err)
+	}
+	sweepJSON, err := json.Marshal(in.ActiveSweepTargets)
+	if err != nil {
+		return PolicyView{}, fmt.Errorf("discovery: marshal active sweep targets: %w", err)
 	}
 
 	existing, err := e.loadPolicy(ctx, workspaceID)
@@ -113,6 +145,9 @@ func (e *Engine) SavePolicy(ctx context.Context, workspaceID uuid.UUID, in Polic
 	policy.RequireLease = true
 	policy.Rules = rulesJSON
 	policy.DefaultAgentID = in.DefaultAgentID
+	policy.ActiveSweepEnabled = in.ActiveSweepEnabled
+	policy.ActiveSweepAgentID = in.ActiveSweepAgentID
+	policy.ActiveSweepTargets = sweepJSON
 	policy.UpdatedBy = in.Actor
 
 	if in.Credential != nil {
@@ -168,6 +203,7 @@ func (e *Engine) SavePolicy(ctx context.Context, workspaceID uuid.UUID, in Polic
 				"create_targets": policy.CreateTargets,
 				"rules":          len(in.Rules),
 				"has_credential": policy.CredentialEnvelope != "",
+				"active_sweep":   policy.ActiveSweepEnabled,
 			}),
 		})
 	}); err != nil {
@@ -194,16 +230,23 @@ func (e *Engine) policyView(policy *models.AutoOnboardingPolicy) (PolicyView, er
 	if err != nil {
 		return PolicyView{}, err
 	}
+	targets, err := decodeActiveSweepTargets(policy.ActiveSweepTargets)
+	if err != nil {
+		return PolicyView{}, err
+	}
 	return PolicyView{
-		Enabled:        policy.Enabled,
-		CreateTargets:  policy.CreateTargets,
-		RequireLease:   true,
-		Rules:          rules,
-		DefaultAgentID: policy.DefaultAgentID,
-		CredentialUser: policy.CredentialUsername,
-		HasCredential:  policy.CredentialEnvelope != "",
-		UpdatedBy:      policy.UpdatedBy,
-		UpdatedAt:      policy.UpdatedAt,
+		Enabled:            policy.Enabled,
+		CreateTargets:      policy.CreateTargets,
+		RequireLease:       true,
+		Rules:              rules,
+		DefaultAgentID:     policy.DefaultAgentID,
+		CredentialUser:     policy.CredentialUsername,
+		HasCredential:      policy.CredentialEnvelope != "",
+		ActiveSweepEnabled: policy.ActiveSweepEnabled,
+		ActiveSweepAgentID: policy.ActiveSweepAgentID,
+		ActiveSweepTargets: targets,
+		UpdatedBy:          policy.UpdatedBy,
+		UpdatedAt:          policy.UpdatedAt,
 	}, nil
 }
 
@@ -252,6 +295,54 @@ func decodeRules(raw []byte) ([]AutoOnboardRule, error) {
 		rules = []AutoOnboardRule{}
 	}
 	return rules, nil
+}
+
+func decodeActiveSweepTargets(raw []byte) (ActiveSweepTargets, error) {
+	if len(raw) == 0 {
+		return ActiveSweepTargets{}, nil
+	}
+	var t ActiveSweepTargets
+	if err := json.Unmarshal(raw, &t); err != nil {
+		return ActiveSweepTargets{}, fmt.Errorf("discovery: decode active sweep targets: %w", err)
+	}
+	return t, nil
+}
+
+// validateActiveSweep checks the scheduled active-sweep configuration. Target
+// well-formedness (CIDR syntax, IPv4-only, /24-or-smaller, port range) is always
+// enforced so a malformed config is rejected up front. The operational
+// preconditions a live sweep needs — a named agent, at least one expandable
+// host, and a fan-out within Config.MaxProbeTargets — are enforced only when the
+// sweep is actually enabled, mirroring the manual AgentSweep limits.
+func (e *Engine) validateActiveSweep(in PolicyInput) error {
+	t := in.ActiveSweepTargets
+	hosts, err := expandHosts(t.Hosts, t.CIDRs)
+	if err != nil {
+		return err
+	}
+	for _, p := range t.Ports {
+		if p < 1 || p > 65535 {
+			return fmt.Errorf("%w: active sweep port %d out of range 1-65535", ErrValidation, p)
+		}
+	}
+	if !in.ActiveSweepEnabled {
+		return nil
+	}
+	if in.ActiveSweepAgentID == nil || *in.ActiveSweepAgentID == uuid.Nil {
+		return fmt.Errorf("%w: active_sweep_agent_id is required when active sweep is enabled", ErrValidation)
+	}
+	if len(hosts) == 0 {
+		return fmt.Errorf("%w: active sweep requires at least one host or cidr", ErrValidation)
+	}
+	portCount := len(t.Ports)
+	if portCount == 0 {
+		portCount = len(defaultProbePorts)
+	}
+	if fanout := len(hosts) * portCount; fanout > e.cfg.MaxProbeTargets {
+		return fmt.Errorf("%w: active sweep fan-out %d exceeds cap %d; narrow the host/cidr/port list",
+			ErrValidation, fanout, e.cfg.MaxProbeTargets)
+	}
+	return nil
 }
 
 func validateRules(rules []AutoOnboardRule) error {

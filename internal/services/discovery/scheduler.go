@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
 	"github.com/kennguy3n/fishbone-access/internal/services/pam"
 )
 
@@ -26,6 +27,11 @@ type ScheduledSweepResult struct {
 	// state this sweep (re-linked to their created target or released back to
 	// unmanaged). Normally zero.
 	Healed int
+	// ActiveSweepProbed / ActiveSweepReachable summarise the scheduled active
+	// network sweep (zero when it is disabled or no agent dialer is wired). Its
+	// freshly-discovered assets are also folded into AssetsNew.
+	ActiveSweepProbed    int
+	ActiveSweepReachable int
 }
 
 // RunScheduledSweep is the workflow-engine entry point for one ACTIVE workspace
@@ -53,7 +59,19 @@ func (e *Engine) RunScheduledSweep(ctx context.Context, workspaceID uuid.UUID) (
 	if err != nil {
 		return res, err
 	}
-	if policy == nil || !policy.Enabled {
+	if policy == nil {
+		return res, nil
+	}
+
+	// Run the scheduled ACTIVE network sweep first — it is gated on its OWN flag
+	// (active_sweep_enabled), independent of the onboarding policy's Enabled, so
+	// a workspace can run active discovery without auto-onboarding. It is
+	// best-effort: a sweep failure (e.g. the named agent is momentarily offline)
+	// must not abort the onboarding pass, exactly like a single connector's
+	// inventory error below.
+	e.runActiveSweep(ctx, workspaceID, policy, &res)
+
+	if !policy.Enabled {
 		return res, nil
 	}
 
@@ -193,6 +211,38 @@ func (e *Engine) evaluatePolicy(ctx context.Context, workspaceID uuid.UUID, poli
 			return matched, onboarded, nil
 		}
 	}
+}
+
+// runActiveSweep runs the workspace's scheduled active network sweep when it is
+// enabled, an agent dialer is wired (only the case where the workflow engine
+// has the cross-replica forward plane configured), and a sweep agent is named.
+// It probes the configured targets THROUGH that agent and folds the results
+// into res. Any error is logged and swallowed: active discovery is an additive,
+// best-effort enrichment of the scheduled sweep, never a reason to fail it.
+func (e *Engine) runActiveSweep(ctx context.Context, workspaceID uuid.UUID, policy *models.AutoOnboardingPolicy, res *ScheduledSweepResult) {
+	if !policy.ActiveSweepEnabled || e.dialer == nil || policy.ActiveSweepAgentID == nil {
+		return
+	}
+	targets, err := decodeActiveSweepTargets(policy.ActiveSweepTargets)
+	if err != nil {
+		logger.Errorf(ctx, "discovery: active sweep: workspace %s: decode targets: %v", workspaceID, err)
+		return
+	}
+	out, err := e.AgentSweep(ctx, workspaceID, AgentSweepRequest{
+		AgentID: *policy.ActiveSweepAgentID,
+		Hosts:   targets.Hosts,
+		CIDRs:   targets.CIDRs,
+		Ports:   targets.Ports,
+		Actor:   "system:scheduled-sweep",
+		Trigger: models.DiscoveryTriggerScheduled,
+	})
+	if err != nil {
+		logger.Warnf(ctx, "discovery: active sweep: workspace %s: %v", workspaceID, err)
+		return
+	}
+	res.ActiveSweepProbed = out.Probed
+	res.ActiveSweepReachable = out.Reachable
+	res.AssetsNew += out.AssetsNew
 }
 
 func (e *Engine) flagPolicyMatched(ctx context.Context, workspaceID, assetID uuid.UUID) error {
