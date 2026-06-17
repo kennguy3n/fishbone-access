@@ -58,6 +58,11 @@ type SessionManager struct {
 	now        func() time.Time
 	// bg tracks in-flight detached post-session advisory scoring so a graceful
 	// shutdown (Drain) can wait for those audit writes instead of dropping them.
+	// The Add/Wait pairing is safe because every endSession call originates from
+	// a supervisor-managed protocol handler, and the gateway only calls Drain
+	// after sup.Run returns (i.e. after all handlers have finished): each Add(1)
+	// thus happens-before Wait. A future caller that ends sessions outside the
+	// supervisor's lifecycle would need to be drained on that path too.
 	bg sync.WaitGroup
 }
 

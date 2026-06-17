@@ -84,8 +84,9 @@ func TestPolicyRecommendEmptyRequestSkipsAgent(t *testing.T) {
 	svc := NewPolicyService(db)
 	svc.SetRecommender(aiclient.NewAIClient(srv.URL, nil, ""))
 
-	// Whitespace-only fields collapse to empty after TrimSpace.
-	if rec := svc.Recommend(context.Background(), ws, PolicyRecommendationInput{Resource: "  ", Context: "\t"}); rec != "" {
+	// Whitespace-only fields (including blank role entries) collapse to empty
+	// after TrimSpace, so the whole request is treated as no-signal.
+	if rec := svc.Recommend(context.Background(), ws, PolicyRecommendationInput{Resource: "  ", Context: "\t", Roles: []string{"", "  "}}); rec != "" {
 		t.Fatalf("want empty recommendation for empty request, got %q", rec)
 	}
 	if called {

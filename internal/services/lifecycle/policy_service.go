@@ -82,17 +82,25 @@ func (s *PolicyService) Recommend(ctx context.Context, workspaceID uuid.UUID, in
 	}
 	resource := strings.TrimSpace(in.Resource)
 	inputContext := strings.TrimSpace(in.Context)
+	// Trim and drop blank role entries so whitespace-only roles ("", "  ")
+	// neither count as signal in the empty-body guard below nor reach the agent.
+	roles := make([]string, 0, len(in.Roles))
+	for _, r := range in.Roles {
+		if r = strings.TrimSpace(r); r != "" {
+			roles = append(roles, r)
+		}
+	}
 	// No signal at all (empty body): there is nothing for the model to reason
 	// about, so skip the round-trip and return "no guidance" rather than spend an
 	// agent call on an empty payload. Partial input (any one of the three) is
 	// still forwarded — an operator can ask with as little context as they have.
-	if resource == "" && inputContext == "" && len(in.Roles) == 0 {
+	if resource == "" && inputContext == "" && len(roles) == 0 {
 		return ""
 	}
 	return aiclient.RecommendPolicyWithFallback(ctx, s.ai, s.resolveAITier(ctx, workspaceID), aiclient.PolicyRecommendationInput{
 		WorkspaceID: workspaceID.String(),
 		Resource:    resource,
-		Roles:       in.Roles,
+		Roles:       roles,
 		Context:     inputContext,
 	})
 }
