@@ -213,6 +213,24 @@ func (v *TOTPMFAVerifier) FinishEnrollment(ctx context.Context, workspaceID uuid
 	}
 
 	if err := v.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Anti-replay: burn the confirmation code in the same transaction that
+		// activates the secret, so the very code that proved enrolment cannot
+		// also satisfy a step-up within its remaining validity window — the
+		// single-use invariant VerifyStepUp enforces. A conflict means the code
+		// was already used; rolling back keeps the secret pending so the user
+		// can retry with a fresh code.
+		claim := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.PAMTOTPUsedCode{
+			WorkspaceID: workspaceID,
+			UserID:      userID,
+			CodeHash:    hashCode(code),
+			UsedAt:      v.now(),
+		})
+		if claim.Error != nil {
+			return claim.Error
+		}
+		if claim.RowsAffected == 0 {
+			return fmt.Errorf("%w: TOTP code already used", ErrMFAFailed)
+		}
 		// Retire any previously verified secret so exactly one remains active.
 		if err := tx.Model(&models.UserTOTPSecret{}).
 			Where("workspace_id = ? AND user_id = ? AND verified = ? AND id <> ?", workspaceID, userID, true, pending.ID).
@@ -223,6 +241,11 @@ func (v *TOTPMFAVerifier) FinishEnrollment(ctx context.Context, workspaceID uuid
 			Where("id = ?", pending.ID).
 			Updates(map[string]any{"verified": true, "disabled_at": nil}).Error
 	}); err != nil {
+		// A replay (ErrMFAFailed) is a clean user-facing denial; surface it as
+		// such rather than wrapping it as an internal "confirm secret" fault.
+		if errors.Is(err, ErrMFAFailed) {
+			return err
+		}
 		return fmt.Errorf("mfa: TOTPMFAVerifier: confirm secret: %w", err)
 	}
 	logger.Infof(ctx, "mfa: TOTPMFAVerifier: TOTP enrolled workspace_id=%s user_id=%s", workspaceID, userID)

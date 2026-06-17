@@ -377,6 +377,43 @@ func TestTOTPEnrollmentLifecycle(t *testing.T) {
 	}
 }
 
+// TestTOTPFinishEnrollmentBurnsCode proves the code that confirms enrollment is
+// consumed in the anti-replay table, so the same code cannot then satisfy a
+// step-up within its remaining validity window — keeping the single-use
+// invariant uniform with VerifyStepUp.
+func TestTOTPFinishEnrollmentBurnsCode(t *testing.T) {
+	v, db := newTOTPVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	now := time.Unix(1_700_000_000, 0)
+	v.SetClock(func() time.Time { return now })
+
+	enr, err := v.BeginEnrollment(context.Background(), ws, user, "", "")
+	if err != nil {
+		t.Fatalf("begin enrollment: %v", err)
+	}
+	code := codeAt(t, enr.Secret, now)
+	if err := v.FinishEnrollment(context.Background(), ws, user, code); err != nil {
+		t.Fatalf("finish enrollment: %v", err)
+	}
+
+	// The confirmation code was claimed exactly once, stored hashed (not verbatim).
+	var used []models.PAMTOTPUsedCode
+	if err := db.Find(&used).Error; err != nil {
+		t.Fatalf("load used: %v", err)
+	}
+	if len(used) != 1 {
+		t.Fatalf("used rows = %d, want 1 (the enrollment code)", len(used))
+	}
+	if used[0].CodeHash == code || used[0].CodeHash == "" {
+		t.Fatalf("code must be stored hashed, got %q", used[0].CodeHash)
+	}
+
+	// Replaying that same, still-time-valid code for a step-up must be rejected.
+	if err := v.VerifyStepUp(context.Background(), ws, user, "promote", []byte(code)); !errors.Is(err, ErrMFAFailed) {
+		t.Fatalf("step-up with burned enrollment code err = %v, want ErrMFAFailed", err)
+	}
+}
+
 // TestTOTPFinishEnrollmentWrongCode proves an incorrect confirmation code is
 // rejected and the secret stays pending (not activated).
 func TestTOTPFinishEnrollmentWrongCode(t *testing.T) {
