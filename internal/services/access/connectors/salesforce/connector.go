@@ -24,8 +24,6 @@ const (
 	soqlListUsersQuery = "SELECT Id, Name, Email, IsActive FROM User"
 )
 
-var ErrNotImplemented = fmt.Errorf("salesforce: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 // escapeSOQLLiteral escapes a value for safe interpolation inside a SOQL
 // single-quoted string literal. Salesforce SOQL requires each embedded single
 // quote to be backslash-escaped and each backslash to be doubled; URL

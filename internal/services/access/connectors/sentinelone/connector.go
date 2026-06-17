@@ -22,8 +22,6 @@ const (
 	pageLimit    = 100
 )
 
-var ErrNotImplemented = fmt.Errorf("sentinelone: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

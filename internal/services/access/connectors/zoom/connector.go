@@ -28,8 +28,6 @@ const (
 	defaultTokenURL = "https://zoom.us/oauth/token" // #nosec G101
 )
 
-var ErrNotImplemented = fmt.Errorf("zoom: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

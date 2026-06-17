@@ -32,8 +32,6 @@ const (
 	pageSize     = 100
 )
 
-var ErrNotImplemented = fmt.Errorf("qualys: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 // platformHosts maps Qualys platform short codes to their published API
 // hosts. Restricting the connector to this allow-list (or a validated
 // custom https URL) prevents an attacker who controls config from

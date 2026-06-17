@@ -35,11 +35,6 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil"
 )
 
-// ErrNotImplemented is retained for any future capability that is deliberately
-// stubbed; ProvisionAccess / RevokeAccess / ListEntitlements no longer
-// return it now that the advanced capabilities are implemented.
-var ErrNotImplemented = fmt.Errorf("microsoft: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 const (
 	graphBaseURL = "https://graph.microsoft.com/v1.0"
 	loginBaseURL = "https://login.microsoftonline.com"

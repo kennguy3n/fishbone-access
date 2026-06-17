@@ -22,8 +22,6 @@ const (
 	defaultBaseURL = "https://app.asana.com/api/1.0"
 )
 
-var ErrNotImplemented = fmt.Errorf("asana: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

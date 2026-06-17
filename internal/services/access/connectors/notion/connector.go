@@ -24,8 +24,6 @@ const (
 	notionAPIVersion = "2022-06-28"
 )
 
-var ErrNotImplemented = fmt.Errorf("notion: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

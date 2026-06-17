@@ -23,8 +23,6 @@ import (
 
 const ProviderName = "grafana"
 
-var ErrNotImplemented = fmt.Errorf("grafana: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

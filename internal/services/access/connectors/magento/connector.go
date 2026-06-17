@@ -22,8 +22,6 @@ const (
 	pageSize     = 100
 )
 
-var ErrNotImplemented = fmt.Errorf("magento: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

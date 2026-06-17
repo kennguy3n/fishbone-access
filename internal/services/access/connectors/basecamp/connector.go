@@ -28,8 +28,6 @@ const ProviderName = "basecamp"
 // defers the remainder to the next sync cycle — no identities dropped.
 const basecampSyncMaxPages = 10000
 
-var ErrNotImplemented = fmt.Errorf("basecamp: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

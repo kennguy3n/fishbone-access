@@ -27,11 +27,6 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-// ErrNotImplemented is retained for any future capability that is not yet
-// implemented; ProvisionAccess / RevokeAccess / ListEntitlements no longer
-// return it now that the advanced capabilities are implemented.
-var ErrNotImplemented = fmt.Errorf("lastpass: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 // defaultEndpoint is the LastPass Enterprise JSON API URL. Tests override it
 // via urlOverride.
 const defaultEndpoint = "https://lastpass.com/enterpriseapi.php"

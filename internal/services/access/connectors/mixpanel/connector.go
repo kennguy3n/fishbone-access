@@ -19,8 +19,6 @@ import (
 
 const ProviderName = "mixpanel"
 
-var ErrNotImplemented = fmt.Errorf("mixpanel: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
