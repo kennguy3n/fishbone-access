@@ -81,37 +81,31 @@ func (s *PolicyService) Recommend(ctx context.Context, workspaceID uuid.UUID, in
 		return ""
 	}
 	resource := strings.TrimSpace(in.Resource)
-	context := strings.TrimSpace(in.Context)
+	inputContext := strings.TrimSpace(in.Context)
 	// No signal at all (empty body): there is nothing for the model to reason
 	// about, so skip the round-trip and return "no guidance" rather than spend an
 	// agent call on an empty payload. Partial input (any one of the three) is
 	// still forwarded — an operator can ask with as little context as they have.
-	if resource == "" && context == "" && len(in.Roles) == 0 {
+	if resource == "" && inputContext == "" && len(in.Roles) == 0 {
 		return ""
 	}
 	return aiclient.RecommendPolicyWithFallback(ctx, s.ai, s.resolveAITier(ctx, workspaceID), aiclient.PolicyRecommendationInput{
 		WorkspaceID: workspaceID.String(),
 		Resource:    resource,
 		Roles:       in.Roles,
-		Context:     context,
+		Context:     inputContext,
 	})
 }
 
 // resolveAITier maps the workspace's plan to the AI tier the agent uses to pick
-// a model, failing safe to "deterministic" on a missing/unknown workspace.
+// a model via the shared aiclient.TierForPlan mapping, failing safe to the
+// deterministic tier on a missing/unknown workspace.
 func (s *PolicyService) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
 	var ws models.Workspace
 	if err := s.db.WithContext(ctx).Select("plan").Where("id = ?", workspaceID).Take(&ws).Error; err != nil {
-		return "deterministic"
+		return aiclient.TierForPlan("")
 	}
-	switch strings.TrimSpace(strings.ToLower(ws.Plan)) {
-	case "pro":
-		return "local_4b"
-	case "ultimate":
-		return "local_8b"
-	default:
-		return "deterministic"
-	}
+	return aiclient.TierForPlan(ws.Plan)
 }
 
 // CreatePolicyInput is the contract for CreatePolicy.

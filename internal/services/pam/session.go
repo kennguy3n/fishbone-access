@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -491,28 +490,39 @@ func (m *SessionManager) endSession(ctx context.Context, workspaceID, sessionID 
 	return nil
 }
 
-// postSessionScoringTimeout is the outer ceiling on the detached advisory
-// scoring that runs after a session closes. The two skills each carry their own
-// per-call timeout in the AI client; this bound guarantees a wedged agent can
-// never keep a background goroutine (and its DB handle) alive indefinitely.
-const postSessionScoringTimeout = 45 * time.Second
+// postSessionScoringSlack is added on top of the AI call budget when sizing the
+// outer ceiling for detached scoring, covering the DB reads/writes interleaved
+// with the two skill calls.
+const postSessionScoringSlack = 15 * time.Second
+
+// scoringTimeout is the outer ceiling on the detached advisory scoring that runs
+// after a session closes. The two skills run sequentially, each bounded by the
+// AI client's per-call timeout, so the ceiling is two call budgets plus slack
+// for the interleaved DB work. Deriving it from the client's timeout means an
+// operator who raises ACCESS_AI_AGENT_TIMEOUT for a slow local model does not
+// inadvertently starve the second skill, while still guaranteeing a wedged
+// agent can never keep a background goroutine (and its DB handle) alive forever.
+func (m *SessionManager) scoringTimeout() time.Duration {
+	return 2*m.ai.CallTimeout() + postSessionScoringSlack
+}
 
 // scoreSessionAsync dispatches the post-session advisory skills (risk scoring +
 // behavioural analytics) to a detached background goroutine, so a slow or
 // unreachable AI agent never blocks session teardown. The goroutine runs on a
 // context detached from the caller's (the proxy connection is already gone) but
-// retaining its values, bounded by postSessionScoringTimeout. It is a no-op
-// without a configured agent. Drain waits for in-flight runs at shutdown.
+// retaining its values, bounded by scoringTimeout. It is a no-op without a
+// configured agent. Drain waits for in-flight runs at shutdown.
 func (m *SessionManager) scoreSessionAsync(ctx context.Context, session *models.PAMSession) {
 	if m.ai == nil || !m.ai.Configured() {
 		return
 	}
 	snapshot := *session
 	detached := context.WithoutCancel(ctx)
+	timeout := m.scoringTimeout()
 	m.bg.Add(1)
 	go func() {
 		defer m.bg.Done()
-		bgCtx, cancel := context.WithTimeout(detached, postSessionScoringTimeout)
+		bgCtx, cancel := context.WithTimeout(detached, timeout)
 		defer cancel()
 		m.assessSessionRisk(bgCtx, &snapshot)
 		m.analyzeBehaviour(bgCtx, &snapshot)
@@ -739,26 +749,18 @@ func (m *SessionManager) recentCommands(ctx context.Context, workspaceID, sessio
 	return commands, nil
 }
 
-// resolveAITier maps the session's workspace plan to the AI agent tier, matching
-// the lifecycle risk-review resolver: pro → local_4b, ultimate → local_8b,
-// everything else (and any lookup error) → deterministic, so a plan lookup
-// failure degrades to the cheapest tier rather than blocking scoring.
+// resolveAITier maps the session's workspace plan to the AI agent tier via the
+// shared aiclient.TierForPlan mapping. A plan lookup failure passes an empty
+// plan, which fails safe to the deterministic tier rather than blocking scoring.
 func (m *SessionManager) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
 	var ws models.Workspace
 	if err := m.db.WithContext(ctx).
 		Select("plan").
 		Where("id = ?", workspaceID).
 		Take(&ws).Error; err != nil {
-		return "deterministic"
+		return aiclient.TierForPlan("")
 	}
-	switch strings.TrimSpace(strings.ToLower(ws.Plan)) {
-	case "pro":
-		return "local_4b"
-	case "ultimate":
-		return "local_8b"
-	default:
-		return "deterministic"
-	}
+	return aiclient.TierForPlan(ws.Plan)
 }
 
 // ExpireLeases flips a workspace's pending connect tokens whose lease window has
