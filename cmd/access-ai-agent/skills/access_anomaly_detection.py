@@ -12,6 +12,7 @@ from typing import Any
 
 from .errors import SkillError
 from .llm import LLMUnavailable, call_llm, parse_json_response
+from .numeric import as_hour, as_number
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,10 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "confidence": 0.8,
         })
 
-    # bool is a subclass of int in Python, so guard against it explicitly:
-    # a JSON true/false must not be read as the hour 1/0.
-    hours = [
-        h
-        for h in payload.get("usage_hours", []) or []
-        if isinstance(h, int) and not isinstance(h, bool)
-    ]
+    # as_hour accepts an int or its JSON-equivalent integral float (9 or 9.0)
+    # and rejects bools (a subclass of int) and fractional hours, so a JSON
+    # true/false is never read as the hour 1/0.
+    hours = [h for h in (as_hour(v) for v in payload.get("usage_hours", []) or []) if h is not None]
     off_hours = sorted({h for h in hours if h not in BUSINESS_HOURS})
     if off_hours:
         anomalies.append({
@@ -54,12 +52,11 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "confidence": 0.6,
         })
 
+    # last_used_days is a continuous quantity: accept int or float, reject
+    # bools. Keep the raw value in the reason so an integer has no ".0".
     last_used = payload.get("last_used_days")
-    if (
-        isinstance(last_used, int)
-        and not isinstance(last_used, bool)
-        and last_used > STALE_LAST_USED_DAYS
-    ):
+    last_used_days = as_number(last_used)
+    if last_used_days is not None and last_used_days > STALE_LAST_USED_DAYS:
         anomalies.append({
             "kind": "dormant_grant_reactivation",
             "reason": f"grant unused for {last_used} days",

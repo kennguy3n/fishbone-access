@@ -16,6 +16,7 @@ from typing import Any
 
 from .errors import SkillError
 from .llm import LLMUnavailable, call_llm, parse_json_response
+from .numeric import as_number
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +38,16 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, str]:
     if any("sensitive" in f or "elevated" in f for f in risk_factors):
         return "escalate", "grant carries elevated/sensitive risk factors"
 
-    # bool is a subclass of int, so reject bools explicitly: a JSON true/false
-    # must not be read as a usage count of 1/0 and drive a certify decision.
-    if isinstance(last_used, int) and not isinstance(last_used, bool):
-        if last_used > STALE_LAST_USED_DAYS:
+    # last_used_days and usage_event_count are accepted as either int or float
+    # (as_number); bools are rejected so a JSON true/false is never read as a
+    # usage count of 1/0 and drives a certify decision. Keep the raw values in
+    # the reason strings so integers render without a trailing ".0".
+    last_used_days = as_number(last_used)
+    if last_used_days is not None:
+        if last_used_days > STALE_LAST_USED_DAYS:
             return "escalate", f"stale grant: unused for {last_used} days"
-        if (
-            isinstance(usage_events, int)
-            and not isinstance(usage_events, bool)
-            and usage_events > 0
-            and last_used <= 30
-        ):
+        usage = as_number(usage_events)
+        if usage is not None and usage > 0 and last_used_days <= 30:
             return "certify", f"actively used (last {last_used}d, {usage_events} events), low-risk role"
 
     # Unknown usage signals → defer to a human rather than guessing.

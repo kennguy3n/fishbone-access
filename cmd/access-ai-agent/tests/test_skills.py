@@ -12,6 +12,7 @@ from skills import (
     access_risk_assessment,
     connector_setup_assistant,
     llm,
+    numeric,
     pam_behavioural_analytics,
     pam_session_risk_assessment,
     policy_recommendation,
@@ -91,6 +92,34 @@ def test_risk_prod_readonly_recommendation_matches_go():
     assert out["recommendation"] == "needs_review"
 
 
+def test_risk_long_duration_hours_accepts_float():
+    # duration_hours is a continuous quantity: a fractional 169.5 (> 168) must
+    # flag long_duration_hours rather than being silently ignored as the old
+    # int-only guard did.
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "wiki", "justification": "x", "duration_hours": 169.5}
+    )
+    assert "long_duration_hours:169.5" in out["risk_factors"]
+    assert out["risk_score"] == "medium"
+
+
+def test_risk_long_duration_hours_integer_has_no_decimal():
+    # An integer duration must still render without a trailing ".0".
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "wiki", "justification": "x", "duration_hours": 200}
+    )
+    assert "long_duration_hours:200" in out["risk_factors"]
+
+
+def test_risk_boolean_duration_hours_ignored():
+    # bool is a subclass of int; True must never be read as a duration and
+    # synthesise a long_duration factor.
+    out = access_risk_assessment.run(
+        {"role": "viewer", "resource_external_id": "wiki", "justification": "x", "duration_hours": True}
+    )
+    assert not any(f.startswith("long_duration_hours") for f in out["risk_factors"])
+
+
 def test_risk_llm_can_raise_not_lower(monkeypatch):
     # Deterministic floor is "low"; the model says "high" → result is "high".
     token = llm.set_test_provider(lambda p, s: json.dumps({"risk_score": "high", "risk_factors": ["model"]}))
@@ -168,6 +197,22 @@ def test_review_boolean_usage_fields_do_not_certify():
     assert out["decision"] == "manual_review"
 
 
+def test_review_float_usage_fields_certify():
+    # last_used_days and usage_event_count accepted as floats (JSON 3.0 / 42.0),
+    # consistent with the other skills' numeric handling.
+    out = access_review_automation.run(
+        {"resource_ref": "x", "role": "viewer", "last_used_days": 3.0, "usage_event_count": 42.0}
+    )
+    assert out["decision"] == "certify"
+
+
+def test_review_float_stale_escalates():
+    out = access_review_automation.run(
+        {"resource_ref": "x", "role": "viewer", "last_used_days": 200.5, "usage_event_count": 1}
+    )
+    assert out["decision"] == "escalate"
+
+
 def test_review_llm_cannot_downgrade_to_certify(monkeypatch):
     # Deterministic says escalate (stale); model says certify → stays escalate.
     token = llm.set_test_provider(lambda p, s: json.dumps({"decision": "certify", "reason": "lgtm"}))
@@ -215,6 +260,22 @@ def test_anomaly_boolean_usage_hour_ignored():
         {"grant_id": "g1", "usage_hours": [True, False]}
     )
     assert out["anomalies"] == []
+
+
+def test_anomaly_float_off_hours_detected():
+    # An integral-float hour (2.0) is a valid off-hours bucket; a fractional
+    # 3.5 is not a clock hour and is dropped rather than flagged.
+    out = access_anomaly_detection.run({"grant_id": "g1", "usage_hours": [2.0, 3.5]})
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "off_hours_access" in kinds
+    reason = next(a["reason"] for a in out["anomalies"] if a["kind"] == "off_hours_access")
+    assert "3.5" not in reason
+
+
+def test_anomaly_float_dormant_detected():
+    out = access_anomaly_detection.run({"grant_id": "g1", "last_used_days": 95.5})
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "dormant_grant_reactivation" in kinds
 
 
 # ------------------------ pam_session_risk_assessment ------------------------
@@ -316,6 +377,29 @@ def test_behaviour_volume_spike():
             "user_external_id": "u",
             "sessions": [{"start_hour": 10, "command_count": 500}],
             "baseline": {"avg_command_count": 10},
+        }
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "command_volume_spike" in kinds
+
+
+def test_behaviour_float_off_hours_detected():
+    # An integral-float start_hour (3.0) is a valid off-hours bucket.
+    out = pam_behavioural_analytics.run(
+        {"user_external_id": "u", "sessions": [{"start_hour": 3.0}]}
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "off_hours_sessions" in kinds
+
+
+def test_behaviour_float_command_count_spike():
+    # A float command_count (500.0) must be eligible for the volume-spike
+    # check, matching avg_command_count which already accepted floats.
+    out = pam_behavioural_analytics.run(
+        {
+            "user_external_id": "u",
+            "sessions": [{"start_hour": 10, "command_count": 500.0}],
+            "baseline": {"avg_command_count": 10.0},
         }
     )
     kinds = {a["kind"] for a in out["anomalies"]}
@@ -513,3 +597,43 @@ def test_connector_model_used_flag_true_when_llm_enriches(monkeypatch):
     assert "Okta admin console" in out["explanation"]
     # The structured steps are still deterministic (LLM only enriches prose).
     assert out["steps"][0]["step"] == 1
+
+
+# --------------------------------- numeric -----------------------------------
+
+def test_as_number_accepts_int_and_float():
+    assert numeric.as_number(5) == 5.0
+    assert numeric.as_number(5.5) == 5.5
+    assert numeric.as_number(0) == 0.0
+    assert numeric.as_number(-3) == -3.0
+
+
+def test_as_number_rejects_bool_and_non_numeric():
+    # bool is a subclass of int; it (and non-numerics) must read as "absent".
+    assert numeric.as_number(True) is None
+    assert numeric.as_number(False) is None
+    assert numeric.as_number("5") is None
+    assert numeric.as_number(None) is None
+    assert numeric.as_number([1]) is None
+
+
+def test_as_number_rejects_non_finite():
+    assert numeric.as_number(float("nan")) is None
+    assert numeric.as_number(float("inf")) is None
+    assert numeric.as_number(float("-inf")) is None
+
+
+def test_as_hour_accepts_int_and_integral_float():
+    assert numeric.as_hour(9) == 9
+    assert numeric.as_hour(9.0) == 9
+    assert numeric.as_hour(0) == 0
+    assert numeric.as_hour(23) == 23
+
+
+def test_as_hour_rejects_fractional_bool_and_non_numeric():
+    # A fractional value is not a clock hour; bools/non-numerics are rejected.
+    assert numeric.as_hour(9.5) is None
+    assert numeric.as_hour(True) is None
+    assert numeric.as_hour(False) is None
+    assert numeric.as_hour("9") is None
+    assert numeric.as_hour(None) is None

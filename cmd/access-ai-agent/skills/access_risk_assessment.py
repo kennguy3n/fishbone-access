@@ -15,6 +15,7 @@ from typing import Any
 
 from .errors import SkillError
 from .llm import LLMUnavailable, call_llm, parse_json_response
+from .numeric import as_number
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +98,13 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
     if "sensitive" in tags:
         factors.append(SENSITIVE_RESOURCE_FACTOR)
 
+    # duration_hours is a continuous quantity, so accept a fractional value
+    # (e.g. 169.5) as well as an integer; as_number rejects bools and non-finite
+    # values. Keep the raw value for the factor string so an integer renders
+    # without a trailing ".0".
     duration = payload.get("duration_hours")
-    if (
-        isinstance(duration, int)
-        and not isinstance(duration, bool)
-        and duration > 168
-    ):  # standing access (> 1 week)
+    duration_hours = as_number(duration)
+    if duration_hours is not None and duration_hours > 168:  # standing access (> 1 week)
         factors.append(f"long_duration_hours:{duration}")
         score = _max_score(score, "medium")
 
