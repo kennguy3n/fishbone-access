@@ -48,12 +48,9 @@ function toDraft(p: PolicyView): Draft {
   };
 }
 
-// Split a comma/space-separated list into trimmed, non-empty tokens.
+// Split a comma- or whitespace-separated list into trimmed, non-empty tokens.
 function splitList(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  return raw.split(/[\s,]+/).filter(Boolean);
 }
 
 /**
@@ -126,7 +123,7 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
         cidrs: splitList(draft.active_sweep_cidrs),
         ports: splitList(draft.active_sweep_ports)
           .map((p) => Number(p))
-          .filter((n) => Number.isFinite(n)),
+          .filter((n) => Number.isInteger(n) && n > 0 && n <= 65535),
       },
     };
     // Send a credential block whenever the operator typed a new password
