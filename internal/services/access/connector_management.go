@@ -377,7 +377,18 @@ func (s *ConnectorManagementService) RemoveSSOFederation(ctx context.Context, wo
 		return nil
 	}
 	if err := s.sso.RemoveSSO(ctx, row.SSOConnectionID); err != nil {
-		return fmt.Errorf("access: RemoveSSOFederation: %w", err)
+		// "Already gone" in iam-core (404) is the desired end state for a
+		// remove, so fall through and clear the local pointer — this keeps the
+		// operation idempotent and avoids a permanently stuck row when the
+		// connection was deleted out-of-band (admin action, or a best-effort
+		// removal in ConfigureSSOFederation/Disconnect). Any other error is
+		// transient (iam-core unreachable / 5xx): surface it so the caller can
+		// retry rather than silently orphaning the connection by dropping our
+		// only reference to it.
+		if !errors.Is(err, iamcore.ErrNotFound) {
+			return fmt.Errorf("access: RemoveSSOFederation: %w", err)
+		}
+		logger.Warnf(ctx, "access: RemoveSSOFederation: sso connection %s already absent in iam-core for connector %s (workspace %s); clearing local reference", row.SSOConnectionID, row.ID, workspaceID)
 	}
 	if err := s.db.WithContext(ctx).
 		Model(&models.AccessConnector{}).

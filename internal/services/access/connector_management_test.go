@@ -3,11 +3,13 @@ package access
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
+	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/workers"
 )
@@ -672,6 +674,77 @@ func TestConnectorManagementRemoveSSOFederation(t *testing.T) {
 	}
 	if fake.deletedID != "sentinel" {
 		t.Errorf("idempotent removal must not delete again: deletedID = %q", fake.deletedID)
+	}
+}
+
+// TestConnectorManagementRemoveSSOFederationAlreadyGone pins that when iam-core
+// reports the connection is already absent (404 → iamcore.ErrNotFound), removal
+// still clears the local pointer and reports success rather than wedging the
+// row in a permanently un-removable state. This is the "deleted out-of-band"
+// path (admin action, or a prior best-effort removal in Disconnect/reconfigure).
+func TestConnectorManagementRemoveSSOFederationAlreadyGone(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+
+	// iam-core no longer has the connection: the delete returns ErrNotFound.
+	fake.deleteErr = fmt.Errorf("delete connection conn-123: %w", iamcore.ErrNotFound)
+	if err := svc.RemoveSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("RemoveSSOFederation should treat already-gone as success: %v", err)
+	}
+	if fake.deletedID != "conn-123" {
+		t.Errorf("removed connection = %q, want conn-123", fake.deletedID)
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.SSOConnectionID != "" {
+		t.Errorf("SSOConnectionID = %q, want empty after already-gone removal", got.SSOConnectionID)
+	}
+}
+
+// TestConnectorManagementRemoveSSOFederationTransientError pins the opposite of
+// the already-gone path: a transient iam-core failure (not a 404) must NOT clear
+// the local pointer, so the operator can retry instead of orphaning the live
+// iam-core connection by dropping our only reference to it.
+func TestConnectorManagementRemoveSSOFederationTransientError(t *testing.T) {
+	mock := &MockAccessConnector{
+		FuncGetSSOMetadata: func(context.Context, map[string]interface{}, map[string]interface{}) (*SSOMetadata, error) {
+			return &SSOMetadata{Protocol: "oidc", MetadataURL: "https://idp.example.com/.well-known/openid-configuration"}, nil
+		},
+	}
+	SwapConnector(t, "okta", mock)
+	fake := &fakeConnections{}
+	svc := newMgmtWithSSO(t, fake)
+	ctx := context.Background()
+	ws := uuid.New()
+	row, err := svc.Create(ctx, CreateConnectorInput{WorkspaceID: ws, Provider: "okta", Secrets: map[string]interface{}{"sso_client_id": "cid"}})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.ConfigureSSOFederation(ctx, ws, row.ID); err != nil {
+		t.Fatalf("ConfigureSSOFederation: %v", err)
+	}
+
+	fake.deleteErr = fmt.Errorf("iam-core unreachable")
+	if err := svc.RemoveSSOFederation(ctx, ws, row.ID); err == nil {
+		t.Fatal("RemoveSSOFederation should surface a transient iam-core error, not swallow it")
+	}
+	got, _ := svc.Get(ctx, ws, row.ID)
+	if got.SSOConnectionID != "conn-123" {
+		t.Errorf("SSOConnectionID = %q, want conn-123 retained after a transient failure", got.SSOConnectionID)
 	}
 }
 
