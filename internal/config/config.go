@@ -877,6 +877,15 @@ func (c Config) Validate() error {
 	if fwdParts != 0 && fwdParts != 3 {
 		return errors.New("config: ACCESS_AGENT_FORWARD_CA, ACCESS_AGENT_FORWARD_CERT and ACCESS_AGENT_FORWARD_KEY must all be set or all be empty")
 	}
+	// WebAuthn binds every credential to the relying-party id AND the allowed
+	// origins, so neither half stands alone. Reject a half-configured pair
+	// loudly here rather than letting Configured() quietly return false and the
+	// step-up gate fall back to TOTP-only — an operator who set one knob clearly
+	// intended to enable WebAuthn and should learn about the typo at boot. (Both
+	// empty is the legitimate "WebAuthn off" state; both set is "on".)
+	if (c.WebAuthn.RPID != "") != (len(c.WebAuthn.RPOrigins) > 0) {
+		return errors.New("config: ACCESS_WEBAUTHN_RP_ID and ACCESS_WEBAUTHN_RP_ORIGINS must both be set or both be empty")
+	}
 	return nil
 }
 

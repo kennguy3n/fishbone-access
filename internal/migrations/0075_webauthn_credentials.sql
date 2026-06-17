@@ -59,9 +59,13 @@ CREATE INDEX IF NOT EXISTS idx_webauthn_cred_ws_user
 
 -- A credential id is unique within a (workspace, user): the same authenticator
 -- enrols once, and the verifier resolves an assertion's credential id to exactly
--- one stored public key.
+-- one stored public key. Partial on deleted_at IS NULL (mirroring every other
+-- soft-delete unique index in this schema, e.g. 0070_discovery.sql) so removing
+-- an authenticator and re-enrolling the same physical key later does not collide
+-- with the soft-deleted row.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_webauthn_cred_ws_credid
-    ON webauthn_credentials(workspace_id, credential_id);
+    ON webauthn_credentials(workspace_id, credential_id)
+    WHERE deleted_at IS NULL;
 
 -- --- In-flight ceremony challenges ------------------------------------------
 -- Composite primary key (workspace_id, user_id, ceremony) keeps at most one

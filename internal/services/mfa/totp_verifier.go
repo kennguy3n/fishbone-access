@@ -177,6 +177,11 @@ func (v *TOTPMFAVerifier) FinishEnrollment(ctx context.Context, workspaceID uuid
 	if len(code) != 6 {
 		return fmt.Errorf("%w: TOTP code must be exactly 6 digits", ErrMFAFailed)
 	}
+	for _, c := range code {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("%w: TOTP code must contain only digits", ErrMFAFailed)
+		}
+	}
 
 	var pending models.UserTOTPSecret
 	err := v.db.WithContext(ctx).

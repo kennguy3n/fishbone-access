@@ -299,6 +299,61 @@ func TestWebAuthnListAndDeleteCredential(t *testing.T) {
 	}
 }
 
+// TestWebAuthnReenrollAfterDelete proves that removing an authenticator and
+// re-enrolling the *same* physical key later succeeds. DeleteCredential soft
+// deletes (the model embeds Base), so the unique index on
+// (workspace_id, credential_id) must be partial on deleted_at IS NULL — without
+// that predicate the soft-deleted row would block the re-enrollment INSERT.
+func TestWebAuthnReenrollAfterDelete(t *testing.T) {
+	v, _ := newWebAuthnVerifier(t)
+	ws, user := uuid.New(), "user-1"
+	authr := vwa.NewAuthenticator()
+	cred := vwa.NewCredential(vwa.KeyTypeEC2)
+
+	// register runs an attestation ceremony reusing the SAME virtual credential
+	// (so the credential id is stable across enrollments — the collision case).
+	register := func() models.WebAuthnCredential {
+		t.Helper()
+		ctx := context.Background()
+		creation, err := v.BeginRegistration(ctx, ws, user, "Test User")
+		if err != nil {
+			t.Fatalf("begin registration: %v", err)
+		}
+		optionsJSON, err := json.Marshal(creation)
+		if err != nil {
+			t.Fatalf("marshal creation options: %v", err)
+		}
+		attOpts, err := vwa.ParseAttestationOptions(string(optionsJSON))
+		if err != nil {
+			t.Fatalf("parse attestation options: %v", err)
+		}
+		attResp := vwa.CreateAttestationResponse(testRP(), authr, cred, *attOpts)
+		row, err := v.FinishRegistration(ctx, ws, user, "My Key", []byte(attResp))
+		if err != nil {
+			t.Fatalf("finish registration: %v", err)
+		}
+		return *row
+	}
+
+	first := register()
+	if err := v.DeleteCredential(context.Background(), ws, user, first.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	second := register()
+	if second.ID == first.ID {
+		t.Fatal("re-enrollment reused the soft-deleted row id")
+	}
+
+	// Exactly one live credential (the soft-deleted one is filtered out).
+	rows, err := v.ListCredentials(context.Background(), ws, user)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("live credential rows = %d, want 1", len(rows))
+	}
+}
+
 // TestWebAuthnStepUpIsolatedAcrossWorkspaces proves a credential enrolled in one
 // workspace cannot satisfy step-up in another: the user handle is workspace
 // bound, so the same physical authenticator is a distinct credential per tenant.

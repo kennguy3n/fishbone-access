@@ -159,9 +159,9 @@ func (PAMTOTPUsedCode) TableName() string { return "pam_totp_used_codes" }
 // re-seals on each successful assertion).
 type WebAuthnCredential struct {
 	Base
-	WorkspaceID  uuid.UUID  `gorm:"type:uuid;not null;index:idx_webauthn_cred_ws_user,priority:1;uniqueIndex:idx_webauthn_cred_ws_credid,priority:1" json:"workspace_id"`
+	WorkspaceID  uuid.UUID  `gorm:"type:uuid;not null;index:idx_webauthn_cred_ws_user,priority:1;uniqueIndex:idx_webauthn_cred_ws_credid,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
 	UserID       string     `gorm:"type:varchar(255);not null;index:idx_webauthn_cred_ws_user,priority:2" json:"user_id"`
-	CredentialID []byte     `gorm:"type:bytea;not null;uniqueIndex:idx_webauthn_cred_ws_credid,priority:2" json:"-"`
+	CredentialID []byte     `gorm:"type:bytea;not null;uniqueIndex:idx_webauthn_cred_ws_credid,priority:2,where:deleted_at IS NULL" json:"-"`
 	Sealed       string     `gorm:"type:text;not null" json:"-"`
 	FriendlyName string     `gorm:"type:varchar(255)" json:"friendly_name"`
 	SignCount    uint32     `gorm:"not null;default:0" json:"sign_count"`
