@@ -313,6 +313,17 @@ type DiscoveryConfig struct {
 	// ProbeTimeout bounds a single host:port reachability probe through an
 	// agent. Read from ACCESS_DISCOVERY_PROBE_TIMEOUT; defaults to 3s.
 	ProbeTimeout time.Duration
+	// ForwardTimeout bounds the cross-replica forward setup the workflow engine
+	// performs to reach an agent it does not own: directory lookup → TCP connect
+	// to the owning gateway replica → mTLS handshake → forward request/response →
+	// owner-opened yamux stream → agent dial to target. This whole multi-hop
+	// chain is wider than a direct probe, so it gets its own (longer) budget
+	// instead of reusing ProbeTimeout (3s), which is tuned for the direct
+	// yamux-open + agent-dial only. Mirrors the pam-gateway relay dialTO. Read
+	// from ACCESS_DISCOVERY_FORWARD_TIMEOUT; defaults to 15s. The sweep is
+	// best-effort, so a too-tight value never fails a sweep — it only risks
+	// artificially low reachability counts in high-latency fleets.
+	ForwardTimeout time.Duration
 	// ProbeConcurrency caps concurrent probes per sweep. Read from
 	// ACCESS_DISCOVERY_PROBE_CONCURRENCY; defaults to 16.
 	ProbeConcurrency int
@@ -702,6 +713,7 @@ func Load() Config {
 			ScheduledSweepEnabled: getBool("ACCESS_DISCOVERY_SWEEP_ENABLED", true),
 			SweepInterval:         getDuration("ACCESS_DISCOVERY_SWEEP_INTERVAL", 6*time.Hour),
 			ProbeTimeout:          getDuration("ACCESS_DISCOVERY_PROBE_TIMEOUT", 3*time.Second),
+			ForwardTimeout:        getDuration("ACCESS_DISCOVERY_FORWARD_TIMEOUT", 15*time.Second),
 			ProbeConcurrency:      getInt("ACCESS_DISCOVERY_PROBE_CONCURRENCY", 16),
 			MaxProbeTargets:       getInt("ACCESS_DISCOVERY_MAX_PROBE_TARGETS", 1024),
 			DBDialTimeout:         getDuration("ACCESS_DISCOVERY_DB_DIAL_TIMEOUT", 10*time.Second),

@@ -239,6 +239,31 @@ func TestRateLimitLoadOverrides(t *testing.T) {
 	}
 }
 
+func TestDiscoveryTimeoutDefaults(t *testing.T) {
+	t.Setenv("ACCESS_DISCOVERY_PROBE_TIMEOUT", "")
+	t.Setenv("ACCESS_DISCOVERY_FORWARD_TIMEOUT", "")
+	cfg := Load()
+	if cfg.Discovery.ProbeTimeout != 3*time.Second {
+		t.Errorf("Discovery.ProbeTimeout = %s, want 3s by default", cfg.Discovery.ProbeTimeout)
+	}
+	// The cross-replica forward path gets its own wider budget, distinct from
+	// the 3s direct-probe timeout it previously reused.
+	if cfg.Discovery.ForwardTimeout != 15*time.Second {
+		t.Errorf("Discovery.ForwardTimeout = %s, want 15s by default", cfg.Discovery.ForwardTimeout)
+	}
+	if cfg.Discovery.ForwardTimeout <= cfg.Discovery.ProbeTimeout {
+		t.Errorf("Discovery.ForwardTimeout (%s) should exceed ProbeTimeout (%s)", cfg.Discovery.ForwardTimeout, cfg.Discovery.ProbeTimeout)
+	}
+}
+
+func TestDiscoveryForwardTimeoutOverride(t *testing.T) {
+	t.Setenv("ACCESS_DISCOVERY_FORWARD_TIMEOUT", "45s")
+	cfg := Load()
+	if cfg.Discovery.ForwardTimeout != 45*time.Second {
+		t.Errorf("Discovery.ForwardTimeout = %s, want 45s from env override", cfg.Discovery.ForwardTimeout)
+	}
+}
+
 func TestValidateRateLimit(t *testing.T) {
 	base := func() Config {
 		return Config{DatabaseDriver: DriverPgx, RateLimit: RateLimitConfig{Enabled: true, RequestsPerSecond: 50, Burst: 100}}
