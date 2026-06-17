@@ -199,6 +199,15 @@ def test_anomaly_off_hours_detected():
     assert "off_hours_access" in kinds
 
 
+def test_anomaly_boolean_usage_hour_ignored():
+    # bool is a subclass of int; True/False must not be read as the hour 1/0
+    # and so must not synthesise an off-hours anomaly.
+    out = access_anomaly_detection.run(
+        {"grant_id": "g1", "usage_hours": [True, False]}
+    )
+    assert out["anomalies"] == []
+
+
 # ------------------------ pam_session_risk_assessment ------------------------
 
 def test_pam_requires_user_and_target():
@@ -269,6 +278,15 @@ def test_behaviour_off_hours_detected():
     )
     kinds = {a["kind"] for a in out["anomalies"]}
     assert "off_hours_sessions" in kinds
+
+
+def test_behaviour_boolean_start_hour_ignored():
+    # A bool start_hour must not be coerced to the hour 1/0 and flagged.
+    out = pam_behavioural_analytics.run(
+        {"user_external_id": "u", "sessions": [{"start_hour": True}, {"start_hour": False}]}
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "off_hours_sessions" not in kinds
 
 
 def test_behaviour_new_target_against_baseline():
