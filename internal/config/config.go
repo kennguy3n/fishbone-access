@@ -197,6 +197,11 @@ type Config struct {
 	// OFF by default.
 	PostgresKerberos PostgresKerberosConfig
 
+	// WebAuthn holds the WebAuthn/FIDO2 relying-party settings for the step-up
+	// MFA WebAuthn verifier. OFF by default: when unset the composite step-up
+	// gate carries only its TOTP leg.
+	WebAuthn WebAuthnConfig
+
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
 }
@@ -288,6 +293,15 @@ type TenancyConfig struct {
 	// constrained tier) so an un-tiered tenant cannot consume an active
 	// tenant's share.
 	DefaultTier string
+	// PeriodicConcurrency is the GLOBAL ceiling on simultaneous periodic
+	// per-tenant jobs (credential rotations, discovery sweeps) across the whole
+	// fleet, enforced by the shared tenancy fair-scheduler. It protects shared
+	// resources (DB pool, upstream rate limits, CPU) when many tenants come due
+	// in the same tick, while the per-tenant MaxConcurrentSyncs budget keeps any
+	// one tenant from claiming an unfair slice of it. Read from
+	// ACCESS_TENANCY_PERIODIC_CONCURRENCY; defaults to 0, which the scheduler
+	// resolves to 4×GOMAXPROCS (a sane bound for IO-bound connector work).
+	PeriodicConcurrency int
 }
 
 // RecordingsConfig tunes the searchable session-recording forensic store's
@@ -571,7 +585,17 @@ func (c AgentBrokerConfig) Configured() bool { return c.CACert != "" }
 // present, otherwise the relay stays single-replica (a non-local agent fails
 // closed) — safe-by-default.
 func (c AgentBrokerConfig) CrossReplicaConfigured() bool {
-	return c.ForwardCACert != "" && c.ForwardCert != "" && c.ForwardKey != "" && c.ForwardAddr != ""
+	return c.ForwardClientConfigured() && c.ForwardAddr != ""
+}
+
+// ForwardClientConfigured reports whether the inter-replica forward CLIENT mTLS
+// material is present (the three forward certs), INDEPENDENT of an advertised
+// ForwardAddr. A process that only ever INITIATES forwards and never owns a
+// tunnel — the workflow engine running scheduled active discovery sweeps, which
+// dials through agents owned by pam-gateway replicas and is never forwarded TO —
+// needs only the client identity, not a listen/advertise address.
+func (c AgentBrokerConfig) ForwardClientConfigured() bool {
+	return c.ForwardCACert != "" && c.ForwardCert != "" && c.ForwardKey != ""
 }
 
 // WebAccessConfig tunes the clientless browser-access bridge (web SSH terminal
@@ -624,6 +648,39 @@ type DevAuthConfig struct {
 
 // Configured reports whether a dev HMAC secret was supplied.
 func (c DevAuthConfig) Configured() bool { return c.Secret != "" }
+
+// WebAuthnConfig configures the WebAuthn/FIDO2 relying party for step-up MFA.
+// WebAuthn binds every credential and assertion to the relying-party identity,
+// so these values are security-load-bearing: a mismatch between the configured
+// RP and the origin the browser actually sees makes every ceremony fail (and a
+// too-broad RPID would let a sibling subdomain assert). They are therefore
+// explicit configuration with no silent default.
+type WebAuthnConfig struct {
+	// RPID is the relying-party identifier — the registrable domain the
+	// credential is scoped to, WITHOUT scheme or port (e.g. "access.example.com"
+	// or the parent "example.com"). The browser requires the page's effective
+	// domain to be the RPID or a subdomain of it. Read from
+	// ACCESS_WEBAUTHN_RP_ID.
+	RPID string
+	// RPDisplayName is the human-readable relying-party name shown by some
+	// authenticators during enrolment (e.g. "ShieldNet Access"). Read from
+	// ACCESS_WEBAUTHN_RP_DISPLAY_NAME; defaults to "ShieldNet Access".
+	RPDisplayName string
+	// RPOrigins is the allow-list of fully-qualified origins (scheme + host +
+	// optional port, e.g. "https://access.example.com") a ceremony may be
+	// completed from. An assertion whose origin is not listed is rejected, so
+	// this must enumerate every origin the UI is served from. Read from
+	// ACCESS_WEBAUTHN_RP_ORIGINS (comma-separated).
+	RPOrigins []string
+}
+
+// Configured reports whether the minimum WebAuthn settings are present to stand
+// up a relying party: an RPID and at least one allowed origin. When false the
+// WebAuthn verifier is left unwired and the composite step-up gate carries only
+// its TOTP leg.
+func (c WebAuthnConfig) Configured() bool {
+	return c.RPID != "" && len(c.RPOrigins) > 0
+}
 
 // IAMCoreConfig configures integration with uneycom/iam-core, the upstream
 // OAuth2/OIDC identity provider. See docs/iam-core-integration.md.
@@ -724,6 +781,7 @@ func Load() Config {
 			ActivityFlushInterval: getDuration("ACCESS_TENANCY_ACTIVITY_FLUSH", 60*time.Second),
 			ActivityQueueSize:     getInt("ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE", 8192),
 			DefaultTier:           getEnv("ACCESS_TENANCY_DEFAULT_TIER", "trial"),
+			PeriodicConcurrency:   getInt("ACCESS_TENANCY_PERIODIC_CONCURRENCY", 0),
 		},
 		RateLimit: RateLimitConfig{
 			Enabled:           getBool("ACCESS_TENANT_RATE_LIMIT_ENABLED", true),
@@ -803,6 +861,11 @@ func Load() Config {
 			KeytabPath:   os.Getenv("ACCESS_PG_KERBEROS_KEYTAB"),
 			Principal:    os.Getenv("ACCESS_PG_KERBEROS_PRINCIPAL"),
 			Service:      getEnv("ACCESS_PG_KERBEROS_SERVICE", "postgres"),
+		},
+		WebAuthn: WebAuthnConfig{
+			RPID:          os.Getenv("ACCESS_WEBAUTHN_RP_ID"),
+			RPDisplayName: getEnv("ACCESS_WEBAUTHN_RP_DISPLAY_NAME", "ShieldNet Access"),
+			RPOrigins:     getCSV("ACCESS_WEBAUTHN_RP_ORIGINS", nil),
 		},
 	}
 }
@@ -900,6 +963,15 @@ func (c Config) Validate() error {
 		if u, r := c.PostgresKerberos.PrincipalParts(); u == "" || r == "" {
 			return fmt.Errorf("config: ACCESS_PG_KERBEROS_PRINCIPAL must be in user@REALM form when ACCESS_PG_KERBEROS_ENABLED is true (got %q)", c.PostgresKerberos.Principal)
 		}
+	}
+	// WebAuthn binds every credential to the relying-party id AND the allowed
+	// origins, so neither half stands alone. Reject a half-configured pair
+	// loudly here rather than letting Configured() quietly return false and the
+	// step-up gate fall back to TOTP-only — an operator who set one knob clearly
+	// intended to enable WebAuthn and should learn about the typo at boot. (Both
+	// empty is the legitimate "WebAuthn off" state; both set is "on".)
+	if (c.WebAuthn.RPID != "") != (len(c.WebAuthn.RPOrigins) > 0) {
+		return errors.New("config: ACCESS_WEBAUTHN_RP_ID and ACCESS_WEBAUTHN_RP_ORIGINS must both be set or both be empty")
 	}
 	return nil
 }

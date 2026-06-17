@@ -207,6 +207,20 @@ type AutoOnboardingPolicy struct {
 	// DefaultAgentID is bound to auto-created targets when a rule does not name
 	// its own agent (and the asset was found via that agent).
 	DefaultAgentID *uuid.UUID `gorm:"type:uuid" json:"default_agent_id,omitempty"`
+	// ActiveSweepEnabled gates the scheduled ACTIVE network sweep run on every
+	// scheduled-sweep tick (separate from connector inventory + onboarding,
+	// which Enabled gates). Safe default OFF: a workspace must deliberately opt
+	// in, name the agent that performs the sweep, and supply a bounded target
+	// list before the engine probes anything.
+	ActiveSweepEnabled bool `gorm:"not null;default:false" json:"active_sweep_enabled"`
+	// ActiveSweepAgentID is the agent the scheduled active sweep dials through.
+	// Required (in the service layer) when ActiveSweepEnabled is true — a sweep
+	// only ever probes THROUGH an agent in the workspace, never directly.
+	ActiveSweepAgentID *uuid.UUID `gorm:"type:uuid" json:"active_sweep_agent_id,omitempty"`
+	// ActiveSweepTargets is the JSON-encoded ActiveSweepTargets (hosts/cidrs/
+	// ports) the scheduled sweep probes. Bounded by Config.MaxProbeTargets at
+	// save time so a scheduled sweep can never fan out to an unbounded space.
+	ActiveSweepTargets datatypes.JSON `json:"active_sweep_targets,omitempty"`
 	// Sealed onboarding credential used for auto-created targets. The plaintext
 	// is AES-256-GCM sealed with the workspace DEK (AAD = policy id) and is
 	// NEVER returned in API responses. CredentialUsername is non-secret and is

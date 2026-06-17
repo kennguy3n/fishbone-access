@@ -20,6 +20,7 @@ type fakeConnections struct {
 	created   *iamcore.Connection
 	createErr error
 	deletedID string
+	deleteErr error
 }
 
 func (f *fakeConnections) CreateConnection(_ context.Context, conn iamcore.Connection) (*iamcore.Connection, error) {
@@ -32,7 +33,7 @@ func (f *fakeConnections) CreateConnection(_ context.Context, conn iamcore.Conne
 }
 func (f *fakeConnections) DeleteConnection(_ context.Context, id string) error {
 	f.deletedID = id
-	return nil
+	return f.deleteErr
 }
 func (f *fakeConnections) TestConnection(context.Context, string) error         { return nil }
 func (f *fakeConnections) ToggleConnection(context.Context, string, bool) error { return nil }

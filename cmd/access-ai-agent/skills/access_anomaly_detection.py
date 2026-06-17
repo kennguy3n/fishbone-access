@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_SEVERITIES = ("low", "medium", "high")
 
-# Hours outside this inclusive window are considered off-hours (local time).
+# Business hours are 07:00-19:59 local time (hours 7 through 19); any usage
+# hour outside this window is treated as off-hours.
 BUSINESS_HOURS = range(7, 20)
 # More than this many distinct source regions is suspicious (impossible travel).
 MAX_NORMAL_REGIONS = 2
@@ -37,7 +38,13 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "confidence": 0.8,
         })
 
-    hours = [h for h in payload.get("usage_hours", []) or [] if isinstance(h, int)]
+    # bool is a subclass of int in Python, so guard against it explicitly:
+    # a JSON true/false must not be read as the hour 1/0.
+    hours = [
+        h
+        for h in payload.get("usage_hours", []) or []
+        if isinstance(h, int) and not isinstance(h, bool)
+    ]
     off_hours = sorted({h for h in hours if h not in BUSINESS_HOURS})
     if off_hours:
         anomalies.append({
@@ -48,7 +55,11 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
         })
 
     last_used = payload.get("last_used_days")
-    if isinstance(last_used, int) and last_used > STALE_LAST_USED_DAYS:
+    if (
+        isinstance(last_used, int)
+        and not isinstance(last_used, bool)
+        and last_used > STALE_LAST_USED_DAYS
+    ):
         anomalies.append({
             "kind": "dormant_grant_reactivation",
             "reason": f"grant unused for {last_used} days",

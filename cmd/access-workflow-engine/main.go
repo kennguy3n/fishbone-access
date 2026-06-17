@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kennguy3n/fishbone-access/internal/broker"
 	"github.com/kennguy3n/fishbone-access/internal/config"
 	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
@@ -202,17 +203,39 @@ func run() error {
 	// degradation. The gate path (ShouldRunPeriodic) consults only Enabled + the
 	// persisted dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor
 	// (never called here) and are passed only for parity with ztna-api's Service.
+	var tenancySvc *tenancy.Service
 	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
 	if cfg.Tenancy.HibernationEnabled {
-		gate = tenancy.NewService(gdb, tenancy.Config{
+		tenancySvc = tenancy.NewService(gdb, tenancy.Config{
 			Enabled:       true,
 			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
 			DefaultTier:   cfg.Tenancy.DefaultTier,
 		})
+		gate = tenancySvc
 		logger.Infof(ctx, "access-workflow-engine: tenant hibernation enabled; dormant workspaces' periodic review sweeps are deferred")
 	} else {
 		logger.Infof(ctx, "access-workflow-engine: tenant hibernation DISABLED; every workspace is swept (AlwaysRun gate)")
 	}
+
+	// Shared fair-scheduler for the periodic per-tenant sweeps (credential
+	// rotation + discovery auto-onboarding). It bounds total simultaneous
+	// per-tenant jobs across the WHOLE engine by one global ceiling and, where a
+	// tenancy.Service is available, caps each tenant's slice by its
+	// MaxConcurrentSyncs budget — so a fleet that all comes due in the same tick
+	// (or one noisy tenant) cannot exhaust the DB pool / upstream rate limits.
+	// Both sweeps share ONE scheduler so the ceiling is a real fleet-wide bound,
+	// not per-sweep. The runner also applies the same hibernation gate the
+	// sweeps used before, so dormant tenants still cost nothing. budgets is the
+	// concrete *Service when enabled and an explicit nil interface otherwise
+	// (never a typed-nil) so the no-budget path is taken cleanly.
+	sched := tenancy.NewFairScheduler(cfg.Tenancy.PeriodicConcurrency)
+	var periodicRunner *tenancy.PeriodicRunner
+	if tenancySvc != nil {
+		periodicRunner = tenancy.NewPeriodicRunner(gate, tenancySvc, sched)
+	} else {
+		periodicRunner = tenancy.NewPeriodicRunner(gate, nil, sched)
+	}
+	logger.Infof(ctx, "access-workflow-engine: periodic fair-scheduler ready (global ceiling=%d; 0 ⇒ auto 4×GOMAXPROCS)", cfg.Tenancy.PeriodicConcurrency)
 
 	reviewScheduler, err := workflow_engine.NewReviewScheduler(
 		engine,
@@ -259,7 +282,9 @@ func run() error {
 			return err
 		}
 		rotationScheduler.
-			WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("rotation_sweep") }).
+			WithPeriodicRunner(periodicRunner,
+				func() { metrics.IncPeriodicJobSkipped("rotation_sweep") },
+				func() { metrics.IncPeriodicJobDeferred("rotation_sweep") }).
 			WithReaper(rotReaper)
 		logger.Infof(ctx, "access-workflow-engine: credential rotation sweep enabled (interval=%s)", cfg.Rotation.SweepInterval)
 	} else {
@@ -278,7 +303,7 @@ func run() error {
 	// ACCESS_DISCOVERY_SWEEP_ENABLED=false.
 	var discoverySweeper *discovery.Sweeper
 	if cfg.Discovery.ScheduledSweepEnabled {
-		discEngine := discovery.NewEngine(gdb, pam.NewVault(gdb, connEnc, nil),
+		engineOpts := []discovery.Option{
 			discovery.WithConfig(discovery.Config{
 				ProbeTimeout:     cfg.Discovery.ProbeTimeout,
 				ProbeConcurrency: cfg.Discovery.ProbeConcurrency,
@@ -288,12 +313,34 @@ func run() error {
 			}),
 			discovery.WithEncryptor(connEnc),
 			discovery.WithConnectorResolver(resolver),
-		)
+		}
+		// The scheduled ACTIVE network sweep dials THROUGH connector agents,
+		// whose tunnels terminate on pam-gateway replicas. The workflow engine
+		// holds no tunnels, so it reaches them over the broker's cross-replica
+		// forward plane via a forward-only dialer — wired only when the forward
+		// CLIENT mTLS is configured. Without it the active sweep stays a clean
+		// no-op (the dialer is nil, so RunScheduledSweep skips it) and the
+		// connector-inventory + auto-onboarding sweep is unaffected.
+		if cfg.AgentBroker.ForwardClientConfigured() {
+			forwardTLS, ferr := broker.LoadForwardTLS(cfg.AgentBroker.ForwardCert, cfg.AgentBroker.ForwardKey, cfg.AgentBroker.ForwardCACert)
+			if ferr != nil {
+				return fmt.Errorf("access-workflow-engine: load agent forward mTLS: %w", ferr)
+			}
+			dir := broker.NewGormSessionDirectory(gdb, cfg.AgentBroker.DirectoryStaleAfter)
+			fwdClient := broker.NewForwardClient(forwardTLS, cfg.Discovery.ProbeTimeout)
+			engineOpts = append(engineOpts, discovery.WithDialer(broker.NewForwardOnlyDialer(dir, fwdClient)))
+			logger.Infof(ctx, "access-workflow-engine: scheduled ACTIVE discovery sweep enabled (dials through agents via the cross-replica forward plane)")
+		} else {
+			logger.Infof(ctx, "access-workflow-engine: scheduled ACTIVE discovery sweep DISABLED (agent forward plane not configured); connector inventory + auto-onboarding sweep unaffected")
+		}
+		discEngine := discovery.NewEngine(gdb, pam.NewVault(gdb, connEnc, nil), engineOpts...)
 		discoverySweeper, err = discovery.NewSweeper(discEngine, workflow_engine.NewGormWorkspaceLister(gdb), discovery.Config{SweepInterval: cfg.Discovery.SweepInterval})
 		if err != nil {
 			return err
 		}
-		discoverySweeper.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("discovery_sweep") })
+		discoverySweeper.WithPeriodicRunner(periodicRunner,
+			func() { metrics.IncPeriodicJobSkipped("discovery_sweep") },
+			func() { metrics.IncPeriodicJobDeferred("discovery_sweep") })
 		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep enabled (interval=%s)", cfg.Discovery.SweepInterval)
 	} else {
 		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep DISABLED (ACCESS_DISCOVERY_SWEEP_ENABLED=false)")

@@ -159,6 +159,15 @@ def test_review_unknown_usage_is_manual():
     assert out["decision"] == "manual_review"
 
 
+def test_review_boolean_usage_fields_do_not_certify():
+    # last_used_days=False (0) and usage_event_count=True (1) must not be read
+    # as real numeric usage and auto-certify; bools fall through to manual_review.
+    out = access_review_automation.run(
+        {"resource_ref": "x", "role": "viewer", "last_used_days": False, "usage_event_count": True}
+    )
+    assert out["decision"] == "manual_review"
+
+
 def test_review_llm_cannot_downgrade_to_certify(monkeypatch):
     # Deterministic says escalate (stale); model says certify → stays escalate.
     token = llm.set_test_provider(lambda p, s: json.dumps({"decision": "certify", "reason": "lgtm"}))
@@ -197,6 +206,15 @@ def test_anomaly_off_hours_detected():
     out = access_anomaly_detection.run({"grant_id": "g1", "usage_hours": [2, 3]})
     kinds = {a["kind"] for a in out["anomalies"]}
     assert "off_hours_access" in kinds
+
+
+def test_anomaly_boolean_usage_hour_ignored():
+    # bool is a subclass of int; True/False must not be read as the hour 1/0
+    # and so must not synthesise an off-hours anomaly.
+    out = access_anomaly_detection.run(
+        {"grant_id": "g1", "usage_hours": [True, False]}
+    )
+    assert out["anomalies"] == []
 
 
 # ------------------------ pam_session_risk_assessment ------------------------
@@ -269,6 +287,15 @@ def test_behaviour_off_hours_detected():
     )
     kinds = {a["kind"] for a in out["anomalies"]}
     assert "off_hours_sessions" in kinds
+
+
+def test_behaviour_boolean_start_hour_ignored():
+    # A bool start_hour must not be coerced to the hour 1/0 and flagged.
+    out = pam_behavioural_analytics.run(
+        {"user_external_id": "u", "sessions": [{"start_hour": True}, {"start_hour": False}]}
+    )
+    kinds = {a["kind"] for a in out["anomalies"]}
+    assert "off_hours_sessions" not in kinds
 
 
 def test_behaviour_new_target_against_baseline():

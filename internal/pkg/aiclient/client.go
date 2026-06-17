@@ -192,6 +192,18 @@ func (c *AIClient) SetHTTPClient(h *http.Client) {
 // BaseURL returns the configured agent root URL ("" when unconfigured).
 func (c *AIClient) BaseURL() string { return c.baseURL }
 
+// CallTimeout reports the end-to-end per-invocation timeout (defaultTimeout, or
+// the EnvTimeout override). Callers that run several invocations back-to-back
+// under a single outer deadline use it to size that deadline relative to the
+// configured budget instead of hard-coding one. It falls back to defaultTimeout
+// for a client built without an explicit timeout (e.g. a test http.Client).
+func (c *AIClient) CallTimeout() time.Duration {
+	if c == nil || c.httpClient == nil || c.httpClient.Timeout <= 0 {
+		return defaultTimeout
+	}
+	return c.httpClient.Timeout
+}
+
 // Configured reports whether the client has a base URL to call.
 func (c *AIClient) Configured() bool { return c != nil && c.baseURL != "" }
 

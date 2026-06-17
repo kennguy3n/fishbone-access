@@ -10,7 +10,16 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 )
+
+// fixedBudget is a tenancy.budgetResolver returning the same per-tenant cap for
+// every workspace, letting a scheduler test pin MaxConcurrentSyncs.
+type fixedBudget struct{ max int }
+
+func (b fixedBudget) BudgetFor(context.Context, uuid.UUID) (tenancy.Budget, error) {
+	return tenancy.Budget{MaxConcurrentSyncs: b.max}, nil
+}
 
 // --- rotation test harness ------------------------------------------------
 
@@ -509,6 +518,96 @@ func TestRotationScheduler_HibernationGate(t *testing.T) {
 			t.Fatalf("gate error must fail open and rotate, got n=%d", n)
 		}
 	})
+}
+
+// TestRotationScheduler_PeriodicRunnerSweep wires the production fair-scheduler
+// path (WithPeriodicRunner) end to end: several due targets in one workspace are
+// rotated through the runner's bounded fan-out. The global ceiling is pinned to
+// 1 so the in-memory SQLite test DB (no concurrent writers) is driven serially
+// while still exercising the Sweep launch/Acquire/release/run loop and the
+// rotated-count tally.
+func TestRotationScheduler_PeriodicRunnerSweep(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	const targets = 4
+	ids := make([]uuid.UUID, targets)
+	for i := range ids {
+		tg := seedRotationTarget(t, v, ws, "pg-"+uuid.NewString()[:8], models.PAMProtocolPostgres, "old")
+		upsertIntervalPolicy(t, db, v, ws, tg.ID, now.Add(-48*time.Hour))
+		ids[i] = tg.ID
+	}
+
+	ex := &fakeExecutor{protocol: models.PAMProtocolPostgres, next: Secret{Username: "admin", Password: "rotated"}}
+	eng := newEngineWithExecutor(t, db, v, ex, now)
+	sched, _ := NewRotationScheduler(db, eng, RotationSchedulerConfig{})
+	sched.SetClock(fixedClock(now))
+
+	// Ceiling 1 serialises the fan-out for the single-writer test DB; no
+	// per-tenant cap (nil budgets) so every due target rotates.
+	runner := tenancy.NewPeriodicRunner(fakeGate{run: map[uuid.UUID]bool{ws: true}}, nil, tenancy.NewFairScheduler(1))
+	dormantSkips, budgetSkips := 0, 0
+	sched.WithPeriodicRunner(runner, func() { dormantSkips++ }, func() { budgetSkips++ })
+
+	n, err := sched.sweepInterval(context.Background())
+	if err != nil {
+		t.Fatalf("sweepInterval: %v", err)
+	}
+	if n != targets {
+		t.Fatalf("rotated %d targets via Sweep, want %d", n, targets)
+	}
+	if dormantSkips != 0 || budgetSkips != 0 {
+		t.Fatalf("unexpected skips (dormant=%d budget=%d), want 0/0", dormantSkips, budgetSkips)
+	}
+	for _, id := range ids {
+		if got := openPassword(t, v, ws, id); got != "rotated" {
+			t.Fatalf("target %s password = %q, want rotated", id, got)
+		}
+	}
+}
+
+// TestRotationScheduler_PeriodicRunnerBudgetDefersTarget verifies the budget
+// branch of the Sweep path: with the tenant's only concurrency slot pre-held
+// (cap 1) the due target is deferred (onSkipBudget fires) and NOT rotated, so a
+// later tick can pick it up — deferral never drops a rotation.
+func TestRotationScheduler_PeriodicRunnerBudgetDefersTarget(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+	v := NewVault(db, newTestEncryptor(t), nil)
+	target := seedRotationTarget(t, v, ws, "pg", models.PAMProtocolPostgres, "old")
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	upsertIntervalPolicy(t, db, v, ws, target.ID, now.Add(-48*time.Hour))
+
+	ex := &fakeExecutor{protocol: models.PAMProtocolPostgres, next: Secret{Password: "rotated"}}
+	eng := newEngineWithExecutor(t, db, v, ex, now)
+	sched, _ := NewRotationScheduler(db, eng, RotationSchedulerConfig{})
+	sched.SetClock(fixedClock(now))
+
+	fair := tenancy.NewFairScheduler(8)
+	hold, ok := fair.TryAcquire(ws, 1) // occupy the tenant's only slot (cap 1)
+	if !ok {
+		t.Fatal("pre-hold acquire should succeed")
+	}
+	defer hold()
+	runner := tenancy.NewPeriodicRunner(fakeGate{run: map[uuid.UUID]bool{ws: true}}, fixedBudget{max: 1}, fair)
+	dormantSkips, budgetSkips := 0, 0
+	sched.WithPeriodicRunner(runner, func() { dormantSkips++ }, func() { budgetSkips++ })
+
+	n, err := sched.sweepInterval(context.Background())
+	if err != nil {
+		t.Fatalf("sweepInterval: %v", err)
+	}
+	if n != 0 || ex.rotateCalls != 0 {
+		t.Fatalf("over-budget target rotated (n=%d rotateCalls=%d), want 0", n, ex.rotateCalls)
+	}
+	if budgetSkips != 1 || dormantSkips != 0 {
+		t.Fatalf("skips = budget:%d dormant:%d, want budget:1 dormant:0", budgetSkips, dormantSkips)
+	}
+	if got := openPassword(t, v, ws, target.ID); got != "old" {
+		t.Fatalf("deferred target password = %q, want unchanged old", got)
+	}
 }
 
 func TestRotationScheduler_CheckinDueSelection(t *testing.T) {

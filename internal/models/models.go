@@ -138,6 +138,65 @@ type PAMTOTPUsedCode struct {
 // TableName pins the table name for the verifier and cleanup loop.
 func (PAMTOTPUsedCode) TableName() string { return "pam_totp_used_codes" }
 
+// WebAuthnCredential stores a user's enrolled WebAuthn/FIDO2 authenticator
+// (a roaming security key or a platform authenticator) used by the step-up MFA
+// WebAuthn verifier (see internal/services/mfa). A user may enrol several
+// authenticators per workspace; each is one row. Like every other model the
+// credential is workspace-scoped so an authenticator never authorizes across
+// tenants even if iam-core subject ids collide between workspaces.
+//
+// CredentialID is the raw (non-encoded) credential id the authenticator
+// returns; it is the lookup key WebAuthn uses to select which stored public key
+// to verify an assertion against, so it is uniquely indexed per
+// (workspace, user) and kept in the clear. Sealed is the AES-256-GCM envelope of
+// the full webauthn.Credential record (public key, attestation, transports,
+// flags, sign counter) bound via AAD to (workspace, user, credential_id); the
+// public key material is never persisted in plaintext, mirroring how the TOTP
+// secret and connector credentials are sealed at rest. SignCount and
+// CloneWarning mirror the authenticator's monotonic signature counter and the
+// library's clone-detection verdict for observability and admin display; they
+// are also carried inside the sealed record (the source of truth the verifier
+// re-seals on each successful assertion).
+type WebAuthnCredential struct {
+	Base
+	WorkspaceID  uuid.UUID  `gorm:"type:uuid;not null;index:idx_webauthn_cred_ws_user,priority:1;uniqueIndex:idx_webauthn_cred_ws_credid,priority:1,where:deleted_at IS NULL" json:"workspace_id"`
+	UserID       string     `gorm:"type:varchar(255);not null;index:idx_webauthn_cred_ws_user,priority:2" json:"user_id"`
+	CredentialID []byte     `gorm:"type:bytea;not null;uniqueIndex:idx_webauthn_cred_ws_credid,priority:2,where:deleted_at IS NULL" json:"-"`
+	Sealed       string     `gorm:"type:text;not null" json:"-"`
+	FriendlyName string     `gorm:"type:varchar(255)" json:"friendly_name"`
+	SignCount    uint32     `gorm:"not null;default:0" json:"sign_count"`
+	CloneWarning bool       `gorm:"not null;default:false" json:"clone_warning"`
+	AAGUID       []byte     `gorm:"type:bytea" json:"-"`
+	LastUsedAt   *time.Time `json:"last_used_at,omitempty"`
+}
+
+// TableName pins the table name for the verifier's explicit lookups.
+func (WebAuthnCredential) TableName() string { return "webauthn_credentials" }
+
+// WebAuthnChallenge holds the in-flight ceremony state (the server-issued
+// random challenge plus the allowed-credential list and user-verification
+// requirement) between a Begin* call and its matching Finish/Verify. WebAuthn's
+// security depends on the challenge being server-generated, single-use, and
+// short-lived, so the row is keyed by (workspace_id, user_id, ceremony) — one
+// outstanding registration and one outstanding authentication challenge per
+// user — re-issued (upserted) on each Begin and atomically consumed (deleted)
+// on use. ExpiresAt bounds the ceremony; an expired or already-consumed
+// challenge is rejected (fail closed). The challenge is a nonce, not a
+// long-term secret, so SessionData is stored as plain JSON; possession of it
+// alone cannot forge an assertion (that needs the authenticator's private key).
+type WebAuthnChallenge struct {
+	WorkspaceID uuid.UUID `gorm:"type:uuid;primaryKey" json:"workspace_id"`
+	UserID      string    `gorm:"type:varchar(255);primaryKey" json:"user_id"`
+	Ceremony    string    `gorm:"type:varchar(20);primaryKey" json:"ceremony"`
+	SessionData []byte    `gorm:"type:bytea;not null" json:"-"`
+	ExpiresAt   time.Time `gorm:"not null;index:idx_webauthn_challenges_expires_at" json:"expires_at"`
+	CreatedAt   time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+// TableName pins the table name for the verifier's ceremony store.
+func (WebAuthnChallenge) TableName() string { return "webauthn_challenges" }
+
 // AccessConnector is a configured integration with an external identity or
 // resource provider. SecretEnvelope is an AES-GCM sealed envelope (never
 // plaintext); SecretKeyVersion records which per-workspace DEK version sealed
@@ -153,6 +212,11 @@ type AccessConnector struct {
 	SecretEnvelope   string         `json:"-"`
 	SecretKeyVersion int            `gorm:"not null;default:1" json:"-"`
 	LastSyncedAt     *time.Time     `json:"last_synced_at,omitempty"`
+	// SSOConnectionID is the id of the iam-core SSO Connection this connector
+	// federates (created via the SSO federation service). Empty when the
+	// connector does not federate SSO. It is persisted so teardown can remove
+	// the iam-core connection (no orphans) and re-configuration is idempotent.
+	SSOConnectionID string `gorm:"not null;default:''" json:"sso_connection_id,omitempty"`
 }
 
 // AccessJob is a unit of background work (sync, provision, revoke) for the
@@ -421,6 +485,8 @@ func All() []any {
 		&WorkspaceMember{},
 		&UserTOTPSecret{},
 		&PAMTOTPUsedCode{},
+		&WebAuthnCredential{},
+		&WebAuthnChallenge{},
 		&CertificationCampaign{},
 		&CertificationItem{},
 		// SoD analytics, anomaly evidence, and contractor lifecycle.

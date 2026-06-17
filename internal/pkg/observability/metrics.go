@@ -41,9 +41,10 @@ type Metrics struct {
 	// Hibernation (scale-to-zero) instruments. All are AGGREGATE — none is
 	// labelled by tenant id — so the series count stays bounded at 5,000
 	// tenants, mirroring the cardinality discipline of the usage counter above.
-	hibernationDormant prometheus.Gauge
-	hibernationSkipped *prometheus.CounterVec
-	hibernationWakeups prometheus.Counter
+	hibernationDormant  prometheus.Gauge
+	hibernationSkipped  *prometheus.CounterVec
+	hibernationDeferred *prometheus.CounterVec
+	hibernationWakeups  prometheus.Counter
 
 	// Session-recording forensic-store instruments. All AGGREGATE (no tenant id
 	// label) to hold cardinality at 5,000 tenants. recordingsIndexed/Pruned
@@ -120,6 +121,12 @@ func NewMetrics() *Metrics {
 			Name:      "periodic_jobs_skipped_total",
 			Help:      "Periodic per-tenant jobs skipped because the tenant is dormant, by worker (e.g. connector_sync, review_sweep). This is the realized cost saving — every increment is work a periodic worker did NOT do for a hibernated tenant. Labelled by the small fixed worker set only, never by tenant id.",
 		}, []string{"worker"}),
+		hibernationDeferred: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "shieldnet",
+			Subsystem: "hibernation",
+			Name:      "periodic_jobs_deferred_total",
+			Help:      "Periodic per-tenant jobs deferred this tick because the tenant (or the fleet) was at its concurrency budget under the fair-scheduler, by worker (e.g. rotation_sweep, discovery_sweep). Unlike a dormant skip this is NOT a cost saving — the work is still due and is re-attempted next tick; a sustained non-zero rate means the global ceiling (ACCESS_TENANCY_PERIODIC_CONCURRENCY) or a per-tenant budget is too tight for the offered load. Labelled by the small fixed worker set only, never by tenant id.",
+		}, []string{"worker"}),
 		hibernationWakeups: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "shieldnet",
 			Subsystem: "hibernation",
@@ -146,7 +153,7 @@ func NewMetrics() *Metrics {
 		}),
 	}
 	reg.MustRegister(m.reqTotal, m.reqDuration, m.inFlight, m.throttled, m.usageEvents, m.quotaBreaches, m.failOpen,
-		m.hibernationDormant, m.hibernationSkipped, m.hibernationWakeups,
+		m.hibernationDormant, m.hibernationSkipped, m.hibernationDeferred, m.hibernationWakeups,
 		m.recordingsIndexed, m.recordingsPruned, m.recordingsTamper)
 	return m
 }
@@ -193,6 +200,19 @@ func (m *Metrics) IncPeriodicJobSkipped(worker string) {
 		worker = "unknown"
 	}
 	m.hibernationSkipped.WithLabelValues(worker).Inc()
+}
+
+// IncPeriodicJobDeferred records one periodic per-tenant job deferred because
+// the tenant or the fleet was at its concurrency budget under the fair-
+// scheduler, labelled by the worker name ONLY (a small fixed set such as
+// "rotation_sweep" / "discovery_sweep"), never the tenant id. Distinct from
+// IncPeriodicJobSkipped (dormant): a deferral is work still owed, re-attempted
+// next tick. Wire it where a sweep honours the fair-scheduler's budget verdict.
+func (m *Metrics) IncPeriodicJobDeferred(worker string) {
+	if worker == "" {
+		worker = "unknown"
+	}
+	m.hibernationDeferred.WithLabelValues(worker).Inc()
 }
 
 // IncWakeEvents records one lazy wake (dormant->active) driven by real tenant

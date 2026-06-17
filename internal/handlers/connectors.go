@@ -44,8 +44,13 @@ func newConnectorHandlers(deps Deps) *connectorHandlers {
 	))
 	return &connectorHandlers{
 		catalogue: access.NewAccessConnectorCatalogueService(deps.DB),
-		mgmt:      access.NewConnectorManagementService(deps.DB, deps.ConnectorEncryptor, queue),
-		setup:     connectorsetup.NewService(deps.DB, deps.AI),
+		mgmt: access.NewConnectorManagementService(deps.DB, deps.ConnectorEncryptor, queue,
+			// SSO federation is wired off the iam-core management client. When it
+			// is nil (no iam-core management credentials) NewSSOFederationService
+			// yields a disabled service, so the /sso endpoints return 503 rather
+			// than panicking.
+			access.WithSSOFederation(access.NewSSOFederationService(deps.SSOConnections))),
+		setup: connectorsetup.NewService(deps.DB, deps.AI),
 	}
 }
 
@@ -79,6 +84,10 @@ func (h *connectorHandlers) register(g *gin.RouterGroup) {
 	g.GET("/connectors/:connectorID", middleware.RequirePermission(authz.PermConnectorRead), h.getConnector)
 	g.POST("/connectors/:connectorID/test", middleware.RequirePermission(authz.PermConnectorManage), h.testConnector)
 	g.POST("/connectors/:connectorID/sync", middleware.RequirePermission(authz.PermConnectorManage), h.syncConnector)
+	// SSO federation: create / tear down the connector's iam-core SSO
+	// Connection. Distinct from the /sso-status enforcement checker.
+	g.POST("/connectors/:connectorID/sso", middleware.RequirePermission(authz.PermConnectorManage), h.configureConnectorSSO)
+	g.DELETE("/connectors/:connectorID/sso", middleware.RequirePermission(authz.PermConnectorManage), h.removeConnectorSSO)
 	g.DELETE("/connectors/:connectorID", middleware.RequirePermission(authz.PermConnectorManage), h.disconnectConnector)
 }
 
@@ -326,6 +335,79 @@ func (h *connectorHandlers) syncConnector(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"job_id": jobID})
+}
+
+// ssoConnectionView is the SAFE projection of an iam-core SSO Connection
+// returned to the operator. It deliberately omits Options, which carry the
+// registered OIDC client_secret and other federation secrets that must never be
+// echoed back over the API.
+type ssoConnectionView struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Strategy string `json:"strategy"`
+	Enabled  bool   `json:"enabled"`
+}
+
+// configureConnectorSSO federates the connector's customer IdP into iam-core,
+// creating (or re-creating) the corresponding SSO Connection. A connector that
+// does not federate SSO returns 422 (ErrSSOFederationUnsupported), and a
+// deployment without iam-core management credentials returns 503
+// (ErrSSOFederationDisabled).
+func (h *connectorHandlers) configureConnectorSSO(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "connectorID")
+	if !ok {
+		return
+	}
+	conn, err := h.mgmt.ConfigureSSOFederation(c.Request.Context(), ws, id)
+	if err != nil {
+		h.failSSO(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, ssoConnectionView{
+		ID:       conn.ID,
+		Name:     conn.Name,
+		Strategy: conn.Strategy,
+		Enabled:  conn.Enabled,
+	})
+}
+
+// removeConnectorSSO tears down the connector's iam-core SSO Connection. It is
+// idempotent: a connector with no federated connection returns 204.
+func (h *connectorHandlers) removeConnectorSSO(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(c, "connectorID")
+	if !ok {
+		return
+	}
+	if err := h.mgmt.RemoveSSOFederation(c.Request.Context(), ws, id); err != nil {
+		h.failSSO(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// failSSO maps the SSO-federation sentinels to HTTP status codes, falling
+// through to the shared connector fail mapper for the rest (not-found, etc.).
+func (h *connectorHandlers) failSSO(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, access.ErrSSOFederationDisabled):
+		// The deployment has no iam-core management credentials: the feature is
+		// unavailable here, not a client error.
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "sso federation is not configured for this deployment"})
+	case errors.Is(err, access.ErrSSOFederationUnsupported):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": "this connector does not federate SSO"})
+	case errors.Is(err, access.ErrSSOStrategyUnknown):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+	default:
+		h.fail(c, err)
+	}
 }
 
 func (h *connectorHandlers) disconnectConnector(c *gin.Context) {

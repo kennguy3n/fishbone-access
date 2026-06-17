@@ -61,6 +61,7 @@ func newLifecycleHandlers(deps Deps) *lifecycleHandlers {
 	if ai == nil {
 		ai = aiclient.NewAIClient("", nil, "")
 	}
+	policies.SetRecommender(ai)
 	return &lifecycleHandlers{
 		requests:    requests,
 		workflow:    workflow,
@@ -123,6 +124,7 @@ func (h *lifecycleHandlers) register(g *gin.RouterGroup, stepUp mfa.MFAVerifier)
 	// un-persisted definition, so an operator previews a sweeping change before
 	// touching the data plane.
 	g.POST("/policies/simulate-definition", middleware.RequirePermission(authz.PermPolicySimulate), h.simulateDefinition)
+	g.POST("/policies/recommend", middleware.RequirePermission(authz.PermPolicySimulate), h.recommendPolicy)
 
 	// Separation-of-Duties toxic-combination ruleset.
 	g.POST("/sod-rules", middleware.RequirePermission(authz.PermPolicyWrite), h.createSodRule)
@@ -648,6 +650,33 @@ func (h *lifecycleHandlers) simulateDefinition(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"simulation": sim})
+}
+
+type recommendPolicyBody struct {
+	Resource string   `json:"resource"`
+	Roles    []string `json:"roles"`
+	Context  string   `json:"context"`
+}
+
+// recommendPolicy returns an advisory, human-readable rationale from the
+// policy_recommendation skill to guide an operator authoring a policy. It is
+// advisory and fail-OPEN: a model outage yields an empty recommendation (HTTP
+// 200), never a 5xx, so policy authoring is never blocked by an AI dependency.
+func (h *lifecycleHandlers) recommendPolicy(c *gin.Context) {
+	ws, ok := workspace(c)
+	if !ok {
+		return
+	}
+	var body recommendPolicyBody
+	if !bindOptional(c, &body) {
+		return
+	}
+	rec := h.policies.Recommend(c.Request.Context(), ws, lifecycle.PolicyRecommendationInput{
+		Resource: body.Resource,
+		Roles:    body.Roles,
+		Context:  body.Context,
+	})
+	c.JSON(http.StatusOK, gin.H{"recommendation": rec})
 }
 
 // --- separation of duties ---
