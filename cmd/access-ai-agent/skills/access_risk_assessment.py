@@ -98,7 +98,11 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, list[str]]:
         factors.append(SENSITIVE_RESOURCE_FACTOR)
 
     duration = payload.get("duration_hours")
-    if isinstance(duration, int) and duration > 168:  # standing access (> 1 week)
+    if (
+        isinstance(duration, int)
+        and not isinstance(duration, bool)
+        and duration > 168
+    ):  # standing access (> 1 week)
         factors.append(f"long_duration_hours:{duration}")
         score = _max_score(score, "medium")
 

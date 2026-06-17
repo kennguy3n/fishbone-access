@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_SEVERITIES = ("low", "medium", "high")
 
-# Hours outside this inclusive window are treated as off-hours (local time).
+# Business hours are 07:00-19:59 local time (hours 7 through 19); a session
+# starting outside this window is treated as off-hours.
 BUSINESS_HOURS = range(7, 20)
 # A session command count this many times the baseline average is a volume spike.
 VOLUME_SPIKE_FACTOR = 3.0
@@ -39,11 +40,15 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
     baseline: dict[str, Any] = baseline_raw if isinstance(baseline_raw, dict) else {}
 
     # Off-hours sessions: any session whose start hour is outside business hours.
+    # isinstance(_, int) is true for bool too, so reject bools explicitly: a
+    # JSON true/false start_hour must not be read as the hour 1/0.
     off_hours = sorted(
         {
             int(s["start_hour"])
             for s in sessions
-            if isinstance(s.get("start_hour"), int) and s["start_hour"] not in BUSINESS_HOURS
+            if isinstance(s.get("start_hour"), int)
+            and not isinstance(s.get("start_hour"), bool)
+            and s["start_hour"] not in BUSINESS_HOURS
         }
     )
     if off_hours:
@@ -69,12 +74,18 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
     # Volume spike: a session whose command count dwarfs the baseline average.
     avg_commands = baseline.get("avg_command_count")
-    if isinstance(avg_commands, (int, float)) and avg_commands > 0:
+    if (
+        isinstance(avg_commands, (int, float))
+        and not isinstance(avg_commands, bool)
+        and avg_commands > 0
+    ):
         threshold = max(avg_commands * VOLUME_SPIKE_FACTOR, VOLUME_SPIKE_MIN_COMMANDS)
         spikes = [
             int(s["command_count"])
             for s in sessions
-            if isinstance(s.get("command_count"), int) and s["command_count"] > threshold
+            if isinstance(s.get("command_count"), int)
+            and not isinstance(s.get("command_count"), bool)
+            and s["command_count"] > threshold
         ]
         if spikes:
             anomalies.append({

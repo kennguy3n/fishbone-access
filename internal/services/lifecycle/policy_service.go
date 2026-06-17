@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
+	"github.com/kennguy3n/fishbone-access/internal/pkg/aiclient"
 )
 
 // SimulationResult is the combined output of a policy simulation: the impact
@@ -33,6 +34,7 @@ type PolicyService struct {
 	impact   *ImpactResolver
 	conflict *ConflictDetector
 	sod      *SodEngine
+	ai       *aiclient.AIClient
 	now      func() time.Time
 }
 
@@ -52,6 +54,66 @@ func (s *PolicyService) SetClock(now func() time.Time) {
 	if now != nil {
 		s.now = now
 	}
+}
+
+// SetRecommender attaches the AI client used by Recommend. It is optional: with
+// no client (or an unconfigured one) Recommend returns an empty advisory rather
+// than failing, so policy authoring never depends on the agent being reachable.
+func (s *PolicyService) SetRecommender(ai *aiclient.AIClient) {
+	s.ai = ai
+}
+
+// PolicyRecommendationInput is the contract for Recommend: the resource a policy
+// would govern, the roles in scope, and free-text context describing intent.
+type PolicyRecommendationInput struct {
+	Resource string
+	Roles    []string
+	Context  string
+}
+
+// Recommend consults the policy_recommendation skill for a human-readable
+// rationale to guide an operator drafting a policy. It is advisory and
+// fail-open: with no configured agent it returns an empty string (callers treat
+// an empty recommendation as "no AI guidance available"), and an agent outage is
+// logged inside the aiclient fallback rather than surfaced as an error.
+func (s *PolicyService) Recommend(ctx context.Context, workspaceID uuid.UUID, in PolicyRecommendationInput) string {
+	if s.ai == nil || !s.ai.Configured() {
+		return ""
+	}
+	resource := strings.TrimSpace(in.Resource)
+	inputContext := strings.TrimSpace(in.Context)
+	// Trim and drop blank role entries so whitespace-only roles ("", "  ")
+	// neither count as signal in the empty-body guard below nor reach the agent.
+	roles := make([]string, 0, len(in.Roles))
+	for _, r := range in.Roles {
+		if r = strings.TrimSpace(r); r != "" {
+			roles = append(roles, r)
+		}
+	}
+	// No signal at all (empty body): there is nothing for the model to reason
+	// about, so skip the round-trip and return "no guidance" rather than spend an
+	// agent call on an empty payload. Partial input (any one of the three) is
+	// still forwarded — an operator can ask with as little context as they have.
+	if resource == "" && inputContext == "" && len(roles) == 0 {
+		return ""
+	}
+	return aiclient.RecommendPolicyWithFallback(ctx, s.ai, s.resolveAITier(ctx, workspaceID), aiclient.PolicyRecommendationInput{
+		WorkspaceID: workspaceID.String(),
+		Resource:    resource,
+		Roles:       roles,
+		Context:     inputContext,
+	})
+}
+
+// resolveAITier maps the workspace's plan to the AI tier the agent uses to pick
+// a model via the shared aiclient.TierForPlan mapping, failing safe to the
+// deterministic tier on a missing/unknown workspace.
+func (s *PolicyService) resolveAITier(ctx context.Context, workspaceID uuid.UUID) string {
+	var ws models.Workspace
+	if err := s.db.WithContext(ctx).Select("plan").Where("id = ?", workspaceID).Take(&ws).Error; err != nil {
+		return aiclient.TierForPlan("")
+	}
+	return aiclient.TierForPlan(ws.Plan)
 }
 
 // CreatePolicyInput is the contract for CreatePolicy.

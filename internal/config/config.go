@@ -528,7 +528,17 @@ func (c AgentBrokerConfig) Configured() bool { return c.CACert != "" }
 // present, otherwise the relay stays single-replica (a non-local agent fails
 // closed) — safe-by-default.
 func (c AgentBrokerConfig) CrossReplicaConfigured() bool {
-	return c.ForwardCACert != "" && c.ForwardCert != "" && c.ForwardKey != "" && c.ForwardAddr != ""
+	return c.ForwardClientConfigured() && c.ForwardAddr != ""
+}
+
+// ForwardClientConfigured reports whether the inter-replica forward CLIENT mTLS
+// material is present (the three forward certs), INDEPENDENT of an advertised
+// ForwardAddr. A process that only ever INITIATES forwards and never owns a
+// tunnel — the workflow engine running scheduled active discovery sweeps, which
+// dials through agents owned by pam-gateway replicas and is never forwarded TO —
+// needs only the client identity, not a listen/advertise address.
+func (c AgentBrokerConfig) ForwardClientConfigured() bool {
+	return c.ForwardCACert != "" && c.ForwardCert != "" && c.ForwardKey != ""
 }
 
 // WebAccessConfig tunes the clientless browser-access bridge (web SSH terminal
