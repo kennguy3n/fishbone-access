@@ -3,6 +3,7 @@ package pam
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/logger"
+	"github.com/kennguy3n/fishbone-access/internal/services/tenancy"
 )
 
 // hibernationGate decides whether a tenant's PERIODIC work should run now. The
@@ -65,6 +67,14 @@ type RotationScheduler struct {
 	gate          hibernationGate
 	onSkipDormant func()
 	reaper        dynamicReaper
+
+	// runner, when set, replaces the inline sequential rotate loop with a
+	// bounded-parallel fair-scheduled fan-out (see WithPeriodicRunner). It owns
+	// the hibernation gate and per-tenant/global concurrency budgets, so the
+	// local gate above is used only on the nil-runner (degraded / unit-test)
+	// path. onSkipBudget observes a target deferred by the concurrency budget.
+	runner       *tenancy.PeriodicRunner
+	onSkipBudget func()
 }
 
 // NewRotationScheduler wires the scheduler. db and engine are required.
@@ -96,6 +106,23 @@ func (s *RotationScheduler) WithHibernationGate(gate hibernationGate, onSkipDorm
 // WithReaper attaches the dynamic-credential reaper run each tick.
 func (s *RotationScheduler) WithReaper(r dynamicReaper) *RotationScheduler {
 	s.reaper = r
+	return s
+}
+
+// WithPeriodicRunner routes the sweep through the shared tenancy fair-scheduler
+// so a tick's due rotations run with BOUNDED PARALLELISM instead of one at a
+// time: many targets per tenant rotate concurrently up to the tenant's
+// MaxConcurrentSyncs budget, and total in-flight across the fleet stays under
+// the global ceiling — turning a long serial sweep into a short fair one while
+// protecting the shared DB pool / upstreams. The runner also applies the
+// hibernation gate, so a runner-wired scheduler need not also set
+// WithHibernationGate. onSkipDormant / onSkipBudget observe the two defer
+// reasons for metrics. A nil runner preserves the exact inline sequential
+// behaviour (used by the degraded build and the unit tests).
+func (s *RotationScheduler) WithPeriodicRunner(runner *tenancy.PeriodicRunner, onSkipDormant, onSkipBudget func()) *RotationScheduler {
+	s.runner = runner
+	s.onSkipDormant = onSkipDormant
+	s.onSkipBudget = onSkipBudget
 	return s
 }
 
@@ -202,9 +229,34 @@ func (s *RotationScheduler) sweepCheckin(ctx context.Context) (int, error) {
 	return s.rotateDue(ctx, due, models.RotationTriggerCheckin), nil
 }
 
-// rotateDue rotates each due target, applying the hibernation gate once per
-// workspace and continuing past any single failure. Returns the count rotated.
+// rotateDue rotates each due target and returns the count rotated. With a
+// fair-scheduler wired (production) it fans the work out with bounded
+// parallelism; otherwise it falls back to the inline sequential sweep.
 func (s *RotationScheduler) rotateDue(ctx context.Context, due []dueRotation, trigger string) int {
+	if s.runner == nil {
+		return s.rotateDueInline(ctx, due, trigger)
+	}
+	return s.rotateDueScheduled(ctx, due, trigger)
+}
+
+// rotateOne rotates a single due target, logging and swallowing the error so a
+// single target's failure never starves the rest of the sweep. Returns whether
+// the rotation succeeded.
+func (s *RotationScheduler) rotateOne(ctx context.Context, d dueRotation, trigger string) bool {
+	leaseID := d.LeaseID
+	if trigger != models.RotationTriggerCheckin {
+		leaseID = nil
+	}
+	if _, err := s.engine.RotateTarget(ctx, d.WorkspaceID, d.TargetID, trigger, s.cfg.Actor, leaseID); err != nil {
+		logger.Warnf(ctx, "pam: rotation scheduler: rotate target %s (%s): %v", d.TargetID, trigger, err)
+		return false
+	}
+	return true
+}
+
+// rotateDueInline rotates each due target one at a time, applying the local
+// hibernation gate once per workspace and continuing past any single failure.
+func (s *RotationScheduler) rotateDueInline(ctx context.Context, due []dueRotation, trigger string) int {
 	gateCache := map[uuid.UUID]bool{}
 	rotated := 0
 	for _, d := range due {
@@ -219,17 +271,41 @@ func (s *RotationScheduler) rotateDue(ctx context.Context, due []dueRotation, tr
 			}
 			continue
 		}
-		leaseID := d.LeaseID
-		if trigger != models.RotationTriggerCheckin {
-			leaseID = nil
+		if s.rotateOne(ctx, d, trigger) {
+			rotated++
 		}
-		if _, err := s.engine.RotateTarget(ctx, d.WorkspaceID, d.TargetID, trigger, s.cfg.Actor, leaseID); err != nil {
-			logger.Warnf(ctx, "pam: rotation scheduler: rotate target %s (%s): %v", d.TargetID, trigger, err)
-			continue
-		}
-		rotated++
 	}
 	return rotated
+}
+
+// rotateDueScheduled fans the due rotations out through the fair-scheduler:
+// targets rotate concurrently up to each tenant's per-tenant budget and the
+// fleet-wide global ceiling. A target deferred by the budget stays due
+// (next_rotation_at only advances on an attempt) and is re-selected next tick,
+// so deferral never drops a rotation. The hibernation gate and budgets live in
+// the runner; this method only builds the jobs and tallies the outcomes.
+func (s *RotationScheduler) rotateDueScheduled(ctx context.Context, due []dueRotation, trigger string) int {
+	var rotated atomic.Int64
+	jobs := make([]tenancy.Job, 0, len(due))
+	for _, d := range due {
+		jobs = append(jobs, tenancy.Job{
+			WorkspaceID: d.WorkspaceID,
+			Run: func(ctx context.Context) error {
+				if s.rotateOne(ctx, d, trigger) {
+					rotated.Add(1)
+				}
+				return nil
+			},
+		})
+	}
+	s.runner.Sweep(ctx, jobs, func(out tenancy.Outcome, _ error) {
+		if out == tenancy.OutcomeSkippedDormant && s.onSkipDormant != nil {
+			s.onSkipDormant()
+		} else if out == tenancy.OutcomeSkippedBudget && s.onSkipBudget != nil {
+			s.onSkipBudget()
+		}
+	})
+	return int(rotated.Load())
 }
 
 // shouldRotate applies the hibernation gate FAIL-OPEN: defer only when a gate

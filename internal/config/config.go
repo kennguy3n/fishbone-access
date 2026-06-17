@@ -240,6 +240,15 @@ type TenancyConfig struct {
 	// constrained tier) so an un-tiered tenant cannot consume an active
 	// tenant's share.
 	DefaultTier string
+	// PeriodicConcurrency is the GLOBAL ceiling on simultaneous periodic
+	// per-tenant jobs (credential rotations, discovery sweeps) across the whole
+	// fleet, enforced by the shared tenancy fair-scheduler. It protects shared
+	// resources (DB pool, upstream rate limits, CPU) when many tenants come due
+	// in the same tick, while the per-tenant MaxConcurrentSyncs budget keeps any
+	// one tenant from claiming an unfair slice of it. Read from
+	// ACCESS_TENANCY_PERIODIC_CONCURRENCY; defaults to 0, which the scheduler
+	// resolves to 4×GOMAXPROCS (a sane bound for IO-bound connector work).
+	PeriodicConcurrency int
 }
 
 // RecordingsConfig tunes the searchable session-recording forensic store's
@@ -686,6 +695,7 @@ func Load() Config {
 			ActivityFlushInterval: getDuration("ACCESS_TENANCY_ACTIVITY_FLUSH", 60*time.Second),
 			ActivityQueueSize:     getInt("ACCESS_TENANCY_ACTIVITY_QUEUE_SIZE", 8192),
 			DefaultTier:           getEnv("ACCESS_TENANCY_DEFAULT_TIER", "trial"),
+			PeriodicConcurrency:   getInt("ACCESS_TENANCY_PERIODIC_CONCURRENCY", 0),
 		},
 		RateLimit: RateLimitConfig{
 			Enabled:           getBool("ACCESS_TENANT_RATE_LIMIT_ENABLED", true),
