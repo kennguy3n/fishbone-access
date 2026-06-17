@@ -139,13 +139,18 @@ func run() error {
 
 	sup := gateway.NewSupervisor(listeners)
 	logger.Infof(ctx, "pam-gateway: ready; serving %d protocol listeners", len(listeners))
-	if err := sup.Run(ctx); err != nil {
-		return fmt.Errorf("supervisor: %w", err)
-	}
+	runErr := sup.Run(ctx)
 	// Listeners have stopped; flush any in-flight detached post-session advisory
 	// scoring before the deferred database pool close so those audit writes are
-	// not lost on shutdown.
+	// not lost on shutdown. This runs on the error path too: listeners bind
+	// sequentially, so a late bind failure can return an error after an earlier
+	// listener briefly served traffic and spawned scoring goroutines — those are
+	// tracked by sessions.bg, not the supervisor's wait group, so they must be
+	// drained here regardless of how Run returned.
 	sessions.Drain()
+	if runErr != nil {
+		return fmt.Errorf("supervisor: %w", runErr)
+	}
 	logger.Infof(context.Background(), "pam-gateway: shut down cleanly")
 	return nil
 }
