@@ -192,8 +192,56 @@ type Config struct {
 	// listen/advertise addresses). OFF by default.
 	AgentBroker AgentBrokerConfig
 
+	// PostgresKerberos configures upstream GSSAPI/Kerberos authentication from
+	// the PAM gateway's Postgres proxy to clusters whose pg_hba demands `gss`.
+	// OFF by default.
+	PostgresKerberos PostgresKerberosConfig
+
 	// ShutdownTimeout bounds graceful HTTP shutdown.
 	ShutdownTimeout time.Duration
+}
+
+// PostgresKerberosConfig configures GSSAPI/Kerberos authentication from the PAM
+// gateway's Postgres proxy to upstream clusters whose pg_hba demands `gss`. The
+// gateway authenticates with a SINGLE Kerberos service identity (its keytab
+// principal); upstream pg_ident maps that principal to the target DB role. This
+// is upstream *authentication* and is distinct from the operator hop, which
+// stays on the one-shot connect token + TLS — the proxy still declines
+// operator-side GSS encryption in favour of TLS. OFF by default.
+type PostgresKerberosConfig struct {
+	// Enabled gates registration of the process-global GSSAPI provider. When
+	// false the proxy refuses any upstream that demands `gss`. Read from
+	// ACCESS_PG_KERBEROS_ENABLED; defaults to false.
+	Enabled bool
+	// Krb5ConfPath is the krb5.conf describing the realm/KDC topology. Read from
+	// ACCESS_PG_KERBEROS_KRB5_CONF; defaults to /etc/krb5.conf.
+	Krb5ConfPath string
+	// KeytabPath is the gateway's keytab holding the service principal's keys.
+	// Read from ACCESS_PG_KERBEROS_KEYTAB.
+	KeytabPath string
+	// Principal is the gateway's Kerberos principal in user@REALM form, e.g.
+	// "shieldnet-gw@EXAMPLE.COM". Read from ACCESS_PG_KERBEROS_PRINCIPAL.
+	Principal string
+	// Service is the default Kerberos service name used to build the upstream
+	// SPN (service/host) when a target does not name one. Read from
+	// ACCESS_PG_KERBEROS_SERVICE; defaults to "postgres".
+	Service string
+}
+
+// Configured reports whether the Kerberos provider can be registered: enabled
+// with a keytab and a principal.
+func (c PostgresKerberosConfig) Configured() bool {
+	return c.Enabled && c.KeytabPath != "" && c.Principal != ""
+}
+
+// PrincipalParts splits Principal into its primary (username) and realm. It
+// returns ("", "") when Principal is not a well-formed user@REALM value.
+func (c PostgresKerberosConfig) PrincipalParts() (username, realm string) {
+	i := strings.LastIndex(c.Principal, "@")
+	if i <= 0 || i == len(c.Principal)-1 {
+		return "", ""
+	}
+	return c.Principal[:i], c.Principal[i+1:]
 }
 
 // TenancyConfig tunes tenant dormancy detection and hibernation. The defaults
@@ -749,6 +797,13 @@ func Load() Config {
 			DirectoryStaleAfter:    getDuration("ACCESS_AGENT_DIRECTORY_STALE_AFTER", 0),
 			DirectoryRedisFastPath: getBool("ACCESS_AGENT_DIRECTORY_REDIS", false),
 		},
+		PostgresKerberos: PostgresKerberosConfig{
+			Enabled:      getBool("ACCESS_PG_KERBEROS_ENABLED", false),
+			Krb5ConfPath: getEnv("ACCESS_PG_KERBEROS_KRB5_CONF", "/etc/krb5.conf"),
+			KeytabPath:   os.Getenv("ACCESS_PG_KERBEROS_KEYTAB"),
+			Principal:    os.Getenv("ACCESS_PG_KERBEROS_PRINCIPAL"),
+			Service:      getEnv("ACCESS_PG_KERBEROS_SERVICE", "postgres"),
+		},
 	}
 }
 
@@ -833,6 +888,18 @@ func (c Config) Validate() error {
 	}
 	if fwdParts != 0 && fwdParts != 3 {
 		return errors.New("config: ACCESS_AGENT_FORWARD_CA, ACCESS_AGENT_FORWARD_CERT and ACCESS_AGENT_FORWARD_KEY must all be set or all be empty")
+	}
+	// A Postgres Kerberos provider that is enabled but missing its keytab or a
+	// well-formed user@REALM principal cannot authenticate any upstream: fail the
+	// boot loudly here rather than registering a provider that errors on first
+	// use (or, worse, leaving Kerberos targets to fall back to a stale password).
+	if c.PostgresKerberos.Enabled {
+		if c.PostgresKerberos.KeytabPath == "" {
+			return errors.New("config: ACCESS_PG_KERBEROS_KEYTAB must be set when ACCESS_PG_KERBEROS_ENABLED is true")
+		}
+		if u, r := c.PostgresKerberos.PrincipalParts(); u == "" || r == "" {
+			return fmt.Errorf("config: ACCESS_PG_KERBEROS_PRINCIPAL must be in user@REALM form when ACCESS_PG_KERBEROS_ENABLED is true (got %q)", c.PostgresKerberos.Principal)
+		}
 	}
 	return nil
 }
@@ -1095,7 +1162,7 @@ func getDuration(key string, def time.Duration) time.Duration {
 // they are set.
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst/shared=%t usagemetering=%t/%s/shared=%t billing=%t/hardcap=%t/%s hibernation=%t/idle=%s workermetrics=%q iamcore=%t issuer=%q agentbroker=%t/crossreplica=%t/node=%q/fwdaddr=%q/dirredis=%t}",
+		"Config{env=%s http=%s db=%t driver=%s redis=%t dek=%t kms=%t kmsver=%d ratelimit=%t/%grps/%dburst/shared=%t usagemetering=%t/%s/shared=%t billing=%t/hardcap=%t/%s hibernation=%t/idle=%s workermetrics=%q iamcore=%t issuer=%q agentbroker=%t/crossreplica=%t/node=%q/fwdaddr=%q/dirredis=%t pgkerberos=%t}",
 		c.Env, c.HTTPAddr, c.DatabaseConfigured(), c.DatabaseDriver, c.RedisURL != "",
 		c.CredentialDEK != "", c.KMSMasterKey != "", c.KMSKeyVersion,
 		c.RateLimit.Enabled, c.RateLimit.RequestsPerSecond, c.RateLimit.Burst, c.RateLimitSharedStoreActive(),
@@ -1107,5 +1174,6 @@ func (c Config) String() string {
 		// cert/key/CA material. crossreplica reflects the fully-wired gate.
 		c.AgentBroker.Configured(), c.AgentBroker.CrossReplicaConfigured(),
 		c.AgentBroker.NodeID, c.AgentBroker.ForwardAddr, c.DirectoryRedisActive(),
+		c.PostgresKerberos.Configured(),
 	)
 }

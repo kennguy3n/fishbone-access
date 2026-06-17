@@ -36,6 +36,10 @@ type PostgresProxy struct {
 	dialTimeout time.Duration
 	dialer      TargetDialer
 	recMaxBytes int
+	// kerberosService is the default Kerberos service name used to build the
+	// upstream SPN (service/host) for a Kerberos target that does not override
+	// it. Empty lets pgconn use its own "postgres" default.
+	kerberosService string
 }
 
 // PostgresProxyConfig configures a PostgresProxy.
@@ -50,6 +54,10 @@ type PostgresProxyConfig struct {
 	// default); a broker dialer routes via-agent targets through the tunnel.
 	Dialer      TargetDialer
 	RecMaxBytes int
+	// KerberosService is the default Kerberos service name used when a target
+	// opts into GSSAPI upstream auth without naming one. Empty defers to
+	// pgconn's "postgres" default.
+	KerberosService string
 }
 
 // NewPostgresProxy builds a PostgresProxy.
@@ -74,14 +82,15 @@ func NewPostgresProxy(cfg PostgresProxyConfig) (*PostgresProxy, error) {
 		tlsCfg = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 	}
 	return &PostgresProxy{
-		broker:      cfg.Broker,
-		sessions:    cfg.Sessions,
-		hub:         cfg.Hub,
-		store:       cfg.Store,
-		tlsConfig:   tlsCfg,
-		dialTimeout: dt,
-		dialer:      resolveDialer(cfg.Dialer, dt),
-		recMaxBytes: cfg.RecMaxBytes,
+		broker:          cfg.Broker,
+		sessions:        cfg.Sessions,
+		hub:             cfg.Hub,
+		store:           cfg.Store,
+		tlsConfig:       tlsCfg,
+		dialTimeout:     dt,
+		dialer:          resolveDialer(cfg.Dialer, dt),
+		recMaxBytes:     cfg.RecMaxBytes,
+		kerberosService: cfg.KerberosService,
 	}, nil
 }
 
@@ -210,7 +219,11 @@ func (p *PostgresProxy) readStartup(ctx context.Context, backend *pgproto3.Backe
 			conn = tlsConn
 			backend = pgproto3.NewBackend(conn, conn)
 		case *pgproto3.GSSEncRequest:
-			// GSSAPI encryption unsupported; refuse so the client falls back.
+			// Decline operator-side GSSAPI *encryption* so the client falls back
+			// to TLS (which the gateway already provides on this hop and is the
+			// lossless equivalent; pgbouncer behaves the same). This is distinct
+			// from upstream Kerberos *authentication* to the target cluster, which
+			// the proxy does support — see dialUpstream/applyKerberosUpstreamAuth.
 			if _, err := conn.Write([]byte("N")); err != nil {
 				return nil, conn, backend, fmt.Errorf("refuse gss: %w", err)
 			}
@@ -256,8 +269,9 @@ func (p *PostgresProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSess
 	if user == "" {
 		user = leased.Secret.Username
 	}
+	targetCfg := decodeTargetConfig(leased.Target.Config)
 	if database == "" {
-		database = decodeTargetConfig(leased.Target.Config)["database"]
+		database = targetCfg["database"]
 	}
 	if database == "" {
 		database = user
@@ -278,6 +292,14 @@ func (p *PostgresProxy) dialUpstream(ctx context.Context, leased *pam.LeasedSess
 	// the returned net.Conn exactly as over a direct dial.
 	cfg.DialFunc = func(dialCtx context.Context, _, _ string) (net.Conn, error) {
 		return p.dialer.DialTarget(dialCtx, leased.Target)
+	}
+	// Upstream GSSAPI/Kerberos: when the target opts in (auth_mode=kerberos|gssapi
+	// or an explicit krb_spn/krb_service), authenticate with the gateway's service
+	// ticket via the registered GSS provider instead of a vault password. pgconn
+	// performs the ticket exchange automatically when the upstream answers the
+	// startup packet with AuthenticationGSS.
+	if applyKerberosUpstreamAuth(cfg, targetCfg, p.kerberosService) {
+		logger.Infof(ctx, "pg-proxy: upstream %s using kerberos auth (spn=%q srv=%q)", leased.Target.Address, cfg.KerberosSpn, cfg.KerberosSrvName)
 	}
 	// pgconn negotiates TLS per the server's capabilities; leave TLSConfig at
 	// the parsed default (sslmode=prefer) so an encrypted upstream is used when

@@ -245,7 +245,25 @@ func buildListeners(ctx context.Context, cfg config.Config, gdb *gorm.DB, audito
 	if err != nil {
 		return nil, err
 	}
-	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer})
+	// Upstream Postgres GSSAPI/Kerberos: when configured, register the
+	// process-global GSS provider once so the Postgres proxy can authenticate to
+	// target clusters whose pg_hba demands `gss` with the gateway's service
+	// principal. Boot only validates local material (krb5.conf parses, keytab
+	// readable); the KDC login is deferred to the first such dial so a KDC outage
+	// degrades only Kerberos targets rather than failing gateway boot.
+	if cfg.PostgresKerberos.Configured() {
+		user, realm := cfg.PostgresKerberos.PrincipalParts()
+		if err := gateway.RegisterPostgresGSSProvider(gateway.KerberosSettings{
+			Krb5ConfPath: cfg.PostgresKerberos.Krb5ConfPath,
+			KeytabPath:   cfg.PostgresKerberos.KeytabPath,
+			Username:     user,
+			Realm:        realm,
+		}); err != nil {
+			return nil, fmt.Errorf("postgres kerberos provider init: %w", err)
+		}
+		logger.Infof(ctx, "pam-gateway: postgres upstream Kerberos enabled (principal=%s@%s, service=%s)", user, realm, cfg.PostgresKerberos.Service)
+	}
+	pgProxy, err := gateway.NewPostgresProxy(gateway.PostgresProxyConfig{Broker: broker, Sessions: sessions, Hub: hub, Store: store, TLSConfig: proxyTLS, Dialer: agentDialer, KerberosService: cfg.PostgresKerberos.Service})
 	if err != nil {
 		return nil, err
 	}
