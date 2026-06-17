@@ -80,11 +80,20 @@ func (s *PolicyService) Recommend(ctx context.Context, workspaceID uuid.UUID, in
 	if s.ai == nil || !s.ai.Configured() {
 		return ""
 	}
+	resource := strings.TrimSpace(in.Resource)
+	context := strings.TrimSpace(in.Context)
+	// No signal at all (empty body): there is nothing for the model to reason
+	// about, so skip the round-trip and return "no guidance" rather than spend an
+	// agent call on an empty payload. Partial input (any one of the three) is
+	// still forwarded — an operator can ask with as little context as they have.
+	if resource == "" && context == "" && len(in.Roles) == 0 {
+		return ""
+	}
 	return aiclient.RecommendPolicyWithFallback(ctx, s.ai, s.resolveAITier(ctx, workspaceID), aiclient.PolicyRecommendationInput{
 		WorkspaceID: workspaceID.String(),
-		Resource:    strings.TrimSpace(in.Resource),
+		Resource:    resource,
 		Roles:       in.Roles,
-		Context:     strings.TrimSpace(in.Context),
+		Context:     context,
 	})
 }
 

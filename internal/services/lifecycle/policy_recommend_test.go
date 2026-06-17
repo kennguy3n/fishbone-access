@@ -67,6 +67,41 @@ func TestPolicyRecommendUnconfiguredReturnsEmpty(t *testing.T) {
 	}
 }
 
+// An empty request (no resource, roles, or context) short-circuits to an empty
+// advisory without ever touching the agent — there is no signal to reason about.
+func TestPolicyRecommendEmptyRequestSkipsAgent(t *testing.T) {
+	db := newTestDB(t)
+	ws := seedWorkspace(t, db, "tenant-a")
+
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"explanation": "should not be reached"})
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := NewPolicyService(db)
+	svc.SetRecommender(aiclient.NewAIClient(srv.URL, nil, ""))
+
+	// Whitespace-only fields collapse to empty after TrimSpace.
+	if rec := svc.Recommend(context.Background(), ws, PolicyRecommendationInput{Resource: "  ", Context: "\t"}); rec != "" {
+		t.Fatalf("want empty recommendation for empty request, got %q", rec)
+	}
+	if called {
+		t.Fatal("agent must not be called for an empty request")
+	}
+
+	// A single populated field is still forwarded.
+	called = false
+	if rec := svc.Recommend(context.Background(), ws, PolicyRecommendationInput{Context: "draft a least-privilege policy"}); rec != "should not be reached" {
+		t.Fatalf("partial input should reach the agent, got %q", rec)
+	}
+	if !called {
+		t.Fatal("agent should be called when any field is populated")
+	}
+}
+
 // An agent outage degrades to an empty advisory rather than an error.
 func TestPolicyRecommendAgentOutageEmpty(t *testing.T) {
 	db := newTestDB(t)
