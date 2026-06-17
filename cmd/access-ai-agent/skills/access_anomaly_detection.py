@@ -55,7 +55,11 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
         })
 
     last_used = payload.get("last_used_days")
-    if isinstance(last_used, int) and last_used > STALE_LAST_USED_DAYS:
+    if (
+        isinstance(last_used, int)
+        and not isinstance(last_used, bool)
+        and last_used > STALE_LAST_USED_DAYS
+    ):
         anomalies.append({
             "kind": "dormant_grant_reactivation",
             "reason": f"grant unused for {last_used} days",

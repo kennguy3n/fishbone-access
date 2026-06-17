@@ -74,12 +74,18 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
     # Volume spike: a session whose command count dwarfs the baseline average.
     avg_commands = baseline.get("avg_command_count")
-    if isinstance(avg_commands, (int, float)) and avg_commands > 0:
+    if (
+        isinstance(avg_commands, (int, float))
+        and not isinstance(avg_commands, bool)
+        and avg_commands > 0
+    ):
         threshold = max(avg_commands * VOLUME_SPIKE_FACTOR, VOLUME_SPIKE_MIN_COMMANDS)
         spikes = [
             int(s["command_count"])
             for s in sessions
-            if isinstance(s.get("command_count"), int) and s["command_count"] > threshold
+            if isinstance(s.get("command_count"), int)
+            and not isinstance(s.get("command_count"), bool)
+            and s["command_count"] > threshold
         ]
         if spikes:
             anomalies.append({
