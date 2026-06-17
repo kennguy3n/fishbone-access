@@ -37,10 +37,17 @@ def _deterministic(payload: dict[str, Any]) -> tuple[str, str]:
     if any("sensitive" in f or "elevated" in f for f in risk_factors):
         return "escalate", "grant carries elevated/sensitive risk factors"
 
-    if isinstance(last_used, int):
+    # bool is a subclass of int, so reject bools explicitly: a JSON true/false
+    # must not be read as a usage count of 1/0 and drive a certify decision.
+    if isinstance(last_used, int) and not isinstance(last_used, bool):
         if last_used > STALE_LAST_USED_DAYS:
             return "escalate", f"stale grant: unused for {last_used} days"
-        if isinstance(usage_events, int) and usage_events > 0 and last_used <= 30:
+        if (
+            isinstance(usage_events, int)
+            and not isinstance(usage_events, bool)
+            and usage_events > 0
+            and last_used <= 30
+        ):
             return "certify", f"actively used (last {last_used}d, {usage_events} events), low-risk role"
 
     # Unknown usage signals → defer to a human rather than guessing.

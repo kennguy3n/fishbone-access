@@ -159,6 +159,15 @@ def test_review_unknown_usage_is_manual():
     assert out["decision"] == "manual_review"
 
 
+def test_review_boolean_usage_fields_do_not_certify():
+    # last_used_days=False (0) and usage_event_count=True (1) must not be read
+    # as real numeric usage and auto-certify; bools fall through to manual_review.
+    out = access_review_automation.run(
+        {"resource_ref": "x", "role": "viewer", "last_used_days": False, "usage_event_count": True}
+    )
+    assert out["decision"] == "manual_review"
+
+
 def test_review_llm_cannot_downgrade_to_certify(monkeypatch):
     # Deterministic says escalate (stale); model says certify → stays escalate.
     token = llm.set_test_provider(lambda p, s: json.dumps({"decision": "certify", "reason": "lgtm"}))
