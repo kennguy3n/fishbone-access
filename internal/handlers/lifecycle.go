@@ -155,8 +155,15 @@ func (h *lifecycleHandlers) register(g *gin.RouterGroup, stepUp mfa.MFAVerifier)
 	g.GET("/orphan-accounts", middleware.RequirePermission(authz.PermOrphanRead), h.listOrphans)
 	g.POST("/orphan-accounts/:id/disposition", middleware.RequirePermission(authz.PermOrphanDisposition), h.orphanDisposition)
 
-	// SSO enforcement.
-	g.GET("/connectors/:connectorID/sso-status", middleware.RequirePermission(authz.PermConnectorSSORead), h.ssoStatus)
+	// SSO enforcement posture is a compliance signal: does this connector's
+	// tenant still allow local-password / SSO-bypass login? It is readable by a
+	// connector operator (PermConnectorSSORead) OR a compliance auditor
+	// (PermAuditRead) — verifying SSO enforcement is squarely an auditor's job,
+	// and the payload carries only posture (supported/enforced + a short hint),
+	// never connector secrets or configuration, so admitting the audit seat
+	// broadens read of a posture signal without granting any connector
+	// management or secret authority.
+	g.GET("/connectors/:connectorID/sso-status", middleware.RequireAnyPermission(authz.PermConnectorSSORead, authz.PermAuditRead), h.ssoStatus)
 
 	// Policy packs (curated templates that materialize as drafts).
 	h.registerPacks(g)
@@ -312,7 +319,18 @@ func (h *lifecycleHandlers) getRequest(c *gin.Context) {
 	// rationale and risk factors alongside the request. Both are best-effort:
 	// a request created before risk scoring has no verdict (omitted), and the flag list
 	// is simply empty when none were detected.
-	resp := gin.H{"request": req}
+	// available_transitions/terminal expose the lifecycle FSM affordances for
+	// this request's current state: the legal next states (sorted, so the API
+	// is deterministic) and whether the request has reached a terminal state
+	// with no outgoing edges. They describe what the workflow permits from
+	// here, not what the calling actor is authorized to trigger, so a client
+	// can render the action set the way ServiceNow/Jira surface a record's
+	// "available transitions" without re-encoding the transition table.
+	resp := gin.H{
+		"request":               req,
+		"available_transitions": lifecycle.AllowedNextStates(req.State),
+		"terminal":              lifecycle.IsTerminalState(req.State),
+	}
 	if verdict, verr := h.riskReview.LatestVerdict(c.Request.Context(), ws, id); verr == nil {
 		resp["risk"] = verdict
 	}

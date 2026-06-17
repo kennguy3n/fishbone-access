@@ -14,6 +14,7 @@ package lifecycle
 import (
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // RequestState is a typed alias for the values stored in
@@ -120,8 +121,11 @@ func IsTerminalState(s RequestState) bool {
 }
 
 // AllowedNextStates returns a freshly-allocated slice of the legal "to" states
-// from `from` (nil for terminal or unknown states). Intended for diagnostics
-// and admin tooling; production code paths call Transition directly.
+// reachable from `from`, sorted lexicographically so the result is
+// deterministic (nil for terminal or unknown states). It backs the
+// access-request API's `available_transitions` affordance and is also useful
+// for diagnostics and admin tooling; the request services themselves call
+// Transition directly to gate a specific move.
 func AllowedNextStates(from RequestState) []RequestState {
 	allowed, ok := allowedTransitions[from]
 	if !ok {
@@ -131,5 +135,6 @@ func AllowedNextStates(from RequestState) []RequestState {
 	for s := range allowed {
 		out = append(out, s)
 	}
+	sort.Strings(out)
 	return out
 }

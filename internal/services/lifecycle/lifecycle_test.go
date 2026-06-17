@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -95,6 +96,35 @@ func TestTerminalStates(t *testing.T) {
 	for _, s := range []RequestState{StateRequested, StateAIReviewed, StateApproved, StateProvisioning, StateProvisioned, StateActive, StateProvisionFailed} {
 		if IsTerminalState(s) {
 			t.Errorf("expected %s non-terminal", s)
+		}
+	}
+}
+
+// TestAllowedNextStates proves the helper that backs the API's
+// available_transitions affordance reports exactly the table's legal targets,
+// sorted (deterministic), with every reported edge a valid Transition, and nil
+// for terminal/unknown states.
+func TestAllowedNextStates(t *testing.T) {
+	for from, targets := range allowedTransitions {
+		got := AllowedNextStates(from)
+		if !sort.StringsAreSorted(got) {
+			t.Errorf("AllowedNextStates(%s) not sorted: %v", from, got)
+		}
+		if len(got) != len(targets) {
+			t.Errorf("AllowedNextStates(%s) = %v, want %d targets", from, got, len(targets))
+		}
+		for _, to := range got {
+			if _, ok := targets[to]; !ok {
+				t.Errorf("AllowedNextStates(%s) returned %q, not in the table", from, to)
+			}
+			if err := Transition(from, to); err != nil {
+				t.Errorf("reported transition %s→%s is not valid: %v", from, to, err)
+			}
+		}
+	}
+	for _, s := range []RequestState{StateDenied, StateCancelled, StateRevoked, StateExpired, "bogus"} {
+		if got := AllowedNextStates(s); got != nil {
+			t.Errorf("AllowedNextStates(%s) = %v, want nil", s, got)
 		}
 	}
 }
