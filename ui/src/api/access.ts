@@ -994,6 +994,33 @@ export const createConnector = (body: CreateConnectorInput) =>
     data: body,
   });
 
+/** Safe projection of the iam-core SSO Connection created by federation.
+ *  Federation secrets (the registered OIDC client_secret, etc.) are never
+ *  included — mirrors the `ssoConnectionView` the API returns. */
+export interface SSOConnection {
+  id: string;
+  name: string;
+  /** iam-core connection strategy (e.g. oidc, saml, microsoft, google-oauth2). */
+  strategy: string;
+  enabled: boolean;
+}
+
+/** Federate the connector's IdP single sign-on into iam-core. The server reads
+ *  the connector's advertised SSO metadata; there is no request body. */
+export const configureConnectorSSO = (connectorId: string) =>
+  call<SSOConnection>({
+    url: `/connectors/${encodeURIComponent(connectorId)}/sso`,
+    method: "POST",
+  });
+
+/** Tear down the connector's iam-core SSO Connection. Idempotent: a connector
+ *  with no federated connection still resolves (the API returns 204). */
+export const removeConnectorSSO = (connectorId: string) =>
+  call<void>({
+    url: `/connectors/${encodeURIComponent(connectorId)}/sso`,
+    method: "DELETE",
+  });
+
 export function useConnectors(filter: ConnectorCatalogueFilter = {}) {
   return useQuery<ConnectorCatalogueEntry[], ApiError>({
     queryKey: qk.connectors(filter),
@@ -1035,6 +1062,18 @@ export function useRequestSetupPlan(provider: string) {
 export function useCreateConnector() {
   return useMutation<AccessConnector, ApiError, CreateConnectorInput>({
     mutationFn: createConnector,
+  });
+}
+
+export function useConfigureConnectorSSO() {
+  return useMutation<SSOConnection, ApiError, string>({
+    mutationFn: configureConnectorSSO,
+  });
+}
+
+export function useRemoveConnectorSSO() {
+  return useMutation<void, ApiError, string>({
+    mutationFn: removeConnectorSSO,
   });
 }
 
