@@ -30,8 +30,6 @@ const (
 	managedTitlePrefix = "shieldnet-access:"
 )
 
-var ErrNotImplemented = fmt.Errorf("quickbooks: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 // realmIDPattern matches the numeric customer identifier QuickBooks
 // Online stamps on every company file. Per Intuit's developer docs the
 // realmID is a base-10 integer (typically 15-16 digits, no slashes,

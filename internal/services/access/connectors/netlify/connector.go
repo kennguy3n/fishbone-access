@@ -21,8 +21,6 @@ const (
 	defaultBaseURL = "https://api.netlify.com"
 )
 
-var ErrNotImplemented = fmt.Errorf("netlify: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

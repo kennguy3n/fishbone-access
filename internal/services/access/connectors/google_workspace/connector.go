@@ -29,11 +29,6 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
 
-// ErrNotImplemented is retained for any future capability that is not yet
-// implemented; ProvisionAccess / RevokeAccess / ListEntitlements no longer
-// return it now that the advanced capabilities are implemented.
-var ErrNotImplemented = fmt.Errorf("google_workspace: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 const (
 	directoryBaseURL = "https://admin.googleapis.com/admin/directory/v1"
 	licensingBaseURL = "https://www.googleapis.com/apps/licensing/v1/product"

@@ -17,10 +17,6 @@ import (
 
 const ProviderName = "drift"
 
-// ErrNotImplemented is retained as a public sentinel for backwards
-// compatibility; all access capabilities are now implemented.
-var ErrNotImplemented = fmt.Errorf("drift: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

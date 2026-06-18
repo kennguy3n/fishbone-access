@@ -33,8 +33,6 @@ const (
 // in audit.go.
 const splunkIdentitiesMaxPages = 2000
 
-var ErrNotImplemented = fmt.Errorf("splunk: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

@@ -36,9 +36,6 @@ import (
 // ProviderName is the registry key for the Cloudflare connector.
 const ProviderName = "cloudflare"
 
-// ErrNotImplemented is returned by stubbed methods.
-var ErrNotImplemented = fmt.Errorf("cloudflare: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 const defaultBaseURL = "https://api.cloudflare.com/client/v4"
 
 type httpDoer interface {

@@ -33,17 +33,6 @@ import (
 
 const ProviderName = "wazuh"
 
-// ErrNotImplemented preserves the original sentinel for backward
-// compatibility (existing tests use errors.Is against it) and wraps
-// access.ErrCapabilityNotSupported so callers that switch to the
-// canonical platform sentinel also match. ProvisionAccess /
-// RevokeAccess / ListEntitlements are now implemented against the
-// /security/users role-binding surface (see advanced.go); this
-// sentinel is kept for any future capability Wazuh does not expose
-// (e.g. SCIM, group sync) so callers do not have to special-case the
-// package name.
-var ErrNotImplemented = fmt.Errorf("wazuh: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

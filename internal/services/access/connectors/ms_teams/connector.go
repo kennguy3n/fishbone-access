@@ -29,8 +29,6 @@ const (
 	defaultBaseURL = "https://graph.microsoft.com/v1.0"
 )
 
-var ErrNotImplemented = fmt.Errorf("ms_teams: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

@@ -18,8 +18,6 @@ import (
 
 const ProviderName = "eventbrite"
 
-var ErrNotImplemented = fmt.Errorf("eventbrite: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

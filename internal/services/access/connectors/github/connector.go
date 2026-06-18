@@ -33,8 +33,6 @@ const (
 	githubEntitlementsMaxPages = 1000
 )
 
-var ErrNotImplemented = fmt.Errorf("github: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

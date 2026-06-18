@@ -51,11 +51,6 @@ const (
 	azureEntitlementsMaxPages = 1000
 )
 
-// ErrNotImplemented is retained for any future capability that is not yet
-// implemented; ProvisionAccess / RevokeAccess / ListEntitlements no longer
-// return it now that the advanced capabilities are implemented.
-var ErrNotImplemented = fmt.Errorf("azure: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

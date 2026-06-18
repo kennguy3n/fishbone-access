@@ -21,8 +21,6 @@ const (
 	apiRevision  = "2024-10-15"
 )
 
-var ErrNotImplemented = fmt.Errorf("klaviyo: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

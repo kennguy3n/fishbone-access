@@ -19,8 +19,6 @@ import (
 
 const ProviderName = "gong"
 
-var ErrNotImplemented = fmt.Errorf("gong: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

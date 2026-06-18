@@ -24,8 +24,6 @@ const (
 	ProviderName = "zendesk"
 )
 
-var ErrNotImplemented = fmt.Errorf("zendesk: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

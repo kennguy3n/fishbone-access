@@ -27,8 +27,6 @@ const (
 	pageSize     = 50
 )
 
-var ErrNotImplemented = fmt.Errorf("wave: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }

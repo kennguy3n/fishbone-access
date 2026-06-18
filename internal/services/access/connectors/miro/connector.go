@@ -22,8 +22,6 @@ const (
 	defaultBaseURL = "https://api.miro.com/v2"
 )
 
-var ErrNotImplemented = fmt.Errorf("miro: capability not supported by this connector: %w", access.ErrCapabilityNotSupported)
-
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
