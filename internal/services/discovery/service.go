@@ -109,6 +109,18 @@ type AgentDialer interface {
 	DialThroughAgent(ctx context.Context, workspaceID, agentID uuid.UUID, targetAddr string) (net.Conn, error)
 }
 
+// DialBudgeter is an optional capability an AgentDialer may advertise to widen
+// the outer per-probe dial deadline beyond ProbeTimeout. A direct dialer does
+// not implement it, so probeOne keeps the tight 3s probe timeout. The
+// cross-replica forward-only dialer does implement it (returning ForwardTimeout)
+// because its dial is multi-hop — a directory lookup, an owner-replica TCP+mTLS
+// handshake, a forward request/response, and the agent-side dial — and so needs
+// a wider budget than a single direct probe. probeOne uses the advertised
+// budget, when positive, as the outer dial deadline; otherwise ProbeTimeout.
+type DialBudgeter interface {
+	DialBudget() time.Duration
+}
+
 // AgentBinder binds a freshly-onboarded PAM target to an outbound agent
 // (via_agent_id). The broker AgentDirectory satisfies it. Onboarding depends on
 // this seam so an asset found through an agent can be onboarded pre-bound to

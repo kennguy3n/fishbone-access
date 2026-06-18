@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -67,4 +68,20 @@ func (d *ForwardOnlyDialer) DialThroughAgent(ctx context.Context, workspaceID, a
 		return nil, ErrAgentUnavailable
 	}
 	return conn, nil
+}
+
+// DialBudget reports the forward client's dial timeout so a caller can use it as
+// the OUTER dial deadline instead of a tighter per-call default. It satisfies
+// discovery's optional DialBudgeter seam: the active sweep's probeOne wraps each
+// dial in a short direct-probe timeout, but the multi-hop forward path (directory
+// lookup → owner-replica TCP+mTLS → forward req/resp → agent dial) legitimately
+// needs the wider ForwardTimeout. Without advertising it, the forward client's
+// own 15s child context would be capped by probeOne's 3s parent (context only
+// shortens, never extends), leaving ForwardTimeout inert. Returns 0 when no
+// forward client is wired, so probeOne falls back to its probe timeout.
+func (d *ForwardOnlyDialer) DialBudget() time.Duration {
+	if d == nil || d.fwd == nil {
+		return 0
+	}
+	return d.fwd.DialTimeout()
 }

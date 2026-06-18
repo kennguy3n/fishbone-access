@@ -85,3 +85,28 @@ func TestForwardOnlyDialerNilReceiver(t *testing.T) {
 		t.Fatalf("expected nil conn from nil receiver")
 	}
 }
+
+// TestForwardOnlyDialerDialBudget proves the dialer advertises the forward
+// client's dial timeout as its DialBudget (so discovery's probeOne widens the
+// outer deadline to ForwardTimeout instead of the tight ProbeTimeout), and
+// reports 0 — letting probeOne fall back to ProbeTimeout — when no forward
+// client is wired or the receiver is nil.
+func TestForwardOnlyDialerDialBudget(t *testing.T) {
+	dir := lookupDirectory{fresh: true, entry: &OwnerEntry{NodeID: "n2", ForwardAddr: "127.0.0.1:1"}}
+
+	if got := NewForwardOnlyDialer(dir, NewForwardClient(&ForwardTLS{client: &tls.Config{}}, 15*time.Second)).DialBudget(); got != 15*time.Second {
+		t.Fatalf("DialBudget() = %s, want 15s", got)
+	}
+	// A zero/negative dialTO is defaulted to 15s by NewForwardClient, so the
+	// advertised budget mirrors that default rather than reporting 0.
+	if got := NewForwardOnlyDialer(dir, NewForwardClient(&ForwardTLS{client: &tls.Config{}}, 0)).DialBudget(); got != 15*time.Second {
+		t.Fatalf("DialBudget() with defaulted timeout = %s, want 15s", got)
+	}
+	if got := NewForwardOnlyDialer(dir, nil).DialBudget(); got != 0 {
+		t.Fatalf("DialBudget() with nil forward client = %s, want 0", got)
+	}
+	var nilDialer *ForwardOnlyDialer
+	if got := nilDialer.DialBudget(); got != 0 {
+		t.Fatalf("DialBudget() on nil receiver = %s, want 0", got)
+	}
+}

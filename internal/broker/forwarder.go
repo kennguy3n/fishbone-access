@@ -186,6 +186,18 @@ func NewForwardClient(ftls *ForwardTLS, dialTO time.Duration) *ForwardClient {
 	return &ForwardClient{tls: ftls, dialTO: dialTO}
 }
 
+// DialTimeout reports the configured forward setup budget (TCP connect + TLS
+// handshake + request/response). It is exposed so the forward-only dialer can
+// advertise it as the outer dial deadline a caller imposes, ensuring the
+// multi-hop forward path is bounded by this wider budget rather than a tighter
+// caller timeout. Returns 0 for a nil client.
+func (c *ForwardClient) DialTimeout() time.Duration {
+	if c == nil {
+		return 0
+	}
+	return c.dialTO
+}
+
 // Dial opens a relayed stream to the agent via its owning replica at ownerAddr.
 // The returned net.Conn carries the live tunnel; the caller does NOT audit (the
 // owner already did). On any failure it returns an error so the relay surfaces

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -177,11 +178,19 @@ drain:
 	return specs, probed, reachable
 }
 
-// probeOne dials one host:port through the agent within ProbeTimeout and
+// probeOne dials one host:port through the agent within the dial budget and
 // reports whether the port accepted a connection. The connection is closed
 // immediately — discovery only checks reachability, never sends a payload.
+//
+// The budget is ProbeTimeout (a single direct probe) unless the dialer
+// advertises a wider one via DialBudgeter — as the cross-replica forward-only
+// dialer does, returning ForwardTimeout. Because context.WithTimeout can only
+// shorten a deadline, a tight 3s outer ctx here would otherwise cap the forward
+// client's own 15s dial deadline, leaving ForwardTimeout inert; using the
+// advertised budget as the outer deadline lets the multi-hop forward path
+// actually consume its wider budget.
 func (e *Engine) probeOne(ctx context.Context, workspaceID, agentID uuid.UUID, host string, port int) bool {
-	dialCtx, cancel := context.WithTimeout(ctx, e.cfg.ProbeTimeout)
+	dialCtx, cancel := context.WithTimeout(ctx, e.dialBudget())
 	defer cancel()
 	conn, err := e.dialer.DialThroughAgent(dialCtx, workspaceID, agentID, net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
@@ -189,6 +198,18 @@ func (e *Engine) probeOne(ctx context.Context, workspaceID, agentID uuid.UUID, h
 	}
 	_ = conn.Close()
 	return true
+}
+
+// dialBudget returns the outer per-probe dial deadline: the dialer's advertised
+// DialBudget when it implements DialBudgeter and reports a positive value (the
+// forward-only dialer's ForwardTimeout), otherwise the direct-probe ProbeTimeout.
+func (e *Engine) dialBudget() time.Duration {
+	if b, ok := e.dialer.(DialBudgeter); ok {
+		if budget := b.DialBudget(); budget > 0 {
+			return budget
+		}
+	}
+	return e.cfg.ProbeTimeout
 }
 
 // expandHosts turns the request's hosts + CIDRs into a de-duplicated host list.
