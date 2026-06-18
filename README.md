@@ -66,6 +66,39 @@ go run ./cmd/ztna-api
 | `IAM_CORE_ISSUER` | iam-core base URL (derives JWKS + discovery). Unset → authenticated API returns 503. |
 | `IAM_CORE_CLIENT_ID` / `IAM_CORE_CLIENT_SECRET` | Confidential OAuth2 client for SSO + management. |
 | `IAM_CORE_AUDIENCE` | Expected `aud` claim on access tokens. |
+| `ACCESS_PG_KERBEROS_ENABLED` | Enable upstream GSSAPI/Kerberos auth from the Postgres proxy to clusters whose `pg_hba` demands `gss` (default `false`). |
+| `ACCESS_PG_KERBEROS_KEYTAB` | Path to the gateway's keytab holding the service principal's keys. Required when Kerberos is enabled. |
+| `ACCESS_PG_KERBEROS_PRINCIPAL` | The gateway's Kerberos principal in `user@REALM` form (e.g. `shieldnet-gw@EXAMPLE.COM`). Required when enabled. |
+| `ACCESS_PG_KERBEROS_KRB5_CONF` | krb5.conf describing the realm/KDC topology (default `/etc/krb5.conf`). |
+| `ACCESS_PG_KERBEROS_SERVICE` | Default Kerberos service name for the upstream SPN when a target does not name one (default `postgres`). |
+
+#### Postgres upstream Kerberos (GSSAPI)
+
+The operator hop into the PAM gateway always stays on the one-shot connect token
+over TLS; the gateway declines operator-side GSS *encryption* in favour of TLS
+(equivalent, and what pgbouncer does). What this enables is upstream
+*authentication*: when the env vars above are set, the gateway logs in once with
+its keytab principal and authenticates to a target cluster's `gss` `pg_hba` rule
+via SPNEGO/Kerberos instead of a vault password. The KDC login is lazy (deferred
+to the first such connection), so a KDC outage degrades only Kerberos targets
+rather than failing gateway boot. Only a *successful* login is memoized: a
+transient KDC failure is returned to the caller but not cached, so once the KDC
+recovers the next connection logs in and Kerberos targets work again without a
+gateway restart.
+
+A target opts in through its `config` JSON. `auth_mode` is the explicit,
+required opt-in — the `krb_spn` / `krb_service` keys only *parameterize* a target
+that has already opted in; on their own (no `auth_mode`) they are ignored, not
+treated as an implicit opt-in, so a stray SPN/service key never silently drops a
+password-authenticated target's vault password.
+
+- `auth_mode`: `kerberos` (or `gssapi`) — **required** to opt in; use the
+  gateway's service ticket instead of the stored password.
+- `krb_spn`: explicit service principal name, e.g. `postgres/db.example.com`.
+  When set (on an opted-in target) it wins; otherwise the SPN is built as
+  `<service>/<target-host>`. Ignored unless `auth_mode` is set.
+- `krb_service`: per-target override of `ACCESS_PG_KERBEROS_SERVICE` for the
+  SPN's service component. Ignored unless `auth_mode` is set.
 
 #### Credential encryption keys
 

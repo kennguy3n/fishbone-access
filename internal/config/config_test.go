@@ -469,3 +469,97 @@ func TestBillingWarnings(t *testing.T) {
 		t.Errorf("disabled billing must not warn, got %v", disabled.Warnings())
 	}
 }
+
+func TestPostgresKerberosConfigured(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  PostgresKerberosConfig
+		want bool
+	}{
+		{name: "disabled", cfg: PostgresKerberosConfig{KeytabPath: "/k", Principal: "gw@R"}, want: false},
+		{name: "enabled no keytab", cfg: PostgresKerberosConfig{Enabled: true, Principal: "gw@R"}, want: false},
+		{name: "enabled no principal", cfg: PostgresKerberosConfig{Enabled: true, KeytabPath: "/k"}, want: false},
+		{name: "fully configured", cfg: PostgresKerberosConfig{Enabled: true, KeytabPath: "/k", Principal: "gw@R"}, want: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.cfg.Configured(); got != tc.want {
+				t.Fatalf("Configured() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPostgresKerberosPrincipalParts(t *testing.T) {
+	cases := []struct {
+		principal string
+		wantUser  string
+		wantRealm string
+	}{
+		{principal: "shieldnet-gw@EXAMPLE.COM", wantUser: "shieldnet-gw", wantRealm: "EXAMPLE.COM"},
+		{principal: "user@sub.realm@EXAMPLE.COM", wantUser: "user@sub.realm", wantRealm: "EXAMPLE.COM"},
+		{principal: "noatsign", wantUser: "", wantRealm: ""},
+		{principal: "@EXAMPLE.COM", wantUser: "", wantRealm: ""},
+		{principal: "gw@", wantUser: "", wantRealm: ""},
+		{principal: "", wantUser: "", wantRealm: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.principal, func(t *testing.T) {
+			u, r := PostgresKerberosConfig{Principal: tc.principal}.PrincipalParts()
+			if u != tc.wantUser || r != tc.wantRealm {
+				t.Fatalf("PrincipalParts(%q) = (%q, %q), want (%q, %q)", tc.principal, u, r, tc.wantUser, tc.wantRealm)
+			}
+		})
+	}
+}
+
+func TestValidatePostgresKerberos(t *testing.T) {
+	base := func() Config { return Config{DatabaseDriver: DriverPgx} }
+
+	// Disabled: even with junk fields, inert and valid.
+	off := base()
+	off.PostgresKerberos = PostgresKerberosConfig{Principal: "bad"}
+	if err := off.Validate(); err != nil {
+		t.Fatalf("disabled kerberos failed Validate: %v", err)
+	}
+
+	// Enabled, fully formed: valid.
+	ok := base()
+	ok.PostgresKerberos = PostgresKerberosConfig{Enabled: true, KeytabPath: "/etc/gw.keytab", Principal: "gw@EXAMPLE.COM"}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("well-formed kerberos failed Validate: %v", err)
+	}
+
+	// Enabled without a keytab: rejected.
+	noKeytab := base()
+	noKeytab.PostgresKerberos = PostgresKerberosConfig{Enabled: true, Principal: "gw@EXAMPLE.COM"}
+	if err := noKeytab.Validate(); err == nil {
+		t.Error("Validate accepted enabled kerberos without a keytab, want rejection")
+	}
+
+	// Enabled with a malformed principal: rejected.
+	badPrincipal := base()
+	badPrincipal.PostgresKerberos = PostgresKerberosConfig{Enabled: true, KeytabPath: "/etc/gw.keytab", Principal: "no-realm"}
+	if err := badPrincipal.Validate(); err == nil {
+		t.Error("Validate accepted enabled kerberos with a malformed principal, want rejection")
+	}
+}
+
+func TestLoadPostgresKerberos(t *testing.T) {
+	t.Setenv("ACCESS_PG_KERBEROS_ENABLED", "true")
+	t.Setenv("ACCESS_PG_KERBEROS_KEYTAB", "/etc/shieldnet/gw.keytab")
+	t.Setenv("ACCESS_PG_KERBEROS_PRINCIPAL", "shieldnet-gw@EXAMPLE.COM")
+	cfg := Load()
+	if !cfg.PostgresKerberos.Enabled {
+		t.Fatal("expected Kerberos enabled")
+	}
+	if cfg.PostgresKerberos.Krb5ConfPath != "/etc/krb5.conf" {
+		t.Fatalf("krb5.conf default = %q, want /etc/krb5.conf", cfg.PostgresKerberos.Krb5ConfPath)
+	}
+	if cfg.PostgresKerberos.Service != "postgres" {
+		t.Fatalf("service default = %q, want postgres", cfg.PostgresKerberos.Service)
+	}
+	if !cfg.PostgresKerberos.Configured() {
+		t.Fatal("expected Configured() true")
+	}
+}
