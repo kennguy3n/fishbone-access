@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -16,6 +18,7 @@ import (
 	"github.com/kennguy3n/fishbone-access/internal/pkg/crypto"
 	"github.com/kennguy3n/fishbone-access/internal/pkg/database"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
+	"github.com/kennguy3n/fishbone-access/internal/services/lifecycle"
 )
 
 // mapValidator maps a bearer token to a fixed set of claims, so a single router
@@ -132,6 +135,60 @@ func TestAccessRequestEndpointCrossTenantIsolation(t *testing.T) {
 	}
 	if len(listed.Requests) != 0 {
 		t.Fatalf("tenant-b sees %d requests, want 0", len(listed.Requests))
+	}
+}
+
+// TestGetRequestExposesLifecycleAffordances proves the request-detail response
+// carries the FSM workflow affordances wired in from the lifecycle state
+// machine: available_transitions (the sorted legal next states for the
+// request's current state) and terminal. A client can therefore render the
+// action set without re-encoding the transition table, and the values mirror
+// the canonical helpers exactly.
+func TestGetRequestExposesLifecycleAffordances(t *testing.T) {
+	r := NewRouter(lifecycleTestDeps(t))
+
+	w := do(t, r, http.MethodPost, "/api/v1/access-requests", "tok-a", map[string]any{
+		"target_user_id": "ext-user",
+		"resource_ref":   "app:db",
+		"role":           "reader",
+		"risk_level":     "high", // parked, not auto-approved
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var created struct {
+		Request models.AccessRequest `json:"request"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode create: %v", err)
+	}
+
+	w = do(t, r, http.MethodGet, "/api/v1/access-requests/"+created.Request.ID.String(), "tok-a", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("get status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var got struct {
+		Request              models.AccessRequest `json:"request"`
+		AvailableTransitions []string             `json:"available_transitions"`
+		Terminal             bool                 `json:"terminal"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode get: %v", err)
+	}
+
+	state := got.Request.State
+	if want := lifecycle.AllowedNextStates(state); !reflect.DeepEqual(got.AvailableTransitions, want) {
+		t.Fatalf("available_transitions = %v, want %v (state=%q)", got.AvailableTransitions, want, state)
+	}
+	if !sort.StringsAreSorted(got.AvailableTransitions) {
+		t.Fatalf("available_transitions not sorted: %v", got.AvailableTransitions)
+	}
+	if got.Terminal != lifecycle.IsTerminalState(state) {
+		t.Fatalf("terminal = %v, want %v (state=%q)", got.Terminal, lifecycle.IsTerminalState(state), state)
+	}
+	// A freshly-created request is non-terminal and must offer at least one move.
+	if got.Terminal || len(got.AvailableTransitions) == 0 {
+		t.Fatalf("new request should be non-terminal with transitions; terminal=%v transitions=%v state=%q", got.Terminal, got.AvailableTransitions, state)
 	}
 }
 

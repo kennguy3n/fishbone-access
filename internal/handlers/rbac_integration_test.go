@@ -286,6 +286,35 @@ func TestRBACConnectorGating(t *testing.T) {
 	}
 }
 
+// TestRBACSSOStatusOrPermissionGate proves the SSO-enforcement status route is
+// guarded by an OR-disjunction (RequireAnyPermission): it is readable by a
+// connector operator holding connector.sso.read OR a compliance auditor holding
+// audit.read, but a standard operator who holds neither is denied. SSO posture
+// is a compliance signal an auditor must be able to verify, and the payload
+// carries no connector secrets, so the audit seat is admitted without any
+// connector-management authority. The connector id is synthetic, so an admitted
+// caller resolves past the gate to a non-403 outcome (the connector simply does
+// not exist) — the assertion is purely about whether the permission gate
+// rejected the request.
+func TestRBACSSOStatusOrPermissionGate(t *testing.T) {
+	env := newRBACTestEnv(t)
+	path := "/api/v1/connectors/" + uuid.NewString() + "/sso-status"
+
+	// Auditor holds audit.read (not connector.sso.read) → admitted via the OR.
+	if w := do(t, env.router, http.MethodGet, path, "tok-auditor", nil); w.Code == http.StatusForbidden {
+		t.Fatalf("auditor GET sso-status = 403, want the OR gate to admit via audit.read; body=%s", w.Body.String())
+	}
+	// Admin holds connector.sso.read → admitted via the other arm of the OR.
+	if w := do(t, env.router, http.MethodGet, path, "tok-admin", nil); w.Code == http.StatusForbidden {
+		t.Fatalf("admin GET sso-status = 403, want the OR gate to admit via connector.sso.read; body=%s", w.Body.String())
+	}
+	// Operator holds connector.read but neither connector.sso.read nor
+	// audit.read → denied, proving the OR is specific, not a blanket allow.
+	if w := do(t, env.router, http.MethodGet, path, "tok-operator", nil); w.Code != http.StatusForbidden {
+		t.Fatalf("operator GET sso-status = %d, want 403 (holds neither connector.sso.read nor audit.read); body=%s", w.Code, w.Body.String())
+	}
+}
+
 func TestRBACListRolesRequiresMembership(t *testing.T) {
 	env := newRBACTestEnv(t)
 	if w := do(t, env.router, http.MethodGet, "/api/v1/rbac/roles", "tok-owner", nil); w.Code != http.StatusOK {
