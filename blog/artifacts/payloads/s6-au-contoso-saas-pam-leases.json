@@ -2,11 +2,11 @@
   "leases": [
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-16T07:56:31.444738Z",
+      "created_at": "2026-06-18T14:22:31.370272Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T08:27:01.451567Z",
-      "granted_at": "2026-06-16T07:57:01.451567Z",
-      "id": "d02547f4-58b9-4152-9bd2-e7dc1d2ce562",
+      "expires_at": "2026-06-18T14:53:01.437208Z",
+      "granted_at": "2026-06-18T14:23:01.437208Z",
+      "id": "3c307ba7-2490-4d43-bf52-d6db737bccd7",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -18,17 +18,17 @@
       "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "30f185e2-8abc-450e-9720-8d6a14612bac",
-      "updated_at": "2026-06-16T07:57:01.451567Z",
-      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
+      "target_id": "ebf80297-165a-4e4a-8dcb-c3b1657eeb68",
+      "updated_at": "2026-06-18T14:23:01.437208Z",
+      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
     },
     {
       "approved_by": "au-contoso-saas-owner",
-      "created_at": "2026-06-16T07:56:02.31564Z",
+      "created_at": "2026-06-18T14:22:02.259489Z",
       "deleted_at": null,
-      "expires_at": "2026-06-16T08:26:31.421246Z",
-      "granted_at": "2026-06-16T07:56:31.421246Z",
-      "id": "6bd1a636-66b0-4d10-abd8-fa1d7b6688f0",
+      "expires_at": "2026-06-18T14:52:31.347722Z",
+      "granted_at": "2026-06-18T14:22:31.347722Z",
+      "id": "d6fc0fbf-64a6-492a-8056-4a6240734350",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "au-contoso-saas-owner",
       "requested_ttl_seconds": 1800,
@@ -40,9 +40,9 @@
       "risk_reason": "rule-based risk=low from 1 factor(s)",
       "state": "approved",
       "subject": "au-contoso-saas-owner",
-      "target_id": "29c0466f-bc88-4aad-8db7-e3739d1357d2",
-      "updated_at": "2026-06-16T07:56:31.421246Z",
-      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
+      "target_id": "1b8d2a0b-a8dc-452b-91ab-3fc199301d98",
+      "updated_at": "2026-06-18T14:22:31.347722Z",
+      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
     }
   ]
 }

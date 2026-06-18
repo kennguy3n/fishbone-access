@@ -1,19 +1,19 @@
 {
   "rules": [
     {
-      "created_at": "2026-06-16T07:50:03.079541Z",
+      "created_at": "2026-06-18T14:16:03.54272Z",
       "deleted_at": null,
       "description": "PCI-DSS 7.x: POS store-manager duties and direct cardholder-data access must be separated.",
       "enabled": true,
-      "id": "fdc0ae02-3590-4912-be03-955e0d9fdfb1",
+      "id": "464cc561-673c-46c1-8a8e-d3513201b56e",
       "name": "Store-manager must not hold cardholder-data access",
       "resource_a": "pos:store-manager",
       "resource_b": "pos:cardholder-data",
       "role_a": "operator",
       "role_b": "operator",
       "severity": "critical",
-      "updated_at": "2026-06-16T07:50:03.079541Z",
-      "workspace_id": "cbd7dd41-f19f-4d5c-9c6f-cc7049bab090"
+      "updated_at": "2026-06-18T14:16:03.54272Z",
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     }
   ]
 }

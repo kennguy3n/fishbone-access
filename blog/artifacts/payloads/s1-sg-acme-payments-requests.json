@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
-      "created_at": "2026-06-16T07:44:31.880455Z",
+      "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+      "created_at": "2026-06-18T14:10:31.319456Z",
       "deleted_at": null,
-      "id": "b788bf15-c604-4881-8554-c738e957eeb4",
+      "id": "433f5fbe-e741-49fd-9381-7543ce25328c",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,14 +12,14 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-16T07:44:31.912335Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.350137Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
-      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
-      "created_at": "2026-06-16T07:44:31.782782Z",
+      "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+      "created_at": "2026-06-18T14:10:31.224606Z",
       "deleted_at": null,
-      "id": "3c91f55b-7d4e-4046-957f-f5a2b9e7200b",
+      "id": "84cd1aa6-eb14-472a-8ef1-11577f1ceb80",
       "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "cde:pci-scope",
@@ -30,14 +30,14 @@
       "role": "auditor",
       "state": "approved",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T07:44:31.796925Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.237165Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
-      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
-      "created_at": "2026-06-16T07:44:31.737368Z",
+      "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+      "created_at": "2026-06-18T14:10:31.188001Z",
       "deleted_at": null,
-      "id": "07fe2b4c-4bf7-41ba-8266-c20264844b16",
+      "id": "19c95333-9eae-445c-97a7-e5bd6a59175b",
       "justification": "Month-end reconciliation run for the finance close.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "ledger:reconcile",
@@ -48,14 +48,14 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T07:44:31.86696Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.304929Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
-      "connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
-      "created_at": "2026-06-16T07:44:31.684007Z",
+      "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+      "created_at": "2026-06-18T14:10:31.134851Z",
       "deleted_at": null,
-      "id": "9ca91e49-8f3e-463e-91f8-6b8e72e24c12",
+      "id": "b6eed903-5caf-46c1-9d8e-c7a905ea362d",
       "justification": "Quarterly MAS TRM privileged-access recertification requires temporary ledger admin.",
       "requester_id": "sg-acme-payments-owner",
       "resource_ref": "ledger:admin",
@@ -66,8 +66,8 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "sg-acme-payments-owner",
-      "updated_at": "2026-06-16T07:44:31.829033Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.267515Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     }
   ]
 }

@@ -2,19 +2,19 @@
   "sessions": [
     {
       "client_addr": "blog-seed",
-      "created_at": "2026-06-16T07:54:01.923486Z",
+      "created_at": "2026-06-18T14:20:01.153498Z",
       "deleted_at": null,
-      "ended_at": "2026-06-16T07:54:01.944852Z",
-      "id": "f4c577f1-463a-446e-be74-ee2d57f22ace",
+      "ended_at": "2026-06-18T14:20:01.171988Z",
+      "id": "c8b8579c-6581-4ad7-ba37-e215b182401a",
       "paused": false,
       "protocol": "ssh",
-      "replay_key": "sessions/f4c577f1-463a-446e-be74-ee2d57f22ace/replay.bin",
-      "started_at": "2026-06-16T07:54:01.921882Z",
+      "replay_key": "sessions/c8b8579c-6581-4ad7-ba37-e215b182401a/replay.bin",
+      "started_at": "2026-06-18T14:20:01.152157Z",
       "state": "closed",
       "subject": "ae-northwind-finance-owner",
-      "target_id": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "updated_at": "2026-06-16T07:54:01.944852Z",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "target_id": "30938ec0-be29-4f86-8456-02c4b1535aa0",
+      "updated_at": "2026-06-18T14:20:01.171988Z",
+      "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
     }
   ]
 }

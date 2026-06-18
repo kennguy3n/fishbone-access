@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-16T07:44:31.858023Z",
-      "created_at": "2026-06-16T07:44:31.839083Z",
+      "closed_at": "2026-06-18T14:10:31.296406Z",
+      "created_at": "2026-06-18T14:10:31.277431Z",
       "deleted_at": null,
       "framework": "PCI-DSS",
-      "id": "e50e7442-675a-43c5-b741-8600edf17a7c",
+      "id": "601e2003-b86f-4363-9ed8-6d23f1db4568",
       "name": "Q2 2026 PCI-DSS v4 cardholder-data certification",
-      "scope_connector_id": "38d60a77-1ee0-4b32-bb30-169776fde07c",
-      "started_at": "2026-06-16T07:44:31.839083Z",
+      "scope_connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+      "started_at": "2026-06-18T14:10:31.277431Z",
       "state": "closed",
-      "updated_at": "2026-06-16T07:44:31.858023Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.296406Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     }
   ]
 }

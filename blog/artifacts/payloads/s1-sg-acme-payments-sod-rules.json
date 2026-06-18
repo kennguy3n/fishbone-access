@@ -1,19 +1,19 @@
 {
   "rules": [
     {
-      "created_at": "2026-06-16T07:44:32.139606Z",
+      "created_at": "2026-06-18T14:10:31.619143Z",
       "deleted_at": null,
       "description": "MAS TRM segregation: the same identity cannot both administer the ledger and sign off reconciliation.",
       "enabled": true,
-      "id": "21288c77-0715-47d5-8cbc-8c513597e37f",
+      "id": "3449778e-e24b-4b44-80e3-a21eaa63ac54",
       "name": "Ledger admin must not also approve reconciliation",
       "resource_a": "ledger:admin",
       "resource_b": "ledger:reconcile",
       "role_a": "operator",
       "role_b": "operator",
       "severity": "critical",
-      "updated_at": "2026-06-16T07:44:32.139606Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T14:10:31.619143Z",
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     }
   ]
 }

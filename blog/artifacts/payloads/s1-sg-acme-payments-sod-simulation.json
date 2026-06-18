@@ -30,7 +30,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "21288c77-0715-47d5-8cbc-8c513597e37f",
+          "rule_id": "3449778e-e24b-4b44-80e3-a21eaa63ac54",
           "rule_name": "Ledger admin must not also approve reconciliation",
           "severity": "critical",
           "subject": "sg-acme-payments-owner"

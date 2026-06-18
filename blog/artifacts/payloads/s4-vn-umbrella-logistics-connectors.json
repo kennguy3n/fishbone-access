@@ -1515,7 +1515,7 @@
     {
       "category": "DevOps",
       "connected": true,
-      "connector_id": "1aff91fb-7e5d-4a69-99ab-ee6a96ee2f36",
+      "connector_id": "a531af36-def4-4a29-b44f-01ff1ab639fe",
       "display_name": "GitHub",
       "operational": {
         "access_audit_stream": true,
@@ -2453,7 +2453,7 @@
     {
       "category": "Manual",
       "connected": true,
-      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
+      "connector_id": "acf87f18-b588-48f4-87ff-f1549095b970",
       "display_name": "Manual / Offline Target",
       "operational": {
         "access_audit_stream": false,
@@ -3727,7 +3727,7 @@
     {
       "category": "Collab",
       "connected": true,
-      "connector_id": "1ef42190-e847-47f4-af3b-2adc05ea3aeb",
+      "connector_id": "9f798fc6-4196-4a96-8d3e-ea124c4e4622",
       "display_name": "Slack",
       "operational": {
         "access_audit_stream": true,

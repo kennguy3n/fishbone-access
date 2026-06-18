@@ -23,7 +23,7 @@
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/activecampaign	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/activecampaign	0.042s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -65,7 +65,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ac
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/airtable	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/airtable	0.042s
 === RUN   TestAlibabaFetchAccessAuditLogs_Maps
 --- PASS: TestAlibabaFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestAlibabaFetchAccessAuditLogs_NotAvailable
@@ -93,7 +93,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ai
 === RUN   TestAlibabaGetSSOMetadata_WithMetadataURL
 --- PASS: TestAlibabaGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/alibaba	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/alibaba	0.023s
 ?   	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/all	[no test files]
 === RUN   TestAnthropicFetchAccessAuditLogs_Maps
 --- PASS: TestAnthropicFetchAccessAuditLogs_Maps (0.00s)
@@ -120,7 +120,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/al
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/anthropic	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/anthropic	0.021s
 === RUN   TestAnvylFetchAccessAuditLogs_Maps
 --- PASS: TestAnvylFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestAnvylFetchAccessAuditLogs_NotAvailable
@@ -146,7 +146,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/an
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/anvyl	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/anvyl	0.014s
 === RUN   TestApolloFetchAccessAuditLogs_Maps
 --- PASS: TestApolloFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestApolloFetchAccessAuditLogs_NotAvailable
@@ -154,7 +154,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/an
 === RUN   TestApolloFetchAccessAuditLogs_TransientFailure
 --- PASS: TestApolloFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -176,7 +176,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/an
 === RUN   TestApolloGetSSOMetadata_WithMetadataURL
 --- PASS: TestApolloGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/apollo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/apollo	0.037s
 === RUN   TestAppFolioFetchAccessAuditLogs_Maps
 --- PASS: TestAppFolioFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestAppFolioFetchAccessAuditLogs_NotAvailable
@@ -202,9 +202,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ap
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/appfolio	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/appfolio	0.034s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -242,7 +242,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ap
 === RUN   TestListEntitlements_HappyPath
 --- PASS: TestListEntitlements_HappyPath (0.00s)
 === RUN   TestListEntitlements_Pagination
---- PASS: TestListEntitlements_Pagination (0.00s)
+--- PASS: TestListEntitlements_Pagination (0.01s)
 === RUN   TestListEntitlements_RejectsEmptyUser
 --- PASS: TestListEntitlements_RejectsEmptyUser (0.00s)
 === RUN   TestProvisionAndRevoke_RejectMissing
@@ -262,7 +262,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ap
 === RUN   TestAsanaConnector_PushSCIMGroup_HappyPath
 --- PASS: TestAsanaConnector_PushSCIMGroup_HappyPath (0.00s)
 === RUN   TestAsanaConnector_DeleteSCIMResource_HappyPath
---- PASS: TestAsanaConnector_DeleteSCIMResource_HappyPath (0.00s)
+--- PASS: TestAsanaConnector_DeleteSCIMResource_HappyPath (0.01s)
 === RUN   TestAsanaConnector_DeleteSCIMResource_404IsIdempotent
 --- PASS: TestAsanaConnector_DeleteSCIMResource_404IsIdempotent (0.00s)
 === RUN   TestAsanaConnector_PushSCIMUser_ServerErrorSurfaces
@@ -284,13 +284,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ap
 === RUN   TestAsana_SatisfiesSessionRevokerInterface
 --- PASS: TestAsana_SatisfiesSessionRevokerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/asana	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/asana	0.084s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Failure
 --- PASS: TestFetchAccessAuditLogs_Failure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ConnectFailsWithBadCredentials
 --- PASS: TestConnectorFlow_ConnectFailsWithBadCredentials (0.00s)
 === RUN   TestValidate_HappyPath
@@ -312,9 +312,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/as
 === RUN   TestProvisionAccess_AssignsRole
 === RUN   TestProvisionAccess_AssignsRole/created
 === RUN   TestProvisionAccess_AssignsRole/conflict_idempotent
---- PASS: TestProvisionAccess_AssignsRole (0.01s)
+--- PASS: TestProvisionAccess_AssignsRole (0.00s)
     --- PASS: TestProvisionAccess_AssignsRole/created (0.00s)
-    --- PASS: TestProvisionAccess_AssignsRole/conflict_idempotent (0.01s)
+    --- PASS: TestProvisionAccess_AssignsRole/conflict_idempotent (0.00s)
 === RUN   TestProvisionAccess_4xxFailsPermanently
 --- PASS: TestProvisionAccess_4xxFailsPermanently (0.00s)
 === RUN   TestRevokeAccess_RemovesRole
@@ -400,9 +400,15 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/as
 === RUN   TestCheckSSOEnforcement_PaginationStopsOnShortPage
 --- PASS: TestCheckSSOEnforcement_PaginationStopsOnShortPage (0.00s)
 === RUN   TestCheckSSOEnforcement_HTTPFailure
---- PASS: TestCheckSSOEnforcement_HTTPFailure (0.00s)
+--- PASS: TestCheckSSOEnforcement_HTTPFailure (0.01s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/auth0	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/auth0	0.075s
+=== RUN   TestDiscoverAssets_EC2AndRDS
+--- PASS: TestDiscoverAssets_EC2AndRDS (0.00s)
+=== RUN   TestDiscoverAssets_Paginates
+--- PASS: TestDiscoverAssets_Paginates (0.00s)
+=== RUN   TestRDSEngineProtocol
+--- PASS: TestRDSEngineProtocol (0.00s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Failure
@@ -458,7 +464,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/au
 === RUN   TestAWS_SyncIdentitiesDelta_InvalidTimeRangeReturnsExpired
 --- PASS: TestAWS_SyncIdentitiesDelta_InvalidTimeRangeReturnsExpired (0.00s)
 === RUN   TestAWS_SyncIdentitiesDelta_Paginates
---- PASS: TestAWS_SyncIdentitiesDelta_Paginates (0.00s)
+--- PASS: TestAWS_SyncIdentitiesDelta_Paginates (0.01s)
 === RUN   TestAWS_SyncIdentitiesDelta_DeleteThenRecreate
 --- PASS: TestAWS_SyncIdentitiesDelta_DeleteThenRecreate (0.00s)
 === RUN   TestAWS_ExtractAWSUserIdentifiers_PrefersTargetOverActor
@@ -526,7 +532,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/au
 === RUN   TestAWSGetSSOMetadata_PublishesSAMLWhenConfigured
 --- PASS: TestAWSGetSSOMetadata_PublishesSAMLWhenConfigured (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/aws	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/aws	0.051s
+=== RUN   TestDiscoverAssets_VMsAndSQL
+--- PASS: TestDiscoverAssets_VMsAndSQL (0.00s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_SoftSkip
@@ -634,7 +642,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/aw
 === RUN   TestAzureGetSSOMetadata_RejectsMalformedTenant
 --- PASS: TestAzureGetSSOMetadata_RejectsMalformedTenant (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/azure	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/azure	0.040s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -718,7 +726,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/az
 === RUN   TestBambooHRGetSSOMetadata_DerivesURLFromSubdomain
 --- PASS: TestBambooHRGetSSOMetadata_DerivesURLFromSubdomain (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bamboohr	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bamboohr	0.029s
 === RUN   TestBasecampFetchAccessAuditLogs_Maps
 --- PASS: TestBasecampFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestBasecampFetchAccessAuditLogs_FollowsLinkHeader
@@ -758,9 +766,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ba
 === RUN   TestBasecampGetSSOMetadata_WithMetadataURL
 --- PASS: TestBasecampGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/basecamp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/basecamp	0.027s
 === RUN   TestBeyondTrustFetchAccessAuditLogs_Maps
---- PASS: TestBeyondTrustFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestBeyondTrustFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestBeyondTrustFetchAccessAuditLogs_NotAvailable
 --- PASS: TestBeyondTrustFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestBeyondTrustFetchAccessAuditLogs_TransientFailure
@@ -784,7 +792,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ba
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/beyondtrust	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/beyondtrust	0.027s
 === RUN   TestBigCommerceFetchAccessAuditLogs_HappyPath
 --- PASS: TestBigCommerceFetchAccessAuditLogs_HappyPath (0.00s)
 === RUN   TestBigCommerceFetchAccessAuditLogs_NotAvailable
@@ -812,7 +820,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/be
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bigcommerce	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bigcommerce	0.029s
 === RUN   TestBillDotComFetchAccessAuditLogs_Maps
 --- PASS: TestBillDotComFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestBillDotComFetchAccessAuditLogs_NotAvailable
@@ -832,7 +840,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bi
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -842,7 +850,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bi
 === RUN   TestBillDotComGetSSOMetadata_WithMetadataURL
 --- PASS: TestBillDotComGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/billdotcom	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/billdotcom	0.028s
 === RUN   TestBitSightFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestBitSightFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestBitSightFetchAccessAuditLogs_InvalidSecrets
@@ -868,7 +876,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bitsight	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bitsight	0.019s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -922,7 +930,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bi
 === RUN   TestBox_SyncGroupMembers_MissingGroupID
 --- PASS: TestBox_SyncGroupMembers_MissingGroupID (0.00s)
 === RUN   TestBox_SyncGroups_Unauthorized
---- PASS: TestBox_SyncGroups_Unauthorized (0.01s)
+--- PASS: TestBox_SyncGroups_Unauthorized (0.00s)
 === RUN   TestBox_SatisfiesGroupSyncerInterface
 --- PASS: TestBox_SatisfiesGroupSyncerInterface (0.00s)
 === RUN   TestBoxConnector_PushSCIMUser_HappyPath
@@ -960,7 +968,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bi
 === RUN   TestBox_SatisfiesSSOEnforcementCheckerInterface
 --- PASS: TestBox_SatisfiesSSOEnforcementCheckerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/box	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/box	0.047s
 === RUN   TestBrazeFetchAccessAuditLogs_Maps
 --- PASS: TestBrazeFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestBrazeFetchAccessAuditLogs_NotAvailable
@@ -990,7 +998,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bo
 === RUN   TestBrazeGetSSOMetadata_WithMetadataURL
 --- PASS: TestBrazeGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/braze	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/braze	0.018s
 === RUN   TestBrexFetchAccessAuditLogs_Maps
 --- PASS: TestBrexFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestBrexFetchAccessAuditLogs_NotAvailable
@@ -1022,7 +1030,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/br
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/brex	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/brex	0.021s
 === RUN   TestBufferFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestBufferFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestBufferFetchAccessAuditLogs_InvalidSecrets
@@ -1046,9 +1054,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/br
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/buffer	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/buffer	0.031s
 === RUN   TestBuildiumFetchAccessAuditLogs_Maps
---- PASS: TestBuildiumFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestBuildiumFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestBuildiumFetchAccessAuditLogs_NotAvailable
 --- PASS: TestBuildiumFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestBuildiumFetchAccessAuditLogs_TransientFailure
@@ -1068,11 +1076,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bu
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.01s)
+--- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/buildium	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/buildium	0.038s
 === RUN   TestChargebeeFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestChargebeeFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestChargebeeFetchAccessAuditLogs_InvalidSecrets
@@ -1096,7 +1104,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/bu
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/chargebee	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/chargebee	0.015s
 === RUN   TestCheckPointFetchAccessAuditLogs_Maps
 --- PASS: TestCheckPointFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCheckPointFetchAccessAuditLogs_NotAvailable
@@ -1122,11 +1130,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ch
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/checkpoint	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/checkpoint	0.022s
 === RUN   TestCircleCIFetchAccessAuditLogs_Maps
---- PASS: TestCircleCIFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestCircleCIFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestCircleCIFetchAccessAuditLogs_NotAvailable
---- PASS: TestCircleCIFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestCircleCIFetchAccessAuditLogs_NotAvailable (0.01s)
 === RUN   TestCircleCIFetchAccessAuditLogs_ServerError
 --- PASS: TestCircleCIFetchAccessAuditLogs_ServerError (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -1148,7 +1156,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ch
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/circleci	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/circleci	0.047s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -1190,7 +1198,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ci
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/clickup	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/clickup	0.029s
 === RUN   TestClioFetchAccessAuditLogs_Maps
 --- PASS: TestClioFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestClioFetchAccessAuditLogs_NotAvailable
@@ -1220,7 +1228,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cl
 === RUN   TestClioGetSSOMetadata_WithMetadataURL
 --- PASS: TestClioGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/clio	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/clio	0.013s
 === RUN   TestCloseFetchAccessAuditLogs_Maps
 --- PASS: TestCloseFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCloseFetchAccessAuditLogs_NotAvailable
@@ -1246,7 +1254,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cl
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/close	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/close	0.017s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ZeroSinceOmitsFilter
@@ -1348,11 +1356,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cl
 === RUN   TestConfig_ValidateRejectsNonDNSLabelTeamDomain
 --- PASS: TestConfig_ValidateRejectsNonDNSLabelTeamDomain (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cloudflare	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cloudflare	0.032s
 === RUN   TestCloudSigmaFetchAccessAuditLogs_Maps
---- PASS: TestCloudSigmaFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestCloudSigmaFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCloudSigmaFetchAccessAuditLogs_NotAvailable
---- PASS: TestCloudSigmaFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestCloudSigmaFetchAccessAuditLogs_NotAvailable (0.01s)
 === RUN   TestCloudSigmaConnectorFlow_FullLifecycle
 --- PASS: TestCloudSigmaConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestCloudSigmaConnectorFlow_ProvisionForbiddenFailure
@@ -1376,7 +1384,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cl
 === RUN   TestCloudSigmaGetSSOMetadata_WithMetadataURL
 --- PASS: TestCloudSigmaGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cloudsigma	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cloudsigma	0.050s
 === RUN   TestReadBodyLimit_UnderCap
 --- PASS: TestReadBodyLimit_UnderCap (0.00s)
 === RUN   TestReadBodyLimit_AtCap
@@ -1386,9 +1394,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cl
 === RUN   TestReadBodyLimit_PropagatesReadError
 --- PASS: TestReadBodyLimit_PropagatesReadError (0.00s)
 === RUN   TestReadBody_UsesDefaultCap
---- PASS: TestReadBody_UsesDefaultCap (0.20s)
+--- PASS: TestReadBody_UsesDefaultCap (0.23s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/connutil	0.282s
 === RUN   TestConstantContactFetchAccessAuditLogs_Maps
 --- PASS: TestConstantContactFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestConstantContactFetchAccessAuditLogs_NotAvailable
@@ -1398,7 +1406,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestConstantContactConnectorFlow_FullLifecycle
 --- PASS: TestConstantContactConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConstantContactConnectorFlow_ProvisionForbiddenFailure
---- PASS: TestConstantContactConnectorFlow_ProvisionForbiddenFailure (0.01s)
+--- PASS: TestConstantContactConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
 --- PASS: TestValidate_HappyPath (0.00s)
 === RUN   TestValidate_RejectsMissing
@@ -1414,7 +1422,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/constant_contact	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/constant_contact	0.015s
 === RUN   TestCopperFetchAccessAuditLogs_Maps
 --- PASS: TestCopperFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCopperFetchAccessAuditLogs_NotAvailable
@@ -1444,11 +1452,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestCopperGetSSOMetadata_WithMetadataURL
 --- PASS: TestCopperGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/copper	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/copper	0.029s
 === RUN   TestCopyAIFetchAccessAuditLogs_Maps
 --- PASS: TestCopyAIFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCopyAIFetchAccessAuditLogs_NotAvailable
---- PASS: TestCopyAIFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestCopyAIFetchAccessAuditLogs_NotAvailable (0.01s)
 === RUN   TestCopyAIFetchAccessAuditLogs_TransientFailure
 --- PASS: TestCopyAIFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestCopyAIConnectorFlow_FullLifecycle
@@ -1464,13 +1472,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/copyai	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/copyai	0.036s
 === RUN   TestCoupaFetchAccessAuditLogs_Maps
 --- PASS: TestCoupaFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCoupaFetchAccessAuditLogs_NotAvailable
@@ -1496,7 +1504,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/coupa	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/coupa	0.014s
 === RUN   TestCourseraFetchAccessAuditLogs_Maps
 --- PASS: TestCourseraFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCourseraFetchAccessAuditLogs_NotAvailable
@@ -1522,7 +1530,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/coursera	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/coursera	0.024s
 === RUN   TestCrispFetchAccessAuditLogs_Maps
 --- PASS: TestCrispFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestCrispFetchAccessAuditLogs_NotAvailable
@@ -1548,7 +1556,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/co
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/crisp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/crisp	0.041s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Forbidden_SoftSkip
@@ -1580,7 +1588,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cr
 === RUN   TestRevokeAccess_HappyPath
 --- PASS: TestRevokeAccess_HappyPath (0.00s)
 === RUN   TestRevokeAccess_Idempotent
---- PASS: TestRevokeAccess_Idempotent (0.02s)
+--- PASS: TestRevokeAccess_Idempotent (0.00s)
 === RUN   TestRevokeAccess_Failure
 --- PASS: TestRevokeAccess_Failure (0.00s)
 === RUN   TestListEntitlements_HappyPath
@@ -1590,7 +1598,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cr
 === RUN   TestListEntitlements_MalformedBodyReturnsError
 --- PASS: TestListEntitlements_MalformedBodyReturnsError (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/crowdstrike	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/crowdstrike	0.034s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Forbidden_SoftSkip
@@ -1686,7 +1694,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/cr
 === RUN   TestDatadog_SatisfiesSSOEnforcementCheckerInterface
 --- PASS: TestDatadog_SatisfiesSSOEnforcementCheckerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/datadog	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/datadog	0.047s
 === RUN   TestDeelFetchAccessAuditLogs_Maps
 --- PASS: TestDeelFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestDeelFetchAccessAuditLogs_NotAvailable
@@ -1716,7 +1724,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/da
 === RUN   TestDeelGetSSOMetadata_WithMetadataURL
 --- PASS: TestDeelGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/deel	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/deel	0.022s
 === RUN   TestDigitalOceanFetchAccessAuditLogs_Maps
 --- PASS: TestDigitalOceanFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestDigitalOceanFetchAccessAuditLogs_NotAvailable
@@ -1752,7 +1760,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/de
 === RUN   TestDigitalOceanGetSSOMetadata_WithMetadataURL
 --- PASS: TestDigitalOceanGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/digitalocean	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/digitalocean	0.030s
 === RUN   TestDiscordFetchAccessAuditLogs_MapsAndFiltersBySince
 --- PASS: TestDiscordFetchAccessAuditLogs_MapsAndFiltersBySince (0.00s)
 === RUN   TestDiscordFetchAccessAuditLogs_NotAvailableOnForbidden
@@ -1786,15 +1794,15 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/di
 === RUN   TestDiscordGetSSOMetadata_WithMetadataURL
 --- PASS: TestDiscordGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/discord	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/discord	0.017s
 === RUN   TestDockerHubFetchAccessAuditLogs_MapsAndPaginates
---- PASS: TestDockerHubFetchAccessAuditLogs_MapsAndPaginates (0.01s)
+--- PASS: TestDockerHubFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestDockerHubFetchAccessAuditLogs_NotAvailable
 --- PASS: TestDockerHubFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestDockerHubFetchAccessAuditLogs_ServerError
 --- PASS: TestDockerHubFetchAccessAuditLogs_ServerError (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -1836,7 +1844,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/di
 === RUN   TestDockerHub_SatisfiesSessionRevokerInterface
 --- PASS: TestDockerHub_SatisfiesSessionRevokerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docker_hub	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docker_hub	0.048s
 === RUN   TestMapDocuSignRequestLog_SkipsZeroTimestamp
 --- PASS: TestMapDocuSignRequestLog_SkipsZeroTimestamp (0.00s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
@@ -1888,7 +1896,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/do
 === RUN   TestDocuSign_PushSCIMUser_HappyPath
 --- PASS: TestDocuSign_PushSCIMUser_HappyPath (0.00s)
 === RUN   TestDocuSign_DeleteSCIMResource_404IsIdempotent
---- PASS: TestDocuSign_DeleteSCIMResource_404IsIdempotent (0.00s)
+--- PASS: TestDocuSign_DeleteSCIMResource_404IsIdempotent (0.01s)
 === RUN   TestDocuSign_PushSCIMUser_ServerErrorSurfaces
 --- PASS: TestDocuSign_PushSCIMUser_ServerErrorSurfaces (0.00s)
 === RUN   TestDocuSign_PushSCIMUser_UnauthorizedSurfaces
@@ -1898,7 +1906,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/do
 === RUN   TestDocuSign_SatisfiesSCIMProvisionerInterface
 --- PASS: TestDocuSign_SatisfiesSCIMProvisionerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docusign	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docusign	0.040s
 === RUN   TestDocuSignCLMFetchAccessAuditLogs_Maps
 --- PASS: TestDocuSignCLMFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestDocuSignCLMFetchAccessAuditLogs_NotAvailable
@@ -1928,7 +1936,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/do
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docusign_clm	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/docusign_clm	0.020s
 === RUN   TestDriftFetchAccessAuditLogs_Maps
 --- PASS: TestDriftFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestDriftFetchAccessAuditLogs_NotAvailable
@@ -1948,17 +1956,17 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/do
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/drift	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/drift	0.041s
 === RUN   TestMapDropboxEvent_SkipsZeroTimestamp
 --- PASS: TestMapDropboxEvent_SkipsZeroTimestamp (0.00s)
 === RUN   TestFetchAccessAuditLogs_PageCap
---- PASS: TestFetchAccessAuditLogs_PageCap (0.04s)
+--- PASS: TestFetchAccessAuditLogs_PageCap (0.03s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Forbidden_SoftSkip
@@ -2058,9 +2066,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/dr
 === RUN   TestDropboxGetSSOMetadata_IgnoresConfigOverrides
 --- PASS: TestDropboxGetSSOMetadata_IgnoresConfigOverrides (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/dropbox	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/dropbox	0.065s
 === RUN   TestFetchAccessAuditLogs_PageCap
---- PASS: TestFetchAccessAuditLogs_PageCap (0.06s)
+--- PASS: TestFetchAccessAuditLogs_PageCap (0.04s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_PassesNextOffsetCursor
@@ -2142,7 +2150,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/dr
 === RUN   TestDuoGetSSOMetadata_WithMetadataURL
 --- PASS: TestDuoGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/duo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/duo	0.066s
 === RUN   TestMapEgnyteAuditEvent_SkipsZeroTimestamp
 === RUN   TestMapEgnyteAuditEvent_SkipsZeroTimestamp/empty
 === RUN   TestMapEgnyteAuditEvent_SkipsZeroTimestamp/garbage
@@ -2150,7 +2158,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/du
     --- PASS: TestMapEgnyteAuditEvent_SkipsZeroTimestamp/empty (0.00s)
     --- PASS: TestMapEgnyteAuditEvent_SkipsZeroTimestamp/garbage (0.00s)
 === RUN   TestFetchAccessAuditLogs_PageCap
---- PASS: TestFetchAccessAuditLogs_PageCap (0.28s)
+--- PASS: TestFetchAccessAuditLogs_PageCap (0.31s)
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -2192,7 +2200,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/du
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/egnyte	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/egnyte	0.328s
 === RUN   TestEventbriteFetchAccessAuditLogs_Maps
 --- PASS: TestEventbriteFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestEventbriteFetchAccessAuditLogs_NotAvailable
@@ -2218,7 +2226,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/eg
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/eventbrite	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/eventbrite	0.039s
 === RUN   TestExpensifyFetchAccessAuditLogs_Maps
 --- PASS: TestExpensifyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestExpensifyFetchAccessAuditLogs_NotAvailable
@@ -2246,7 +2254,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ev
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/expensify	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/expensify	0.014s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -2268,7 +2276,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ex
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestSync_EscapesOpaqueCursor
---- PASS: TestSync_EscapesOpaqueCursor (0.01s)
+--- PASS: TestSync_EscapesOpaqueCursor (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -2312,7 +2320,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ex
 === RUN   TestFigma_RevokeUserSessions_EmptyRejected
 --- PASS: TestFigma_RevokeUserSessions_EmptyRejected (0.00s)
 === RUN   TestFigma_RevokeUserSessions_ServerErrorPropagates
---- PASS: TestFigma_RevokeUserSessions_ServerErrorPropagates (0.01s)
+--- PASS: TestFigma_RevokeUserSessions_ServerErrorPropagates (0.00s)
 === RUN   TestFigma_SatisfiesSessionRevokerInterface
 --- PASS: TestFigma_SatisfiesSessionRevokerInterface (0.00s)
 === RUN   TestFigma_CheckSSOEnforcement_Enforced
@@ -2326,7 +2334,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ex
 === RUN   TestFigma_SatisfiesSSOEnforcementCheckerInterface
 --- PASS: TestFigma_SatisfiesSSOEnforcementCheckerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/figma	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/figma	0.029s
 === RUN   TestForgeRockFetchAccessAuditLogs_Maps
 --- PASS: TestForgeRockFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestForgeRockFetchAccessAuditLogs_NotAvailable
@@ -2356,9 +2364,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fi
 === RUN   TestGetSSOMetadata_WithEndpoint
 --- PASS: TestGetSSOMetadata_WithEndpoint (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/forgerock	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/forgerock	0.031s
 === RUN   TestFortinetFetchAccessAuditLogs_Maps
---- PASS: TestFortinetFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestFortinetFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestFortinetFetchAccessAuditLogs_NotAvailable
 --- PASS: TestFortinetFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestFortinetFetchAccessAuditLogs_TransientFailure
@@ -2382,7 +2390,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fortinet	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fortinet	0.045s
 === RUN   TestFreshBooksFetchAccessAuditLogs_Maps
 --- PASS: TestFreshBooksFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestFreshBooksFetchAccessAuditLogs_NotAvailable
@@ -2412,9 +2420,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fo
 === RUN   TestFreshBooksGetSSOMetadata_WithMetadataURL
 --- PASS: TestFreshBooksGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/freshbooks	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/freshbooks	0.017s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -2452,7 +2460,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fr
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/freshdesk	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/freshdesk	0.028s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -2516,7 +2524,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fr
 === RUN   TestFront_SatisfiesSessionRevokerInterface
 --- PASS: TestFront_SatisfiesSessionRevokerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/front	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/front	0.030s
 === RUN   TestFullstoryFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestFullstoryFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestFullstoryFetchAccessAuditLogs_InvalidSecrets
@@ -2536,17 +2544,17 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fr
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.00s)
+--- PASS: TestConnect_Failure (0.01s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fullstory	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fullstory	0.033s
 === RUN   TestGA4FetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestGA4FetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestGA4FetchAccessAuditLogs_InvalidSecrets
 --- PASS: TestGA4FetchAccessAuditLogs_InvalidSecrets (0.00s)
 === RUN   TestGA4ConnectorFlow_FullLifecycle
---- PASS: TestGA4ConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestGA4ConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestGA4ConnectorFlow_RevokeAcceptsResourceName
 --- PASS: TestGA4ConnectorFlow_RevokeAcceptsResourceName (0.00s)
 === RUN   TestGA4ConnectorFlow_RevokeRolePresenceGuard
@@ -2570,13 +2578,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/fu
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ga4	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ga4	0.052s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_Failure
 --- PASS: TestFetchAccessAuditLogs_Failure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
 --- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.00s)
 === RUN   TestValidate_HappyPath
@@ -2660,7 +2668,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ga
 === RUN   TestGCPGetSSOMetadata_WorkforcePoolRegional
 --- PASS: TestGCPGetSSOMetadata_WorkforcePoolRegional (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gcp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gcp	0.055s
 === RUN   TestGeminiFetchAccessAuditLogs_Maps
 --- PASS: TestGeminiFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestGeminiFetchAccessAuditLogs_NotAvailable
@@ -2690,7 +2698,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gc
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gemini	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gemini	0.023s
 === RUN   TestGenericOIDCConnectorFlow_LifecycleSentinel
 --- PASS: TestGenericOIDCConnectorFlow_LifecycleSentinel (0.00s)
 === RUN   TestGenericOIDCConnectorFlow_ConnectFailureForbidden
@@ -2730,7 +2738,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ge
 === RUN   TestGetCredentialsMetadata
 --- PASS: TestGetCredentialsMetadata (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/generic_oidc	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/generic_oidc	0.013s
 === RUN   TestGenericSAMLConnectorFlow_LifecycleSentinel
 --- PASS: TestGenericSAMLConnectorFlow_LifecycleSentinel (0.00s)
 === RUN   TestGenericSAMLConnectorFlow_ConnectFailureForbidden
@@ -2770,7 +2778,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ge
 === RUN   TestGetCredentialsMetadata_FlagsSigningCert
 --- PASS: TestGetCredentialsMetadata_FlagsSigningCert (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/generic_saml	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/generic_saml	0.011s
 === RUN   TestGhostFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestGhostFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestGhostFetchAccessAuditLogs_InvalidSecrets
@@ -2788,19 +2796,19 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ge
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ghost	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ghost	0.028s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotEligible
 --- PASS: TestFetchAccessAuditLogs_NotEligible (0.00s)
 === RUN   TestFetchAccessAuditLogs_RejectsOffHostPagination
---- PASS: TestFetchAccessAuditLogs_RejectsOffHostPagination (0.00s)
+--- PASS: TestFetchAccessAuditLogs_RejectsOffHostPagination (0.01s)
 === RUN   TestConnectorFlow_FullLifecycle
 --- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
@@ -2824,9 +2832,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gh
 === RUN   TestProvisionAccess_HappyPath
 --- PASS: TestProvisionAccess_HappyPath (0.00s)
 === RUN   TestProvisionAccess_Failure
---- PASS: TestProvisionAccess_Failure (0.00s)
+--- PASS: TestProvisionAccess_Failure (0.01s)
 === RUN   TestProvisionAccess_Idempotent
---- PASS: TestProvisionAccess_Idempotent (0.00s)
+--- PASS: TestProvisionAccess_Idempotent (0.01s)
 === RUN   TestRevokeAccess_HappyPath
 --- PASS: TestRevokeAccess_HappyPath (0.00s)
 === RUN   TestRevokeAccess_Idempotent
@@ -2888,7 +2896,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gh
 === RUN   TestRevokeUserSessions_HappyPath
 --- PASS: TestRevokeUserSessions_HappyPath (0.00s)
 === RUN   TestRevokeUserSessions_NotFoundIsIdempotent
---- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.01s)
+--- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.00s)
 === RUN   TestRevokeUserSessions_HTTPFailure
 --- PASS: TestRevokeUserSessions_HTTPFailure (0.00s)
 === RUN   TestRevokeUserSessions_ValidationEmptyID
@@ -2904,9 +2912,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gh
 === RUN   TestGitHubGetSSOMetadata_DerivesURLFromOrganization
 --- PASS: TestGitHubGetSSOMetadata_DerivesURLFromOrganization (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/github	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/github	0.338s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -2924,7 +2932,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gi
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.02s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestListEntitlements_MalformedBody
@@ -2950,7 +2958,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gi
 === RUN   TestGitLab_SyncGroups_HappyPath
 --- PASS: TestGitLab_SyncGroups_HappyPath (0.00s)
 === RUN   TestGitLab_SyncGroups_Pagination
---- PASS: TestGitLab_SyncGroups_Pagination (0.00s)
+--- PASS: TestGitLab_SyncGroups_Pagination (0.01s)
 === RUN   TestGitLab_CountGroups_HappyPath
 --- PASS: TestGitLab_CountGroups_HappyPath (0.00s)
 === RUN   TestGitLab_SyncGroupMembers_HappyPath
@@ -2998,7 +3006,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gi
 === RUN   TestGitLab_CheckSSOEnforcement_Enforced
 --- PASS: TestGitLab_CheckSSOEnforcement_Enforced (0.00s)
 === RUN   TestGitLab_CheckSSOEnforcement_NotEnforced
---- PASS: TestGitLab_CheckSSOEnforcement_NotEnforced (0.00s)
+--- PASS: TestGitLab_CheckSSOEnforcement_NotEnforced (0.01s)
 === RUN   TestGitLab_CheckSSOEnforcement_HTTPFailure
 --- PASS: TestGitLab_CheckSSOEnforcement_HTTPFailure (0.00s)
 === RUN   TestGitLab_SatisfiesSSOEnforcementCheckerInterface
@@ -3010,7 +3018,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gi
 === RUN   TestGitLabGetSSOMetadata_SelfHostedBaseURL
 --- PASS: TestGitLabGetSSOMetadata_SelfHostedBaseURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gitlab	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gitlab	0.082s
 === RUN   TestGongFetchAccessAuditLogs_Maps
 --- PASS: TestGongFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestGongFetchAccessAuditLogs_PaginatesByCursor
@@ -3038,21 +3046,21 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gong	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gong	0.020s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.11s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.06s)
 === RUN   TestMapReportsActivity_DropsUnparseableTimestamp
 --- PASS: TestMapReportsActivity_DropsUnparseableTimestamp (0.00s)
 === RUN   TestFetchAccessAuditLogs_Failure
---- PASS: TestFetchAccessAuditLogs_Failure (0.16s)
+--- PASS: TestFetchAccessAuditLogs_Failure (0.07s)
 === RUN   TestFetchAccessAuditLogs_BoundedPages
---- PASS: TestFetchAccessAuditLogs_BoundedPages (0.18s)
+--- PASS: TestFetchAccessAuditLogs_BoundedPages (0.22s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (1.10s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.75s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
---- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.04s)
+--- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.16s)
 === RUN   TestValidate_HappyPath
---- PASS: TestValidate_HappyPath (0.08s)
+--- PASS: TestValidate_HappyPath (0.11s)
 === RUN   TestOAuthScopeConstants
 --- PASS: TestOAuthScopeConstants (0.00s)
 === RUN   TestValidate_MissingFields
@@ -3062,7 +3070,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
 === RUN   TestValidate_MissingFields/bad_admin
 === RUN   TestValidate_MissingFields/missing_key
 === RUN   TestValidate_MissingFields/bad_key_json
---- PASS: TestValidate_MissingFields (0.88s)
+--- PASS: TestValidate_MissingFields (0.54s)
     --- PASS: TestValidate_MissingFields/missing_domain (0.00s)
     --- PASS: TestValidate_MissingFields/bad_domain (0.00s)
     --- PASS: TestValidate_MissingFields/missing_admin (0.00s)
@@ -3070,27 +3078,27 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
     --- PASS: TestValidate_MissingFields/missing_key (0.00s)
     --- PASS: TestValidate_MissingFields/bad_key_json (0.00s)
 === RUN   TestValidate_DoesNotMakeNetworkCalls
---- PASS: TestValidate_DoesNotMakeNetworkCalls (0.07s)
+--- PASS: TestValidate_DoesNotMakeNetworkCalls (0.05s)
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestProvisionAccess_AddsGroupMember
 === RUN   TestProvisionAccess_AddsGroupMember/created
 === RUN   TestProvisionAccess_AddsGroupMember/conflict_idempotent
---- PASS: TestProvisionAccess_AddsGroupMember (0.35s)
-    --- PASS: TestProvisionAccess_AddsGroupMember/created (0.15s)
-    --- PASS: TestProvisionAccess_AddsGroupMember/conflict_idempotent (0.20s)
+--- PASS: TestProvisionAccess_AddsGroupMember (0.10s)
+    --- PASS: TestProvisionAccess_AddsGroupMember/created (0.05s)
+    --- PASS: TestProvisionAccess_AddsGroupMember/conflict_idempotent (0.04s)
 === RUN   TestProvisionAccess_4xxFailsPermanently
---- PASS: TestProvisionAccess_4xxFailsPermanently (0.13s)
+--- PASS: TestProvisionAccess_4xxFailsPermanently (0.05s)
 === RUN   TestRevokeAccess_RemovesGroupMember
 === RUN   TestRevokeAccess_RemovesGroupMember/deleted
 === RUN   TestRevokeAccess_RemovesGroupMember/not_found_idempotent
---- PASS: TestRevokeAccess_RemovesGroupMember (0.11s)
-    --- PASS: TestRevokeAccess_RemovesGroupMember/deleted (0.04s)
-    --- PASS: TestRevokeAccess_RemovesGroupMember/not_found_idempotent (0.07s)
+--- PASS: TestRevokeAccess_RemovesGroupMember (0.15s)
+    --- PASS: TestRevokeAccess_RemovesGroupMember/deleted (0.06s)
+    --- PASS: TestRevokeAccess_RemovesGroupMember/not_found_idempotent (0.09s)
 === RUN   TestRevokeAccess_4xxFailsPermanently
---- PASS: TestRevokeAccess_4xxFailsPermanently (0.34s)
+--- PASS: TestRevokeAccess_4xxFailsPermanently (0.26s)
 === RUN   TestListEntitlements_PagesUserGroups
---- PASS: TestListEntitlements_PagesUserGroups (0.17s)
+--- PASS: TestListEntitlements_PagesUserGroups (0.02s)
 === RUN   TestListEntitlements_4xxReturnsError
 --- PASS: TestListEntitlements_4xxReturnsError (0.06s)
 === RUN   TestParseLicenseRole
@@ -3100,61 +3108,61 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
 === RUN   TestGetCredentialsMetadata_ReturnsKeyID
 --- PASS: TestGetCredentialsMetadata_ReturnsKeyID (0.07s)
 === RUN   TestSyncIdentities_PaginatesAndMaps
---- PASS: TestSyncIdentities_PaginatesAndMaps (0.04s)
+--- PASS: TestSyncIdentities_PaginatesAndMaps (0.09s)
 === RUN   TestAdminSDKWriteScopes
 --- PASS: TestAdminSDKWriteScopes (0.00s)
 === RUN   TestProvisionAccess_UsesWriteClient
---- PASS: TestProvisionAccess_UsesWriteClient (0.04s)
+--- PASS: TestProvisionAccess_UsesWriteClient (0.09s)
 === RUN   TestRevokeAccess_UsesWriteClient
---- PASS: TestRevokeAccess_UsesWriteClient (0.02s)
+--- PASS: TestRevokeAccess_UsesWriteClient (0.05s)
 === RUN   TestListEntitlements_UsesReadClient
---- PASS: TestListEntitlements_UsesReadClient (0.06s)
+--- PASS: TestListEntitlements_UsesReadClient (0.26s)
 === RUN   TestSyncIdentitiesDelta_PaginatesAndMapsUserEvents
---- PASS: TestSyncIdentitiesDelta_PaginatesAndMapsUserEvents (0.11s)
+--- PASS: TestSyncIdentitiesDelta_PaginatesAndMapsUserEvents (0.03s)
 === RUN   TestSyncIdentitiesDelta_410ReturnsErrDeltaTokenExpired
---- PASS: TestSyncIdentitiesDelta_410ReturnsErrDeltaTokenExpired (0.23s)
+--- PASS: TestSyncIdentitiesDelta_410ReturnsErrDeltaTokenExpired (0.11s)
 === RUN   TestSyncIdentitiesDelta_400WithExpiredCursor
---- PASS: TestSyncIdentitiesDelta_400WithExpiredCursor (0.24s)
+--- PASS: TestSyncIdentitiesDelta_400WithExpiredCursor (0.10s)
 === RUN   TestSyncIdentitiesDelta_IgnoresDeleteUserFailure
---- PASS: TestSyncIdentitiesDelta_IgnoresDeleteUserFailure (0.04s)
+--- PASS: TestSyncIdentitiesDelta_IgnoresDeleteUserFailure (0.19s)
 === RUN   TestSyncIdentitiesDelta_HTTPFailure
---- PASS: TestSyncIdentitiesDelta_HTTPFailure (0.20s)
+--- PASS: TestSyncIdentitiesDelta_HTTPFailure (0.05s)
 === RUN   TestGoogleWorkspace_InitialDeltaCursor_BuildsValidActivityURL
---- PASS: TestGoogleWorkspace_InitialDeltaCursor_BuildsValidActivityURL (0.17s)
+--- PASS: TestGoogleWorkspace_InitialDeltaCursor_BuildsValidActivityURL (0.10s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMUser_HappyPath
---- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_HappyPath (0.13s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_HappyPath (0.15s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMGroup_HappyPath
---- PASS: TestGoogleWorkspaceConnector_PushSCIMGroup_HappyPath (0.11s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMGroup_HappyPath (0.08s)
 === RUN   TestGoogleWorkspaceConnector_DeleteSCIMResource_HappyPath
---- PASS: TestGoogleWorkspaceConnector_DeleteSCIMResource_HappyPath (0.05s)
+--- PASS: TestGoogleWorkspaceConnector_DeleteSCIMResource_HappyPath (0.13s)
 === RUN   TestGoogleWorkspaceConnector_DeleteSCIMResource_404IsIdempotent
---- PASS: TestGoogleWorkspaceConnector_DeleteSCIMResource_404IsIdempotent (0.11s)
+--- PASS: TestGoogleWorkspaceConnector_DeleteSCIMResource_404IsIdempotent (0.20s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMUser_ServerErrorSurfaces
---- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_ServerErrorSurfaces (0.17s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_ServerErrorSurfaces (0.06s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMUser_UnauthorizedSurfaces
---- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_UnauthorizedSurfaces (0.21s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_UnauthorizedSurfaces (0.16s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMUser_ConflictSurfaces
---- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_ConflictSurfaces (0.02s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_ConflictSurfaces (0.14s)
 === RUN   TestGoogleWorkspaceConnector_PushSCIMUser_InvalidConfigSurfaces
---- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_InvalidConfigSurfaces (0.11s)
+--- PASS: TestGoogleWorkspaceConnector_PushSCIMUser_InvalidConfigSurfaces (0.04s)
 === RUN   TestGoogleWorkspaceConnector_SatisfiesSCIMProvisionerInterface
 --- PASS: TestGoogleWorkspaceConnector_SatisfiesSCIMProvisionerInterface (0.00s)
 === RUN   TestRevokeUserSessions_HappyPath
---- PASS: TestRevokeUserSessions_HappyPath (0.11s)
+--- PASS: TestRevokeUserSessions_HappyPath (0.13s)
 === RUN   TestRevokeUserSessions_NotFoundIsIdempotent
---- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.08s)
+--- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.10s)
 === RUN   TestRevokeUserSessions_ValidationEmptyID
 --- PASS: TestRevokeUserSessions_ValidationEmptyID (0.00s)
 === RUN   TestRevokeUserSessions_HTTPFailure
---- PASS: TestRevokeUserSessions_HTTPFailure (0.17s)
+--- PASS: TestRevokeUserSessions_HTTPFailure (0.14s)
 === RUN   TestCheckSSOEnforcement_Enforced
---- PASS: TestCheckSSOEnforcement_Enforced (0.19s)
+--- PASS: TestCheckSSOEnforcement_Enforced (0.05s)
 === RUN   TestCheckSSOEnforcement_NotEnforced
---- PASS: TestCheckSSOEnforcement_NotEnforced (0.03s)
+--- PASS: TestCheckSSOEnforcement_NotEnforced (0.12s)
 === RUN   TestCheckSSOEnforcement_HTTPFailure
 --- PASS: TestCheckSSOEnforcement_HTTPFailure (0.06s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/google_workspace	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/google_workspace	5.301s
 === RUN   TestGorgiasFetchAccessAuditLogs_Maps
 --- PASS: TestGorgiasFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestGorgiasFetchAccessAuditLogs_NotAvailable
@@ -3188,7 +3196,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
 === RUN   TestGorgiasGetSSOMetadata_WithMetadataURL
 --- PASS: TestGorgiasGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gorgias	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gorgias	0.018s
 === RUN   TestGrafanaFetchAccessAuditLogs_MapsAndStops
 --- PASS: TestGrafanaFetchAccessAuditLogs_MapsAndStops (0.00s)
 === RUN   TestGrafanaFetchAccessAuditLogs_NotAvailable
@@ -3218,7 +3226,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
 === RUN   TestGrafana_DeleteSCIMResource_404IsIdempotent
 --- PASS: TestGrafana_DeleteSCIMResource_404IsIdempotent (0.00s)
 === RUN   TestGrafana_PushSCIMUser_ServerErrorSurfaces
---- PASS: TestGrafana_PushSCIMUser_ServerErrorSurfaces (0.00s)
+--- PASS: TestGrafana_PushSCIMUser_ServerErrorSurfaces (0.01s)
 === RUN   TestGrafana_PushSCIMUser_UnauthorizedSurfaces
 --- PASS: TestGrafana_PushSCIMUser_UnauthorizedSurfaces (0.00s)
 === RUN   TestGrafana_PushSCIMUser_MissingSCIMTokenIsValidationError
@@ -3228,7 +3236,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/go
 === RUN   TestGrafana_SatisfiesSCIMProvisionerInterface
 --- PASS: TestGrafana_SatisfiesSCIMProvisionerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/grafana	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/grafana	0.024s
 === RUN   TestGustoFetchAccessAuditLogs_Maps
 --- PASS: TestGustoFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestGustoFetchAccessAuditLogs_NotAvailable
@@ -3254,7 +3262,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gr
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gusto	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gusto	0.038s
 === RUN   TestHackerOneFetchAccessAuditLogs_MapsAndPaginates
 --- PASS: TestHackerOneFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestHackerOneFetchAccessAuditLogs_NotAvailable
@@ -3282,7 +3290,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/gu
 === RUN   TestValidate_RejectsMissingConfig
 --- PASS: TestValidate_RejectsMissingConfig (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hackerone	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hackerone	0.020s
 === RUN   TestHeapFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestHeapFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestHeapFetchAccessAuditLogs_InvalidSecrets
@@ -3306,7 +3314,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ha
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/heap	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/heap	0.019s
 === RUN   TestHelloSignFetchAccessAuditLogs_Maps
 --- PASS: TestHelloSignFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestHelloSignFetchAccessAuditLogs_NotAvailable
@@ -3336,7 +3344,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/he
 === RUN   TestHelloSignGetSSOMetadata_WithMetadataURL
 --- PASS: TestHelloSignGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hellosign	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hellosign	0.020s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -3388,7 +3396,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/he
     --- PASS: TestMapHelpscoutActivity_ZeroTimeReturnsNil/garbage (0.00s)
     --- PASS: TestMapHelpscoutActivity_ZeroTimeReturnsNil/valid_rfc3339 (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/helpscout	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/helpscout	0.027s
 === RUN   TestHerokuFetchAccessAuditLogs_Maps
 --- PASS: TestHerokuFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestHerokuFetchAccessAuditLogs_NotAvailableMissingTeam
@@ -3418,7 +3426,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/he
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 === RUN   TestFetchAuditLogs_MultiPageOverOneMiB
---- PASS: TestFetchAuditLogs_MultiPageOverOneMiB (0.09s)
+--- PASS: TestFetchAuditLogs_MultiPageOverOneMiB (0.10s)
 === RUN   TestFetchAuditLogs_MalformedPageErrors
 --- PASS: TestFetchAuditLogs_MalformedPageErrors (0.00s)
 === RUN   TestSyncAndCountIdentities_MultiPageMembers
@@ -3440,7 +3448,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/he
 === RUN   TestHerokuGetSSOMetadata_WithMetadataURL
 --- PASS: TestHerokuGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/heroku	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/heroku	0.125s
 === RUN   TestHibobFetchAccessAuditLogs_Maps
 --- PASS: TestHibobFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestHibobFetchAccessAuditLogs_NotAvailable
@@ -3466,7 +3474,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/he
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hibob	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hibob	0.021s
 === RUN   TestHIBPFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestHIBPFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestHIBPFetchAccessAuditLogs_InvalidSecrets
@@ -3492,7 +3500,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hibp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hibp	0.021s
 === RUN   TestHootsuiteFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestHootsuiteFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestHootsuiteFetchAccessAuditLogs_InvalidSecrets
@@ -3510,13 +3518,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hi
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hootsuite	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hootsuite	0.031s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Forbidden_SoftSkip
@@ -3604,7 +3612,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ho
 === RUN   TestCheckSSOEnforcement_HTTPFailure
 --- PASS: TestCheckSSOEnforcement_HTTPFailure (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hubspot	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hubspot	0.047s
 === RUN   TestIftttFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestIftttFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestIftttFetchAccessAuditLogs_InvalidSecrets
@@ -3628,7 +3636,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/hu
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ifttt	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ifttt	0.015s
 === RUN   TestInsightlyFetchAccessAuditLogs_Maps
 --- PASS: TestInsightlyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestInsightlyFetchAccessAuditLogs_NotAvailable
@@ -3658,11 +3666,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/if
 === RUN   TestInsightlyGetSSOMetadata_WithMetadataURL
 --- PASS: TestInsightlyGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/insightly	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/insightly	0.024s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
---- PASS: TestFetchAccessAuditLogs_ProviderError (0.01s)
+--- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
 --- PASS: TestFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestMapIntercomActivity_DropsZeroTimestamp
@@ -3670,7 +3678,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/in
 === RUN   TestConnectorFlow_FullLifecycle
 --- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
---- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.01s)
+--- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.00s)
 === RUN   TestValidate_HappyPath
 --- PASS: TestValidate_HappyPath (0.00s)
 === RUN   TestValidate_RejectsMissing
@@ -3714,7 +3722,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/in
 === RUN   TestIntercom_SatisfiesGroupSyncerInterface
 --- PASS: TestIntercom_SatisfiesGroupSyncerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/intercom	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/intercom	0.047s
 === RUN   TestIroncladFetchAccessAuditLogs_Maps
 --- PASS: TestIroncladFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestIroncladFetchAccessAuditLogs_NotAvailable
@@ -3744,7 +3752,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/in
 === RUN   TestIroncladGetSSOMetadata_WithMetadataURL
 --- PASS: TestIroncladGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ironclad	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ironclad	0.038s
 === RUN   TestJasperFetchAccessAuditLogs_Maps
 --- PASS: TestJasperFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestJasperFetchAccessAuditLogs_NotAvailable
@@ -3770,7 +3778,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ir
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jasper	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jasper	0.039s
 === RUN   TestJFrogFetchAccessAuditLogs_MapsAndPaginates
 --- PASS: TestJFrogFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestJFrogFetchAccessAuditLogs_NotAvailable
@@ -3796,9 +3804,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ja
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jfrog	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jfrog	0.020s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -3930,7 +3938,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jf
 === RUN   TestJiraGetSSOMetadata_TrimsTrailingSlash
 --- PASS: TestJiraGetSSOMetadata_TrimsTrailingSlash (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jira	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jira	0.076s
 === RUN   TestJotformFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestJotformFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestJotformFetchAccessAuditLogs_InvalidSecrets
@@ -3954,7 +3962,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ji
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jotform	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jotform	0.017s
 === RUN   TestKareoFetchAccessAuditLogs_Maps
 --- PASS: TestKareoFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestKareoFetchAccessAuditLogs_NotAvailable
@@ -3980,7 +3988,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/jo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kareo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kareo	0.022s
 === RUN   TestKeeperFetchAccessAuditLogs_Maps
 --- PASS: TestKeeperFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestKeeperFetchAccessAuditLogs_NotAvailable
@@ -4010,11 +4018,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ka
 === RUN   TestGetSSOMetadata_WithMetadataURL
 --- PASS: TestGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/keeper	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/keeper	0.025s
 === RUN   TestKlaviyoFetchAccessAuditLogs_Maps
---- PASS: TestKlaviyoFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestKlaviyoFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestKlaviyoFetchAccessAuditLogs_PaginatesByCursor
---- PASS: TestKlaviyoFetchAccessAuditLogs_PaginatesByCursor (0.00s)
+--- PASS: TestKlaviyoFetchAccessAuditLogs_PaginatesByCursor (0.01s)
 === RUN   TestKlaviyoFetchAccessAuditLogs_NotAvailable
 --- PASS: TestKlaviyoFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestKlaviyoFetchAccessAuditLogs_TransientFailure
@@ -4042,7 +4050,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ke
 === RUN   TestKlaviyoGetSSOMetadata_WithMetadataURL
 --- PASS: TestKlaviyoGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/klaviyo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/klaviyo	0.044s
 === RUN   TestKnowBe4FetchAccessAuditLogs_Maps
 --- PASS: TestKnowBe4FetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestKnowBe4FetchAccessAuditLogs_NotAvailable
@@ -4064,7 +4072,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kl
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -4076,7 +4084,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kl
 === RUN   TestKnowBe4_CountGroups_WalksPages
 --- PASS: TestKnowBe4_CountGroups_WalksPages (0.00s)
 === RUN   TestKnowBe4_SyncGroups_ServerErrorPropagates
---- PASS: TestKnowBe4_SyncGroups_ServerErrorPropagates (0.00s)
+--- PASS: TestKnowBe4_SyncGroups_ServerErrorPropagates (0.01s)
 === RUN   TestKnowBe4_SyncGroupMembers_MissingGroupID
 --- PASS: TestKnowBe4_SyncGroupMembers_MissingGroupID (0.00s)
 === RUN   TestKnowBe4_SatisfiesGroupSyncerInterface
@@ -4098,7 +4106,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kl
 === RUN   TestKnowBe4_SatisfiesSCIMProvisionerInterface
 --- PASS: TestKnowBe4_SatisfiesSCIMProvisionerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/knowbe4	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/knowbe4	0.048s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -4190,7 +4198,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/kn
 === RUN   TestLastPassGetSSOMetadata_WithMetadataURL
 --- PASS: TestLastPassGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/lastpass	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/lastpass	0.062s
 === RUN   TestLaunchDarklyFetchAccessAuditLogs_MapsAndPaginatesNewestFirst
 --- PASS: TestLaunchDarklyFetchAccessAuditLogs_MapsAndPaginatesNewestFirst (0.00s)
 === RUN   TestLaunchDarklyFetchAccessAuditLogs_NotAvailable
@@ -4246,7 +4254,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/la
 === RUN   TestLaunchDarkly_SatisfiesSCIMProvisionerInterface
 --- PASS: TestLaunchDarkly_SatisfiesSCIMProvisionerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/launchdarkly	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/launchdarkly	0.031s
 === RUN   TestLinkedInLearningFetchAccessAuditLogs_Maps
 --- PASS: TestLinkedInLearningFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestLinkedInLearningFetchAccessAuditLogs_NotAvailable
@@ -4254,7 +4262,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/la
 === RUN   TestLinkedInLearningFetchAccessAuditLogs_TransientFailure
 --- PASS: TestLinkedInLearningFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestLinkedInLearningConnectorFlow_FullLifecycle
---- PASS: TestLinkedInLearningConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestLinkedInLearningConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestLinkedInLearningConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestLinkedInLearningConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -4272,7 +4280,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/la
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/linkedin_learning	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/linkedin_learning	0.035s
 === RUN   TestLinodeFetchAccessAuditLogs_Maps
 --- PASS: TestLinodeFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestLinodeFetchAccessAuditLogs_NotAvailable
@@ -4300,9 +4308,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/li
 === RUN   TestLinodeGetSSOMetadata_WithMetadataURL
 --- PASS: TestLinodeGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/linode	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/linode	0.015s
 === RUN   TestLiquidPlannerFetchAccessAuditLogs_Maps
---- PASS: TestLiquidPlannerFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestLiquidPlannerFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestLiquidPlannerFetchAccessAuditLogs_NotAvailable
 --- PASS: TestLiquidPlannerFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestLiquidPlannerFetchAccessAuditLogs_TransientFailure
@@ -4334,7 +4342,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/li
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/liquidplanner	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/liquidplanner	0.043s
 === RUN   TestLiveChatFetchAccessAuditLogs_Maps
 --- PASS: TestLiveChatFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestLiveChatFetchAccessAuditLogs_NotAvailable
@@ -4364,7 +4372,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/li
 === RUN   TestLiveChatGetSSOMetadata_WithMetadataURL
 --- PASS: TestLiveChatGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/livechat	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/livechat	0.014s
 === RUN   TestLoomFetchAccessAuditLogs_Maps
 --- PASS: TestLoomFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestLoomFetchAccessAuditLogs_NotAvailable
@@ -4388,7 +4396,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/li
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestSync_PaginationCapped
---- PASS: TestSync_PaginationCapped (0.14s)
+--- PASS: TestSync_PaginationCapped (0.15s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -4398,7 +4406,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/li
 === RUN   TestLoomGetSSOMetadata_WithMetadataURL
 --- PASS: TestLoomGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/loom	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/loom	0.191s
 === RUN   TestMagentoFetchAccessAuditLogs_HappyPath
 --- PASS: TestMagentoFetchAccessAuditLogs_HappyPath (0.00s)
 === RUN   TestMagentoFetchAccessAuditLogs_NotAvailable
@@ -4426,7 +4434,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/lo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/magento	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/magento	0.030s
 === RUN   TestMailchimpFetchAccessAuditLogs_MapsChatter
 --- PASS: TestMailchimpFetchAccessAuditLogs_MapsChatter (0.00s)
 === RUN   TestMailchimpFetchAccessAuditLogs_NotAvailable
@@ -4462,7 +4470,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ma
 === RUN   TestMailchimpGetSSOMetadata_WithMetadataURL
 --- PASS: TestMailchimpGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mailchimp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mailchimp	0.023s
 === RUN   TestMakeFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestMakeFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestMakeFetchAccessAuditLogs_InvalidSecrets
@@ -4486,7 +4494,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ma
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/make	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/make	0.019s
 === RUN   TestMalwarebytesFetchAccessAuditLogs_Maps
 --- PASS: TestMalwarebytesFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMalwarebytesFetchAccessAuditLogs_NotAvailable
@@ -4514,7 +4522,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ma
 === RUN   TestValidate_RejectsMissingConfig
 --- PASS: TestValidate_RejectsMissingConfig (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/malwarebytes	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/malwarebytes	0.045s
 === RUN   TestValidate
 === RUN   TestValidate/empty_config_and_secrets_is_valid
 === RUN   TestValidate/descriptor_config_is_valid
@@ -4540,7 +4548,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ma
 === RUN   TestRegisteredInGlobalRegistry
 --- PASS: TestRegisteredInGlobalRegistry (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/manual	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/manual	0.036s
 === RUN   TestMerakiFetchAccessAuditLogs_Maps
 --- PASS: TestMerakiFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMerakiFetchAccessAuditLogs_NotAvailable
@@ -4572,7 +4580,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ma
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/meraki	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/meraki	0.032s
 === RUN   TestMezmoFetchAccessAuditLogs_Maps
 --- PASS: TestMezmoFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMezmoFetchAccessAuditLogs_NotAvailable
@@ -4602,7 +4610,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/me
 === RUN   TestMezmoGetSSOMetadata_WithMetadataURL
 --- PASS: TestMezmoGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mezmo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mezmo	0.023s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestNormalizeDirectoryAuditOutcome
@@ -4650,7 +4658,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/me
 === RUN   TestRevokeAccess_NoMatchingAssignmentIsIdempotent
 --- PASS: TestRevokeAccess_NoMatchingAssignmentIsIdempotent (0.00s)
 === RUN   TestRevokeAccess_404OnDeleteIsIdempotent
---- PASS: TestRevokeAccess_404OnDeleteIsIdempotent (0.00s)
+--- PASS: TestRevokeAccess_404OnDeleteIsIdempotent (0.01s)
 === RUN   TestListEntitlements_PagesAndMaps
 --- PASS: TestListEntitlements_PagesAndMaps (0.00s)
 === RUN   TestListEntitlements_4xxReturnsError
@@ -4692,7 +4700,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/me
 === RUN   TestRevokeUserSessions_HappyPath
 --- PASS: TestRevokeUserSessions_HappyPath (0.00s)
 === RUN   TestRevokeUserSessions_NotFoundIsIdempotent
---- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.02s)
+--- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.00s)
 === RUN   TestRevokeUserSessions_HTTPFailure
 --- PASS: TestRevokeUserSessions_HTTPFailure (0.00s)
 === RUN   TestRevokeUserSessions_ValidationEmptyID
@@ -4704,7 +4712,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/me
 === RUN   TestCheckSSOEnforcement_HTTPFailure
 --- PASS: TestCheckSSOEnforcement_HTTPFailure (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/microsoft	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/microsoft	0.056s
 === RUN   TestMidjourneyFetchAccessAuditLogs_Maps
 --- PASS: TestMidjourneyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMidjourneyFetchAccessAuditLogs_NotAvailable
@@ -4730,7 +4738,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/midjourney	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/midjourney	0.016s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -4772,7 +4780,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mi
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/miro	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/miro	0.032s
 === RUN   TestMistralFetchAccessAuditLogs_Maps
 --- PASS: TestMistralFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMistralFetchAccessAuditLogs_NotAvailable
@@ -4798,7 +4806,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mistral	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mistral	0.042s
 === RUN   TestMixpanelFetchAccessAuditLogs_MapsAndPaginates
 --- PASS: TestMixpanelFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestMixpanelFetchAccessAuditLogs_NotAvailable
@@ -4830,7 +4838,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mi
 === RUN   TestMixpanelGetSSOMetadata_WithMetadataURL
 --- PASS: TestMixpanelGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mixpanel	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mixpanel	0.021s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -4924,7 +4932,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mi
 === RUN   TestMonday_SatisfiesSessionRevokerInterface
 --- PASS: TestMonday_SatisfiesSessionRevokerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/monday	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/monday	0.056s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_SkipsUnparseableTimestamp
@@ -4980,7 +4988,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mo
 === RUN   TestProvisionAndRevoke_RejectMissingUser
 --- PASS: TestProvisionAndRevoke_RejectMissingUser (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ms_teams	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ms_teams	0.024s
 === RUN   TestMyCaseFetchAccessAuditLogs_Maps
 --- PASS: TestMyCaseFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestMyCaseFetchAccessAuditLogs_NotAvailable
@@ -5010,11 +5018,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ms
 === RUN   TestMyCaseGetSSOMetadata_WithMetadataURL
 --- PASS: TestMyCaseGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mycase	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/mycase	0.023s
 === RUN   TestNamelyFetchAccessAuditLogs_Maps
 --- PASS: TestNamelyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestNamelyFetchAccessAuditLogs_NotAvailable
---- PASS: TestNamelyFetchAccessAuditLogs_NotAvailable (0.01s)
+--- PASS: TestNamelyFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestNamelyFetchAccessAuditLogs_TransientFailure
 --- PASS: TestNamelyFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -5032,7 +5040,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/my
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -5042,7 +5050,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/my
 === RUN   TestNamelyGetSSOMetadata_WithMetadataURL
 --- PASS: TestNamelyGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/namely	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/namely	0.013s
 === RUN   TestNavanFetchAccessAuditLogs_Maps
 --- PASS: TestNavanFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestNavanFetchAccessAuditLogs_NotAvailable
@@ -5062,19 +5070,19 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/na
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/navan	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/navan	0.019s
 === RUN   TestNetlifyFetchAccessAuditLogs_Maps
 --- PASS: TestNetlifyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestNetlifyFetchAccessAuditLogs_NotAvailable
 --- PASS: TestNetlifyFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestNetlifyFetchAccessAuditLogs_LargePageNotTruncated
---- PASS: TestNetlifyFetchAccessAuditLogs_LargePageNotTruncated (0.09s)
+--- PASS: TestNetlifyFetchAccessAuditLogs_LargePageNotTruncated (0.07s)
 === RUN   TestNetlifyConnectorFlow_FullLifecycle
 --- PASS: TestNetlifyConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestNetlifyConnectorFlow_ProvisionForbiddenFailure
@@ -5106,9 +5114,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/na
 === RUN   TestNetlifyGetSSOMetadata_WithMetadataURL
 --- PASS: TestNetlifyGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netlify	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netlify	0.091s
 === RUN   TestNetskopeFetchAccessAuditLogs_Maps
---- PASS: TestNetskopeFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestNetskopeFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestNetskopeFetchAccessAuditLogs_NotAvailable
 --- PASS: TestNetskopeFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestNetskopeFetchAccessAuditLogs_TransientFailure
@@ -5132,7 +5140,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ne
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netskope	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netskope	0.014s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -5172,9 +5180,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ne
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netsuite	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/netsuite	0.022s
 === RUN   TestNewRelicFetchAccessAuditLogs_MapsAndCursorPages
---- PASS: TestNewRelicFetchAccessAuditLogs_MapsAndCursorPages (0.00s)
+--- PASS: TestNewRelicFetchAccessAuditLogs_MapsAndCursorPages (0.01s)
 === RUN   TestNewRelicFetchAccessAuditLogs_NotAvailable_GraphQLError
 --- PASS: TestNewRelicFetchAccessAuditLogs_NotAvailable_GraphQLError (0.00s)
 === RUN   TestNewRelicFetchAccessAuditLogs_NotAvailable_HTTP
@@ -5200,9 +5208,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ne
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/new_relic	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/new_relic	0.037s
 === RUN   TestNordLayerFetchAccessAuditLogs_Maps
---- PASS: TestNordLayerFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestNordLayerFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestNordLayerFetchAccessAuditLogs_NotAvailable
 --- PASS: TestNordLayerFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestNordLayerFetchAccessAuditLogs_TransientFailure
@@ -5226,7 +5234,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ne
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/nordlayer	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/nordlayer	0.028s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -5234,7 +5242,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/no
 === RUN   TestFetchAccessAuditLogs_NotAvailable
 --- PASS: TestFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestNotionConnectorFlow_FullLifecycle
---- PASS: TestNotionConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestNotionConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestNotionConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestNotionConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -5302,7 +5310,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/no
 === RUN   TestRevokeUserSessions_ValidationEmptyID
 --- PASS: TestRevokeUserSessions_ValidationEmptyID (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/notion	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/notion	0.047s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ZeroSinceOmitsFilter
@@ -5312,7 +5320,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/no
 === RUN   TestFetchAccessAuditLogs_Failure
 --- PASS: TestFetchAccessAuditLogs_Failure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ConnectFailsWithBadCredentials
 --- PASS: TestConnectorFlow_ConnectFailsWithBadCredentials (0.00s)
 === RUN   TestValidate_HappyPath
@@ -5402,7 +5410,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/no
 === RUN   TestRevokeUserSessions_NotFoundIsIdempotent
 --- PASS: TestRevokeUserSessions_NotFoundIsIdempotent (0.00s)
 === RUN   TestRevokeUserSessions_HTTPFailure
---- PASS: TestRevokeUserSessions_HTTPFailure (0.01s)
+--- PASS: TestRevokeUserSessions_HTTPFailure (0.00s)
 === RUN   TestRevokeUserSessions_ValidationEmptyID
 --- PASS: TestRevokeUserSessions_ValidationEmptyID (0.00s)
 === RUN   TestCheckSSOEnforcement_Enforced
@@ -5412,7 +5420,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/no
 === RUN   TestCheckSSOEnforcement_HTTPFailure
 --- PASS: TestCheckSSOEnforcement_HTTPFailure (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/okta	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/okta	0.042s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -5486,7 +5494,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ok
 === RUN   TestOnePasswordConnector_DeleteSCIMResource_404IsIdempotent
 --- PASS: TestOnePasswordConnector_DeleteSCIMResource_404IsIdempotent (0.00s)
 === RUN   TestOnePasswordConnector_PushSCIMUser_UnauthorizedSurfaces
---- PASS: TestOnePasswordConnector_PushSCIMUser_UnauthorizedSurfaces (0.01s)
+--- PASS: TestOnePasswordConnector_PushSCIMUser_UnauthorizedSurfaces (0.00s)
 === RUN   TestOnePasswordConnector_PushSCIMUser_InvalidConfigSurfaces
 --- PASS: TestOnePasswordConnector_PushSCIMUser_InvalidConfigSurfaces (0.00s)
 === RUN   TestOnePasswordConnector_SatisfiesSCIMProvisionerInterface
@@ -5496,7 +5504,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ok
 === RUN   TestOnePasswordGetSSOMetadata_WithMetadataURL
 --- PASS: TestOnePasswordGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/onepassword	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/onepassword	0.032s
 === RUN   TestOpenAIFetchAccessAuditLogs_Maps
 --- PASS: TestOpenAIFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestOpenAIFetchAccessAuditLogs_NotAvailable
@@ -5526,13 +5534,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/on
 === RUN   TestGetSSOMetadata_WithMetadataURL
 --- PASS: TestGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/openai	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/openai	0.024s
 === RUN   TestOVHcloudFetchAccessAuditLogs_Maps
 --- PASS: TestOVHcloudFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestOVHcloudFetchAccessAuditLogs_NotAvailable
 --- PASS: TestOVHcloudFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestOVHcloudConnectorFlow_FullLifecycle
---- PASS: TestOVHcloudConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestOVHcloudConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestOVHcloudConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestOVHcloudConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -5554,9 +5562,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/op
 === RUN   TestOVHcloudGetSSOMetadata_WithMetadataURL
 --- PASS: TestOVHcloudGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ovhcloud	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ovhcloud	0.029s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Failure
 --- PASS: TestFetchAccessAuditLogs_Failure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -5572,7 +5580,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ov
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -5610,7 +5618,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ov
 === RUN   TestPagerDuty_SatisfiesGroupSyncerInterface
 --- PASS: TestPagerDuty_SatisfiesGroupSyncerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pagerduty	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pagerduty	0.075s
 === RUN   TestPaloAltoFetchAccessAuditLogs_Maps
 --- PASS: TestPaloAltoFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPaloAltoFetchAccessAuditLogs_NotAvailable
@@ -5636,7 +5644,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paloalto	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paloalto	0.015s
 === RUN   TestPandaDocFetchAccessAuditLogs_Maps
 --- PASS: TestPandaDocFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPandaDocFetchAccessAuditLogs_NotAvailable
@@ -5644,9 +5652,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestPandaDocFetchAccessAuditLogs_TransientFailure
 --- PASS: TestPandaDocFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ProvisionForbiddenFailure
---- PASS: TestConnectorFlow_ProvisionForbiddenFailure (0.00s)
+--- PASS: TestConnectorFlow_ProvisionForbiddenFailure (0.01s)
 === RUN   TestValidate_HappyPath
 --- PASS: TestValidate_HappyPath (0.00s)
 === RUN   TestValidate_RejectsMissing
@@ -5666,9 +5674,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestPandaDocGetSSOMetadata_WithMetadataURL
 --- PASS: TestPandaDocGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pandadoc	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pandadoc	0.062s
 === RUN   TestPandaDocCLMFetchAccessAuditLogs_Maps
---- PASS: TestPandaDocCLMFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestPandaDocCLMFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestPandaDocCLMFetchAccessAuditLogs_NotAvailable
 --- PASS: TestPandaDocCLMFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestPandaDocCLMFetchAccessAuditLogs_TransientFailure
@@ -5696,7 +5704,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestPandaDocCLMGetSSOMetadata_WithMetadataURL
 --- PASS: TestPandaDocCLMGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pandadoc_clm	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pandadoc_clm	0.051s
 === RUN   TestPaychexFetchAccessAuditLogs_Maps
 --- PASS: TestPaychexFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPaychexFetchAccessAuditLogs_NotAvailable
@@ -5726,7 +5734,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestPaychexGetSSOMetadata_WithMetadataURL
 --- PASS: TestPaychexGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paychex	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paychex	0.021s
 === RUN   TestPayPalFetchAccessAuditLogs_Maps
 --- PASS: TestPayPalFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPayPalFetchAccessAuditLogs_NotAvailable
@@ -5756,9 +5764,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestPayPalGetSSOMetadata_WithMetadataURL
 --- PASS: TestPayPalGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paypal	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/paypal	0.021s
 === RUN   TestPerimeter81FetchAccessAuditLogs_Maps
---- PASS: TestPerimeter81FetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestPerimeter81FetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPerimeter81FetchAccessAuditLogs_NotAvailable
 --- PASS: TestPerimeter81FetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestPerimeter81FetchAccessAuditLogs_TransientFailure
@@ -5782,7 +5790,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pa
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/perimeter81	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/perimeter81	0.014s
 === RUN   TestPerplexityFetchAccessAuditLogs_Maps
 --- PASS: TestPerplexityFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPerplexityFetchAccessAuditLogs_NotAvailable
@@ -5802,7 +5810,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -5812,11 +5820,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestPerplexityGetSSOMetadata_WithMetadataURL
 --- PASS: TestPerplexityGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/perplexity	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/perplexity	0.039s
 === RUN   TestPersonioFetchAccessAuditLogs_Maps
 --- PASS: TestPersonioFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPersonioFetchAccessAuditLogs_NotAvailable
---- PASS: TestPersonioFetchAccessAuditLogs_NotAvailable (0.01s)
+--- PASS: TestPersonioFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestPersonioFetchAccessAuditLogs_TransientFailure
 --- PASS: TestPersonioFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -5832,7 +5840,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestAuthToken_PercentEncodesSpecialCharacters
@@ -5844,7 +5852,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestPersonioGetSSOMetadata_WithMetadataURL
 --- PASS: TestPersonioGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/personio	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/personio	0.023s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -5854,7 +5862,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestFetchAccessAuditLogs_EscapesEnvironmentID
 --- PASS: TestFetchAccessAuditLogs_EscapesEnvironmentID (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ConnectFailsWithBadCredentials
 --- PASS: TestConnectorFlow_ConnectFailsWithBadCredentials (0.00s)
 === RUN   TestValidate_HappyPath
@@ -5952,7 +5960,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pe
 === RUN   TestCheckSSOEnforcement_ActionsFetchFailure
 --- PASS: TestCheckSSOEnforcement_ActionsFetchFailure (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ping_identity	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ping_identity	0.037s
 === RUN   TestPipedriveFetchAccessAuditLogs_Maps
 --- PASS: TestPipedriveFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPipedriveFetchAccessAuditLogs_NotAvailable
@@ -5984,7 +5992,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pi
 === RUN   TestPipedriveGetSSOMetadata_WithMetadataURL
 --- PASS: TestPipedriveGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pipedrive	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pipedrive	0.019s
 === RUN   TestPlaidFetchAccessAuditLogs_Maps
 --- PASS: TestPlaidFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestPlaidFetchAccessAuditLogs_NotAvailable
@@ -6014,15 +6022,15 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pi
 === RUN   TestPlaidGetSSOMetadata_WithMetadataURL
 --- PASS: TestPlaidGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/plaid	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/plaid	0.048s
 === RUN   TestPracticeFusionFetchAccessAuditLogs_Maps
---- PASS: TestPracticeFusionFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestPracticeFusionFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestPracticeFusionFetchAccessAuditLogs_NotAvailable
 --- PASS: TestPracticeFusionFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestPracticeFusionFetchAccessAuditLogs_TransientFailure
 --- PASS: TestPracticeFusionFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestPracticeFusionConnectorFlow_FullLifecycle
---- PASS: TestPracticeFusionConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestPracticeFusionConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestPracticeFusionConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestPracticeFusionConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -6040,7 +6048,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pl
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/practice_fusion	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/practice_fusion	0.028s
 === RUN   TestQualysFetchAccessAuditLogs_Maps
 --- PASS: TestQualysFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestQualysFetchAccessAuditLogs_NotAvailable
@@ -6064,49 +6072,49 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/pr
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 === RUN   TestValidate_RejectsBadBaseURL
-=== RUN   TestValidate_RejectsBadBaseURL/with_userinfo
-=== RUN   TestValidate_RejectsBadBaseURL/with_query
-=== RUN   TestValidate_RejectsBadBaseURL/hyphen_leading
-=== RUN   TestValidate_RejectsBadBaseURL/ip_literal
-=== RUN   TestValidate_RejectsBadBaseURL/with_path
-=== RUN   TestValidate_RejectsBadBaseURL/with_fragment
-=== RUN   TestValidate_RejectsBadBaseURL/underscore
 === RUN   TestValidate_RejectsBadBaseURL/empty_host
 === RUN   TestValidate_RejectsBadBaseURL/unparseable
+=== RUN   TestValidate_RejectsBadBaseURL/with_userinfo
+=== RUN   TestValidate_RejectsBadBaseURL/with_path
+=== RUN   TestValidate_RejectsBadBaseURL/with_query
+=== RUN   TestValidate_RejectsBadBaseURL/with_fragment
+=== RUN   TestValidate_RejectsBadBaseURL/underscore
 === RUN   TestValidate_RejectsBadBaseURL/http_scheme
+=== RUN   TestValidate_RejectsBadBaseURL/ip_literal
 === RUN   TestValidate_RejectsBadBaseURL/v6_ip_literal
+=== RUN   TestValidate_RejectsBadBaseURL/hyphen_leading
 --- PASS: TestValidate_RejectsBadBaseURL (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/with_userinfo (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/with_query (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/hyphen_leading (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/ip_literal (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/with_path (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/with_fragment (0.00s)
-    --- PASS: TestValidate_RejectsBadBaseURL/underscore (0.00s)
     --- PASS: TestValidate_RejectsBadBaseURL/empty_host (0.00s)
     --- PASS: TestValidate_RejectsBadBaseURL/unparseable (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/with_userinfo (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/with_path (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/with_query (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/with_fragment (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/underscore (0.00s)
     --- PASS: TestValidate_RejectsBadBaseURL/http_scheme (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/ip_literal (0.00s)
     --- PASS: TestValidate_RejectsBadBaseURL/v6_ip_literal (0.00s)
+    --- PASS: TestValidate_RejectsBadBaseURL/hyphen_leading (0.00s)
 === RUN   TestQualysGetSSOMetadata_NilWithoutURL
 --- PASS: TestQualysGetSSOMetadata_NilWithoutURL (0.00s)
 === RUN   TestQualysGetSSOMetadata_WithMetadataURL
 --- PASS: TestQualysGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qualys	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qualys	0.023s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
 --- PASS: TestFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
 --- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.00s)
 === RUN   TestValidate_HappyPath
@@ -6148,7 +6156,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qu
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.01s)
+--- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 === RUN   TestProvisionAccess_HappyPath
@@ -6176,7 +6184,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qu
 === RUN   TestQuickBooksGetSSOMetadata_WithMetadataURL
 --- PASS: TestQuickBooksGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/quickbooks	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/quickbooks	0.037s
 === RUN   TestQuipFetchAccessAuditLogs_Maps
 --- PASS: TestQuipFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestQuipFetchAccessAuditLogs_NotAvailable
@@ -6206,7 +6214,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qu
 === RUN   TestQuipGetSSOMetadata_WithMetadataURL
 --- PASS: TestQuipGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/quip	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/quip	0.025s
 === RUN   TestRampFetchAccessAuditLogs_Maps
 --- PASS: TestRampFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestRampFetchAccessAuditLogs_NotAvailable
@@ -6214,7 +6222,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qu
 === RUN   TestRampFetchAccessAuditLogs_TransientFailure
 --- PASS: TestRampFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -6236,7 +6244,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/qu
 === RUN   TestRampGetSSOMetadata_WithMetadataURL
 --- PASS: TestRampGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ramp	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ramp	0.064s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -6282,7 +6290,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ra
 === RUN   TestRapid7GetSSOMetadata_WithMetadataURL
 --- PASS: TestRapid7GetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/rapid7	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/rapid7	0.027s
 === RUN   TestRecurlyFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestRecurlyFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestRecurlyFetchAccessAuditLogs_InvalidSecrets
@@ -6300,13 +6308,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ra
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/recurly	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/recurly	0.020s
 === RUN   TestRingcentralFetchAccessAuditLogs_Maps
 --- PASS: TestRingcentralFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestRingcentralFetchAccessAuditLogs_NotAvailable
@@ -6334,7 +6342,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/re
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ringcentral	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ringcentral	0.023s
 === RUN   TestRipplingFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestRipplingFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestRipplingFetchAccessAuditLogs_NotAvailable
@@ -6394,7 +6402,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ri
 === RUN   TestGetSSOMetadata_WithMetadataURL
 --- PASS: TestGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/rippling	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/rippling	0.024s
 === RUN   TestSageEscapeQueryLiteral_DoublesSingleQuotes
 === RUN   TestSageEscapeQueryLiteral_DoublesSingleQuotes/no_quotes
 === RUN   TestSageEscapeQueryLiteral_DoublesSingleQuotes/single_quote
@@ -6440,7 +6448,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ri
 === RUN   TestSageIntacctFetchAccessAuditLogs_TransientFailure
 --- PASS: TestSageIntacctFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestSageIntacctConnectorFlow_FullLifecycle
---- PASS: TestSageIntacctConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestSageIntacctConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestSageIntacctConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestSageIntacctConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -6458,7 +6466,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ri
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sage_intacct	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sage_intacct	0.036s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestMapSalesforceEventLog_ParsesLogDateFormats
@@ -6482,7 +6490,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestConnectorFlow_FullLifecycle
 --- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
---- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.01s)
+--- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.00s)
 === RUN   TestValidate_HappyPath
 --- PASS: TestValidate_HappyPath (0.00s)
 === RUN   TestValidate_RejectsMissing
@@ -6550,7 +6558,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestSalesforce_SatisfiesGroupSyncerInterface
 --- PASS: TestSalesforce_SatisfiesGroupSyncerInterface (0.00s)
 === RUN   TestSalesforceConnector_PushSCIMUser_HappyPath
---- PASS: TestSalesforceConnector_PushSCIMUser_HappyPath (0.01s)
+--- PASS: TestSalesforceConnector_PushSCIMUser_HappyPath (0.00s)
 === RUN   TestSalesforceConnector_PushSCIMGroup_HappyPath
 --- PASS: TestSalesforceConnector_PushSCIMGroup_HappyPath (0.00s)
 === RUN   TestSalesforceConnector_DeleteSCIMResource_HappyPath
@@ -6588,11 +6596,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestSalesforceGetSSOMetadata_TrimsTrailingSlash
 --- PASS: TestSalesforceGetSSOMetadata_TrimsTrailingSlash (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/salesforce	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/salesforce	0.033s
 === RUN   TestSalesloftFetchAccessAuditLogs_Maps
 --- PASS: TestSalesloftFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSalesloftFetchAccessAuditLogs_PaginatesByPage
---- PASS: TestSalesloftFetchAccessAuditLogs_PaginatesByPage (0.01s)
+--- PASS: TestSalesloftFetchAccessAuditLogs_PaginatesByPage (0.00s)
 === RUN   TestSalesloftFetchAccessAuditLogs_NotAvailable
 --- PASS: TestSalesloftFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestSalesloftFetchAccessAuditLogs_TransientFailure
@@ -6622,7 +6630,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestSalesloftGetSSOMetadata_WithMetadataURL
 --- PASS: TestSalesloftGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/salesloft	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/salesloft	0.026s
 === RUN   TestSAPConcurFetchAccessAuditLogs_Maps
 --- PASS: TestSAPConcurFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSAPConcurFetchAccessAuditLogs_NotAvailable
@@ -6642,13 +6650,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.00s)
+--- PASS: TestConnect_Failure (0.01s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sap_concur	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sap_concur	0.029s
 === RUN   TestSegmentFetchAccessAuditLogs_Maps
 --- PASS: TestSegmentFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSegmentFetchAccessAuditLogs_NotAvailable
@@ -6678,9 +6686,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sa
 === RUN   TestSegmentGetSSOMetadata_WithMetadataURL
 --- PASS: TestSegmentGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/segment	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/segment	0.016s
 === RUN   TestSendgridFetchAccessAuditLogs_Maps
---- PASS: TestSendgridFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestSendgridFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSendgridFetchAccessAuditLogs_NotAvailable
 --- PASS: TestSendgridFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestSendgridFetchAccessAuditLogs_TransientFailure
@@ -6704,7 +6712,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/se
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sendgrid	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sendgrid	0.013s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -6720,7 +6728,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/se
 === RUN   TestMapSentineloneActivity_DropsUnparseableTimestamp
 --- PASS: TestMapSentineloneActivity_DropsUnparseableTimestamp (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
---- PASS: TestConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestConnectorFlow_ProvisionFailsOn403
 --- PASS: TestConnectorFlow_ProvisionFailsOn403 (0.00s)
 === RUN   TestValidate_HappyPath
@@ -6754,9 +6762,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/se
 === RUN   TestSentinelOneGetSSOMetadata_WithMetadataURL
 --- PASS: TestSentinelOneGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sentinelone	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sentinelone	0.024s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses/Unauthorized
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses/Forbidden
@@ -6808,7 +6816,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/se
 === RUN   TestSync_RejectsOffHostCheckpoint
 --- PASS: TestSync_RejectsOffHostCheckpoint (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sentry	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sentry	0.030s
 === RUN   TestShopifyFetchAccessAuditLogs_MapsAndCursors
 --- PASS: TestShopifyFetchAccessAuditLogs_MapsAndCursors (0.00s)
 === RUN   TestShopifyFetchAccessAuditLogs_NotAvailable
@@ -6828,13 +6836,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/se
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/shopify	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/shopify	0.021s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotEnterprise
@@ -6940,7 +6948,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sh
 === RUN   TestSlackGetSSOMetadata_NilWhenAPIErrors
 --- PASS: TestSlackGetSSOMetadata_NilWhenAPIErrors (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/slack	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/slack	0.033s
 === RUN   TestSlackEnterpriseFetchAccessAuditLogs_Maps
 --- PASS: TestSlackEnterpriseFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSlackEnterpriseFetchAccessAuditLogs_NotAvailable
@@ -6972,7 +6980,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sl
 === RUN   TestSlackEnterpriseConnector_DeleteSCIMResource_HappyPath
 --- PASS: TestSlackEnterpriseConnector_DeleteSCIMResource_HappyPath (0.00s)
 === RUN   TestSlackEnterpriseConnector_DeleteSCIMResource_404IsIdempotent
---- PASS: TestSlackEnterpriseConnector_DeleteSCIMResource_404IsIdempotent (0.00s)
+--- PASS: TestSlackEnterpriseConnector_DeleteSCIMResource_404IsIdempotent (0.01s)
 === RUN   TestSlackEnterpriseConnector_PushSCIMUser_ServerErrorSurfaces
 --- PASS: TestSlackEnterpriseConnector_PushSCIMUser_ServerErrorSurfaces (0.00s)
 === RUN   TestSlackEnterpriseConnector_PushSCIMUser_UnauthorizedSurfaces
@@ -7008,7 +7016,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sl
 === RUN   TestSlackEnterprise_SatisfiesSSOEnforcementCheckerInterface
 --- PASS: TestSlackEnterprise_SatisfiesSSOEnforcementCheckerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/slack_enterprise	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/slack_enterprise	0.049s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
@@ -7050,11 +7058,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sl
 === RUN   TestProvisionRevoke_RejectMissing
 --- PASS: TestProvisionRevoke_RejectMissing (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/smartsheet	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/smartsheet	0.029s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestSnykDoRaw_CapsBodyAt1MB
---- PASS: TestSnykDoRaw_CapsBodyAt1MB (0.02s)
+--- PASS: TestSnykDoRaw_CapsBodyAt1MB (0.01s)
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses/Unauthorized
 === RUN   TestFetchAccessAuditLogs_SoftSkipStatuses/Forbidden
@@ -7090,7 +7098,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sm
 === RUN   TestProvisionAccess_Failure
 --- PASS: TestProvisionAccess_Failure (0.00s)
 === RUN   TestRevokeAccess_HappyPath
---- PASS: TestRevokeAccess_HappyPath (0.00s)
+--- PASS: TestRevokeAccess_HappyPath (0.02s)
 === RUN   TestRevokeAccess_Idempotent
 --- PASS: TestRevokeAccess_Idempotent (0.00s)
 === RUN   TestRevokeAccess_Failure
@@ -7108,7 +7116,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sm
 === RUN   TestSnykGetSSOMetadata_WithMetadataURL
 --- PASS: TestSnykGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/snyk	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/snyk	0.065s
 === RUN   TestSonarCloudFetchAccessAuditLogs_Maps
 --- PASS: TestSonarCloudFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSonarCloudFetchAccessAuditLogs_NotAvailable
@@ -7128,7 +7136,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sn
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -7138,7 +7146,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sn
 === RUN   TestSonarCloudGetSSOMetadata_WithMetadataURL
 --- PASS: TestSonarCloudGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sonarcloud	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sonarcloud	0.015s
 === RUN   TestSophosCentralFetchAccessAuditLogs_Maps
 --- PASS: TestSophosCentralFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSophosCentralFetchAccessAuditLogs_NotAvailable
@@ -7158,9 +7166,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/so
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.01s)
+--- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 === RUN   TestSophosCentralGetSSOMetadata_NilWithoutURL
@@ -7168,7 +7176,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/so
 === RUN   TestSophosCentralGetSSOMetadata_WithMetadataURL
 --- PASS: TestSophosCentralGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sophos_central	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sophos_central	0.027s
 === RUN   TestSophosXGFetchAccessAuditLogs_Maps
 --- PASS: TestSophosXGFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSophosXGFetchAccessAuditLogs_NotAvailable
@@ -7194,7 +7202,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/so
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sophos_xg	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sophos_xg	0.036s
 === RUN   TestSplunkFetchAccessAuditLogs_MapsAndPaginates
 --- PASS: TestSplunkFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestSplunkFetchAccessAuditLogs_NotAvailable
@@ -7240,7 +7248,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/so
 === RUN   TestSplunk_SyncGroups_ServerErrorPropagates
 --- PASS: TestSplunk_SyncGroups_ServerErrorPropagates (0.00s)
 === RUN   TestSplunk_SyncGroups_MaxPagesGuard
---- PASS: TestSplunk_SyncGroups_MaxPagesGuard (0.26s)
+--- PASS: TestSplunk_SyncGroups_MaxPagesGuard (0.28s)
 === RUN   TestSplunk_SatisfiesGroupSyncerInterface
 --- PASS: TestSplunk_SatisfiesGroupSyncerInterface (0.00s)
 === RUN   TestSplunk_CheckSSOEnforcement_SAMLEnvelope
@@ -7308,7 +7316,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/so
 === RUN   TestSplunk_SatisfiesSSOEnforcementCheckerInterface
 --- PASS: TestSplunk_SatisfiesSSOEnforcementCheckerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/splunk	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/splunk	0.648s
 === RUN   TestSproutSocialFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestSproutSocialFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestSproutSocialFetchAccessAuditLogs_InvalidSecrets
@@ -7332,7 +7340,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sp
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sprout_social	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sprout_social	0.018s
 === RUN   TestSquareFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestSquareFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestSquareFetchAccessAuditLogs_InvalidSecrets
@@ -7356,7 +7364,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sp
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/square	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/square	0.017s
 === RUN   TestSquarespaceFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestSquarespaceFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestSquarespaceFetchAccessAuditLogs_InvalidSecrets
@@ -7374,13 +7382,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sq
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.02s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/squarespace	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/squarespace	0.022s
 === RUN   TestStripeFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestStripeFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestStripeFetchAccessAuditLogs_NotAvailable
@@ -7412,7 +7420,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sq
 === RUN   TestStripeGetSSOMetadata_WithMetadataURL
 --- PASS: TestStripeGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/stripe	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/stripe	0.045s
 === RUN   TestSumoLogicFetchAccessAuditLogs_MapsAndPaginates
 --- PASS: TestSumoLogicFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestSumoLogicFetchAccessAuditLogs_NotAvailable
@@ -7434,7 +7442,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/st
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -7454,7 +7462,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/st
 === RUN   TestSumoLogic_SatisfiesSCIMProvisionerInterface
 --- PASS: TestSumoLogic_SatisfiesSCIMProvisionerInterface (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sumo_logic	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/sumo_logic	0.026s
 === RUN   TestSurveyMonkeyFetchAccessAuditLogs_Maps
 --- PASS: TestSurveyMonkeyFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestSurveyMonkeyFetchAccessAuditLogs_NotAvailable
@@ -7480,13 +7488,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/su
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/surveymonkey	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/surveymonkey	0.017s
 === RUN   TestSurveysparrowFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestSurveysparrowFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestSurveysparrowFetchAccessAuditLogs_InvalidSecrets
 --- PASS: TestSurveysparrowFetchAccessAuditLogs_InvalidSecrets (0.00s)
 === RUN   TestSurveysparrowConnectorFlow_FullLifecycle
---- PASS: TestSurveysparrowConnectorFlow_FullLifecycle (0.00s)
+--- PASS: TestSurveysparrowConnectorFlow_FullLifecycle (0.01s)
 === RUN   TestSurveysparrowConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestSurveysparrowConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -7508,11 +7516,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/su
 === RUN   TestSurveysparrowGetSSOMetadata_WithMetadataURL
 --- PASS: TestSurveysparrowGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/surveysparrow	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/surveysparrow	0.021s
 === RUN   TestTailscaleFetchAccessAuditLogs_Maps
 --- PASS: TestTailscaleFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestTailscaleFetchAccessAuditLogs_NotAvailable
---- PASS: TestTailscaleFetchAccessAuditLogs_NotAvailable (0.01s)
+--- PASS: TestTailscaleFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestTailscaleFetchAccessAuditLogs_ServerError
 --- PASS: TestTailscaleFetchAccessAuditLogs_ServerError (0.00s)
 === RUN   TestTailscaleConnectorFlow_FullLifecycle
@@ -7584,11 +7592,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/su
 === RUN   TestTailscaleGetSSOMetadata_WithMetadataURL
 --- PASS: TestTailscaleGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tailscale	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tailscale	0.036s
 === RUN   TestTeamworkFetchAccessAuditLogs_Maps
---- PASS: TestTeamworkFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestTeamworkFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestTeamworkFetchAccessAuditLogs_NotAvailable
---- PASS: TestTeamworkFetchAccessAuditLogs_NotAvailable (0.01s)
+--- PASS: TestTeamworkFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestTeamworkFetchAccessAuditLogs_TransientFailure
 --- PASS: TestTeamworkFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -7616,13 +7624,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ta
 === RUN   TestTeamworkGetSSOMetadata_WithMetadataURL
 --- PASS: TestTeamworkGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/teamwork	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/teamwork	0.019s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
 --- PASS: TestFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestFetchAccessAuditLogs_DrainsMultiplePages
---- PASS: TestFetchAccessAuditLogs_DrainsMultiplePages (0.05s)
+--- PASS: TestFetchAccessAuditLogs_DrainsMultiplePages (0.03s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_DropsUnparseableTimestamp
@@ -7666,9 +7674,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/te
 === RUN   TestTenableGetSSOMetadata_WithMetadataURL
 --- PASS: TestTenableGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tenable	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tenable	0.058s
 === RUN   TestTerraformFetchAccessAuditLogs_MapsAndPaginates
---- PASS: TestTerraformFetchAccessAuditLogs_MapsAndPaginates (0.01s)
+--- PASS: TestTerraformFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestTerraformFetchAccessAuditLogs_NotAvailable
 --- PASS: TestTerraformFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestTerraformFetchAccessAuditLogs_ServerErrorDoesNotAdvance
@@ -7692,7 +7700,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/te
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/terraform	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/terraform	0.028s
 === RUN   TestTravisCIFetchAccessAuditLogs_Maps
 --- PASS: TestTravisCIFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestTravisCIFetchAccessAuditLogs_NotAvailable
@@ -7712,37 +7720,37 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/te
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestValidate_RejectsBadEndpoint
-=== RUN   TestValidate_RejectsBadEndpoint/http_scheme
 === RUN   TestValidate_RejectsBadEndpoint/empty_scheme
+=== RUN   TestValidate_RejectsBadEndpoint/file_scheme
 === RUN   TestValidate_RejectsBadEndpoint/ip_literal
 === RUN   TestValidate_RejectsBadEndpoint/v6_ip_literal
 === RUN   TestValidate_RejectsBadEndpoint/with_userinfo
-=== RUN   TestValidate_RejectsBadEndpoint/with_fragment
-=== RUN   TestValidate_RejectsBadEndpoint/underscore_label
-=== RUN   TestValidate_RejectsBadEndpoint/unparseable
-=== RUN   TestValidate_RejectsBadEndpoint/file_scheme
 === RUN   TestValidate_RejectsBadEndpoint/with_path
 === RUN   TestValidate_RejectsBadEndpoint/with_query
 === RUN   TestValidate_RejectsBadEndpoint/hyphen_leading
+=== RUN   TestValidate_RejectsBadEndpoint/http_scheme
+=== RUN   TestValidate_RejectsBadEndpoint/with_fragment
+=== RUN   TestValidate_RejectsBadEndpoint/underscore_label
 === RUN   TestValidate_RejectsBadEndpoint/empty_host
+=== RUN   TestValidate_RejectsBadEndpoint/unparseable
 --- PASS: TestValidate_RejectsBadEndpoint (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/http_scheme (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/empty_scheme (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/file_scheme (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/ip_literal (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/v6_ip_literal (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/with_userinfo (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/with_fragment (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/underscore_label (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/unparseable (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/file_scheme (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/with_path (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/with_query (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/hyphen_leading (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/http_scheme (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/with_fragment (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/underscore_label (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/empty_host (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/unparseable (0.00s)
 === RUN   TestValidate_AcceptsKnownEndpoints
 --- PASS: TestValidate_AcceptsKnownEndpoints (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
@@ -7752,9 +7760,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/te
 === RUN   TestTravisCIGetSSOMetadata_WithMetadataURL
 --- PASS: TestTravisCIGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/travis_ci	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/travis_ci	0.035s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
---- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
+--- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.01s)
 === RUN   TestFetchAccessAuditLogs_ProviderError
 --- PASS: TestFetchAccessAuditLogs_ProviderError (0.00s)
 === RUN   TestFetchAccessAuditLogs_NotAvailable
@@ -7804,7 +7812,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tr
 === RUN   TestTrelloGetSSOMetadata_WithMetadataURL
 --- PASS: TestTrelloGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/trello	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/trello	0.029s
 === RUN   TestTwilioFetchAccessAuditLogs_Maps
 --- PASS: TestTwilioFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestTwilioFetchAccessAuditLogs_NotAvailable
@@ -7830,7 +7838,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tr
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/twilio	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/twilio	0.019s
 === RUN   TestTypeformFetchAccessAuditLogs_Maps
 --- PASS: TestTypeformFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestTypeformFetchAccessAuditLogs_NotAvailable
@@ -7856,7 +7864,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/tw
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/typeform	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/typeform	0.012s
 === RUN   TestUdemyBusinessFetchAccessAuditLogs_Maps
 --- PASS: TestUdemyBusinessFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestUdemyBusinessFetchAccessAuditLogs_NotAvailable
@@ -7882,7 +7890,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ty
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/udemy_business	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/udemy_business	0.034s
 === RUN   TestVercelFetchAccessAuditLogs_Maps
 --- PASS: TestVercelFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestVercelFetchAccessAuditLogs_NotAvailableNoTeam
@@ -7918,7 +7926,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ud
 === RUN   TestVercelGetSSOMetadata_WithMetadataURL
 --- PASS: TestVercelGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vercel	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vercel	0.026s
 === RUN   TestVirusTotalFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestVirusTotalFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestVirusTotalFetchAccessAuditLogs_InvalidSecrets
@@ -7944,9 +7952,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ve
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/virustotal	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/virustotal	0.031s
 === RUN   TestVonageFetchAccessAuditLogs_Maps
---- PASS: TestVonageFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestVonageFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestVonageFetchAccessAuditLogs_NotAvailable
 --- PASS: TestVonageFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestVonageFetchAccessAuditLogs_TransientFailure
@@ -7964,17 +7972,17 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vi
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vonage	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vonage	0.020s
 === RUN   TestVultrFetchAccessAuditLogs_Maps
 --- PASS: TestVultrFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestVultrFetchAccessAuditLogs_NotAvailable
---- PASS: TestVultrFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestVultrFetchAccessAuditLogs_NotAvailable (0.02s)
 === RUN   TestVultrConnectorFlow_FullLifecycle
 --- PASS: TestVultrConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestVultrConnectorFlow_ProvisionForbiddenFailure
@@ -8000,9 +8008,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vo
 === RUN   TestVultrGetSSOMetadata_WithMetadataURL
 --- PASS: TestVultrGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vultr	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vultr	0.061s
 === RUN   TestWasabiFetchAccessAuditLogs_Maps
---- PASS: TestWasabiFetchAccessAuditLogs_Maps (0.01s)
+--- PASS: TestWasabiFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestWasabiFetchAccessAuditLogs_NotAvailable
 --- PASS: TestWasabiFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestWasabiConnectorFlow_FullLifecycle
@@ -8028,11 +8036,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/vu
 === RUN   TestWasabiGetSSOMetadata_WithMetadataURL
 --- PASS: TestWasabiGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wasabi	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wasabi	0.024s
 === RUN   TestWaveFetchAccessAuditLogs_Maps
 --- PASS: TestWaveFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestWaveFetchAccessAuditLogs_NotAvailable
---- PASS: TestWaveFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestWaveFetchAccessAuditLogs_NotAvailable (0.01s)
 === RUN   TestWaveFetchAccessAuditLogs_TransientFailure
 --- PASS: TestWaveFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -8054,9 +8062,9 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wa
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wave	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wave	0.044s
 === RUN   TestWazuhFetchAccessAuditLogs_Maps
---- PASS: TestWazuhFetchAccessAuditLogs_Maps (0.00s)
+--- PASS: TestWazuhFetchAccessAuditLogs_Maps (0.01s)
 === RUN   TestWazuhFetchAccessAuditLogs_NotAvailable
 --- PASS: TestWazuhFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestWazuhFetchAccessAuditLogs_TransientFailure
@@ -8076,45 +8084,45 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wa
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.01s)
+--- PASS: TestConnect_Failure (0.00s)
 === RUN   TestCountIdentities_ValidatesCredentials
 --- PASS: TestCountIdentities_ValidatesCredentials (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 === RUN   TestValidate_RejectsBadEndpoint
+=== RUN   TestValidate_RejectsBadEndpoint/with_fragment
+=== RUN   TestValidate_RejectsBadEndpoint/http_scheme
+=== RUN   TestValidate_RejectsBadEndpoint/ip_literal
+=== RUN   TestValidate_RejectsBadEndpoint/with_path
+=== RUN   TestValidate_RejectsBadEndpoint/with_query
+=== RUN   TestValidate_RejectsBadEndpoint/hyphen_leading
+=== RUN   TestValidate_RejectsBadEndpoint/underscore_label
+=== RUN   TestValidate_RejectsBadEndpoint/empty_host
+=== RUN   TestValidate_RejectsBadEndpoint/unparseable
 === RUN   TestValidate_RejectsBadEndpoint/empty_scheme
 === RUN   TestValidate_RejectsBadEndpoint/file_scheme
-=== RUN   TestValidate_RejectsBadEndpoint/ip_literal
-=== RUN   TestValidate_RejectsBadEndpoint/with_userinfo
-=== RUN   TestValidate_RejectsBadEndpoint/with_path
-=== RUN   TestValidate_RejectsBadEndpoint/underscore_label
-=== RUN   TestValidate_RejectsBadEndpoint/unparseable
-=== RUN   TestValidate_RejectsBadEndpoint/http_scheme
 === RUN   TestValidate_RejectsBadEndpoint/v6_ip_literal
-=== RUN   TestValidate_RejectsBadEndpoint/with_query
-=== RUN   TestValidate_RejectsBadEndpoint/with_fragment
-=== RUN   TestValidate_RejectsBadEndpoint/hyphen_leading
-=== RUN   TestValidate_RejectsBadEndpoint/empty_host
+=== RUN   TestValidate_RejectsBadEndpoint/with_userinfo
 --- PASS: TestValidate_RejectsBadEndpoint (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/with_fragment (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/http_scheme (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/ip_literal (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/with_path (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/with_query (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/hyphen_leading (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/underscore_label (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/empty_host (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/unparseable (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/empty_scheme (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/file_scheme (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/ip_literal (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/with_userinfo (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/with_path (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/underscore_label (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/unparseable (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/http_scheme (0.00s)
     --- PASS: TestValidate_RejectsBadEndpoint/v6_ip_literal (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/with_query (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/with_fragment (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/hyphen_leading (0.00s)
-    --- PASS: TestValidate_RejectsBadEndpoint/empty_host (0.00s)
+    --- PASS: TestValidate_RejectsBadEndpoint/with_userinfo (0.00s)
 === RUN   TestWazuhGetSSOMetadata_NilWithoutURL
 --- PASS: TestWazuhGetSSOMetadata_NilWithoutURL (0.00s)
 === RUN   TestWazuhGetSSOMetadata_WithMetadataURL
 --- PASS: TestWazuhGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wazuh	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wazuh	0.026s
 === RUN   TestWixFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestWixFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestWixFetchAccessAuditLogs_InvalidSecrets
@@ -8138,13 +8146,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wa
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wix	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wix	0.028s
 === RUN   TestWooCommerceFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestWooCommerceFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestWooCommerceFetchAccessAuditLogs_InvalidSecrets
 --- PASS: TestWooCommerceFetchAccessAuditLogs_InvalidSecrets (0.00s)
 === RUN   TestWooCommerceConnectorFlow_FullLifecycle
---- PASS: TestWooCommerceConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestWooCommerceConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestWooCommerceConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestWooCommerceConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -8162,7 +8170,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wi
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/woocommerce	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/woocommerce	0.014s
 === RUN   TestWordPressFetchAccessAuditLogs_HappyPath
 --- PASS: TestWordPressFetchAccessAuditLogs_HappyPath (0.00s)
 === RUN   TestWordPressFetchAccessAuditLogs_NotAvailable
@@ -8186,7 +8194,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wo
 === RUN   TestSync_PaginatesUsers
 --- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
---- PASS: TestConnect_Failure (0.01s)
+--- PASS: TestConnect_Failure (0.00s)
 === RUN   TestConnect_DoesNotSendPageParam
 --- PASS: TestConnect_DoesNotSendPageParam (0.00s)
 === RUN   TestSync_UsesOffsetPagination
@@ -8194,7 +8202,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wordpress	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wordpress	0.016s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestMapWorkdayActivity_DropsZeroTimestamp
@@ -8216,7 +8224,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wo
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.00s)
+--- PASS: TestSync_PaginatesUsers (0.01s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetSSOMetadata
@@ -8264,11 +8272,11 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wo
 === RUN   TestWorkdayGetSSOMetadata_DerivesURLFromHostAndTenant
 --- PASS: TestWorkdayGetSSOMetadata_DerivesURLFromHostAndTenant (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/workday	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/workday	0.067s
 === RUN   TestWrikeFetchAccessAuditLogs_Maps
 --- PASS: TestWrikeFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestWrikeFetchAccessAuditLogs_NotAvailable
---- PASS: TestWrikeFetchAccessAuditLogs_NotAvailable (0.00s)
+--- PASS: TestWrikeFetchAccessAuditLogs_NotAvailable (0.01s)
 === RUN   TestWrikeFetchAccessAuditLogs_TransientFailure
 --- PASS: TestWrikeFetchAccessAuditLogs_TransientFailure (0.00s)
 === RUN   TestConnectorFlow_FullLifecycle
@@ -8298,13 +8306,13 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wo
 === RUN   TestWrikeGetSSOMetadata_WithMetadataURL
 --- PASS: TestWrikeGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wrike	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wrike	0.049s
 === RUN   TestWufooFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestWufooFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestWufooFetchAccessAuditLogs_InvalidSecrets
 --- PASS: TestWufooFetchAccessAuditLogs_InvalidSecrets (0.00s)
 === RUN   TestWufooConnectorFlow_FullLifecycle
---- PASS: TestWufooConnectorFlow_FullLifecycle (0.01s)
+--- PASS: TestWufooConnectorFlow_FullLifecycle (0.00s)
 === RUN   TestWufooConnectorFlow_ProvisionForbiddenFailure
 --- PASS: TestWufooConnectorFlow_ProvisionForbiddenFailure (0.00s)
 === RUN   TestValidate_HappyPath
@@ -8324,7 +8332,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wr
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wufoo	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wufoo	0.020s
 === RUN   TestXeroFetchAccessAuditLogs_Maps
 --- PASS: TestXeroFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestXeroFetchAccessAuditLogs_NotAvailable
@@ -8354,7 +8362,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/wu
 === RUN   TestXeroGetSSOMetadata_WithMetadataURL
 --- PASS: TestXeroGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/xero	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/xero	0.032s
 === RUN   TestYardiFetchAccessAuditLogs_Maps
 --- PASS: TestYardiFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestYardiFetchAccessAuditLogs_NotAvailable
@@ -8380,7 +8388,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/xe
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/yardi	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/yardi	0.014s
 === RUN   TestZapierFetchAccessAuditLogs_AlwaysUnavailable
 --- PASS: TestZapierFetchAccessAuditLogs_AlwaysUnavailable (0.00s)
 === RUN   TestZapierFetchAccessAuditLogs_InvalidSecrets
@@ -8404,7 +8412,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ya
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zapier	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zapier	0.021s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestFetchAccessAuditLogs_Forbidden_SoftSkip
@@ -8522,7 +8530,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/za
 === RUN   TestZendeskGetSSOMetadata_DerivesURLFromSubdomain
 --- PASS: TestZendeskGetSSOMetadata_DerivesURLFromSubdomain (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zendesk	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zendesk	0.038s
 === RUN   TestZenefitsFetchAccessAuditLogs_Maps
 --- PASS: TestZenefitsFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestZenefitsFetchAccessAuditLogs_NotAvailable
@@ -8552,7 +8560,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ze
 === RUN   TestZenefitsGetSSOMetadata_WithMetadataURL
 --- PASS: TestZenefitsGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zenefits	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zenefits	0.017s
 === RUN   TestZocdocFetchAccessAuditLogs_Maps
 --- PASS: TestZocdocFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestZocdocFetchAccessAuditLogs_NotAvailable
@@ -8572,15 +8580,15 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/ze
 === RUN   TestRegistryIntegration
 --- PASS: TestRegistryIntegration (0.00s)
 === RUN   TestSync_PaginatesUsers
---- PASS: TestSync_PaginatesUsers (0.01s)
+--- PASS: TestSync_PaginatesUsers (0.00s)
 === RUN   TestConnect_Failure
 --- PASS: TestConnect_Failure (0.00s)
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zocdoc	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zocdoc	0.014s
 === RUN   TestZohoCRMFetchAccessAuditLogs_MapsAndPaginates
---- PASS: TestZohoCRMFetchAccessAuditLogs_MapsAndPaginates (0.01s)
+--- PASS: TestZohoCRMFetchAccessAuditLogs_MapsAndPaginates (0.00s)
 === RUN   TestZohoCRMFetchAccessAuditLogs_NotAvailable
 --- PASS: TestZohoCRMFetchAccessAuditLogs_NotAvailable (0.00s)
 === RUN   TestZohoCRMFetchAccessAuditLogs_NoContent_IsNotAudit
@@ -8606,7 +8614,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zoho_crm	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zoho_crm	0.014s
 === RUN   TestFetchAccessAuditLogs_PaginatesAndMaps
 --- PASS: TestFetchAccessAuditLogs_PaginatesAndMaps (0.00s)
 === RUN   TestMapZoomActivity_TimestampParsing
@@ -8724,7 +8732,7 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zo
 === RUN   TestZoomGetSSOMetadata_WithMetadataURL
 --- PASS: TestZoomGetSSOMetadata_WithMetadataURL (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zoom	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zoom	0.030s
 === RUN   TestZscalerFetchAccessAuditLogs_Maps
 --- PASS: TestZscalerFetchAccessAuditLogs_Maps (0.00s)
 === RUN   TestZscalerFetchAccessAuditLogs_NotAvailable
@@ -8752,4 +8760,4 @@ ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zo
 === RUN   TestGetCredentialsMetadata_RedactsToken
 --- PASS: TestGetCredentialsMetadata_RedactsToken (0.00s)
 PASS
-ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zscaler	(cached)
+ok  	github.com/kennguy3n/fishbone-access/internal/services/access/connectors/zscaler	0.014s

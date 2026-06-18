@@ -2,55 +2,55 @@
   "targets": [
     {
       "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-16T07:45:31.527975Z",
+      "created_at": "2026-06-18T14:11:31.975269Z",
       "deleted_at": null,
-      "id": "ed3bdcef-32de-4770-95b3-65646c1347aa",
+      "id": "a5f5a940-64d8-48c9-96c3-1291bdd1fc39",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:45:31.527975Z",
+      "updated_at": "2026-06-18T14:11:31.975269Z",
       "username": "svc_access",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
       "address": "ledger-bastion.acme-pay.internal:22",
-      "created_at": "2026-06-16T07:45:01.352663Z",
+      "created_at": "2026-06-18T14:11:01.754498Z",
       "deleted_at": null,
-      "id": "5f7df228-b44e-45ab-967a-32d5df9703b8",
+      "id": "af52a490-367b-4ca1-95ab-5bdd7ea6738f",
       "lease_ttl_seconds": 1800,
       "name": "Ledger bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-16T07:45:01.352663Z",
+      "updated_at": "2026-06-18T14:11:01.754498Z",
       "username": "ops",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
       "address": "ledger-db-1.acme-pay.internal:5432",
-      "created_at": "2026-06-16T07:45:01.340805Z",
+      "created_at": "2026-06-18T14:11:01.742859Z",
       "deleted_at": null,
-      "id": "91d1a57b-c7c3-45f6-a5e3-26cc8c99f156",
+      "id": "fb3bfa53-12d9-493d-92cb-11715b3f7fac",
       "lease_ttl_seconds": 1800,
       "name": "Core ledger (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:45:01.340805Z",
+      "updated_at": "2026-06-18T14:11:01.742859Z",
       "username": "ledger_admin",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     },
     {
       "address": "ledger-db-1.acme-pay.internal:22",
-      "created_at": "2026-06-16T07:44:32.207807Z",
+      "created_at": "2026-06-18T14:10:31.680935Z",
       "deleted_at": null,
-      "id": "b0b6408f-bd83-41d0-9231-1cc8ca91a13a",
+      "id": "890a8d9c-accc-48ad-aed5-403a9c171b90",
       "lease_ttl_seconds": 1800,
       "name": "Ledger DB host (prod-sg-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-16T07:44:32.207807Z",
+      "updated_at": "2026-06-18T14:10:31.680935Z",
       "username": "ops",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
     }
   ]
 }

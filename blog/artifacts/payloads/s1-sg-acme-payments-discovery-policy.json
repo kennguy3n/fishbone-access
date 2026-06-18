@@ -1,4 +1,6 @@
 {
+  "active_sweep_enabled": false,
+  "active_sweep_targets": {},
   "create_targets": false,
   "enabled": true,
   "has_credential": false,
@@ -14,6 +16,6 @@
       ]
     }
   ],
-  "updated_at": "2026-06-16T07:45:31.536911Z",
+  "updated_at": "2026-06-18T14:11:31.986064Z",
   "updated_by": "sg-acme-payments-owner"
 }
