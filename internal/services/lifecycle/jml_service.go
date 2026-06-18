@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/kennguy3n/fishbone-access/internal/iamcore"
 	"github.com/kennguy3n/fishbone-access/internal/models"
 	"github.com/kennguy3n/fishbone-access/internal/services/access"
 )
@@ -420,6 +421,15 @@ func (s *JMLService) layerIAMCoreDisable(ctx context.Context, user string, recor
 		return
 	}
 	if err := s.disabler.BlockUser(ctx, user); err != nil {
+		// A leaver who no longer exists in iam-core is already in the kill
+		// switch's desired end state, not a failure. iam-core answers 404
+		// (surfaced as ErrNotFound) when the user was never provisioned there
+		// or was already removed, so treat "already gone" as success — this
+		// also keeps a re-run after a partial prior run idempotent.
+		if errors.Is(err, iamcore.ErrNotFound) {
+			record(LayerIAMCoreDisable, LayerStatusDone, "user already absent in iam-core")
+			return
+		}
 		record(LayerIAMCoreDisable, LayerStatusFailed, err.Error())
 		return
 	}
