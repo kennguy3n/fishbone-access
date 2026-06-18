@@ -203,10 +203,11 @@ leases do.
 
 ![Acme's JIT leases — the lease is approved and counting down inside its 30-minute window, carrying its low-risk agent verdict on the record](../artifacts/screenshots/s1-sg-pam-leases.png)
 
-This is the full *lease* lifecycle — request → approve (step-up) → mint → expire
-— and every step lands on the evidence chain (`pam.target.created`,
-`pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). But the
-lease is only half the story. Acme also opens a **recorded privileged session**
+That traces the *lease* lifecycle — request → approve (step-up) → mint → automatic
+expire — through the four steps captured here, each landing on the evidence chain
+(`pam.target.created`, `pam.lease.requested`, `pam.lease.approved`,
+`pam.connect_token.minted`); the terminal `pam.lease.expired` is appended by the
+control plane itself once the window lapses. But the lease is only half the story. Acme also opens a **recorded privileged session**
 against a registered bastion target: the JIT connect-token is redeemed, the
 operator's commands run through the **same `IORecorder` the live gateway uses**,
 and the session is **closed** with its recording anchored. `pam_sessions = 1` for
