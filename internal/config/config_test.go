@@ -350,6 +350,32 @@ func TestValidateAgentCAPair(t *testing.T) {
 	}
 }
 
+func TestValidateWebAuthnPair(t *testing.T) {
+	base := func() Config { return Config{DatabaseDriver: DriverPgx} }
+	// Neither set: WebAuthn off, valid.
+	if err := base().Validate(); err != nil {
+		t.Fatalf("WebAuthn unset failed Validate: %v", err)
+	}
+	// Both set: valid (the display name has a default, so it never gates).
+	both := base()
+	both.WebAuthn = WebAuthnConfig{RPID: "example.com", RPOrigins: []string{"https://example.com"}}
+	if err := both.Validate(); err != nil {
+		t.Fatalf("WebAuthn pair failed Validate: %v", err)
+	}
+	// RPID without origins: rejected.
+	rpidOnly := base()
+	rpidOnly.WebAuthn = WebAuthnConfig{RPID: "example.com"}
+	if err := rpidOnly.Validate(); err == nil {
+		t.Error("Validate accepted RPID without origins, want rejection")
+	}
+	// Origins without RPID: rejected.
+	originsOnly := base()
+	originsOnly.WebAuthn = WebAuthnConfig{RPOrigins: []string{"https://example.com"}}
+	if err := originsOnly.Validate(); err == nil {
+		t.Error("Validate accepted origins without RPID, want rejection")
+	}
+}
+
 func TestSharedStoreLoadAndWarnings(t *testing.T) {
 	// Defaults: shared store off, so neither feature is "active" and no
 	// shared-store warning is emitted even without a Redis URL.

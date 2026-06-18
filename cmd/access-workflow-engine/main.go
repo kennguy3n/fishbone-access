@@ -203,17 +203,39 @@ func run() error {
 	// degradation. The gate path (ShouldRunPeriodic) consults only Enabled + the
 	// persisted dormancy state; IdleThreshold/DefaultTier feed Reconcile/BudgetFor
 	// (never called here) and are passed only for parity with ztna-api's Service.
+	var tenancySvc *tenancy.Service
 	var gate tenancy.HibernationGate = tenancy.AlwaysRun{}
 	if cfg.Tenancy.HibernationEnabled {
-		gate = tenancy.NewService(gdb, tenancy.Config{
+		tenancySvc = tenancy.NewService(gdb, tenancy.Config{
 			Enabled:       true,
 			IdleThreshold: cfg.Tenancy.DormantIdleThreshold,
 			DefaultTier:   cfg.Tenancy.DefaultTier,
 		})
+		gate = tenancySvc
 		logger.Infof(ctx, "access-workflow-engine: tenant hibernation enabled; dormant workspaces' periodic review sweeps are deferred")
 	} else {
 		logger.Infof(ctx, "access-workflow-engine: tenant hibernation DISABLED; every workspace is swept (AlwaysRun gate)")
 	}
+
+	// Shared fair-scheduler for the periodic per-tenant sweeps (credential
+	// rotation + discovery auto-onboarding). It bounds total simultaneous
+	// per-tenant jobs across the WHOLE engine by one global ceiling and, where a
+	// tenancy.Service is available, caps each tenant's slice by its
+	// MaxConcurrentSyncs budget — so a fleet that all comes due in the same tick
+	// (or one noisy tenant) cannot exhaust the DB pool / upstream rate limits.
+	// Both sweeps share ONE scheduler so the ceiling is a real fleet-wide bound,
+	// not per-sweep. The runner also applies the same hibernation gate the
+	// sweeps used before, so dormant tenants still cost nothing. budgets is the
+	// concrete *Service when enabled and an explicit nil interface otherwise
+	// (never a typed-nil) so the no-budget path is taken cleanly.
+	sched := tenancy.NewFairScheduler(cfg.Tenancy.PeriodicConcurrency)
+	var periodicRunner *tenancy.PeriodicRunner
+	if tenancySvc != nil {
+		periodicRunner = tenancy.NewPeriodicRunner(gate, tenancySvc, sched)
+	} else {
+		periodicRunner = tenancy.NewPeriodicRunner(gate, nil, sched)
+	}
+	logger.Infof(ctx, "access-workflow-engine: periodic fair-scheduler ready (global ceiling=%d; 0 ⇒ auto 4×GOMAXPROCS)", cfg.Tenancy.PeriodicConcurrency)
 
 	reviewScheduler, err := workflow_engine.NewReviewScheduler(
 		engine,
@@ -260,7 +282,9 @@ func run() error {
 			return err
 		}
 		rotationScheduler.
-			WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("rotation_sweep") }).
+			WithPeriodicRunner(periodicRunner,
+				func() { metrics.IncPeriodicJobSkipped("rotation_sweep") },
+				func() { metrics.IncPeriodicJobDeferred("rotation_sweep") }).
 			WithReaper(rotReaper)
 		logger.Infof(ctx, "access-workflow-engine: credential rotation sweep enabled (interval=%s)", cfg.Rotation.SweepInterval)
 	} else {
@@ -318,7 +342,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		discoverySweeper.WithHibernationGate(gate, func() { metrics.IncPeriodicJobSkipped("discovery_sweep") })
+		discoverySweeper.WithPeriodicRunner(periodicRunner,
+			func() { metrics.IncPeriodicJobSkipped("discovery_sweep") },
+			func() { metrics.IncPeriodicJobDeferred("discovery_sweep") })
 		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep enabled (interval=%s)", cfg.Discovery.SweepInterval)
 	} else {
 		logger.Infof(ctx, "access-workflow-engine: discovery auto-onboarding sweep DISABLED (ACCESS_DISCOVERY_SWEEP_ENABLED=false)")

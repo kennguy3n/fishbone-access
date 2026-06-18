@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -165,3 +166,162 @@ func TestPeriodicRunnerOutcomes(t *testing.T) {
 type gateFunc func() (bool, error)
 
 func (g gateFunc) ShouldRunPeriodic(context.Context, uuid.UUID) (bool, error) { return g() }
+
+// alwaysRun is a gate that never defers (every workspace is awake).
+func alwaysRunGate() gateFunc { return gateFunc(func() (bool, error) { return true, nil }) }
+
+// fixedBudget is a budgetResolver returning the same per-tenant cap for every
+// workspace, so a Sweep test can pin MaxConcurrentSyncs deterministically.
+type fixedBudget struct{ cap int }
+
+func (b fixedBudget) BudgetFor(context.Context, uuid.UUID) (Budget, error) {
+	return Budget{MaxConcurrentSyncs: b.cap}, nil
+}
+
+// TestSweepBoundedConcurrency proves the global ceiling actually binds: with a
+// ceiling of N and more than N jobs (each across a distinct workspace so the
+// per-tenant cap never binds), at most N run at once. It is fully deterministic
+// — jobs park on a channel rather than sleeping — so exactly N reach the parked
+// state, the launch loop blocks on the (N+1)th slot, and the observed peak is N.
+func TestSweepBoundedConcurrency(t *testing.T) {
+	const ceiling = 3
+	const total = 7
+	sched := NewFairScheduler(ceiling)
+	// nil budgets ⇒ no per-tenant cap, so only the global ceiling binds.
+	runner := NewPeriodicRunner(alwaysRunGate(), nil, sched)
+
+	started := make(chan struct{}, total)
+	release := make(chan struct{})
+	var cur, peak, ran int64
+	var peakMu sync.Mutex
+
+	jobs := make([]Job, total)
+	for i := range jobs {
+		jobs[i] = Job{
+			WorkspaceID: uuid.New(),
+			Run: func(context.Context) error {
+				n := atomic.AddInt64(&cur, 1)
+				peakMu.Lock()
+				if n > peak {
+					peak = n
+				}
+				peakMu.Unlock()
+				started <- struct{}{}
+				<-release
+				atomic.AddInt64(&cur, -1)
+				atomic.AddInt64(&ran, 1)
+				return nil
+			},
+		}
+	}
+
+	done := make(chan struct{})
+	go func() {
+		runner.Sweep(context.Background(), jobs, nil)
+		close(done)
+	}()
+
+	// Exactly ceiling jobs can park; the launch loop is now blocked acquiring
+	// the (ceiling+1)th global slot, which only frees once we release.
+	for i := 0; i < ceiling; i++ {
+		<-started
+	}
+	if got := atomic.LoadInt64(&cur); got != ceiling {
+		t.Fatalf("in-flight at saturation = %d, want %d", got, ceiling)
+	}
+
+	close(release)
+	<-done
+
+	if ran != total {
+		t.Fatalf("ran = %d, want %d (every job must eventually run)", ran, total)
+	}
+	peakMu.Lock()
+	defer peakMu.Unlock()
+	if peak != ceiling {
+		t.Fatalf("peak concurrency = %d, want %d (global ceiling must bind)", peak, ceiling)
+	}
+}
+
+// TestSweepSkipsDormant verifies a dormant workspace's jobs are reported skipped
+// and never run.
+func TestSweepSkipsDormant(t *testing.T) {
+	runner := NewPeriodicRunner(gateFunc(func() (bool, error) { return false, nil }), nil, NewFairScheduler(4))
+	var ran, dormant int64
+	jobs := []Job{
+		{WorkspaceID: uuid.New(), Run: func(context.Context) error { atomic.AddInt64(&ran, 1); return nil }},
+		{WorkspaceID: uuid.New(), Run: func(context.Context) error { atomic.AddInt64(&ran, 1); return nil }},
+	}
+	runner.Sweep(context.Background(), jobs, func(out Outcome, _ error) {
+		if out == OutcomeSkippedDormant {
+			atomic.AddInt64(&dormant, 1)
+		}
+	})
+	if ran != 0 {
+		t.Fatalf("ran = %d, want 0 (dormant tenant)", ran)
+	}
+	if dormant != int64(len(jobs)) {
+		t.Fatalf("dormant observations = %d, want %d", dormant, len(jobs))
+	}
+}
+
+// TestSweepDefersOverBudget pins the per-tenant cap to 1 and pre-holds that one
+// slot, so the tenant's single Sweep job is deferred (OutcomeSkippedBudget),
+// deterministically and without running it.
+func TestSweepDefersOverBudget(t *testing.T) {
+	sched := NewFairScheduler(8)
+	ws := uuid.New()
+	// Pre-hold the tenant's only slot (cap 1) so the Sweep job hits the cap.
+	hold, ok := sched.TryAcquire(ws, 1)
+	if !ok {
+		t.Fatal("pre-hold acquire should succeed")
+	}
+	defer hold()
+
+	runner := NewPeriodicRunner(alwaysRunGate(), fixedBudget{cap: 1}, sched)
+	var ran, budget int64
+	jobs := []Job{{WorkspaceID: ws, Run: func(context.Context) error { atomic.AddInt64(&ran, 1); return nil }}}
+	runner.Sweep(context.Background(), jobs, func(out Outcome, _ error) {
+		if out == OutcomeSkippedBudget {
+			atomic.AddInt64(&budget, 1)
+		}
+	})
+	if ran != 0 {
+		t.Fatalf("ran = %d, want 0 (over per-tenant budget)", ran)
+	}
+	if budget != 1 {
+		t.Fatalf("budget-skip observations = %d, want 1", budget)
+	}
+}
+
+// TestSweepNilSchedulerRunsInline verifies the degraded path: with no scheduler
+// every awake job still runs (unbounded, inline).
+func TestSweepNilSchedulerRunsInline(t *testing.T) {
+	runner := NewPeriodicRunner(alwaysRunGate(), nil, nil)
+	var ran int64
+	jobs := make([]Job, 5)
+	for i := range jobs {
+		jobs[i] = Job{WorkspaceID: uuid.New(), Run: func(context.Context) error { atomic.AddInt64(&ran, 1); return nil }}
+	}
+	runner.Sweep(context.Background(), jobs, nil)
+	if ran != int64(len(jobs)) {
+		t.Fatalf("ran = %d, want %d (nil scheduler must still run every job)", ran, len(jobs))
+	}
+}
+
+// TestSweepStopsLaunchingOnCancel verifies a cancelled context stops launching
+// further jobs (no job runs when ctx is already cancelled).
+func TestSweepStopsLaunchingOnCancel(t *testing.T) {
+	runner := NewPeriodicRunner(alwaysRunGate(), nil, NewFairScheduler(4))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var ran int64
+	jobs := make([]Job, 3)
+	for i := range jobs {
+		jobs[i] = Job{WorkspaceID: uuid.New(), Run: func(context.Context) error { atomic.AddInt64(&ran, 1); return nil }}
+	}
+	runner.Sweep(ctx, jobs, nil)
+	if ran != 0 {
+		t.Fatalf("ran = %d, want 0 (cancelled before launch)", ran)
+	}
+}
