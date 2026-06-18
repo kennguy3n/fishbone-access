@@ -15,6 +15,7 @@ from typing import Any
 
 from .errors import SkillError
 from .llm import LLMUnavailable, call_llm, parse_json_response
+from .numeric import as_hour, as_number
 
 logger = logging.getLogger(__name__)
 
@@ -40,17 +41,11 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
     baseline: dict[str, Any] = baseline_raw if isinstance(baseline_raw, dict) else {}
 
     # Off-hours sessions: any session whose start hour is outside business hours.
-    # isinstance(_, int) is true for bool too, so reject bools explicitly: a
-    # JSON true/false start_hour must not be read as the hour 1/0.
-    off_hours = sorted(
-        {
-            int(s["start_hour"])
-            for s in sessions
-            if isinstance(s.get("start_hour"), int)
-            and not isinstance(s.get("start_hour"), bool)
-            and s["start_hour"] not in BUSINESS_HOURS
-        }
-    )
+    # as_hour accepts an int or its integral-float JSON equivalent (3 or 3.0)
+    # and rejects bools (a subclass of int) and fractional hours, so a JSON
+    # true/false start_hour is never read as the hour 1/0.
+    start_hours = (as_hour(s.get("start_hour")) for s in sessions)
+    off_hours = sorted({h for h in start_hours if h is not None and h not in BUSINESS_HOURS})
     if off_hours:
         anomalies.append({
             "kind": "off_hours_sessions",
@@ -73,24 +68,25 @@ def _deterministic(payload: dict[str, Any]) -> list[dict[str, Any]]:
             })
 
     # Volume spike: a session whose command count dwarfs the baseline average.
-    avg_commands = baseline.get("avg_command_count")
-    if (
-        isinstance(avg_commands, (int, float))
-        and not isinstance(avg_commands, bool)
-        and avg_commands > 0
-    ):
+    # Both the baseline average and the per-session count accept int or float
+    # (as_number) and reject bools; the raw counts are kept for the reason so
+    # integers render without a trailing ".0".
+    avg_raw = baseline.get("avg_command_count")
+    avg_commands = as_number(avg_raw)
+    if avg_commands is not None and avg_commands > 0:
         threshold = max(avg_commands * VOLUME_SPIKE_FACTOR, VOLUME_SPIKE_MIN_COMMANDS)
-        spikes = [
-            int(s["command_count"])
-            for s in sessions
-            if isinstance(s.get("command_count"), int)
-            and not isinstance(s.get("command_count"), bool)
-            and s["command_count"] > threshold
-        ]
+        # Keep the raw counts (int or float) for display; as_number only gates
+        # which sessions qualify, so an integer count renders without a ".0".
+        spikes: list[Any] = []
+        for s in sessions:
+            raw_count = s.get("command_count")
+            count = as_number(raw_count)
+            if count is not None and count > threshold:
+                spikes.append(raw_count)
         if spikes:
             anomalies.append({
                 "kind": "command_volume_spike",
-                "reason": f"session command volume {max(spikes)} far exceeds baseline avg {avg_commands}",
+                "reason": f"session command volume {max(spikes)} far exceeds baseline avg {avg_raw}",
                 "severity": "medium",
                 "confidence": 0.6,
             })
