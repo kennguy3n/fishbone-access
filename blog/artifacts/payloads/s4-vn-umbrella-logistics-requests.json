@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
-      "created_at": "2026-06-16T07:51:01.678427Z",
+      "connector_id": "23f516e8-d617-4ab2-bc31-1fb257260b0a",
+      "created_at": "2026-06-18T12:57:31.88572Z",
       "deleted_at": null,
-      "id": "7cab5cc8-ded7-4713-a0c2-c7d387620717",
+      "id": "1067c695-7fb1-4156-938b-1a34b6cbc99d",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-16T07:51:01.708425Z",
-      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
+      "updated_at": "2026-06-18T12:57:31.915638Z",
+      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
     },
     {
-      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
-      "created_at": "2026-06-16T07:51:01.582425Z",
+      "connector_id": "23f516e8-d617-4ab2-bc31-1fb257260b0a",
+      "created_at": "2026-06-18T12:57:31.806424Z",
       "deleted_at": null,
-      "id": "12611604-05e0-4eb7-a4a9-1161807d3cc9",
+      "id": "38f04ad3-c98d-4d26-8b6c-b98d3eec6333",
       "justification": "PDPD personal-data processing register review.",
       "requester_id": "vn-umbrella-logistics-owner",
       "resource_ref": "pii:decree13-register",
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
+      "risk_level": "medium",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:51:01.60079Z",
-      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
+      "updated_at": "2026-06-18T12:57:31.820083Z",
+      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
     },
     {
-      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
-      "created_at": "2026-06-16T07:51:01.545252Z",
+      "connector_id": "23f516e8-d617-4ab2-bc31-1fb257260b0a",
+      "created_at": "2026-06-18T12:57:31.771372Z",
       "deleted_at": null,
-      "id": "55a01da7-d8d7-41b3-b610-44bf6eb4d2f4",
+      "id": "7fb31a72-4da2-4ce1-976e-d59d6f9d8867",
       "justification": "Peak-season inventory reconciliation access.",
       "requester_id": "vn-umbrella-logistics-owner",
       "resource_ref": "wms:inventory",
       "risk_factors": [
-        "baseline_low_risk"
-      ],
-      "risk_level": "low",
-      "role": "operator",
-      "state": "revoked",
-      "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:51:01.628682Z",
-      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
-    },
-    {
-      "connector_id": "6750d8cd-afc1-48da-9e61-feec850323ca",
-      "created_at": "2026-06-16T07:51:01.499905Z",
-      "deleted_at": null,
-      "id": "e1304114-a823-4adb-8e94-39d35f05a056",
-      "justification": "Dispatcher onboarding under PDPD Decree 13 data-handling controls.",
-      "requester_id": "vn-umbrella-logistics-owner",
-      "resource_ref": "wms:dispatcher",
-      "risk_factors": [
-        "long_duration_hours:720"
+        "ai_unavailable"
       ],
       "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "vn-umbrella-logistics-owner",
-      "updated_at": "2026-06-16T07:51:01.663896Z",
-      "workspace_id": "1168fb8f-0319-4933-932d-75f727514d38"
+      "updated_at": "2026-06-18T12:57:31.872851Z",
+      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+    },
+    {
+      "connector_id": "23f516e8-d617-4ab2-bc31-1fb257260b0a",
+      "created_at": "2026-06-18T12:57:31.738923Z",
+      "deleted_at": null,
+      "id": "18ea481b-feae-4280-b717-b8852f94ecd4",
+      "justification": "Dispatcher onboarding under PDPD Decree 13 data-handling controls.",
+      "requester_id": "vn-umbrella-logistics-owner",
+      "resource_ref": "wms:dispatcher",
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "role": "operator",
+      "state": "revoked",
+      "target_user_id": "vn-umbrella-logistics-owner",
+      "updated_at": "2026-06-18T12:57:31.839766Z",
+      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
     }
   ]
 }

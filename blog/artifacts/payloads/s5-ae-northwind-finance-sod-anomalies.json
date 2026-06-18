@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-16T07:54:01.987551Z",
+      "created_at": "2026-06-18T13:00:31.912847Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,21 @@
           "resource": "t24:privileged-admin",
           "role": "operator"
         },
-        "rule_id": "85d83c53-617d-49ed-832e-a54bb4765a2d",
+        "rule_id": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
         "rule_name": "Core-banking admin must not run treasury settlement",
         "severity": "critical",
         "subject": "ext-dual-role@ae-northwind-finance.example"
       },
-      "detected_at": "2026-06-16T07:54:01.987551Z",
+      "detected_at": "2026-06-18T13:00:31.912847Z",
       "disposition": "flagged",
-      "fingerprint": "b3e10bccffddf67b3d19792dd8e029980e2d8e5b5d710fe2031bc755008fe0db",
-      "id": "5efed11c-8192-4ff5-9a33-7c6bc9b51d4f",
+      "fingerprint": "ecfccc31986c83987c97426acccbfd09e912f3d394fbff30b242c2e944e7e941",
+      "id": "5d21ec5d-4813-44f5-bfff-94cd48282b77",
       "kind": "sod_violation",
-      "rule_id": "85d83c53-617d-49ed-832e-a54bb4765a2d",
+      "rule_id": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
       "severity": "critical",
       "subject": "ext-dual-role@ae-northwind-finance.example",
-      "updated_at": "2026-06-16T07:54:01.987551Z",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "updated_at": "2026-06-18T13:00:31.912847Z",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     }
   ]
 }

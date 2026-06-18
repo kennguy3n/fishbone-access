@@ -4,803 +4,803 @@
     {
       "action": "rbac.member.added",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "77b7b610fff4e2ad47c4e587bed1e9471c5e15e91f82c935365b5f61246e43a9",
+      "chain_hash": "5780d40ad4db686a5428d3d4b7f13b4b958a7f80a0477e9120419c1c97366da5",
       "chain_seq": 1,
-      "id": "d9aa58e2-3dd9-4fb2-83f4-fc13b33a6d1a",
+      "id": "007d6798-3f6e-447c-b964-14c3772d9830",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "ae-northwind-finance-admin"
       },
-      "occurred_at": "2026-06-16T07:51:31.586436Z",
+      "occurred_at": "2026-06-18T12:58:01.710192Z",
       "target_ref": "ae-northwind-finance-admin",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "rbac.member.added",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "436900f3dca5bd9a745075fb5106521cd6a7ef1c0d2634d8c9f7bdc9cc7b8fca",
+      "chain_hash": "ab073eeee1dea57200ee5e6a22a03a6c17fca465907c731de6d45d34b741f66c",
       "chain_seq": 2,
-      "id": "10cdef04-3991-4e52-a08c-60ce2194c43d",
+      "id": "ca864c00-ba72-4c1c-83b1-95526cfd9368",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "ae-northwind-finance-security_admin"
       },
-      "occurred_at": "2026-06-16T07:51:31.592734Z",
-      "prev_hash": "77b7b610fff4e2ad47c4e587bed1e9471c5e15e91f82c935365b5f61246e43a9",
+      "occurred_at": "2026-06-18T12:58:01.715488Z",
+      "prev_hash": "5780d40ad4db686a5428d3d4b7f13b4b958a7f80a0477e9120419c1c97366da5",
       "target_ref": "ae-northwind-finance-security_admin",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "rbac.member.added",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "335b0ce98f6dad81a89468d2abff0b0e9de5ef136561f2bdbb17a1444b93c754",
+      "chain_hash": "f1ee6b114e9fc26915b6b1d22ea4368e152c4bf85305532bfe91640c59effd1f",
       "chain_seq": 3,
-      "id": "6103d0e7-1a45-4fa5-b00e-b2a12aaec7de",
+      "id": "fe08ce31-79e8-46c0-be43-bb362840a1c9",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "ae-northwind-finance-operator"
       },
-      "occurred_at": "2026-06-16T07:51:31.598515Z",
-      "prev_hash": "436900f3dca5bd9a745075fb5106521cd6a7ef1c0d2634d8c9f7bdc9cc7b8fca",
+      "occurred_at": "2026-06-18T12:58:01.720867Z",
+      "prev_hash": "ab073eeee1dea57200ee5e6a22a03a6c17fca465907c731de6d45d34b741f66c",
       "target_ref": "ae-northwind-finance-operator",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "rbac.member.added",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "2f6817bd4036fe270abb94f3303347d40c8d4feb4ecd0ff223f9bf9898d20d67",
+      "chain_hash": "7a3104cf27ecd3be38ddf8aad576b8eaa2df2f5a956524bb1eeadbff39252118",
       "chain_seq": 4,
-      "id": "cad8faa1-ffc8-42b6-8e3f-e9167dee155e",
+      "id": "cbde9c65-b998-41b0-9684-4ce37f5a4224",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "ae-northwind-finance-auditor"
       },
-      "occurred_at": "2026-06-16T07:51:31.603861Z",
-      "prev_hash": "335b0ce98f6dad81a89468d2abff0b0e9de5ef136561f2bdbb17a1444b93c754",
+      "occurred_at": "2026-06-18T12:58:01.726072Z",
+      "prev_hash": "f1ee6b114e9fc26915b6b1d22ea4368e152c4bf85305532bfe91640c59effd1f",
       "target_ref": "ae-northwind-finance-auditor",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "28e65f76feb07cfca17d8d89a6fb501838e8132a0b8e86b40125480319d1673d",
+      "chain_hash": "0fb8b766ac5cd67feb4a3bdd95ea4bf01607c0033c7c17ce81a3ef0e28578395",
       "chain_seq": 5,
-      "id": "912422b7-db31-455a-ab7c-09ddf7cb2de2",
+      "id": "342db3a9-ed4d-4e5d-b0da-a6da6e8371ce",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.623827Z",
-      "prev_hash": "2f6817bd4036fe270abb94f3303347d40c8d4feb4ecd0ff223f9bf9898d20d67",
-      "target_ref": "eeb8adb8-6d28-4046-a414-32b4f4d0b0ea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.745537Z",
+      "prev_hash": "7a3104cf27ecd3be38ddf8aad576b8eaa2df2f5a956524bb1eeadbff39252118",
+      "target_ref": "fe0723f3-63ed-4e9c-8d72-cc20224bf5f7",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "4b99001166c4f4b9896916286a93109a7352c27aac8bdb26fbea5a21f1d862ce",
+      "chain_hash": "feb1dab8ee7c3aedf593ab1c37e0d665bb889d3d56c94c8019fa2faf28c7d521",
       "chain_seq": 6,
-      "id": "82d44f91-112b-4427-8ac1-3ae4fd987004",
+      "id": "4824484b-9d1a-4d04-92e7-278df03e6328",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.625624Z",
-      "prev_hash": "28e65f76feb07cfca17d8d89a6fb501838e8132a0b8e86b40125480319d1673d",
-      "target_ref": "ea5fe05d-f12c-4068-84a9-c9fe8ef7d94d",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.746986Z",
+      "prev_hash": "0fb8b766ac5cd67feb4a3bdd95ea4bf01607c0033c7c17ce81a3ef0e28578395",
+      "target_ref": "f6b6922f-8fc1-4ead-8362-93ddefd01573",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d54976097dcce14056e3623a32e96d38e1459f5bb6404cf6bc482693b0081905",
+      "chain_hash": "52533f2bda4231152b22447bf815484b20a513dc7276001c91c86d1e478a9e9f",
       "chain_seq": 7,
-      "id": "cc6810e1-dcc7-4f49-98a8-af1efe09b8e9",
+      "id": "92cd201a-ae84-4368-b608-4b81f6c8e0b8",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.627473Z",
-      "prev_hash": "4b99001166c4f4b9896916286a93109a7352c27aac8bdb26fbea5a21f1d862ce",
-      "target_ref": "b024ea24-dfd4-47ff-8d0f-8e7f8a4488ea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.74837Z",
+      "prev_hash": "feb1dab8ee7c3aedf593ab1c37e0d665bb889d3d56c94c8019fa2faf28c7d521",
+      "target_ref": "43d7a6e7-ad5e-4ef0-b748-5c65cf73c792",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "c6340c4027ad27a1bc4296c5739140051ee45f8bc8f56111b62cee942074708a",
+      "chain_hash": "8a0881a40e77bf24da0124890d553764b73eb33a08c44a30173b80eba2533b04",
       "chain_seq": 8,
-      "id": "3c7c4add-2dc0-4ea4-8e6e-8881681908c4",
+      "id": "84d05263-249c-4ec6-a948-d7d8f4c8eb2a",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.632172Z",
-      "prev_hash": "d54976097dcce14056e3623a32e96d38e1459f5bb6404cf6bc482693b0081905",
-      "target_ref": "88cb7a6a-f0aa-426a-bd91-60289c900bcd",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.752082Z",
+      "prev_hash": "52533f2bda4231152b22447bf815484b20a513dc7276001c91c86d1e478a9e9f",
+      "target_ref": "4ed3d292-8fa3-4577-8e2a-6ce89bf92151",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "3e3129e1c303b1137ba4ccf9fab2a2bb5254920a7d0601d3a4495527524bb278",
+      "chain_hash": "490155dfa69c575fdde131623fc21b790847eaae2bf6a90894f64f68f3cc4b61",
       "chain_seq": 9,
-      "id": "a6a7b396-9796-4efe-b370-cfc40354ae70",
+      "id": "831561f7-9408-4e3e-92d6-5afc07b9e73b",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.6339Z",
-      "prev_hash": "c6340c4027ad27a1bc4296c5739140051ee45f8bc8f56111b62cee942074708a",
-      "target_ref": "26a0ef9d-e5ca-4c50-8f67-081d36421542",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.753426Z",
+      "prev_hash": "8a0881a40e77bf24da0124890d553764b73eb33a08c44a30173b80eba2533b04",
+      "target_ref": "4e7f00c9-578c-4a88-b530-17986de96698",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "de6a434758d33d5ab6ffe348bbbcda7d188ed0ab2a49caf178e0430e83acf55c",
+      "chain_hash": "160881bd763dc9cbfcc4cb968fae62b44d74d941fadf73be865e9a1b5edec690",
       "chain_seq": 10,
-      "id": "ee2ae6e7-7612-4f52-897b-3c35e7902f7a",
+      "id": "9a353445-0237-4936-9b9a-b2bf12716855",
       "kind": "policy_created",
-      "occurred_at": "2026-06-16T07:51:31.635394Z",
-      "prev_hash": "3e3129e1c303b1137ba4ccf9fab2a2bb5254920a7d0601d3a4495527524bb278",
-      "target_ref": "9137e9c2-f16a-46f8-b7f3-f83ac4069714",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.755151Z",
+      "prev_hash": "490155dfa69c575fdde131623fc21b790847eaae2bf6a90894f64f68f3cc4b61",
+      "target_ref": "7b902adb-9815-44b8-80d5-371762bbc7fa",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "6a73a690ac1913597a720b227c4d934cb3dce9bdf6f01b59114d3cd41e2d001d",
+      "chain_hash": "0c383e01eb919d0660a8fe4d047c471b827e85da0823d8651179d018249367ca",
       "chain_seq": 11,
-      "id": "e439576a-1ae8-4e49-b8b9-b918c3188dd0",
+      "id": "7030cb68-c6da-4a81-8167-96b9d36c7e5a",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:51:31.683277Z",
-      "prev_hash": "de6a434758d33d5ab6ffe348bbbcda7d188ed0ab2a49caf178e0430e83acf55c",
-      "target_ref": "9137e9c2-f16a-46f8-b7f3-f83ac4069714",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.795823Z",
+      "prev_hash": "160881bd763dc9cbfcc4cb968fae62b44d74d941fadf73be865e9a1b5edec690",
+      "target_ref": "7b902adb-9815-44b8-80d5-371762bbc7fa",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b1a12194f8bb8263dd1e2891d45a4d7d7cb801e913baade0d4fee68e788c6948",
+      "chain_hash": "b735653f9b3636ccd1c46e9371cf311b388602dd5027989c53977fbb1c884ed6",
       "chain_seq": 12,
-      "id": "e2cce790-6833-497b-8887-d76a15f1e8f6",
+      "id": "2a46ee49-2d89-47cd-b404-601f63f4a7f8",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:51:31.691519Z",
-      "prev_hash": "6a73a690ac1913597a720b227c4d934cb3dce9bdf6f01b59114d3cd41e2d001d",
-      "target_ref": "26a0ef9d-e5ca-4c50-8f67-081d36421542",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.80321Z",
+      "prev_hash": "0c383e01eb919d0660a8fe4d047c471b827e85da0823d8651179d018249367ca",
+      "target_ref": "4e7f00c9-578c-4a88-b530-17986de96698",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "6e3accd850334ee6332a6523427753c514b7c84861f2b3a74f0801f6a8b54f5f",
+      "chain_hash": "e174cf6c822542ebd467da13e0b2318ebb9b39463b5c168e9c0a68e84c3961cc",
       "chain_seq": 13,
-      "id": "e2e42daa-2ade-4f7b-9faa-ba44b962bdfe",
+      "id": "13256954-1370-4bbb-a27f-1e0640b074df",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:51:31.700007Z",
-      "prev_hash": "b1a12194f8bb8263dd1e2891d45a4d7d7cb801e913baade0d4fee68e788c6948",
-      "target_ref": "88cb7a6a-f0aa-426a-bd91-60289c900bcd",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:01.811184Z",
+      "prev_hash": "b735653f9b3636ccd1c46e9371cf311b388602dd5027989c53977fbb1c884ed6",
+      "target_ref": "4ed3d292-8fa3-4577-8e2a-6ce89bf92151",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "2715a7548c70c7bca0c80adc689ff20c221fe78f5f1212e8f3f5df189ef291fe",
+      "chain_hash": "77cbeb48b94cb82d3f0374caff5b9dcbca1c9173a732514d230dc1e2138cfce3",
       "chain_seq": 14,
-      "id": "4393b680-075b-45a8-a8dd-c9d2ad72d345",
+      "id": "2b116f4d-3061-4f0a-8a11-b4eec9a178d9",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:52:01.770005Z",
-      "prev_hash": "6e3accd850334ee6332a6523427753c514b7c84861f2b3a74f0801f6a8b54f5f",
-      "target_ref": "b024ea24-dfd4-47ff-8d0f-8e7f8a4488ea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:58:31.820817Z",
+      "prev_hash": "e174cf6c822542ebd467da13e0b2318ebb9b39463b5c168e9c0a68e84c3961cc",
+      "target_ref": "43d7a6e7-ad5e-4ef0-b748-5c65cf73c792",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f152709e95f8f9e0f70815d9084c79cae1e64ee0e00a63ea36ab1d4c44fcddea",
+      "chain_hash": "82bcbf831837ea86a8d3f966c8af54a94cc112e752c3abc02921203cf5dbca1b",
       "chain_seq": 15,
-      "id": "0680fa1c-dd93-4f26-a306-ea77ec1b5f09",
+      "id": "5911a63e-590f-4b4b-a8e5-df61158630b5",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:52:31.786665Z",
-      "prev_hash": "2715a7548c70c7bca0c80adc689ff20c221fe78f5f1212e8f3f5df189ef291fe",
-      "target_ref": "ea5fe05d-f12c-4068-84a9-c9fe8ef7d94d",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:01.832241Z",
+      "prev_hash": "77cbeb48b94cb82d3f0374caff5b9dcbca1c9173a732514d230dc1e2138cfce3",
+      "target_ref": "f6b6922f-8fc1-4ead-8362-93ddefd01573",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "policy.promoted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "cc0f5c39037a44e221a19e18ec06faa04eae20eba26cdf431e86393ccc39a16b",
+      "chain_hash": "2d41f7b7da83d9e66ce08892699f3be117c9428aa73e8b4317dd9f6ce4f69633",
       "chain_seq": 16,
-      "id": "0ec29206-7089-431c-a120-f2ea0c015e7a",
+      "id": "32a57da6-9a23-4928-b63a-27e869657ece",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-16T07:53:01.801249Z",
-      "prev_hash": "f152709e95f8f9e0f70815d9084c79cae1e64ee0e00a63ea36ab1d4c44fcddea",
-      "target_ref": "eeb8adb8-6d28-4046-a414-32b4f4d0b0ea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.845285Z",
+      "prev_hash": "82bcbf831837ea86a8d3f966c8af54a94cc112e752c3abc02921203cf5dbca1b",
+      "target_ref": "fe0723f3-63ed-4e9c-8d72-cc20224bf5f7",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f33b80190e7e7841550303b30ff8727264a497ebabec1ad85af4cf45d991eef2",
+      "chain_hash": "772d3a148b6139dae8f1af58238e9cdc829b2c5fb38e39162ac4ca15e2e9a0d1",
       "chain_seq": 17,
-      "id": "f60eed20-f609-441b-8f9e-e184c7970525",
+      "id": "e444aaef-6511-4fdd-8800-98ea7c211bcd",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T07:53:01.807674Z",
-      "prev_hash": "cc0f5c39037a44e221a19e18ec06faa04eae20eba26cdf431e86393ccc39a16b",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.851843Z",
+      "prev_hash": "2d41f7b7da83d9e66ce08892699f3be117c9428aa73e8b4317dd9f6ce4f69633",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "fd0a2ae5cfba8b7d3298c5419f36c935bd61dd674ae81814806374daa00f4f68",
+      "chain_hash": "a8826e54e298edb4c1ac005925705c6256585ce5929a1dfc7924dd5615dc7f9b",
       "chain_seq": 18,
-      "id": "1a80c594-e982-4426-bea0-36b87dc247e5",
+      "id": "5bc3664a-df47-41c3-8054-773e86f9d953",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-16T07:53:01.817543Z",
-      "prev_hash": "f33b80190e7e7841550303b30ff8727264a497ebabec1ad85af4cf45d991eef2",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.857436Z",
+      "prev_hash": "772d3a148b6139dae8f1af58238e9cdc829b2c5fb38e39162ac4ca15e2e9a0d1",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "0f63b7fb92f53539c06ceb3482e74d4e268561269510a11ee0d71ea6e35a3e76",
+      "chain_hash": "0c13711fce8b957699d1044942b389926715c501496d8dfbeb710d750b83826b",
       "chain_seq": 19,
-      "id": "fe4ffcc4-6af4-4a33-b046-61b9b9d01b07",
+      "id": "ce6d7d67-cd4a-4044-a82a-238be5a414e9",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.821783Z",
-      "prev_hash": "fd0a2ae5cfba8b7d3298c5419f36c935bd61dd674ae81814806374daa00f4f68",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.861418Z",
+      "prev_hash": "a8826e54e298edb4c1ac005925705c6256585ce5929a1dfc7924dd5615dc7f9b",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "a4b98a11f76c32274fd2f5b8d899c7ae58aec4e60c92a25d3ebab0bf39ff5ec0",
+      "chain_hash": "ee2aadf8e210ed2441a08e5ea9e7e3e3f83d781e71b97814cdd913308e3a40ec",
       "chain_seq": 20,
-      "id": "d4b684d8-c120-425b-9dd2-c6456648cc81",
+      "id": "7fb3461c-8a73-4b91-885b-b0ec78767f28",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.82605Z",
-      "prev_hash": "0f63b7fb92f53539c06ceb3482e74d4e268561269510a11ee0d71ea6e35a3e76",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.871147Z",
+      "prev_hash": "0c13711fce8b957699d1044942b389926715c501496d8dfbeb710d750b83826b",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioning",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "108111adcc3af865c22a1570eb4a2aa939a61ece56348e4f651b168f698667be",
+      "chain_hash": "2885c08c364b9fdd00fd0571d24703360875b5b1bca662e12fc6682efb240532",
       "chain_seq": 21,
-      "id": "9680bbc6-c356-40cb-a043-be1ea5fdb923",
+      "id": "74ef0a19-ef2a-4617-8c1b-d1dd1bb6ab94",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.837001Z",
-      "prev_hash": "a4b98a11f76c32274fd2f5b8d899c7ae58aec4e60c92a25d3ebab0bf39ff5ec0",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.881656Z",
+      "prev_hash": "ee2aadf8e210ed2441a08e5ea9e7e3e3f83d781e71b97814cdd913308e3a40ec",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioned",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "864c315d940ab2bb60380696a1400854838dc9021839a66ce3a4a69720a1389f",
+      "chain_hash": "3dc58ac00567376ed5fc7780168816bf972ace809ca7eba3323ef106fcacbe74",
       "chain_seq": 22,
-      "id": "794eee21-2da3-472b-9a0a-ecd47674a0b0",
+      "id": "d312c2b7-1b6f-474e-ad79-81941b1395b5",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.842924Z",
-      "prev_hash": "108111adcc3af865c22a1570eb4a2aa939a61ece56348e4f651b168f698667be",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.888642Z",
+      "prev_hash": "2885c08c364b9fdd00fd0571d24703360875b5b1bca662e12fc6682efb240532",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.active",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "fbb1167a9ad887e3ada92c1c781cde2fc3b96046574b287c67322ceb38405738",
+      "chain_hash": "35ecbf34a4a585a906b951465784ae6e902df15f9aca2d708090b37920f541b4",
       "chain_seq": 23,
-      "id": "62305de6-fc2f-45d3-98bd-02bb41467a2e",
+      "id": "164e3136-7987-4029-ac54-6f4622277902",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.846612Z",
-      "prev_hash": "864c315d940ab2bb60380696a1400854838dc9021839a66ce3a4a69720a1389f",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.8917Z",
+      "prev_hash": "3dc58ac00567376ed5fc7780168816bf972ace809ca7eba3323ef106fcacbe74",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d9006b21c43e03d6aa40962dac1508c9902f0ab0299b2a4cdd8d5b32ed50e8ba",
+      "chain_hash": "6d27ccf6b10ce5108e78cb6901e41a4dbd03cc03831bfee06452f824e649b300",
       "chain_seq": 24,
-      "id": "7297770c-f2dd-42a4-9b8d-3f1689e2b926",
+      "id": "eec84cc3-3ee3-4878-b0f9-49f4be7237f6",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:53:01.841062Z",
-      "prev_hash": "fbb1167a9ad887e3ada92c1c781cde2fc3b96046574b287c67322ceb38405738",
-      "target_ref": "9f77d39a-4703-4f24-b326-96a408b43fea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.887124Z",
+      "prev_hash": "35ecbf34a4a585a906b951465784ae6e902df15f9aca2d708090b37920f541b4",
+      "target_ref": "c6e8f4af-4f77-47c1-bdce-26a32d535cb2",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "003fec5ee939b42dc51e5124d9a60f7ef809d9c78dcb4dbba0769efba3ed6286",
+      "chain_hash": "8d82cfd28ec057c1ed1a7d1266c3f717b8d2805a331df614661dc96e452cd6af",
       "chain_seq": 25,
-      "id": "12d8803b-9ddb-4244-b6ed-2742c839643b",
+      "id": "8decbcd0-7f7b-4adb-ac78-087d24337357",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T07:53:01.851214Z",
-      "prev_hash": "d9006b21c43e03d6aa40962dac1508c9902f0ab0299b2a4cdd8d5b32ed50e8ba",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.898164Z",
+      "prev_hash": "6d27ccf6b10ce5108e78cb6901e41a4dbd03cc03831bfee06452f824e649b300",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "be9e287185013cd30246d114e08d0ef272f7cf30b10ab6023527ae3517cfccb7",
+      "chain_hash": "ebde4eae52b5fde50d71a6c06d3c9f385869e089523c2be49c0afa88575b9f49",
       "chain_seq": 26,
-      "id": "da67b56a-07c9-4406-a9c8-91c26d07d167",
+      "id": "5565a3c6-f3b2-4cf5-ab38-81dc5b9a7b38",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-16T07:53:01.857484Z",
-      "prev_hash": "003fec5ee939b42dc51e5124d9a60f7ef809d9c78dcb4dbba0769efba3ed6286",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.902589Z",
+      "prev_hash": "8d82cfd28ec057c1ed1a7d1266c3f717b8d2805a331df614661dc96e452cd6af",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "8206c3382fb1af50c1d41cb4149fdfba7eb5131482e766ec4a0a8073df950c75",
+      "chain_hash": "792de6a0034ea21146d9b3eb8f738947a289015c6c4e811cb68ba3cb4eff218f",
       "chain_seq": 27,
-      "id": "4de9859c-b4a7-4065-912f-89ad5dd7c9b5",
+      "id": "bb301876-5858-4728-a887-b394933ed30c",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.861139Z",
-      "prev_hash": "be9e287185013cd30246d114e08d0ef272f7cf30b10ab6023527ae3517cfccb7",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.907471Z",
+      "prev_hash": "ebde4eae52b5fde50d71a6c06d3c9f385869e089523c2be49c0afa88575b9f49",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d7f3bef1fcbd8ba2714f92cddc2ae84acdc6bd4f006493a57eb701fc8857db8e",
+      "chain_hash": "af8d0a3462d8e28cdb7523c9aa49432eb76e5cd6ba2c5cdd9e6d917ceecf5906",
       "chain_seq": 28,
-      "id": "7fd64630-ae8f-454b-97d0-96f284e6336e",
+      "id": "b266e338-77ed-4947-882d-c4e866169cf7",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.865411Z",
-      "prev_hash": "8206c3382fb1af50c1d41cb4149fdfba7eb5131482e766ec4a0a8073df950c75",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.924469Z",
+      "prev_hash": "792de6a0034ea21146d9b3eb8f738947a289015c6c4e811cb68ba3cb4eff218f",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioning",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "ee62934082a21c93554dff55771d2aa3dca597df9699bc970e3a5b5210a1888c",
+      "chain_hash": "5e57ae2e52df8b3df72bab032dc93d6c39342a58623b920cbd2dfef7aa22ea2d",
       "chain_seq": 29,
-      "id": "6be37035-5070-4422-8b70-9484cdb771f4",
+      "id": "8e0c8500-4275-4840-b359-6b30a82946e9",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.87791Z",
-      "prev_hash": "d7f3bef1fcbd8ba2714f92cddc2ae84acdc6bd4f006493a57eb701fc8857db8e",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.930335Z",
+      "prev_hash": "af8d0a3462d8e28cdb7523c9aa49432eb76e5cd6ba2c5cdd9e6d917ceecf5906",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioned",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f33f2b32f84b439090dbf023cf1c2b6d3cce37cffb0f364a548b5165338064b0",
+      "chain_hash": "387c95587af49e9ba12e60c2b3fd74810d4f843b1c57d6eba1848ff37708ece4",
       "chain_seq": 30,
-      "id": "3d94c195-4f5d-44b2-95d7-b571a39ab148",
+      "id": "bc31b1ed-ab44-4ff6-b831-f479bbe83784",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.882993Z",
-      "prev_hash": "ee62934082a21c93554dff55771d2aa3dca597df9699bc970e3a5b5210a1888c",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.937236Z",
+      "prev_hash": "5e57ae2e52df8b3df72bab032dc93d6c39342a58623b920cbd2dfef7aa22ea2d",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.active",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "8e4aefb37c8f800b26af9c13b1bb737ff8b4b345753f015fd057bc1730801484",
+      "chain_hash": "e3f35f9192e6226dc0603ae8a30ba9bdd4530a49739321fedfbd1cf7b3cf8a8f",
       "chain_seq": 31,
-      "id": "f8c676d3-6f9e-40ec-a9c4-38a5c0080f8e",
+      "id": "d6058adb-49ff-428d-a286-ce41de04f449",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.886384Z",
-      "prev_hash": "f33f2b32f84b439090dbf023cf1c2b6d3cce37cffb0f364a548b5165338064b0",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.939625Z",
+      "prev_hash": "387c95587af49e9ba12e60c2b3fd74810d4f843b1c57d6eba1848ff37708ece4",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "0789bfd721dbd578ae5ea2a0349b0b196699e14accdcd468eefc2a477df2f4e0",
+      "chain_hash": "7c4b173996e93ce98d2b1e00685fa6a13059279530925665bdb42cd12907d42f",
       "chain_seq": 32,
-      "id": "d03b44a4-aca6-46e9-8ddd-f75a63073e5b",
+      "id": "2d81293d-f391-4de7-bcc5-e4d54e5cdd1f",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:53:01.881347Z",
-      "prev_hash": "8e4aefb37c8f800b26af9c13b1bb737ff8b4b345753f015fd057bc1730801484",
-      "target_ref": "77dc098e-d007-4d7d-81b4-377182c0d4be",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.934018Z",
+      "prev_hash": "e3f35f9192e6226dc0603ae8a30ba9bdd4530a49739321fedfbd1cf7b3cf8a8f",
+      "target_ref": "353181df-c2a3-468c-a8bf-61b7e00b9503",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "18606c12f96ed24f0fdf0ef9e499ba9a7353aa331553585c6f85b749341b9e4b",
+      "chain_hash": "dc1885b670b1b8a3113a1b088a00168e0733fb4493b5585f53691eba5afec037",
       "chain_seq": 33,
-      "id": "8266fc92-f3ac-4360-b0c4-8b3ad0bcba8a",
+      "id": "6ea927a2-6cc5-4a2e-90ce-019bdd803811",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T07:53:01.891623Z",
-      "prev_hash": "0789bfd721dbd578ae5ea2a0349b0b196699e14accdcd468eefc2a477df2f4e0",
-      "target_ref": "794d13b1-89d6-4b19-93e9-8040adad0739",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.944528Z",
+      "prev_hash": "7c4b173996e93ce98d2b1e00685fa6a13059279530925665bdb42cd12907d42f",
+      "target_ref": "be0a8767-8eed-4d4d-a510-1276f534506f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "243ed4d5fd2069b6b4d7dba57a50b93edcd27ed1e1ea79780dd3f083629d7ef2",
+      "chain_hash": "f9291b1a45261381b9d4bb76fbb96389f2c86457bc33818092a25a5f3f6db79f",
       "chain_seq": 34,
-      "id": "01969005-69e3-4fc8-adfc-e26fa70f8bde",
+      "id": "c0aaf455-68bd-4134-a2ba-6650c9f77360",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-16T07:53:01.896805Z",
-      "prev_hash": "18606c12f96ed24f0fdf0ef9e499ba9a7353aa331553585c6f85b749341b9e4b",
-      "target_ref": "794d13b1-89d6-4b19-93e9-8040adad0739",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.948428Z",
+      "prev_hash": "dc1885b670b1b8a3113a1b088a00168e0733fb4493b5585f53691eba5afec037",
+      "target_ref": "be0a8767-8eed-4d4d-a510-1276f534506f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b99072dd81292dbd516669e9546e9621fdb61c69c79ab1c7429efa5c3e08d4d4",
+      "chain_hash": "3b7ddce09117ad7782ae7da1d1dda7a9eb5e2f3d79eccdc938fafb6b32e41ac3",
       "chain_seq": 35,
-      "id": "36824702-b9b4-4b5c-9c8d-1e6e53ba79ea",
+      "id": "68bcc796-0797-4ace-8d84-63fd1e45204d",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.899839Z",
-      "prev_hash": "243ed4d5fd2069b6b4d7dba57a50b93edcd27ed1e1ea79780dd3f083629d7ef2",
-      "target_ref": "794d13b1-89d6-4b19-93e9-8040adad0739",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.951159Z",
+      "prev_hash": "f9291b1a45261381b9d4bb76fbb96389f2c86457bc33818092a25a5f3f6db79f",
+      "target_ref": "be0a8767-8eed-4d4d-a510-1276f534506f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "ffd1fc6bcca5e710f4c5a2982f258afbb4081133b554960f120a1633d61dd04a",
+      "chain_hash": "e4ea136345d06e76064e8224ffebb6c43437f7237cb4e1a7bac556b685da42f4",
       "chain_seq": 36,
-      "id": "73601077-7a76-4bae-8458-e5de3794f4c8",
+      "id": "31689e88-1789-4e9a-9406-4fcb0a51f112",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.903463Z",
-      "prev_hash": "b99072dd81292dbd516669e9546e9621fdb61c69c79ab1c7429efa5c3e08d4d4",
-      "target_ref": "794d13b1-89d6-4b19-93e9-8040adad0739",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.960883Z",
+      "prev_hash": "3b7ddce09117ad7782ae7da1d1dda7a9eb5e2f3d79eccdc938fafb6b32e41ac3",
+      "target_ref": "be0a8767-8eed-4d4d-a510-1276f534506f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_review.started",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "58b6540f410d005c64965e49f96560fcddf0260780757672238d9a715b5419ca",
+      "chain_hash": "fd86e7b7b45c51c7096ad58c98ec875af53bfa87185e998bb3b78591ad1fd531",
       "chain_seq": 37,
-      "id": "b17cc1b6-8e15-45e6-ad4e-fa23d5c774bb",
+      "id": "b348013a-b6c1-483a-b12c-99debb6229f7",
       "kind": "review_started",
-      "occurred_at": "2026-06-16T07:53:01.911732Z",
-      "prev_hash": "ffd1fc6bcca5e710f4c5a2982f258afbb4081133b554960f120a1633d61dd04a",
-      "target_ref": "17c1d4c1-14f3-4058-9ce9-0c60523c89a6",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.964915Z",
+      "prev_hash": "e4ea136345d06e76064e8224ffebb6c43437f7237cb4e1a7bac556b685da42f4",
+      "target_ref": "fcecdab0-ebaf-440b-9834-670c00dc42fe",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d73f2825aab883c1bfbfd23ed637673de0c025ac6209a8a2af3f61aa71c061f4",
+      "chain_hash": "e3176834de130a7815af37e8877fd212da89704dc1cddf7d6eac3bcf4cc12128",
       "chain_seq": 38,
-      "id": "adc979c6-8a26-44a2-af7a-31ec2fdf5ce4",
+      "id": "c163c90b-85a1-4588-a41a-ce26969635e3",
       "kind": "review_decision",
-      "occurred_at": "2026-06-16T07:53:01.920707Z",
-      "prev_hash": "58b6540f410d005c64965e49f96560fcddf0260780757672238d9a715b5419ca",
-      "target_ref": "9a9ed4a0-9526-4f81-9eaa-50629bd19891",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.97695Z",
+      "prev_hash": "fd86e7b7b45c51c7096ad58c98ec875af53bfa87185e998bb3b78591ad1fd531",
+      "target_ref": "ad074760-5ece-4db8-ba2d-769c228d2bf3",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.revoked",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "278908fad875b32f24ee3fb3ae2f856bd717f76782fcbdf371859d2f2f512dd5",
+      "chain_hash": "c7fbd215d0d0aa4216c9a44ae9799938df8348088ea3b2997d5c7512033360ee",
       "chain_seq": 39,
-      "id": "216d6d6f-9f89-4804-a665-271efb137f75",
+      "id": "3ecceeb2-979b-4f12-953c-fa7dde083f58",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.928556Z",
-      "prev_hash": "d73f2825aab883c1bfbfd23ed637673de0c025ac6209a8a2af3f61aa71c061f4",
-      "target_ref": "b38cfe98-d9ac-4200-998f-11b7dcada055",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.983331Z",
+      "prev_hash": "e3176834de130a7815af37e8877fd212da89704dc1cddf7d6eac3bcf4cc12128",
+      "target_ref": "147c6216-ee1e-4330-91e0-e1c8d872910f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.revoked",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "0667c80c9a0bbdbf6cc5757a58d840c89a261055cff7d80f2ddc487ece206216",
+      "chain_hash": "0d95d6239b902b8a8083da74e64dd9b8f00672132fbb953b37b69e917d8d1231",
       "chain_seq": 40,
-      "id": "981e7cd5-ae76-4425-b824-3bf104753e0b",
+      "id": "21960b29-219f-41c0-9678-6f7245280885",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T07:53:01.926642Z",
-      "prev_hash": "278908fad875b32f24ee3fb3ae2f856bd717f76782fcbdf371859d2f2f512dd5",
-      "target_ref": "77dc098e-d007-4d7d-81b4-377182c0d4be",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.981807Z",
+      "prev_hash": "c7fbd215d0d0aa4216c9a44ae9799938df8348088ea3b2997d5c7512033360ee",
+      "target_ref": "353181df-c2a3-468c-a8bf-61b7e00b9503",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "3121dfc2ede02151b69e0ab9ec066ce7724112cf0a548bbd09d674e0302f1d7a",
+      "chain_hash": "b4ab59bc1fd2341fadd25c59721f73bef471b7c79126c936cf72b215d361a970",
       "chain_seq": 41,
-      "id": "5d273f09-0afd-472a-be77-fef3d34a4f8b",
+      "id": "3f3a6964-57dd-42c4-b52b-36520c72a9c4",
       "kind": "review_decision",
-      "occurred_at": "2026-06-16T07:53:01.93372Z",
-      "prev_hash": "0667c80c9a0bbdbf6cc5757a58d840c89a261055cff7d80f2ddc487ece206216",
-      "target_ref": "ac7664d7-aa75-4514-958e-af1197c4c9f2",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.988211Z",
+      "prev_hash": "0d95d6239b902b8a8083da74e64dd9b8f00672132fbb953b37b69e917d8d1231",
+      "target_ref": "c1755e92-0b2b-43be-b093-d2b891445596",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "certification.campaign.started",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "1e08aabb2d727028805cc5fbad631dc6e6c652dd87945c6772ea907e223e3e22",
+      "chain_hash": "98eee4c2cce968131f135d2dac3cbc3ac8ab8f24f8d8c4e6f8678d8baa1894cf",
       "chain_seq": 42,
-      "id": "b6da1be8-2274-4660-9f6b-4a26523f9511",
+      "id": "a895cc51-e883-4371-a53f-4649459c19ea",
       "kind": "certification_started",
       "metadata": {
         "framework": "ISO 27001",
         "item_count": 1,
         "name": "Q2 2026 ISO 27001 Annex A access certification",
         "scope": {
-          "connector_id": "aed3c70d-56af-4410-92bd-f5c3c2db880a"
+          "connector_id": "0cbc54f9-6f68-44cc-a92e-847af1615fcd"
         }
       },
-      "occurred_at": "2026-06-16T07:53:01.939555Z",
-      "prev_hash": "3121dfc2ede02151b69e0ab9ec066ce7724112cf0a548bbd09d674e0302f1d7a",
-      "target_ref": "f4059e35-7393-4039-ab3e-dc7c5f2f3ac5",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:31.99337Z",
+      "prev_hash": "b4ab59bc1fd2341fadd25c59721f73bef471b7c79126c936cf72b215d361a970",
+      "target_ref": "11f449ff-8ee1-47db-b8d4-22e1414b9d0c",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f0080e91a701ef4df62520d2adb96a30fd03d666178030c66723a281ce972f11",
+      "chain_hash": "d9a3a75cd3f0ee07e8a9b7252971c70e8ce339cadc675995ecc761929ba02915",
       "chain_seq": 43,
-      "id": "1470908f-0616-4444-b093-10c988e7f0e3",
+      "id": "acf9c681-7ebb-4f45-85a1-fa4189295ee6",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "f4059e35-7393-4039-ab3e-dc7c5f2f3ac5",
-        "grant_id": "9f77d39a-4703-4f24-b326-96a408b43fea",
+        "campaign_id": "11f449ff-8ee1-47db-b8d4-22e1414b9d0c",
+        "grant_id": "c6e8f4af-4f77-47c1-bdce-26a32d535cb2",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-16T07:53:01.948893Z",
-      "prev_hash": "1e08aabb2d727028805cc5fbad631dc6e6c652dd87945c6772ea907e223e3e22",
-      "target_ref": "419bfd1a-1657-44bf-bcee-6b301704dbbe",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.002768Z",
+      "prev_hash": "98eee4c2cce968131f135d2dac3cbc3ac8ab8f24f8d8c4e6f8678d8baa1894cf",
+      "target_ref": "dce8532a-ce19-46be-a938-b496a6b7454b",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "afe4c1ba62901cdea95d2617ced2b3430baa015b56af99d994e15cb716e55a6a",
+      "chain_hash": "31428ffda3827fb85cd8d5a262b64737c30c69bcf792d58fe9374abe3f0189dc",
       "chain_seq": 44,
-      "id": "d3cab72b-ebab-4adb-843a-ce12caf29802",
+      "id": "8d0b8400-81ed-4a35-8b5c-5967b2cba598",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-16T07:53:01.954398Z",
-      "prev_hash": "f0080e91a701ef4df62520d2adb96a30fd03d666178030c66723a281ce972f11",
-      "target_ref": "f4059e35-7393-4039-ab3e-dc7c5f2f3ac5",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.010982Z",
+      "prev_hash": "d9a3a75cd3f0ee07e8a9b7252971c70e8ce339cadc675995ecc761929ba02915",
+      "target_ref": "11f449ff-8ee1-47db-b8d4-22e1414b9d0c",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.revoked",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "4baeb2f846698f3c06140b8e83638ba7a178c9fac3d250d6d93d0140cbb517cf",
+      "chain_hash": "28d9dcfce1718690b8643b1d90af1735307f84aed54c5581518a2e08ef942607",
       "chain_seq": 45,
-      "id": "872c2bc1-21a3-46a5-bb57-10ffcf9f95c0",
+      "id": "212d5b08-89f6-46df-86fe-db92c152092d",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.962128Z",
-      "prev_hash": "afe4c1ba62901cdea95d2617ced2b3430baa015b56af99d994e15cb716e55a6a",
-      "target_ref": "1fa48251-8752-4d1b-88a3-d59c61e097eb",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.018701Z",
+      "prev_hash": "31428ffda3827fb85cd8d5a262b64737c30c69bcf792d58fe9374abe3f0189dc",
+      "target_ref": "aca743ce-56e1-4332-a4ad-4f0cf659f4b5",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.revoked",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "78f19a93c9ce761be93769d434c618dd7de668876defa5b6cf33a4b4699cd643",
+      "chain_hash": "31885fafe2ad1a3c1632e771a07a7da9b3eebe17089450de96bf63ac55b96342",
       "chain_seq": 46,
-      "id": "6529942d-14b9-4d18-8e8d-084f3e1491b9",
+      "id": "69f49ada-d111-46ff-87bf-e2a254cd70b3",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T07:53:01.96036Z",
-      "prev_hash": "4baeb2f846698f3c06140b8e83638ba7a178c9fac3d250d6d93d0140cbb517cf",
-      "target_ref": "9f77d39a-4703-4f24-b326-96a408b43fea",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.016884Z",
+      "prev_hash": "28d9dcfce1718690b8643b1d90af1735307f84aed54c5581518a2e08ef942607",
+      "target_ref": "c6e8f4af-4f77-47c1-bdce-26a32d535cb2",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "48a954d34f91d9768a18af33c134a332ec913c3cc2c8833b879da1f45f8f8140",
+      "chain_hash": "fe259368d37b94fc170d5aee51e417427b6447fd31804bcb5e5fbef8d1cb96a7",
       "chain_seq": 47,
-      "id": "63d5356a-bc66-44e5-af0b-8c4ffb38d419",
+      "id": "b9f2ef08-015d-4eda-9a68-e32f2d4e7314",
       "kind": "access_requested",
-      "occurred_at": "2026-06-16T07:53:01.974594Z",
-      "prev_hash": "78f19a93c9ce761be93769d434c618dd7de668876defa5b6cf33a4b4699cd643",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.031741Z",
+      "prev_hash": "31885fafe2ad1a3c1632e771a07a7da9b3eebe17089450de96bf63ac55b96342",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "a95f57134c2002b7f36d78c46adc6ce6ce08fba2067e3a51cb82edc8e4af9d40",
+      "chain_hash": "6bb08bcaaf75f803b529de0aa824af523e8b3ac658a02560adb60339a7f1c389",
       "chain_seq": 48,
-      "id": "a3e7052e-5c0f-464a-90d4-d51c07f52c54",
+      "id": "55c8ba99-910a-4f44-8579-0b71060c171f",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.978965Z",
-      "prev_hash": "48a954d34f91d9768a18af33c134a332ec913c3cc2c8833b879da1f45f8f8140",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.036215Z",
+      "prev_hash": "fe259368d37b94fc170d5aee51e417427b6447fd31804bcb5e5fbef8d1cb96a7",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "57e35b5acd6d257c106ea5209b8b55954131dbc1a32ffc32d4b87dc643402649",
+      "chain_hash": "c648ec123493b914657576f81893cde2c6cfdda7d5cf5c197d38dff4c6089000",
       "chain_seq": 49,
-      "id": "e0cbd682-b33e-4fe6-9969-f08a71edcfa7",
+      "id": "8b44d9c2-cd14-4b1d-8c23-7bab06cbee4e",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.983413Z",
-      "prev_hash": "a95f57134c2002b7f36d78c46adc6ce6ce08fba2067e3a51cb82edc8e4af9d40",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.040648Z",
+      "prev_hash": "6bb08bcaaf75f803b529de0aa824af523e8b3ac658a02560adb60339a7f1c389",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "9b0151b6ca4aa3e592db33e4ea459eadbf2e31dd542931fb2c8fd65fe00affe3",
+      "chain_hash": "c03972b5bbcca28ad70dd2df1d41c171a7395a11b1f7488b49355e33d6d31fef",
       "chain_seq": 50,
-      "id": "5a52512c-c504-42e7-8a54-362054d68165",
+      "id": "35ccb9de-7202-4475-8fde-896879415876",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.988271Z",
-      "prev_hash": "57e35b5acd6d257c106ea5209b8b55954131dbc1a32ffc32d4b87dc643402649",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.045627Z",
+      "prev_hash": "c648ec123493b914657576f81893cde2c6cfdda7d5cf5c197d38dff4c6089000",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "0deeb487ef0efe4aa6227862c86f8f14bf52717b20e3feba862b9fc1a2b7a80b",
+      "chain_hash": "ce83fcfeeb3100190441a93e5bffee2c43229813360294c7a8946c0e7e03005a",
       "chain_seq": 51,
-      "id": "43f592d4-adee-4004-a174-b7f2f8b52152",
+      "id": "c693f637-27a7-4abf-8cfb-aec9e68d1ec1",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:01.991454Z",
-      "prev_hash": "9b0151b6ca4aa3e592db33e4ea459eadbf2e31dd542931fb2c8fd65fe00affe3",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.048642Z",
+      "prev_hash": "c03972b5bbcca28ad70dd2df1d41c171a7395a11b1f7488b49355e33d6d31fef",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "33a4637120508dcb12a6b68b67b144b40b6be6689737cc8e79a0b04d6194ce67",
+      "chain_hash": "0739964623e000f2e2ff8a066fe0defc63dbf946e22328fb7302f2fbfccd7252",
       "chain_seq": 52,
-      "id": "69cdf1c4-1b2a-4c9e-aca9-6c6cc852dd49",
+      "id": "30a8d524-24c3-4692-8edd-568673854341",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:53:01.986836Z",
-      "prev_hash": "0deeb487ef0efe4aa6227862c86f8f14bf52717b20e3feba862b9fc1a2b7a80b",
-      "target_ref": "9031f84d-6269-4782-8624-ea57e01b422e",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.044269Z",
+      "prev_hash": "ce83fcfeeb3100190441a93e5bffee2c43229813360294c7a8946c0e7e03005a",
+      "target_ref": "8b708765-4fd3-4ccf-bd59-19a1dca72820",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "30c0c0a29790b49781eef37cea594325ede84d2ff3839503ab1bf9a059e014db",
+      "chain_hash": "648c3075ad4ecc7644d2eef66f93f95b1b610c942801f70be3a2414ece9f07d8",
       "chain_seq": 53,
-      "id": "c20b7512-d6d8-4ea5-a95b-e7641981aacb",
+      "id": "6337871d-b9c7-482c-87a6-0bf0f64e90c4",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-16T07:53:01.996786Z",
-      "prev_hash": "33a4637120508dcb12a6b68b67b144b40b6be6689737cc8e79a0b04d6194ce67",
+      "occurred_at": "2026-06-18T12:59:32.054951Z",
+      "prev_hash": "0739964623e000f2e2ff8a066fe0defc63dbf946e22328fb7302f2fbfccd7252",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "ed080137b396c74db81fbf0e38fe6f281474d188e4029d992efef469bfeb5d58",
+      "chain_hash": "516e9049decdd901a8156a8fa384e275c04931083a7ae3d21ded44b2986e7aad",
       "chain_seq": 54,
-      "id": "e01b4f35-feda-405e-9648-9fcef1f7b58c",
+      "id": "defc8646-77ec-408b-ad57-12bbb390ba3b",
       "kind": "other",
-      "occurred_at": "2026-06-16T07:53:02.004598Z",
-      "prev_hash": "30c0c0a29790b49781eef37cea594325ede84d2ff3839503ab1bf9a059e014db",
-      "target_ref": "0c491e36-52dd-4980-b560-a6df811dd771",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.062953Z",
+      "prev_hash": "648c3075ad4ecc7644d2eef66f93f95b1b610c942801f70be3a2414ece9f07d8",
+      "target_ref": "84484236-fbaa-462f-9a49-a1e1c4435072",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "34e47ceb5a29dac121a36d4dc85c20779864a2e56837a6074df0912c7818c2e3",
+      "chain_hash": "1b93ca77005a08319874257437d8ef13557e52c5ca129bf1c12bee6b70ca7622",
       "chain_seq": 55,
-      "id": "6e3f693e-346d-48c1-9a48-0579e88522fa",
+      "id": "1176bbda-85e9-4478-8bc0-189435a552b3",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-16T07:53:02.002779Z",
-      "prev_hash": "ed080137b396c74db81fbf0e38fe6f281474d188e4029d992efef469bfeb5d58",
-      "target_ref": "9031f84d-6269-4782-8624-ea57e01b422e",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.06117Z",
+      "prev_hash": "516e9049decdd901a8156a8fa384e275c04931083a7ae3d21ded44b2986e7aad",
+      "target_ref": "8b708765-4fd3-4ccf-bd59-19a1dca72820",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "bfcb0e86f342ca041565226f2fbecee0bb5d98166d335896dad040134eb8b34a",
+      "chain_hash": "c60b4aa6978185b8491fa90ba66bfede6fa40d1e26a63910648a9eb6c793e64b",
       "chain_seq": 56,
-      "id": "7fe4a99a-7243-445a-8954-f4b084eb8b50",
+      "id": "20ae6e77-b9b5-41f3-ae80-f11423270809",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.008734Z",
-      "prev_hash": "34e47ceb5a29dac121a36d4dc85c20779864a2e56837a6074df0912c7818c2e3",
+      "occurred_at": "2026-06-18T12:59:32.066693Z",
+      "prev_hash": "1b93ca77005a08319874257437d8ef13557e52c5ca129bf1c12bee6b70ca7622",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "6ccebe2477e7b559a9200325d2b6a66fc4added36ce048f258b3c2b598781b1a",
+      "chain_hash": "1a1953e01cf67539f02264180a6fbe4b8ea8df333017eb2c7975bf589ba5d859",
       "chain_seq": 57,
-      "id": "f3bb0d19-052d-4807-a07f-ee1a9e6a54ba",
+      "id": "fa2e62db-db0b-4de8-92f7-5887b0002d2a",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.012982Z",
-      "prev_hash": "bfcb0e86f342ca041565226f2fbecee0bb5d98166d335896dad040134eb8b34a",
+      "occurred_at": "2026-06-18T12:59:32.070462Z",
+      "prev_hash": "c60b4aa6978185b8491fa90ba66bfede6fa40d1e26a63910648a9eb6c793e64b",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "8327118ce17288946fe45e0a0f4636138d18ab52c15bc39e9b94d35e963d5e64",
+      "chain_hash": "541ff90589e58eeecf9d1822f7295caa67335a89e1f0ae4f91d099a0321bfaf9",
       "chain_seq": 58,
-      "id": "cd216ba7-5ff2-4d3d-92f6-c284f19d65dd",
+      "id": "7fb480b8-331e-4397-8c0f-12b25c2c22b7",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.015528Z",
-      "prev_hash": "6ccebe2477e7b559a9200325d2b6a66fc4added36ce048f258b3c2b598781b1a",
+      "occurred_at": "2026-06-18T12:59:32.072621Z",
+      "prev_hash": "1a1953e01cf67539f02264180a6fbe4b8ea8df333017eb2c7975bf589ba5d859",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "a44201d8f3f43fd27708f18a8b2d28ecbe7a107c54a5f809423d4118225918cc",
+      "chain_hash": "3aeff36ea4977841010762c8f7468b788fdf184b37684281eda3ecb52a69967a",
       "chain_seq": 59,
-      "id": "4236b549-55ca-4f80-8107-bbc6dd7ac22a",
+      "id": "f53e317f-426d-4965-9c0a-4781bf527a05",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.747324Z",
-      "prev_hash": "8327118ce17288946fe45e0a0f4636138d18ab52c15bc39e9b94d35e963d5e64",
+      "occurred_at": "2026-06-18T12:59:32.733689Z",
+      "prev_hash": "541ff90589e58eeecf9d1822f7295caa67335a89e1f0ae4f91d099a0321bfaf9",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "7a2d0b5f7962fcece0e1edbe8d0a61d0b3f9f7019200bf73051cbe98a8ff8bed",
+      "chain_hash": "ffac180fa5e7d5dc4b0acb168ead472f2e50a8fff311acd11b4c51415a106737",
       "chain_seq": 60,
-      "id": "8e09ebda-b052-4c11-b53b-163193959dde",
+      "id": "33608472-0bc9-4c0c-860a-cc8c0c5053d6",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.750681Z",
-      "prev_hash": "a44201d8f3f43fd27708f18a8b2d28ecbe7a107c54a5f809423d4118225918cc",
+      "occurred_at": "2026-06-18T12:59:32.737083Z",
+      "prev_hash": "3aeff36ea4977841010762c8f7468b788fdf184b37684281eda3ecb52a69967a",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "5f1f2abb6aa7dfc017883725e76c20120d4e791a45ee21a26eca31797c5ce452",
+      "chain_hash": "7b6e2224b688eb2d9983c9112efd0734469134e01683512df49d6c11f3679bb0",
       "chain_seq": 61,
-      "id": "6615085a-8944-4f32-bd43-c8f09c4bed00",
+      "id": "b422eaea-a96d-4df3-84fa-5e5b1c415cd8",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-16T07:53:02.756221Z",
-      "prev_hash": "7a2d0b5f7962fcece0e1edbe8d0a61d0b3f9f7019200bf73051cbe98a8ff8bed",
+      "occurred_at": "2026-06-18T12:59:32.742046Z",
+      "prev_hash": "ffac180fa5e7d5dc4b0acb168ead472f2e50a8fff311acd11b4c51415a106737",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "sod.rule.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "fbe77e1f1a3114ee4b3699fe333243e34c66b41b52f63e1f4b982308ae050cf7",
+      "chain_hash": "7972999c4e98e2a653d82f2b8fd68400e6fc5972239e95ef00e334ed9928b533",
       "chain_seq": 62,
-      "id": "70736df0-2112-4d52-93c9-3f19d8a38cd8",
+      "id": "46ee040f-7df3-487e-adae-3d9b2b217c3d",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -813,477 +813,477 @@
         },
         "severity": "critical"
       },
-      "occurred_at": "2026-06-16T07:53:02.760311Z",
-      "prev_hash": "5f1f2abb6aa7dfc017883725e76c20120d4e791a45ee21a26eca31797c5ce452",
-      "target_ref": "85d83c53-617d-49ed-832e-a54bb4765a2d",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.745955Z",
+      "prev_hash": "7b6e2224b688eb2d9983c9112efd0734469134e01683512df49d6c11f3679bb0",
+      "target_ref": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "878f98dba8091c6746a5392304eae3e90f3f58e3f99a77699bf05cc6c1828179",
+      "chain_hash": "e051bf88b6440c7cb3e2a3bf5ee34353dcc142b7de1651fc5336f7fb9a53e07b",
       "chain_seq": 63,
-      "id": "fa48bcf7-42fc-404d-b792-1c3d626f226d",
+      "id": "57a8bb97-64da-4bf7-bd07-48d821e9bb7b",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-desc-auditor@regulator.example",
-        "expires_at": "2026-06-30T07:53:02Z",
+        "expires_at": "2026-07-02T12:59:32Z",
         "resource_ref": "pdpl:dsr",
         "role": "auditor",
         "sponsor_id": "ae-security_admin"
       },
-      "occurred_at": "2026-06-16T07:53:02.76992Z",
-      "prev_hash": "fbe77e1f1a3114ee4b3699fe333243e34c66b41b52f63e1f4b982308ae050cf7",
-      "target_ref": "b8029d88-2499-4378-b041-c1ae5fadc5cd",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.754919Z",
+      "prev_hash": "7972999c4e98e2a653d82f2b8fd68400e6fc5972239e95ef00e334ed9928b533",
+      "target_ref": "855bafda-0fb0-46a3-a84a-a523ab8ffe2c",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "23debd83c730dd590cd1f2aeb8798c25031915f250b1e3f936a1c5f887e373dc",
+      "chain_hash": "174107e687234bb0945563183aa4874487ba8bd83f6c65101046d37176576ca8",
       "chain_seq": 64,
-      "id": "b4ba8f44-7074-4803-8e2c-d3a3ebc2c001",
+      "id": "c5de1d02-7b71-4eb5-a935-a4a749e45ae2",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:53:02.775671Z",
-      "prev_hash": "878f98dba8091c6746a5392304eae3e90f3f58e3f99a77699bf05cc6c1828179",
-      "target_ref": "f15e0416-ac0b-45c5-b6fc-619962a3c4c1",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.760777Z",
+      "prev_hash": "e051bf88b6440c7cb3e2a3bf5ee34353dcc142b7de1651fc5336f7fb9a53e07b",
+      "target_ref": "3147b8fe-4c76-4fa3-91cb-c5be0d35bc22",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "43cd2fdc95fbcd6e6bae109aac9c2dc022807f27743299f6a50d6d4ccbdf22bf",
+      "chain_hash": "4afa66e425c081dd2eb7cb0c240efd14a643e9e0a75aea3c7705fd241f67df0e",
       "chain_seq": 65,
-      "id": "b753c2bf-a74c-4049-b70b-a0b486897498",
+      "id": "1aaa2819-b305-4880-b82d-68084481093f",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-desc-auditor@regulator.example",
-        "expires_at": "2026-06-30T07:53:02Z",
-        "grant_id": "f15e0416-ac0b-45c5-b6fc-619962a3c4c1"
+        "expires_at": "2026-07-02T12:59:32Z",
+        "grant_id": "3147b8fe-4c76-4fa3-91cb-c5be0d35bc22"
       },
-      "occurred_at": "2026-06-16T07:53:02.775671Z",
-      "prev_hash": "23debd83c730dd590cd1f2aeb8798c25031915f250b1e3f936a1c5f887e373dc",
-      "target_ref": "b8029d88-2499-4378-b041-c1ae5fadc5cd",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.760777Z",
+      "prev_hash": "174107e687234bb0945563183aa4874487ba8bd83f6c65101046d37176576ca8",
+      "target_ref": "855bafda-0fb0-46a3-a84a-a523ab8ffe2c",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.extended",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "cfc5f558ab96d84212c5f262301195075ba9475555d4887f0ac9c14167296c94",
+      "chain_hash": "b6c6c85bd9582555a935373bee5e1ecf82ee18c18fa0a2284c35c9d50651b415",
       "chain_seq": 66,
-      "id": "93f461d7-b692-4370-9024-cc45feb2472a",
+      "id": "f6ea8af1-9361-4534-9d9f-793ad2f6feda",
       "kind": "other",
       "metadata": {
-        "new_expires_at": "2026-07-14T07:53:02Z",
-        "previous_expires_at": "2026-06-30T07:53:02Z",
+        "new_expires_at": "2026-07-16T12:59:32Z",
+        "previous_expires_at": "2026-07-02T12:59:32Z",
         "reason": "Sponsor-approved extension: engagement prolonged."
       },
-      "occurred_at": "2026-06-16T07:53:02.784259Z",
-      "prev_hash": "43cd2fdc95fbcd6e6bae109aac9c2dc022807f27743299f6a50d6d4ccbdf22bf",
-      "target_ref": "b8029d88-2499-4378-b041-c1ae5fadc5cd",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.769433Z",
+      "prev_hash": "4afa66e425c081dd2eb7cb0c240efd14a643e9e0a75aea3c7705fd241f67df0e",
+      "target_ref": "855bafda-0fb0-46a3-a84a-a523ab8ffe2c",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.target.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "32193c090827cf6f173a13843d2d70a616b6be60e504c15f9943380a1cc77f1b",
+      "chain_hash": "d9c78b8661e95f77f71808feee9ef3c70275dbe1e4196fa3b9537f23ac9eb24c",
       "chain_seq": 67,
-      "id": "53b09b22-60f9-4dd1-a50a-e9d485d7e211",
+      "id": "dab1f0f6-594f-4cd3-b448-e98ffc26bece",
       "kind": "other",
       "metadata": {
         "address": "t24-prod-1.northwind.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T07:53:02.793494Z",
-      "prev_hash": "cfc5f558ab96d84212c5f262301195075ba9475555d4887f0ac9c14167296c94",
-      "target_ref": "4f1002bd-c0ea-4336-a3fa-ad4de6205c40",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.778175Z",
+      "prev_hash": "b6c6c85bd9582555a935373bee5e1ecf82ee18c18fa0a2284c35c9d50651b415",
+      "target_ref": "96f982ce-23ff-4f36-840b-b56d02c83590",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.lease.requested",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b5f0463c7141429f7b9564f5d40aaac3796f08544720e5b353dac3a886bf724f",
+      "chain_hash": "4ca61001078e1a891cec93f259884b7454bcad4849451c40296588c1cd78748a",
       "chain_seq": 68,
-      "id": "48f31c3f-9c10-49e7-ae07-12d8db73c280",
+      "id": "962f401d-4a9a-480c-a7bd-2ef24d98e875",
       "kind": "other",
       "metadata": {
-        "risk_degraded": false,
+        "risk_degraded": true,
         "risk_level": "medium",
         "subject": "ae-northwind-finance-owner",
-        "target_id": "4f1002bd-c0ea-4336-a3fa-ad4de6205c40",
+        "target_id": "96f982ce-23ff-4f36-840b-b56d02c83590",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-16T07:53:02.799062Z",
-      "prev_hash": "32193c090827cf6f173a13843d2d70a616b6be60e504c15f9943380a1cc77f1b",
-      "target_ref": "924c92cc-48cd-4c50-8c24-ae294963eaa3",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T12:59:32.78195Z",
+      "prev_hash": "d9c78b8661e95f77f71808feee9ef3c70275dbe1e4196fa3b9537f23ac9eb24c",
+      "target_ref": "42dfd053-cf5d-43ee-9c3f-b78f55da6ac6",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.lease.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b49e05ad4678fcb7ed2effd681603f11ba8f9da76ba921a5541134f957373e27",
+      "chain_hash": "09db40f2b8ed2a1e9c61a1d281e5e0563d05ad68a9e5a29c6d8c84bc19af53eb",
       "chain_seq": 69,
-      "id": "2dcc4bcb-f7e9-4e4b-85e0-2b8dda5fdf38",
+      "id": "efe958e2-6ba2-469b-985d-4e1a40ddf749",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T08:08:31Z",
+        "expires_at": "2026-06-18T13:15:01Z",
         "subject": "ae-northwind-finance-owner",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-16T07:53:31.808558Z",
-      "prev_hash": "b5f0463c7141429f7b9564f5d40aaac3796f08544720e5b353dac3a886bf724f",
-      "target_ref": "924c92cc-48cd-4c50-8c24-ae294963eaa3",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:01.789104Z",
+      "prev_hash": "4ca61001078e1a891cec93f259884b7454bcad4849451c40296588c1cd78748a",
+      "target_ref": "42dfd053-cf5d-43ee-9c3f-b78f55da6ac6",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "485012c99f015937f86e3999d0d0beabdf2a0133288ed71b972504f9867ce0b2",
+      "chain_hash": "ea593ad8f6f243be860214b7d8444a6e77c92572b6c68cf6e39781f9b10e94ea",
       "chain_seq": 70,
-      "id": "38fc9c7d-c14d-462e-b6af-38204266b81c",
+      "id": "5c55c0da-b63d-4ea7-977c-4b94c4d1a83a",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T08:08:31Z",
+        "expires_at": "2026-06-18T13:15:01Z",
         "subject": "ae-northwind-finance-owner"
       },
-      "occurred_at": "2026-06-16T07:53:31.817086Z",
-      "prev_hash": "b49e05ad4678fcb7ed2effd681603f11ba8f9da76ba921a5541134f957373e27",
-      "target_ref": "4f1002bd-c0ea-4336-a3fa-ad4de6205c40",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:01.797075Z",
+      "prev_hash": "09db40f2b8ed2a1e9c61a1d281e5e0563d05ad68a9e5a29c6d8c84bc19af53eb",
+      "target_ref": "96f982ce-23ff-4f36-840b-b56d02c83590",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.target.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d6cab0ce46ead6130d7bc04fc087f004808640564edfb7ad034e02e04c8eb4c5",
+      "chain_hash": "4100db905c5c9ed98dc4f5338c6a15ff8e7451ac8b415114a2a185f4f6864720",
       "chain_seq": 71,
-      "id": "22f488a1-4f6e-4098-8552-9e7295c62380",
+      "id": "ff30a15a-04df-4efd-a50b-954591941fb9",
       "kind": "other",
       "metadata": {
         "address": "treasury-db-1.northwind.internal:5432",
         "protocol": "postgres"
       },
-      "occurred_at": "2026-06-16T07:53:31.823149Z",
-      "prev_hash": "485012c99f015937f86e3999d0d0beabdf2a0133288ed71b972504f9867ce0b2",
-      "target_ref": "d2eba9b5-46d0-4ed8-8334-95db6a2e1c82",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:01.802418Z",
+      "prev_hash": "ea593ad8f6f243be860214b7d8444a6e77c92572b6c68cf6e39781f9b10e94ea",
+      "target_ref": "20531479-a8f9-4d9a-b3be-cc77dfe34075",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.lease.requested",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "af71202ef041834f3d5133d99cb420662185b4dff057836c039c83a822fd8b40",
+      "chain_hash": "39d68c19aca8a8ad556b38771f912feafa6a5dab19e379f1f7b3f6def69911fe",
       "chain_seq": 72,
-      "id": "c22a5b4b-a784-46b5-a652-39b6ddeecb07",
+      "id": "d5cf4101-0528-48b1-9376-d1db8c158274",
       "kind": "other",
       "metadata": {
-        "risk_degraded": false,
-        "risk_level": "low",
+        "risk_degraded": true,
+        "risk_level": "medium",
         "subject": "ae-northwind-finance-owner",
-        "target_id": "d2eba9b5-46d0-4ed8-8334-95db6a2e1c82",
+        "target_id": "20531479-a8f9-4d9a-b3be-cc77dfe34075",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-16T07:53:31.831978Z",
-      "prev_hash": "d6cab0ce46ead6130d7bc04fc087f004808640564edfb7ad034e02e04c8eb4c5",
-      "target_ref": "c92fadc0-e1df-4331-9a74-6d58c86582b8",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:01.806126Z",
+      "prev_hash": "4100db905c5c9ed98dc4f5338c6a15ff8e7451ac8b415114a2a185f4f6864720",
+      "target_ref": "20757de4-9d14-41d4-8ce0-cdeb4a04d08d",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.lease.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "ed1ce22674ee130328bd17d454b62079e06e5b11f4eb8e68fe588ef3fec6db7b",
+      "chain_hash": "9a7527434e3bd087940cc49768fac5462922908bc1aad915220334b094c1caf4",
       "chain_seq": 73,
-      "id": "a440a5e4-3f09-495d-9e56-b18e27f980f5",
+      "id": "89226286-2bd8-4081-b8cc-2f2037fe8bf5",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T08:09:01Z",
+        "expires_at": "2026-06-18T13:15:31Z",
         "subject": "ae-northwind-finance-owner",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-16T07:54:01.897751Z",
-      "prev_hash": "af71202ef041834f3d5133d99cb420662185b4dff057836c039c83a822fd8b40",
-      "target_ref": "c92fadc0-e1df-4331-9a74-6d58c86582b8",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.82999Z",
+      "prev_hash": "39d68c19aca8a8ad556b38771f912feafa6a5dab19e379f1f7b3f6def69911fe",
+      "target_ref": "20757de4-9d14-41d4-8ce0-cdeb4a04d08d",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "d9d6697ebe5b3577e534d46186181809d7b361592f0fde6d47bfcab2691ddfea",
+      "chain_hash": "537d3ab05c8c39edad42065190d08ca66c35d8c87d5d7c882f55a8ce4bb70f32",
       "chain_seq": 74,
-      "id": "59e1f2c1-df5c-4515-b522-6768e3f95ca2",
+      "id": "93930b74-0f59-47b0-ba72-732c790c8c38",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T08:09:01Z",
+        "expires_at": "2026-06-18T13:15:31Z",
         "subject": "ae-northwind-finance-owner"
       },
-      "occurred_at": "2026-06-16T07:54:01.907141Z",
-      "prev_hash": "ed1ce22674ee130328bd17d454b62079e06e5b11f4eb8e68fe588ef3fec6db7b",
-      "target_ref": "d2eba9b5-46d0-4ed8-8334-95db6a2e1c82",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.837413Z",
+      "prev_hash": "9a7527434e3bd087940cc49768fac5462922908bc1aad915220334b094c1caf4",
+      "target_ref": "20531479-a8f9-4d9a-b3be-cc77dfe34075",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.target.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "875ea24a291b0c18c7a689fe4b7e3216ba3d8fc9ec6926503874984df6afade4",
+      "chain_hash": "11271a06cd6130705b3a72ce1c703230964fe6802c5aa6355f06572c5e4218e0",
       "chain_seq": 75,
-      "id": "b7380b6c-d499-4f70-ba40-94d77ecee76f",
+      "id": "23ac7de7-529d-498a-b094-d9495171dab3",
       "kind": "other",
       "metadata": {
         "address": "t24-bastion.northwind.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T07:54:01.914714Z",
-      "prev_hash": "d9d6697ebe5b3577e534d46186181809d7b361592f0fde6d47bfcab2691ddfea",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.845249Z",
+      "prev_hash": "537d3ab05c8c39edad42065190d08ca66c35d8c87d5d7c882f55a8ce4bb70f32",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "8eb569d5b95be8251385b872b737d9bdc53a7778c11c1bfc96088dbc512fab03",
+      "chain_hash": "5964f1b14e2a8d66fc699a7dbcbd369028c6440a57a1f81fb95f6eaf1a2cd287",
       "chain_seq": 76,
-      "id": "00e57586-9d09-4f60-8564-bae49fdbc5dc",
+      "id": "74b6f0fe-b5d6-4cf4-b31e-4b267bdb121e",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-16T08:24:01Z",
+        "expires_at": "2026-06-18T13:30:31Z",
         "subject": "ae-northwind-finance-owner"
       },
-      "occurred_at": "2026-06-16T07:54:01.919683Z",
-      "prev_hash": "875ea24a291b0c18c7a689fe4b7e3216ba3d8fc9ec6926503874984df6afade4",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.849536Z",
+      "prev_hash": "11271a06cd6130705b3a72ce1c703230964fe6802c5aa6355f06572c5e4218e0",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.session.opened",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "5f8d7c13b6695382be7d9cfe232cffcd8fd4361e22823e94d1dc77702bb28507",
+      "chain_hash": "7ffacf74bcfd630aefca8fb0f88b66ee396a4059e29b93f090132bc2dbaae160",
       "chain_seq": 77,
-      "id": "2a376268-bcbe-4a63-a2f1-d79aeb377da6",
+      "id": "8e0c3848-6c4d-43c8-86ab-d70e2636ab8c",
       "kind": "privileged_session",
       "metadata": {
         "client_addr": "blog-seed",
         "protocol": "ssh",
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace"
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762"
       },
-      "occurred_at": "2026-06-16T07:54:01.92459Z",
-      "prev_hash": "8eb569d5b95be8251385b872b737d9bdc53a7778c11c1bfc96088dbc512fab03",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.854546Z",
+      "prev_hash": "5964f1b14e2a8d66fc699a7dbcbd369028c6440a57a1f81fb95f6eaf1a2cd287",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.command",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "01cefda05cbf758012d631fc11c9153e0a899e8966a616863c3340f53a5febef",
+      "chain_hash": "a542653fe9f78f3e4f3ef8bd43d4b56719aa751dfe5f0edb3f2f49c0b3c8b9d5",
       "chain_seq": 78,
-      "id": "5cda908f-a9fd-4ae1-98f5-22279f86bd85",
+      "id": "89f3747c-ba6f-4252-a041-15a136092f22",
       "kind": "privileged_command",
       "metadata": {
         "command": "whoami",
         "decision": "allow",
         "reason": "",
         "seq": 1,
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace"
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762"
       },
-      "occurred_at": "2026-06-16T07:54:01.927547Z",
-      "prev_hash": "5f8d7c13b6695382be7d9cfe232cffcd8fd4361e22823e94d1dc77702bb28507",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.857822Z",
+      "prev_hash": "7ffacf74bcfd630aefca8fb0f88b66ee396a4059e29b93f090132bc2dbaae160",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.command",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "18a52227bbc1a100651fabbfca696b0df16cf0104a510e2df73570e7bafe6e08",
+      "chain_hash": "3310e1a56c896b0d0d7e47cdeade210378c5e72cbdab910ccac59ff53d837192",
       "chain_seq": 79,
-      "id": "be43e1ab-1473-4db6-bb42-9ff31786f403",
+      "id": "67bd25ea-77f9-4f49-acff-f99cca089d3f",
       "kind": "privileged_command",
       "metadata": {
         "command": "sudo systemctl status t24-core",
         "decision": "allow",
         "reason": "",
         "seq": 2,
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace"
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762"
       },
-      "occurred_at": "2026-06-16T07:54:01.931087Z",
-      "prev_hash": "01cefda05cbf758012d631fc11c9153e0a899e8966a616863c3340f53a5febef",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.861458Z",
+      "prev_hash": "a542653fe9f78f3e4f3ef8bd43d4b56719aa751dfe5f0edb3f2f49c0b3c8b9d5",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.command",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "58cfad01b13ea33859fd6a87efa4871aefcd42efcf83322239f362b221562771",
+      "chain_hash": "17982cbd8e72db3ffd39ee34d36dabd90697c65f0658063f2e8f89578c541478",
       "chain_seq": 80,
-      "id": "a95ba46b-9b37-42c1-9e61-582c54758f80",
+      "id": "6c9309be-190c-41b9-900a-7cd7e6c58608",
       "kind": "privileged_command",
       "metadata": {
         "command": "tail -n 1 /var/log/t24/eod.log",
         "decision": "allow",
         "reason": "",
         "seq": 3,
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace"
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762"
       },
-      "occurred_at": "2026-06-16T07:54:01.934551Z",
-      "prev_hash": "18a52227bbc1a100651fabbfca696b0df16cf0104a510e2df73570e7bafe6e08",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.865101Z",
+      "prev_hash": "3310e1a56c896b0d0d7e47cdeade210378c5e72cbdab910ccac59ff53d837192",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.command",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "5f7691ba58f2f3457433cff2947d2b99dee2301fed3040de01eb8716eafcd477",
+      "chain_hash": "0d331a21b2ef908e31214b8e0be8351652c67e6e29b5ee466abee7a466ab1440",
       "chain_seq": 81,
-      "id": "03e0ee04-aa84-4a4c-910e-83abc56a6cba",
+      "id": "5536a105-5546-449d-899c-978a0d8ff24d",
       "kind": "privileged_command",
       "metadata": {
         "command": "exit",
         "decision": "allow",
         "reason": "",
         "seq": 4,
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace"
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762"
       },
-      "occurred_at": "2026-06-16T07:54:01.938359Z",
-      "prev_hash": "58cfad01b13ea33859fd6a87efa4871aefcd42efcf83322239f362b221562771",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.868343Z",
+      "prev_hash": "17982cbd8e72db3ffd39ee34d36dabd90697c65f0658063f2e8f89578c541478",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.session.recording",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "fb0d1895e76ed11ad88fae37a1bfd8607b404ed9390a4e39ec10302a667ac73d",
+      "chain_hash": "4570298ee1ede9c9e0722033816dd5ca6ff1608be706dc07fba8617020dea140",
       "chain_seq": 82,
-      "id": "4a6f10a7-8786-43cd-baa5-f93d639acd79",
+      "id": "020b0ecb-258e-4d2f-aa02-558e4b40b10e",
       "kind": "privileged_recording",
       "metadata": {
         "bytes": 349,
-        "replay_key": "sessions/f4c577f1-463a-446e-be74-ee2d57f22ace/replay.bin",
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace",
-        "sha256": "b380a9571206fe88bf37b3cc9a4fe64d3f6b8984b181c60bfd18932cc8513e5b",
+        "replay_key": "sessions/1227fa3f-d803-44cc-87a0-fdd352c7b762/replay.bin",
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762",
+        "sha256": "10558302abaa2d472698d31e30779bb90dffedfcd15723771a785651ae62b33e",
         "truncated": false
       },
-      "occurred_at": "2026-06-16T07:54:01.942218Z",
-      "prev_hash": "5f7691ba58f2f3457433cff2947d2b99dee2301fed3040de01eb8716eafcd477",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.871615Z",
+      "prev_hash": "0d331a21b2ef908e31214b8e0be8351652c67e6e29b5ee466abee7a466ab1440",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.session.closed",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f9ea06d38df8c944e79d4a16d9e9b013a5d67ef48a5f12cd6121fbc789ff9b9e",
+      "chain_hash": "b673ca02cab1de8f8a631eac2e82d00c44587d5285e985113ca1d5ead87cd53f",
       "chain_seq": 83,
-      "id": "7824a1ff-71d5-4353-9492-60534436bc16",
+      "id": "0849c2c7-8494-4d9e-b7d9-bee02a6ae6e6",
       "kind": "privileged_session",
       "metadata": {
-        "session_id": "f4c577f1-463a-446e-be74-ee2d57f22ace",
+        "session_id": "1227fa3f-d803-44cc-87a0-fdd352c7b762",
         "state": "closed"
       },
-      "occurred_at": "2026-06-16T07:54:01.944852Z",
-      "prev_hash": "fb0d1895e76ed11ad88fae37a1bfd8607b404ed9390a4e39ec10302a667ac73d",
-      "target_ref": "7ca2f80f-78b0-4a94-8659-eb54e57af085",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.873981Z",
+      "prev_hash": "4570298ee1ede9c9e0722033816dd5ca6ff1608be706dc07fba8617020dea140",
+      "target_ref": "205e9d0c-1c9c-4cb1-b095-e263d022c23f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b9b3014913f4b3e7c3fb2e363d5d2cbfeebeae3995ccccc0084750fc14955824",
+      "chain_hash": "d41294c1813f933e70b76adf0fee131fe0d07e3eb4e54f9aa91d9e28e282bab2",
       "chain_seq": 84,
-      "id": "a61c68d3-35cb-449e-bf2d-2737bd313c59",
+      "id": "ca35e549-50df-4622-acb1-ba6e9283d647",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@ae-northwind-finance.example",
-        "expires_at": "2026-07-16T07:54:01Z",
+        "expires_at": "2026-07-18T13:00:31Z",
         "resource_ref": "t24:privileged-admin",
         "role": "operator",
         "sponsor_id": "ae-security_admin"
       },
-      "occurred_at": "2026-06-16T07:54:01.955342Z",
-      "prev_hash": "f9ea06d38df8c944e79d4a16d9e9b013a5d67ef48a5f12cd6121fbc789ff9b9e",
-      "target_ref": "6d582a1d-ff09-45d5-912d-6b3b0415ca38",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.883607Z",
+      "prev_hash": "b673ca02cab1de8f8a631eac2e82d00c44587d5285e985113ca1d5ead87cd53f",
+      "target_ref": "3fef2ecf-ac96-4d37-aff7-7cc51bd4e64d",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "0fcb80cb488fea41bb1f609206472b98905b99c3ef0ad791efcbe0763262008e",
+      "chain_hash": "bd61370f2617c95cd49a1e32b56b8146db54efc95204ebf631fe0847434af198",
       "chain_seq": 85,
-      "id": "6f945788-8e16-4e5b-a4fd-d0ccd7c6e640",
+      "id": "b1abb6db-5fcc-4d5f-8988-c4a064ef60a5",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:54:01.961029Z",
-      "prev_hash": "b9b3014913f4b3e7c3fb2e363d5d2cbfeebeae3995ccccc0084750fc14955824",
-      "target_ref": "a9bc93c6-a863-4ae8-b1a1-ea49296a8d00",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.890194Z",
+      "prev_hash": "d41294c1813f933e70b76adf0fee131fe0d07e3eb4e54f9aa91d9e28e282bab2",
+      "target_ref": "69c91960-7278-4fce-b053-8040ae4b8ffb",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f5e33bc2162b76405a59048454d15012d5b5fdb261d52e6eb31f1f070b4fc021",
+      "chain_hash": "aef1734e9198b13e12154938329137e2b792d2d53784e0806506d457d3514251",
       "chain_seq": 86,
-      "id": "91434b16-a668-41bb-bb77-2461b7f6edec",
+      "id": "a4ef7d25-1e41-49c7-9cf4-5b514d5731bb",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@ae-northwind-finance.example",
-        "expires_at": "2026-07-16T07:54:01Z",
-        "grant_id": "a9bc93c6-a863-4ae8-b1a1-ea49296a8d00"
+        "expires_at": "2026-07-18T13:00:31Z",
+        "grant_id": "69c91960-7278-4fce-b053-8040ae4b8ffb"
       },
-      "occurred_at": "2026-06-16T07:54:01.961029Z",
-      "prev_hash": "0fcb80cb488fea41bb1f609206472b98905b99c3ef0ad791efcbe0763262008e",
-      "target_ref": "6d582a1d-ff09-45d5-912d-6b3b0415ca38",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.890194Z",
+      "prev_hash": "bd61370f2617c95cd49a1e32b56b8146db54efc95204ebf631fe0847434af198",
+      "target_ref": "3fef2ecf-ac96-4d37-aff7-7cc51bd4e64d",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "f6c7ead1513a4f1f1669449fa51d346a6ed95570eab8da23faf4b897c22d8ad6",
+      "chain_hash": "b2cfcc96bb83d480666055ce5aef4f000fe52eb6fe4f83ba54bee144666c03b2",
       "chain_seq": 87,
-      "id": "0686509f-62aa-4dbd-9a96-c41bad813973",
+      "id": "4004a5b2-ee54-411b-9d3a-88fdc83e0b1c",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@ae-northwind-finance.example",
-        "expires_at": "2026-07-16T07:54:01Z",
+        "expires_at": "2026-07-18T13:00:31Z",
         "resource_ref": "t24:treasury",
         "role": "operator",
         "sponsor_id": "ae-security_admin"
       },
-      "occurred_at": "2026-06-16T07:54:01.969833Z",
-      "prev_hash": "f5e33bc2162b76405a59048454d15012d5b5fdb261d52e6eb31f1f070b4fc021",
-      "target_ref": "209107e0-9d14-499a-b6a8-8dd46e49f2b2",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.897986Z",
+      "prev_hash": "aef1734e9198b13e12154938329137e2b792d2d53784e0806506d457d3514251",
+      "target_ref": "4cdff13f-0c3c-437a-b633-cca403b28ea1",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "access_grant.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "ace8cb0a82ff7e1421649f4bbd8b8abcc4118233f6b6ac22da355decc2436e1a",
+      "chain_hash": "b4827a05d5393589f3aa4618e9233d317b9927d59ec51a57cb80b10fec575152",
       "chain_seq": 88,
-      "id": "4ed1ead4-a886-46f2-9c1e-d04d34809a4d",
+      "id": "4d3591c3-c367-4efc-a521-04a8838bb164",
       "kind": "access_granted",
-      "occurred_at": "2026-06-16T07:54:01.97658Z",
-      "prev_hash": "f6c7ead1513a4f1f1669449fa51d346a6ed95570eab8da23faf4b897c22d8ad6",
-      "target_ref": "41f8f7bf-f1ad-43de-893f-860316af4b0b",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.90339Z",
+      "prev_hash": "b2cfcc96bb83d480666055ce5aef4f000fe52eb6fe4f83ba54bee144666c03b2",
+      "target_ref": "4b549364-68da-42dd-ae5c-6d0fb6f10d04",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "4ba08fac3604d5ca4e5b3ea29f7006004c4ab19fbbf2713486b81c72b392e92a",
+      "chain_hash": "e4a75df4f306831711a44f95f8d75a745c200478503346c3bdf8723de57392a5",
       "chain_seq": 89,
-      "id": "5a1f7ab9-b8ee-42e7-94b1-a6457a622e10",
+      "id": "fcf0a0d6-e38f-4b96-94be-c312fea8c7b6",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@ae-northwind-finance.example",
-        "expires_at": "2026-07-16T07:54:01Z",
-        "grant_id": "41f8f7bf-f1ad-43de-893f-860316af4b0b"
+        "expires_at": "2026-07-18T13:00:31Z",
+        "grant_id": "4b549364-68da-42dd-ae5c-6d0fb6f10d04"
       },
-      "occurred_at": "2026-06-16T07:54:01.97658Z",
-      "prev_hash": "ace8cb0a82ff7e1421649f4bbd8b8abcc4118233f6b6ac22da355decc2436e1a",
-      "target_ref": "209107e0-9d14-499a-b6a8-8dd46e49f2b2",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.90339Z",
+      "prev_hash": "b4827a05d5393589f3aa4618e9233d317b9927d59ec51a57cb80b10fec575152",
+      "target_ref": "4cdff13f-0c3c-437a-b633-cca403b28ea1",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "orphan.detected",
       "actor": "system:anomaly-detector",
-      "chain_hash": "543e1e8f8cef8ee1fb3a65425f61724653a5be865c035af356e72330a4be7122",
+      "chain_hash": "5754256f950ddaae65a560fd73718786d66b13299e181feba9cdd1e6e52992ed",
       "chain_seq": 90,
-      "id": "5817c191-286a-4e9e-a85d-41945d32e00b",
+      "id": "b266362e-d5e9-4106-accc-81674f9a2346",
       "kind": "orphan_detected",
       "metadata": {
-        "anomaly_id": "5efed11c-8192-4ff5-9a33-7c6bc9b51d4f",
+        "anomaly_id": "5d21ec5d-4813-44f5-bfff-94cd48282b77",
         "anomaly_kind": "sod_violation",
         "conflicting": {
           "resource": "t24:treasury",
@@ -1293,128 +1293,129 @@
           "resource": "t24:privileged-admin",
           "role": "operator"
         },
-        "rule_id": "85d83c53-617d-49ed-832e-a54bb4765a2d",
+        "rule_id": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
         "rule_name": "Core-banking admin must not run treasury settlement",
         "severity": "critical",
         "subject": "ext-dual-role@ae-northwind-finance.example"
       },
-      "occurred_at": "2026-06-16T07:54:01.987551Z",
-      "prev_hash": "4ba08fac3604d5ca4e5b3ea29f7006004c4ab19fbbf2713486b81c72b392e92a",
-      "target_ref": "5efed11c-8192-4ff5-9a33-7c6bc9b51d4f",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.912847Z",
+      "prev_hash": "e4a75df4f306831711a44f95f8d75a745c200478503346c3bdf8723de57392a5",
+      "target_ref": "5d21ec5d-4813-44f5-bfff-94cd48282b77",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "orphan.disposition.flagged",
       "actor": "system:anomaly-detector",
-      "chain_hash": "5f0c5d7e9f1f4728fba3875b22a3b725b557df0fb8a2bd88b0bc17a589f46417",
+      "chain_hash": "7a70be969005f8c9aa38ef5152b39d722dc7479cdfa47ee174942b0e951c8f3f",
       "chain_seq": 91,
-      "id": "4f055102-d39f-40ba-b48d-52b3aab68fd5",
+      "id": "ed4b15e1-afb9-4088-85ee-edba2edb5fd9",
       "kind": "orphan_disposition",
       "metadata": {
-        "anomaly_id": "5efed11c-8192-4ff5-9a33-7c6bc9b51d4f",
+        "anomaly_id": "5d21ec5d-4813-44f5-bfff-94cd48282b77",
         "anomaly_kind": "sod_violation",
         "automated": true,
         "disposition": "flagged",
         "severity": "critical",
         "subject": "ext-dual-role@ae-northwind-finance.example"
       },
-      "occurred_at": "2026-06-16T07:54:01.987551Z",
-      "prev_hash": "543e1e8f8cef8ee1fb3a65425f61724653a5be865c035af356e72330a4be7122",
-      "target_ref": "5efed11c-8192-4ff5-9a33-7c6bc9b51d4f",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:00:31.912847Z",
+      "prev_hash": "5754256f950ddaae65a560fd73718786d66b13299e181feba9cdd1e6e52992ed",
+      "target_ref": "5d21ec5d-4813-44f5-bfff-94cd48282b77",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "compliance.export",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "776ebf3fa287ba38276ada88044c31f7bea166c7988a87c5cf2d481daec4f9ff",
+      "chain_hash": "90589f556d027bf8da9ff11ed3662fc6ae8025c3011fd04206fcfbbdcf4e616b",
       "chain_seq": 92,
-      "id": "57075d31-dd88-4633-884d-d6ad70efd7af",
+      "id": "8f1f3abb-606f-4ee7-8233-078bafb518ad",
       "kind": "evidence_exported",
       "metadata": {
         "chain_status": "valid",
-        "content_sha256": "ca0da555847daafff81e81b4ba8da9a7fe4422c7a446294d3fe94aed39eb8bde",
+        "content_sha256": "c20cfe49834e1ccce5b7b9026888694e79aa46ac6bae207da1cf0cdbaa64ec38",
         "evidence_total": 91,
         "framework": "SOC 2",
         "mfa_satisfied": true
       },
-      "occurred_at": "2026-06-16T07:54:32.106544Z",
-      "prev_hash": "5f0c5d7e9f1f4728fba3875b22a3b725b557df0fb8a2bd88b0bc17a589f46417",
+      "occurred_at": "2026-06-18T13:01:01.987454Z",
+      "prev_hash": "7a70be969005f8c9aa38ef5152b39d722dc7479cdfa47ee174942b0e951c8f3f",
       "target_ref": "SOC 2",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "discovery.agent_reachable_import",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "cd35483d7593064478ab0c0a0233d3abedcefaf976f8b1568180913a1cbf99e1",
+      "chain_hash": "9bf6cbdb02f836d0c0b2af962dc93231c4f85e691eed85f94591179e19245a93",
       "chain_seq": 93,
-      "id": "c42fcb7c-3911-4290-8dce-f6118ed2fd77",
+      "id": "a62ea3a8-4555-46d0-bec9-d1333e727c62",
       "kind": "other",
       "metadata": {
         "assets_new": 5,
         "reported": 5,
-        "scan_id": "a1810104-68a3-47bb-8fc2-1e51936afa7a"
+        "scan_id": "ecc1daa9-3fa4-4910-943e-95f78eb5d274"
       },
-      "occurred_at": "2026-06-16T07:54:32.139349Z",
-      "prev_hash": "776ebf3fa287ba38276ada88044c31f7bea166c7988a87c5cf2d481daec4f9ff",
-      "target_ref": "afd14f97-f084-4dc7-9ca8-ae778ed4074e",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.017614Z",
+      "prev_hash": "90589f556d027bf8da9ff11ed3662fc6ae8025c3011fd04206fcfbbdcf4e616b",
+      "target_ref": "3995f2e7-88ce-4cca-a252-d4e535dffb6f",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.target.created",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "ee6258c26cd95743a7ea4da116dc55427616260f098fdc92681345587eefa4f6",
+      "chain_hash": "efe5e6480787c7cb5b392eeebc7a03c7898dda3f7384f1d94833160583d05080",
       "chain_seq": 94,
-      "id": "3a7082f3-c2bb-45d1-b961-daadbaae07fa",
+      "id": "e4098914-822e-44df-a2b5-7b6c1f5208c7",
       "kind": "other",
       "metadata": {
         "address": "bastion.corp.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-16T07:54:32.147736Z",
-      "prev_hash": "cd35483d7593064478ab0c0a0233d3abedcefaf976f8b1568180913a1cbf99e1",
-      "target_ref": "c7f8b2e7-eee5-4bc6-9104-a5059366f507",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.025432Z",
+      "prev_hash": "9bf6cbdb02f836d0c0b2af962dc93231c4f85e691eed85f94591179e19245a93",
+      "target_ref": "fa2c5012-4a02-44e8-89ed-ab6339ec1b1e",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "discovery.onboard",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "b8ca40f6d1eb3ff84534eac1aaa1d572818309fc1ae202163dd9b47f9ba32e2d",
+      "chain_hash": "0e3e23778488b236f90ac844453785dd828e35c4f3f90509a6953f43a8588303",
       "chain_seq": 95,
-      "id": "e7ffe5c6-d927-40eb-954e-cb50cd4a74ea",
+      "id": "fcbb089d-3dca-4f30-82cb-cf84dcc194bf",
       "kind": "other",
       "metadata": {
-        "asset_id": "bc81f72b-7260-49ed-8e00-62dad7b775a1",
+        "asset_id": "090c291d-64e4-453f-8b52-ed4340e82f50",
         "trigger": "manual"
       },
-      "occurred_at": "2026-06-16T07:54:32.149629Z",
-      "prev_hash": "ee6258c26cd95743a7ea4da116dc55427616260f098fdc92681345587eefa4f6",
-      "target_ref": "c7f8b2e7-eee5-4bc6-9104-a5059366f507",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.028951Z",
+      "prev_hash": "efe5e6480787c7cb5b392eeebc7a03c7898dda3f7384f1d94833160583d05080",
+      "target_ref": "fa2c5012-4a02-44e8-89ed-ab6339ec1b1e",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "discovery.policy_update",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "eeeb5fea5dbe188e56d5f55883791e02f83d0cebc06730c0880c3434232ae89d",
+      "chain_hash": "161cdfb480a607116349c3aa8555ea55ac4774dd7da8a99a4b74b1533ba6919c",
       "chain_seq": 96,
-      "id": "99beae03-6424-4075-a5b7-17d6da4bd386",
+      "id": "c86aac3d-6a2b-4d4f-9e89-cc205b40ac7f",
       "kind": "other",
       "metadata": {
+        "active_sweep": false,
         "create_targets": false,
         "enabled": true,
         "has_credential": false,
         "rules": 1
       },
-      "occurred_at": "2026-06-16T07:54:32.15391Z",
-      "prev_hash": "b8ca40f6d1eb3ff84534eac1aaa1d572818309fc1ae202163dd9b47f9ba32e2d",
-      "target_ref": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.032575Z",
+      "prev_hash": "0e3e23778488b236f90ac844453785dd828e35c4f3f90509a6953f43a8588303",
+      "target_ref": "e3843563-dbb3-4b40-811d-2e505bc30ac2",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "7efd5b0652caa15f77df0de222494c9e0b932e2585f4398351d69d8fbfa2aeb0",
+      "chain_hash": "bae264df6d0c6a9eb162f7408d90e161a2828b5a304fd7049f8b724434a8a41a",
       "chain_seq": 97,
-      "id": "d0311303-3365-4182-931b-a91127bfabae",
+      "id": "befa7575-8ea5-48ba-a75a-fcacd9c9e40b",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": false,
@@ -1423,17 +1424,17 @@
         "mode": "disabled",
         "rotate_on_checkin": true
       },
-      "occurred_at": "2026-06-16T07:54:32.162202Z",
-      "prev_hash": "eeeb5fea5dbe188e56d5f55883791e02f83d0cebc06730c0880c3434232ae89d",
-      "target_ref": "4f1002bd-c0ea-4336-a3fa-ad4de6205c40",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.039003Z",
+      "prev_hash": "161cdfb480a607116349c3aa8555ea55ac4774dd7da8a99a4b74b1533ba6919c",
+      "target_ref": "96f982ce-23ff-4f36-840b-b56d02c83590",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "ae-northwind-finance-owner",
-      "chain_hash": "718c772f51b9d7ec3224a067d769dc5c9b2e14f5c47a2738816840c102dc2dce",
+      "chain_hash": "b6df7df15e2b0f08f705cdcfe722aead4c1c90b4dcc45ce20a7f4475bd86b697",
       "chain_seq": 98,
-      "id": "f4e1c868-a684-4bf4-9127-9f7dcf60ad73",
+      "id": "61e6f1f2-5393-4d36-968b-c028bcce53a1",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": true,
@@ -1442,10 +1443,10 @@
         "mode": "interval",
         "rotate_on_checkin": false
       },
-      "occurred_at": "2026-06-16T07:54:32.167703Z",
-      "prev_hash": "7efd5b0652caa15f77df0de222494c9e0b932e2585f4398351d69d8fbfa2aeb0",
-      "target_ref": "d2eba9b5-46d0-4ed8-8334-95db6a2e1c82",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "occurred_at": "2026-06-18T13:01:02.043166Z",
+      "prev_hash": "bae264df6d0c6a9eb162f7408d90e161a2828b5a304fd7049f8b724434a8a41a",
+      "target_ref": "20531479-a8f9-4d9a-b3be-cc77dfe34075",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     }
   ]
 }

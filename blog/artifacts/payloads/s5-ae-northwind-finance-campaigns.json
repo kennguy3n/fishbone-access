@@ -1,17 +1,17 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-16T07:53:01.954398Z",
-      "created_at": "2026-06-16T07:53:01.939555Z",
+      "closed_at": "2026-06-18T12:59:32.010982Z",
+      "created_at": "2026-06-18T12:59:31.99337Z",
       "deleted_at": null,
       "framework": "ISO 27001",
-      "id": "f4059e35-7393-4039-ab3e-dc7c5f2f3ac5",
+      "id": "11f449ff-8ee1-47db-b8d4-22e1414b9d0c",
       "name": "Q2 2026 ISO 27001 Annex A access certification",
-      "scope_connector_id": "aed3c70d-56af-4410-92bd-f5c3c2db880a",
-      "started_at": "2026-06-16T07:53:01.939555Z",
+      "scope_connector_id": "0cbc54f9-6f68-44cc-a92e-847af1615fcd",
+      "started_at": "2026-06-18T12:59:31.99337Z",
       "state": "closed",
-      "updated_at": "2026-06-16T07:53:01.954398Z",
-      "workspace_id": "8e5768b8-ebcc-4f9c-b8e6-5f9379662822"
+      "updated_at": "2026-06-18T12:59:32.010982Z",
+      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
     }
   ]
 }

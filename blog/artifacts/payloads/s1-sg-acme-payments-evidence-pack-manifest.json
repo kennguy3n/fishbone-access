@@ -3,9 +3,9 @@
     "length": 100,
     "ok": true,
     "status": "valid",
-    "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+    "workspace_id": "809e031b-cb59-4c89-a39c-4f64ed443513"
   },
-  "content_sha256": "8b4aeb25b4e265d1a8df952bdfe3e5ba58ec3bb72b9f91bfb1fcce234304146c",
+  "content_sha256": "aa9a1b7caf07f9cbce28d28b30928e5574b8ac3b5f4470a1d1db1b2e680829c9",
   "coverage": {
     "controls": [
       {
@@ -104,37 +104,37 @@
       "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
       "name": "evidence.jsonl",
       "rows": 100,
-      "sha256": "fd156ccc14b45a2f297e41dd4da75cbf820fd14198186ad8c6c8d3f606d5fe24"
+      "sha256": "87d99713bb8e0cfacad7fd9d7cb69a69bccdbf7f4bbdfcd9c2c0b5f6230199ab"
     },
     {
       "comment": "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
       "name": "pam-recordings.jsonl",
       "rows": 1,
-      "sha256": "a819fa2b8e34fb665eea3d63c659e99dc162464f843b9f9fcf58bc4a56cdfd1f"
+      "sha256": "6b4dde9b326eb45b7f614b8a4728713c17fc15107916930cb3c8300b2272f206"
     },
     {
       "comment": "Every grant active at any point during the period (granted_at < to AND (revoked_at IS NULL OR revoked_at >= from)).",
       "name": "access-grants.jsonl",
       "rows": 7,
-      "sha256": "1bc061b492b98a10ce6e09cd3a120888f6542ded51e4c1b59c15d32fc8383625"
+      "sha256": "6d631d746a994bc1642eee2f0d82a13de921e73e259ecff1debfd1afd4efbeb5"
     },
     {
       "comment": "Certification campaigns whose lifecycle overlapped the period.",
       "name": "certification-campaigns.jsonl",
       "rows": 1,
-      "sha256": "aaaa019969883cc82220f7b3cd4b311ad1a31e1cdd19243939e8492f2664493a"
+      "sha256": "aff1bcc43ebd7b3a32874236666652ece8ecd025e02890dabead3f3318dac940"
     },
     {
       "comment": "Per-grant certification decisions for the campaigns above. Sorted by (campaign_id, created_at).",
       "name": "certification-items.jsonl",
       "rows": 1,
-      "sha256": "4a9a08fc446e5871849101510c148090adff817bda0300aeadacc51349580aa8"
+      "sha256": "b53bf581fd55635f92db48a3f9ae626b7a73cc1fb816d326cdf484bf59c4cfe4"
     },
     {
       "comment": "Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
       "name": "policies.jsonl",
       "rows": 6,
-      "sha256": "81d2b039629790908907c3678833d9346d2360e48b267dd009fdc5f656a5faf7"
+      "sha256": "e81180fa65186ae37b8c7ebb0ac09e12ff6581d268adf84a0862037f84d5b61c"
     },
     {
       "comment": "Per-control evidence coverage for the framework over the period.",
@@ -146,18 +146,18 @@
       "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
       "name": "chain-verification.json",
       "rows": 0,
-      "sha256": "0d5a518e09659c6c299d6d6d7647ea4790f5b5e2d93b8fd182db52c0c5086121"
+      "sha256": "382b89229a76e72a4afdc4c040a0214194341c5103bfb87c7388e64ef11cb129"
     },
     {
       "comment": "Auditor-facing guide to this evidence pack.",
       "name": "README.md",
       "rows": 0,
-      "sha256": "3bd88b0354eed996c3fbc64e5946799fe6a6f7c1efa1dfbe41a029665946dd7c"
+      "sha256": "fbcf0185ad3ad013ebb8abdeeb07a5f550dc17f68f8a84df32333b7680438d7b"
     }
   ],
   "framework": "PCI-DSS",
-  "generated_at": "2026-06-16T07:58:37.953471116Z",
+  "generated_at": "2026-06-18T13:04:23.874968343Z",
   "generated_by": "sg-acme-payments-owner",
   "schema_version": "1.1",
-  "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+  "workspace_id": "809e031b-cb59-4c89-a39c-4f64ed443513"
 }

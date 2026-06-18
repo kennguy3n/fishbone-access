@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-16T07:45:01.446532Z",
+      "created_at": "2026-06-18T12:51:31.865952Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,21 @@
           "resource": "ledger:admin",
           "role": "operator"
         },
-        "rule_id": "21288c77-0715-47d5-8cbc-8c513597e37f",
+        "rule_id": "7f2a1f1c-8c2c-4f44-8ee8-f4bc2bcab5f7",
         "rule_name": "Ledger admin must not also approve reconciliation",
         "severity": "critical",
         "subject": "ext-dual-role@sg-acme-payments.example"
       },
-      "detected_at": "2026-06-16T07:45:01.446532Z",
+      "detected_at": "2026-06-18T12:51:31.865952Z",
       "disposition": "flagged",
-      "fingerprint": "6c28741dbdcb0001229f8b0e94290601dbbee9cbb95d37b8be5df886a0cc23c6",
-      "id": "fa8e3755-056b-4187-b661-6f370b687a3a",
+      "fingerprint": "e48471cf53ea7ab6a609032bd28e3c8e9ab42a86924d273dc0d8454147d08cdf",
+      "id": "bdc4e440-6e99-4845-bca8-de965499a2fb",
       "kind": "sod_violation",
-      "rule_id": "21288c77-0715-47d5-8cbc-8c513597e37f",
+      "rule_id": "7f2a1f1c-8c2c-4f44-8ee8-f4bc2bcab5f7",
       "severity": "critical",
       "subject": "ext-dual-role@sg-acme-payments.example",
-      "updated_at": "2026-06-16T07:45:01.446532Z",
-      "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b"
+      "updated_at": "2026-06-18T12:51:31.865952Z",
+      "workspace_id": "809e031b-cb59-4c89-a39c-4f64ed443513"
     }
   ]
 }

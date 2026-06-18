@@ -1,19 +1,19 @@
 {
   "rules": [
     {
-      "created_at": "2026-06-16T07:56:02.272864Z",
+      "created_at": "2026-06-18T13:02:31.97219Z",
       "deleted_at": null,
       "description": "SOC 2 CC6.3 / Essential Eight: production-change and billing-administration duties are separated.",
       "enabled": true,
-      "id": "a6bc121b-f8a5-4971-b1f0-8968ca0a1c5a",
+      "id": "2a932c38-56c9-4ec8-99c6-6eb21e2e15f3",
       "name": "Production deploy must not also hold billing admin",
       "resource_a": "prod:deploy",
       "resource_b": "billing:admin",
       "role_a": "operator",
       "role_b": "operator",
       "severity": "high",
-      "updated_at": "2026-06-16T07:56:02.272864Z",
-      "workspace_id": "3bff71fe-53a6-45c2-aab4-09ffd2120046"
+      "updated_at": "2026-06-18T13:02:31.97219Z",
+      "workspace_id": "621ffb1c-431f-40de-936e-c02e86ff4956"
     }
   ]
 }

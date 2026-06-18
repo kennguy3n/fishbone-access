@@ -1,18 +1,18 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-16T07:51:01.374848Z",
+      "created_at": "2026-06-18T12:57:31.618276Z",
       "deleted_at": null,
       "dynamic_enabled": false,
       "dynamic_ttl_seconds": 0,
       "enabled": true,
-      "id": "2c949a83-44ef-4d3f-be92-2fbe532a136c",
+      "id": "4a1c1cc9-d2fe-49a2-8346-b04047f24961",
       "interval_seconds": 0,
       "mode": "disabled",
       "rotate_on_checkin": true,
-      "target_id": "40ebcf0c-a269-4469-885d-95acdd282823",
-      "updated_at": "2026-06-16T07:51:01.374848Z",
-      "workspace_id": "cbd7dd41-f19f-4d5c-9c6f-cc7049bab090"
+      "target_id": "02c07268-8051-400a-8256-7010edf1558a",
+      "updated_at": "2026-06-18T12:57:31.618276Z",
+      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
     }
   ]
 }

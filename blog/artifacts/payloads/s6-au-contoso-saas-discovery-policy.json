@@ -1,4 +1,6 @@
 {
+  "active_sweep_enabled": false,
+  "active_sweep_targets": {},
   "create_targets": false,
   "enabled": true,
   "has_credential": false,
@@ -14,6 +16,6 @@
       ]
     }
   ],
-  "updated_at": "2026-06-16T07:57:31.69835Z",
+  "updated_at": "2026-06-18T13:04:01.259176Z",
   "updated_by": "au-contoso-saas-owner"
 }

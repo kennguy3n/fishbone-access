@@ -1,4 +1,6 @@
 {
+  "active_sweep_enabled": false,
+  "active_sweep_targets": {},
   "create_targets": false,
   "enabled": true,
   "has_credential": false,
@@ -14,6 +16,6 @@
       ]
     }
   ],
-  "updated_at": "2026-06-16T07:51:01.368272Z",
+  "updated_at": "2026-06-18T12:57:31.612385Z",
   "updated_by": "de-initech-retail-owner"
 }

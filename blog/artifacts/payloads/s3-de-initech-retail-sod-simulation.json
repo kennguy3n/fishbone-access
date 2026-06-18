@@ -30,7 +30,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "fdc0ae02-3590-4912-be03-955e0d9fdfb1",
+          "rule_id": "0139c170-1e8c-482e-ac7f-660a118b68fa",
           "rule_name": "Store-manager must not hold cardholder-data access",
           "severity": "critical",
           "subject": "de-initech-retail-owner"
