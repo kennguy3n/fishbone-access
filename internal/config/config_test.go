@@ -239,6 +239,67 @@ func TestRateLimitLoadOverrides(t *testing.T) {
 	}
 }
 
+func TestDiscoveryTimeoutDefaults(t *testing.T) {
+	t.Setenv("ACCESS_DISCOVERY_PROBE_TIMEOUT", "")
+	t.Setenv("ACCESS_DISCOVERY_FORWARD_TIMEOUT", "")
+	cfg := Load()
+	if cfg.Discovery.ProbeTimeout != 3*time.Second {
+		t.Errorf("Discovery.ProbeTimeout = %s, want 3s by default", cfg.Discovery.ProbeTimeout)
+	}
+	// The cross-replica forward path gets its own wider budget, distinct from
+	// the 3s direct-probe timeout it previously reused.
+	if cfg.Discovery.ForwardTimeout != 15*time.Second {
+		t.Errorf("Discovery.ForwardTimeout = %s, want 15s by default", cfg.Discovery.ForwardTimeout)
+	}
+	if cfg.Discovery.ForwardTimeout <= cfg.Discovery.ProbeTimeout {
+		t.Errorf("Discovery.ForwardTimeout (%s) should exceed ProbeTimeout (%s)", cfg.Discovery.ForwardTimeout, cfg.Discovery.ProbeTimeout)
+	}
+}
+
+func TestDiscoveryForwardTimeoutOverride(t *testing.T) {
+	t.Setenv("ACCESS_DISCOVERY_FORWARD_TIMEOUT", "45s")
+	cfg := Load()
+	if cfg.Discovery.ForwardTimeout != 45*time.Second {
+		t.Errorf("Discovery.ForwardTimeout = %s, want 45s from env override", cfg.Discovery.ForwardTimeout)
+	}
+}
+
+func TestDiscoveryForwardTimeoutWarning(t *testing.T) {
+	has := func(ws []string, sub string) bool {
+		for _, w := range ws {
+			if containsAll(w, sub) {
+				return true
+			}
+		}
+		return false
+	}
+	const sub = "ACCESS_DISCOVERY_FORWARD_TIMEOUT"
+
+	// Forward wider than the probe (the loaded defaults: 15s > 3s) must not warn.
+	wide := Config{Discovery: DiscoveryConfig{ProbeTimeout: 3 * time.Second, ForwardTimeout: 15 * time.Second}}
+	if has(wide.Warnings(), sub) {
+		t.Errorf("forward timeout wider than probe should not warn, got %v", wide.Warnings())
+	}
+
+	// Equal budgets are acceptable (not "tighter") and must not warn.
+	equal := Config{Discovery: DiscoveryConfig{ProbeTimeout: 3 * time.Second, ForwardTimeout: 3 * time.Second}}
+	if has(equal.Warnings(), sub) {
+		t.Errorf("forward timeout equal to probe should not warn, got %v", equal.Warnings())
+	}
+
+	// Unset forward timeout (zero) is skipped by the guard and must not warn.
+	unset := Config{Discovery: DiscoveryConfig{ProbeTimeout: 3 * time.Second}}
+	if has(unset.Warnings(), sub) {
+		t.Errorf("unset forward timeout should not warn, got %v", unset.Warnings())
+	}
+
+	// Forward tighter than the probe is the misconfiguration we surface loudly.
+	tight := Config{Discovery: DiscoveryConfig{ProbeTimeout: 3 * time.Second, ForwardTimeout: 1 * time.Second}}
+	if !has(tight.Warnings(), sub) {
+		t.Errorf("forward timeout tighter than probe should warn, got %v", tight.Warnings())
+	}
+}
+
 func TestValidateRateLimit(t *testing.T) {
 	base := func() Config {
 		return Config{DatabaseDriver: DriverPgx, RateLimit: RateLimitConfig{Enabled: true, RequestsPerSecond: 50, Burst: 100}}

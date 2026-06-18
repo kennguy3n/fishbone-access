@@ -327,7 +327,11 @@ func run() error {
 				return fmt.Errorf("access-workflow-engine: load agent forward mTLS: %w", ferr)
 			}
 			dir := broker.NewGormSessionDirectory(gdb, cfg.AgentBroker.DirectoryStaleAfter)
-			fwdClient := broker.NewForwardClient(forwardTLS, cfg.Discovery.ProbeTimeout)
+			// The forward path is multi-hop (directory lookup → owner replica TCP+mTLS
+			// → forward req/resp → yamux open → agent dial), so it gets its own wider
+			// budget (ForwardTimeout, default 15s) rather than the 3s direct-probe
+			// ProbeTimeout that bounds the per-target dial inside probeOne.
+			fwdClient := broker.NewForwardClient(forwardTLS, cfg.Discovery.ForwardTimeout)
 			engineOpts = append(engineOpts, discovery.WithDialer(broker.NewForwardOnlyDialer(dir, fwdClient)))
 			logger.Infof(ctx, "access-workflow-engine: scheduled ACTIVE discovery sweep enabled (dials through agents via the cross-replica forward plane)")
 		} else {
