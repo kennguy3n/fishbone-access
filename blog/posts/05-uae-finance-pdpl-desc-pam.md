@@ -113,14 +113,15 @@ agent risk verdict (`degraded: false`, with the agent online)
 
 ```json
 [
-  { "state": "expired", "requested_ttl_seconds": 900, "risk_level": "low",    "risk_degraded": false },
-  { "state": "expired", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": false }
+  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "low",    "risk_degraded": false },
+  { "state": "approved", "requested_ttl_seconds": 900, "risk_level": "medium", "risk_degraded": false }
 ]
 ```
 
-Both read `expired` because the capture ran past the 15-minute ceiling: the leases
-lapsed on their own, exactly as designed — the risk verdict and TTL stay on the
-record after the credential is long gone.
+Both read `approved` because the capture ran inside the 15-minute window: each
+lease then lapses on its own the moment its `requested_ttl_seconds` ceiling
+passes — no operator action, exactly as designed — and the risk verdict and TTL
+stay on the record after the credential is gone.
 
 Every transition lands on the chain (`pam.target.created`,
 `pam.lease.requested`, `pam.lease.approved`, `pam.connect_token.minted`). So
@@ -131,7 +132,7 @@ The *other* half is present too: Northwind opens a **recorded** session
 through the leased connect-token. The operator's commands run through the
 production `IORecorder`, the session is closed, and its recording digest is
 anchored on the chain — `pam_sessions = 1`, replayable over
-`GET /pam/sessions/f4c577f1-463a-446e-be74-ee2d57f22ace/replay`. That is what
+`GET /pam/sessions/c8b8579c-6581-4ad7-ba37-e215b182401a/replay`. That is what
 covers ISO `A.8.2` ("privileged access rights *monitored*").
 
 And the operational depth around that lease is what lets a lean security team

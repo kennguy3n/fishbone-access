@@ -125,7 +125,7 @@ below. And this time the lease is followed by a **recorded session**: Globex ope
 a JIT-leased session against the EHR bastion, the operator's commands run through
 the production `IORecorder`, and the recording is closed and anchored —
 `pam_sessions = 1`, retrievable over
-`GET /pam/sessions/84bf9baa-0493-4596-a681-c465f39c4e17/replay`. That flips HIPAA
+`GET /pam/sessions/03bb4995-5f77-47c2-8fad-7ca78f6ee601/replay`. That flips HIPAA
 privileged-access monitoring (`CC6.7` / ISO `A.8.2`) to **covered**. The honest
 residual is unchanged from Post 1: the recorded I/O is representative commands
 against a bastion target, proving the recording-and-replay pipeline, not

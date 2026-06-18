@@ -30,7 +30,7 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
+          "rule_id": "c8f99d2e-4bc9-4bff-8535-8a12970d395f",
           "rule_name": "Core-banking admin must not run treasury settlement",
           "severity": "critical",
           "subject": "ae-northwind-finance-owner"

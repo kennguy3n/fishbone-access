@@ -2,15 +2,15 @@
   "assets": [
     {
       "address": "bastion.corp.internal:22",
-      "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
-      "created_at": "2026-06-18T12:58:01.63027Z",
+      "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
+      "created_at": "2026-06-18T14:17:31.834394Z",
       "deleted_at": null,
-      "external_id": "agent-reach:089bcf30-0f2f-42cc-a81b-9364cee0afc1:bastion.corp.internal:22",
-      "first_seen_at": "2026-06-18T12:58:01.626264Z",
-      "id": "32c0ba88-c2d5-43dc-b5f9-bc697328758c",
-      "last_seen_at": "2026-06-18T12:58:01.653162Z",
+      "external_id": "agent-reach:a2c2199a-6d3c-458b-9fdf-296f75b77fb9:bastion.corp.internal:22",
+      "first_seen_at": "2026-06-18T14:17:31.830085Z",
+      "id": "dac0ca75-b509-4dba-bbf4-a9d999626295",
+      "last_seen_at": "2026-06-18T14:17:31.856612Z",
       "metadata": {
-        "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
+        "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
         "kind": "host",
         "origin": "agent_self_report",
         "pattern": "bastion.corp.internal:22"
@@ -20,21 +20,21 @@
       "protocol": "ssh",
       "source": "agent_sweep",
       "status": "managed",
-      "target_id": "1ba4f670-1c00-49db-b465-355de72a5f7e",
-      "updated_at": "2026-06-18T12:58:01.653788Z",
-      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+      "target_id": "31a86b68-df2b-49f2-856f-6614abcbf933",
+      "updated_at": "2026-06-18T14:17:31.857214Z",
+      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
     },
     {
       "address": "",
-      "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
-      "created_at": "2026-06-18T12:58:01.627978Z",
+      "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
+      "created_at": "2026-06-18T14:17:31.831992Z",
       "deleted_at": null,
-      "external_id": "agent-reach:089bcf30-0f2f-42cc-a81b-9364cee0afc1:10.20.0.0/24",
-      "first_seen_at": "2026-06-18T12:58:01.626264Z",
-      "id": "61c19427-7437-4858-9360-bf40d7ce41a6",
-      "last_seen_at": "2026-06-18T12:58:01.626264Z",
+      "external_id": "agent-reach:a2c2199a-6d3c-458b-9fdf-296f75b77fb9:10.20.0.0/24",
+      "first_seen_at": "2026-06-18T14:17:31.830085Z",
+      "id": "36e7dcbb-9324-4874-845d-ac3877a9ae47",
+      "last_seen_at": "2026-06-18T14:17:31.830085Z",
       "metadata": {
-        "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
+        "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
         "kind": "cidr",
         "origin": "agent_self_report",
         "pattern": "10.20.0.0/24"
@@ -44,20 +44,20 @@
       "protocol": "ssh",
       "source": "agent_sweep",
       "status": "unmanaged",
-      "updated_at": "2026-06-18T12:58:01.627978Z",
-      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+      "updated_at": "2026-06-18T14:17:31.831992Z",
+      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
     },
     {
       "address": "build-01.corp.internal:22",
-      "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
-      "created_at": "2026-06-18T12:58:01.632593Z",
+      "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
+      "created_at": "2026-06-18T14:17:31.83671Z",
       "deleted_at": null,
-      "external_id": "agent-reach:089bcf30-0f2f-42cc-a81b-9364cee0afc1:build-01.corp.internal:22",
-      "first_seen_at": "2026-06-18T12:58:01.626264Z",
-      "id": "5cc9ea63-ee99-4ae6-bf09-fccb555b7df4",
-      "last_seen_at": "2026-06-18T12:58:01.626264Z",
+      "external_id": "agent-reach:a2c2199a-6d3c-458b-9fdf-296f75b77fb9:build-01.corp.internal:22",
+      "first_seen_at": "2026-06-18T14:17:31.830085Z",
+      "id": "73697038-5863-4fe0-bc85-6def1ba0ff26",
+      "last_seen_at": "2026-06-18T14:17:31.830085Z",
       "metadata": {
-        "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
+        "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
         "kind": "host",
         "origin": "agent_self_report",
         "pattern": "build-01.corp.internal:22"
@@ -67,20 +67,20 @@
       "protocol": "ssh",
       "source": "agent_sweep",
       "status": "unmanaged",
-      "updated_at": "2026-06-18T12:58:01.632593Z",
-      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+      "updated_at": "2026-06-18T14:17:31.83671Z",
+      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
     },
     {
       "address": "db-primary.corp.internal:5432",
-      "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
-      "created_at": "2026-06-18T12:58:01.635154Z",
+      "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
+      "created_at": "2026-06-18T14:17:31.839165Z",
       "deleted_at": null,
-      "external_id": "agent-reach:089bcf30-0f2f-42cc-a81b-9364cee0afc1:db-primary.corp.internal:5432",
-      "first_seen_at": "2026-06-18T12:58:01.626264Z",
-      "id": "ce6271a3-0611-4ab4-a903-da47c6212765",
-      "last_seen_at": "2026-06-18T12:58:01.626264Z",
+      "external_id": "agent-reach:a2c2199a-6d3c-458b-9fdf-296f75b77fb9:db-primary.corp.internal:5432",
+      "first_seen_at": "2026-06-18T14:17:31.830085Z",
+      "id": "3a198327-8015-4d4b-9928-f17e7f0342cc",
+      "last_seen_at": "2026-06-18T14:17:31.830085Z",
       "metadata": {
-        "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
+        "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
         "kind": "host",
         "origin": "agent_self_report",
         "pattern": "db-primary.corp.internal:5432"
@@ -90,20 +90,20 @@
       "protocol": "postgres",
       "source": "agent_sweep",
       "status": "unmanaged",
-      "updated_at": "2026-06-18T12:58:01.635154Z",
-      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+      "updated_at": "2026-06-18T14:17:31.839165Z",
+      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
     },
     {
       "address": "reporting-db.corp.internal:3306",
-      "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
-      "created_at": "2026-06-18T12:58:01.637464Z",
+      "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
+      "created_at": "2026-06-18T14:17:31.841487Z",
       "deleted_at": null,
-      "external_id": "agent-reach:089bcf30-0f2f-42cc-a81b-9364cee0afc1:reporting-db.corp.internal:3306",
-      "first_seen_at": "2026-06-18T12:58:01.626264Z",
-      "id": "e87be4f0-fd9c-43f9-a0aa-78404c875c8b",
-      "last_seen_at": "2026-06-18T12:58:01.626264Z",
+      "external_id": "agent-reach:a2c2199a-6d3c-458b-9fdf-296f75b77fb9:reporting-db.corp.internal:3306",
+      "first_seen_at": "2026-06-18T14:17:31.830085Z",
+      "id": "858e5884-e343-40ca-9134-294002c537e1",
+      "last_seen_at": "2026-06-18T14:17:31.830085Z",
       "metadata": {
-        "agent_id": "089bcf30-0f2f-42cc-a81b-9364cee0afc1",
+        "agent_id": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
         "kind": "host",
         "origin": "agent_self_report",
         "pattern": "reporting-db.corp.internal:3306"
@@ -113,8 +113,8 @@
       "protocol": "mysql",
       "source": "agent_sweep",
       "status": "unmanaged",
-      "updated_at": "2026-06-18T12:58:01.637464Z",
-      "workspace_id": "2628685d-9afa-4e44-9fe7-a033e5c73843"
+      "updated_at": "2026-06-18T14:17:31.841487Z",
+      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
     }
   ]
 }

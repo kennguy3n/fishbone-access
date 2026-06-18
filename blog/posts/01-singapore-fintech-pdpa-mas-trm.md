@@ -186,20 +186,22 @@ plane mints a short-lived connect-token and the lease **expires automatically**
 
 ```json
 {
-  "state": "expired", "subject": "sg-acme-payments-owner",
+  "state": "approved", "subject": "sg-acme-payments-owner",
   "requested_by": "sg-acme-payments-owner", "approved_by": "sg-acme-payments-owner",
-  "granted_at": "2026-06-13T16:44:31.360978Z", "expires_at": "2026-06-13T17:14:31.360978Z",
+  "granted_at": "2026-06-18T14:11:01.722512Z", "expires_at": "2026-06-18T14:41:01.722512Z",
   "requested_ttl_seconds": 1800,
   "risk_level": "low", "risk_degraded": false, "risk_factors": ["baseline_low_risk"],
   "risk_reason": "rule-based risk=low from 1 factor(s)"
 }
 ```
 
-This capture was taken after the 30-minute ceiling, so the lease reads `expired` —
-the terminal state the control plane reaches **on its own**, not by an operator
-revoking it. That is the point: standing credentials never lapse, JIT leases do.
+This capture was taken inside the 30-minute window, so the lease still reads
+`approved` — but `expires_at` is fixed at grant time, and the control plane
+lapses the lease to `expired` **on its own** the moment it passes, with no
+operator revoking it. That is the point: standing credentials never lapse, JIT
+leases do.
 
-![Acme's JIT leases — the lease has run its full lifecycle to automatic expiry, its low-risk agent verdict retained on the record](../artifacts/screenshots/s1-sg-pam-leases.png)
+![Acme's JIT leases — the lease is approved and counting down inside its 30-minute window, carrying its low-risk agent verdict on the record](../artifacts/screenshots/s1-sg-pam-leases.png)
 
 This is the full *lease* lifecycle — request → approve (step-up) → mint → expire
 — and every step lands on the evidence chain (`pam.target.created`,
@@ -209,7 +211,7 @@ against a registered bastion target: the JIT connect-token is redeemed, the
 operator's commands run through the **same `IORecorder` the live gateway uses**,
 and the session is **closed** with its recording anchored. `pam_sessions = 1` for
 this workspace, and the framed transcript is retrievable over
-`GET /pam/sessions/7a7cecd8-3b33-4fb6-88ff-7ca9c46adfac/replay`:
+`GET /pam/sessions/a8400f6e-a115-40db-8d8d-30f4764efb3b/replay`:
 
 ```json
 { "frames": [
@@ -461,7 +463,7 @@ SHA-256; the verifier recomputes every link
 ([`s1-sg-acme-payments-chain-verify.json`](../artifacts/payloads/s1-sg-acme-payments-chain-verify.json)):
 
 ```json
-{ "length": 101, "ok": true, "status": "valid", "workspace_id": "aca04628-fc2a-4c28-9a48-24a8784daf1b" }
+{ "length": 101, "ok": true, "status": "valid", "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926" }
 ```
 
 When Acme exports the **PCI-DSS evidence pack**, the manifest carries a

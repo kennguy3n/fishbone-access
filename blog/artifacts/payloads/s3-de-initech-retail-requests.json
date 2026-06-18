@@ -1,10 +1,10 @@
 {
   "requests": [
     {
-      "connector_id": "97bbf8f4-96cd-4950-bdc5-29be00c90dae",
-      "created_at": "2026-06-18T12:56:32.088381Z",
+      "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab",
+      "created_at": "2026-06-18T14:16:02.136897Z",
       "deleted_at": null,
-      "id": "dcb70752-6a4f-4f64-a913-d96a2ece8136",
+      "id": "2d526854-b685-4695-926b-380c91fdd2ed",
       "justification": "JML joiner baseline access",
       "requester_id": "scim",
       "resource_ref": "wms:dispatcher",
@@ -12,62 +12,62 @@
       "role": "operator",
       "state": "revoked",
       "target_user_id": "jml-joiner@demo.test",
-      "updated_at": "2026-06-18T12:56:32.117287Z",
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "updated_at": "2026-06-18T14:16:02.168847Z",
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "connector_id": "97bbf8f4-96cd-4950-bdc5-29be00c90dae",
-      "created_at": "2026-06-18T12:56:32.01136Z",
+      "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab",
+      "created_at": "2026-06-18T14:16:02.056587Z",
       "deleted_at": null,
-      "id": "554106bb-94b6-4984-922d-c2fff458cff1",
+      "id": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
       "justification": "GDPR Article 15 data-subject access request export.",
       "requester_id": "de-initech-retail-owner",
       "resource_ref": "customer:gdpr-export",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "auditor",
       "state": "approved",
       "target_user_id": "de-initech-retail-owner",
-      "updated_at": "2026-06-18T12:56:32.024101Z",
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "updated_at": "2026-06-18T14:16:02.068021Z",
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "connector_id": "97bbf8f4-96cd-4950-bdc5-29be00c90dae",
-      "created_at": "2026-06-18T12:56:31.975927Z",
+      "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab",
+      "created_at": "2026-06-18T14:16:02.021321Z",
       "deleted_at": null,
-      "id": "61fb1a02-bdd9-4a93-86f5-fa19bd7eeb71",
+      "id": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
       "justification": "PCI-DSS CDE access for payment-terminal maintenance window.",
       "requester_id": "de-initech-retail-owner",
       "resource_ref": "pos:cardholder-data",
       "risk_factors": [
-        "ai_unavailable"
+        "baseline_low_risk"
       ],
-      "risk_level": "medium",
+      "risk_level": "low",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "de-initech-retail-owner",
-      "updated_at": "2026-06-18T12:56:32.076289Z",
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "updated_at": "2026-06-18T14:16:02.091399Z",
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "connector_id": "97bbf8f4-96cd-4950-bdc5-29be00c90dae",
-      "created_at": "2026-06-18T12:56:31.93371Z",
+      "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab",
+      "created_at": "2026-06-18T14:16:01.982888Z",
       "deleted_at": null,
-      "id": "567088cb-8492-4805-b0d1-438b6dc7bd7b",
+      "id": "4e4cd238-bb6d-460b-830d-0473663a10ae",
       "justification": "Seasonal store-manager onboarding under BDSG works-council policy.",
       "requester_id": "de-initech-retail-owner",
       "resource_ref": "pos:store-manager",
       "risk_factors": [
-        "ai_unavailable"
+        "long_duration_hours:2160"
       ],
       "risk_level": "medium",
       "role": "operator",
       "state": "revoked",
       "target_user_id": "de-initech-retail-owner",
-      "updated_at": "2026-06-18T12:56:32.044219Z",
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "updated_at": "2026-06-18T14:16:02.124604Z",
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     }
   ]
 }

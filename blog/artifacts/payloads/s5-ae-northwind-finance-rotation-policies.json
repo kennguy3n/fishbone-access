@@ -1,33 +1,33 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-18T13:01:02.042734Z",
+      "created_at": "2026-06-18T14:20:31.287863Z",
       "deleted_at": null,
       "dynamic_enabled": true,
       "dynamic_ttl_seconds": 3600,
       "enabled": true,
-      "id": "3f3163b5-d78b-4a6d-888b-2db2bed6cd8f",
+      "id": "4f6ac84e-7a1b-4716-b222-0a2d5a495586",
       "interval_seconds": 604800,
       "mode": "interval",
-      "next_rotation_at": "2026-06-25T13:01:02.041548Z",
+      "next_rotation_at": "2026-06-25T14:20:31.286477Z",
       "rotate_on_checkin": false,
-      "target_id": "20531479-a8f9-4d9a-b3be-cc77dfe34075",
-      "updated_at": "2026-06-18T13:01:02.042734Z",
-      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
+      "target_id": "215becf4-9cdf-4db3-b26f-2d531b2008d8",
+      "updated_at": "2026-06-18T14:20:31.287863Z",
+      "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
     },
     {
-      "created_at": "2026-06-18T13:01:02.038547Z",
+      "created_at": "2026-06-18T14:20:31.283358Z",
       "deleted_at": null,
       "dynamic_enabled": false,
       "dynamic_ttl_seconds": 0,
       "enabled": true,
-      "id": "52e81cff-d68c-40af-9a8f-df7a5e5c147c",
+      "id": "f6872031-7e54-4746-8498-a67bb74bd19a",
       "interval_seconds": 0,
       "mode": "disabled",
       "rotate_on_checkin": true,
-      "target_id": "96f982ce-23ff-4f36-840b-b56d02c83590",
-      "updated_at": "2026-06-18T13:01:02.038547Z",
-      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
+      "target_id": "7b8188ce-296e-4d43-9eb6-d7e4c7bdacfc",
+      "updated_at": "2026-06-18T14:20:31.283358Z",
+      "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
     }
   ]
 }

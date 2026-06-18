@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "1c336942-fad7-410c-ac15-cc578406d0a9",
-    "created_at": "2026-06-18T12:51:01.285246Z",
+    "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
+    "created_at": "2026-06-18T14:10:31.224606Z",
     "deleted_at": null,
-    "id": "d2945553-6baf-4462-99e9-b8bcd17a137d",
+    "id": "84cd1aa6-eb14-472a-8ef1-11577f1ceb80",
     "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
     "requester_id": "sg-acme-payments-owner",
     "resource_ref": "cde:pci-scope",
     "risk_factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "risk_level": "medium",
+    "risk_level": "low",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "sg-acme-payments-owner",
-    "updated_at": "2026-06-18T12:51:01.29829Z",
-    "workspace_id": "809e031b-cb59-4c89-a39c-4f64ed443513"
+    "updated_at": "2026-06-18T14:10:31.237165Z",
+    "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
   },
   "risk": {
-    "created_at": "2026-06-18T12:51:01.289286Z",
-    "degraded": true,
+    "created_at": "2026-06-18T14:10:31.23026Z",
+    "degraded": false,
     "deleted_at": null,
     "factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "id": "2c0134d7-bdcd-46e4-9bdd-19dbf23d3df6",
+    "id": "92572cf7-055a-422e-bc03-1814410b944c",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 48,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "ai agent unavailable; applied fail-safe default",
-    "recommendation": "needs_review",
-    "request_id": "d2945553-6baf-4462-99e9-b8bcd17a137d",
-    "score": "medium",
-    "source": "fallback",
-    "updated_at": "2026-06-18T12:51:01.289286Z",
-    "workspace_id": "809e031b-cb59-4c89-a39c-4f64ed443513"
+    "rationale": "rule-based risk=low from 1 factor(s)",
+    "recommendation": "auto_approve_eligible",
+    "request_id": "84cd1aa6-eb14-472a-8ef1-11577f1ceb80",
+    "score": "low",
+    "source": "ai_agent",
+    "updated_at": "2026-06-18T14:10:31.23026Z",
+    "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
   }
 }

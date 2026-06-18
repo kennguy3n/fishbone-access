@@ -1,7 +1,7 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-18T12:54:01.547653Z",
+      "created_at": "2026-06-18T14:13:31.697851Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -12,16 +12,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "435b134b-9062-4646-900c-8e66ada5ef3f",
+      "id": "f9254797-2120-4342-acee-85100c344ddd",
       "name": "Deny-all to cardholder data by default",
-      "promoted_at": "2026-06-18T12:54:01.602956Z",
+      "promoted_at": "2026-06-18T14:13:31.751109Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:54:01.602956Z",
+      "updated_at": "2026-06-18T14:13:31.751109Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.546205Z",
+      "created_at": "2026-06-18T14:13:31.69635Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -33,16 +33,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "b2b279af-aa8a-4d7c-8040-4fad49ef4269",
+      "id": "e4c74618-0ebf-4c67-939e-f05e57826552",
       "name": "Block contractors from the CDE",
-      "promoted_at": "2026-06-18T12:54:01.610982Z",
+      "promoted_at": "2026-06-18T14:13:31.759248Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:54:01.610982Z",
+      "updated_at": "2026-06-18T14:13:31.759248Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.544662Z",
+      "created_at": "2026-06-18T14:13:31.694866Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -55,16 +55,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "36edaa7e-d78b-4043-b231-bc55a9fb1d16",
+      "id": "7deb07b1-69fe-41fd-b688-84ff42cbd753",
       "name": "CDE administration — payments team only",
-      "promoted_at": "2026-06-18T12:54:01.618443Z",
+      "promoted_at": "2026-06-18T14:13:31.767168Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:54:01.618443Z",
+      "updated_at": "2026-06-18T14:13:31.767168Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.540418Z",
+      "created_at": "2026-06-18T14:13:31.690804Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -75,16 +75,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "f1a71ad4-7fca-4282-bcdb-6511d81241d5",
+      "id": "760fdda6-631e-4f01-9b59-8040138bd4c1",
       "name": "Deny-all to customer PII by default",
-      "promoted_at": "2026-06-18T12:54:31.683134Z",
+      "promoted_at": "2026-06-18T14:14:01.797636Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:54:31.683134Z",
+      "updated_at": "2026-06-18T14:14:01.797636Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.538917Z",
+      "created_at": "2026-06-18T14:13:31.689427Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -96,16 +96,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "4fa0a78d-5fcf-4b8b-9c6c-dfd54f160e8f",
+      "id": "85594c49-2e63-4cbf-b87f-9c6d91e13fec",
       "name": "Data team → customer PII store",
-      "promoted_at": "2026-06-18T12:55:01.783399Z",
+      "promoted_at": "2026-06-18T14:14:31.879604Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:55:01.783399Z",
+      "updated_at": "2026-06-18T14:14:31.879604Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.534867Z",
+      "created_at": "2026-06-18T14:13:31.68521Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -116,16 +116,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "f3fcbd86-b1cd-4bfa-a001-dbb48165138a",
+      "id": "633c84e5-7c43-4075-8d7d-742f2c65535f",
       "name": "Default-deny personal data",
-      "promoted_at": "2026-06-18T12:55:31.800712Z",
+      "promoted_at": "2026-06-18T14:15:01.899717Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:55:31.800712Z",
+      "updated_at": "2026-06-18T14:15:01.899717Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.533574Z",
+      "created_at": "2026-06-18T14:13:31.683703Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -137,16 +137,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "e67260c8-f1d9-461e-a1d6-8721dfef175e",
+      "id": "98cfce75-cef0-4e39-84e4-0c162fd1a074",
       "name": "Privileged access — admins only",
-      "promoted_at": "2026-06-18T12:56:01.815139Z",
+      "promoted_at": "2026-06-18T14:15:31.914089Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:56:01.815139Z",
+      "updated_at": "2026-06-18T14:15:31.914089Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     },
     {
-      "created_at": "2026-06-18T12:54:01.532169Z",
+      "created_at": "2026-06-18T14:13:31.682115Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -158,13 +158,13 @@
         ]
       },
       "deleted_at": null,
-      "id": "5fa17bd9-b6fb-4710-8c49-1e1ce96c86d0",
+      "id": "80315adf-1940-4cd7-8603-07a7f478a1e2",
       "name": "Data team → personal data",
-      "promoted_at": "2026-06-18T12:56:31.926922Z",
+      "promoted_at": "2026-06-18T14:16:01.976084Z",
       "state": "active",
-      "updated_at": "2026-06-18T12:56:31.926922Z",
+      "updated_at": "2026-06-18T14:16:01.976084Z",
       "version": 1,
-      "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
     }
   ]
 }

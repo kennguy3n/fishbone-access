@@ -4,779 +4,779 @@
     {
       "action": "rbac.member.added",
       "actor": "us-globex-health-owner",
-      "chain_hash": "e63ebd365150b7bde3b3604b8ed4ca78990679d2547c13927f713b0753caedee",
+      "chain_hash": "ea699c6de72f335206a09a742270d16ebeeaec5d60ac6053d83811498641db02",
       "chain_seq": 1,
-      "id": "1edcc2af-88eb-4a95-86bb-0aea1d09ef13",
+      "id": "9a0cf9f9-9e6e-420a-950b-5944cf77d36d",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "us-globex-health-admin"
       },
-      "occurred_at": "2026-06-18T12:52:02.106481Z",
+      "occurred_at": "2026-06-18T14:11:32.050882Z",
       "target_ref": "us-globex-health-admin",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "rbac.member.added",
       "actor": "us-globex-health-owner",
-      "chain_hash": "9f3944c884b101a284f75b7b5b19956be95bd73159041363511d46feb1a966bb",
+      "chain_hash": "17b2768a05da8317aa6327268435961a17ecdf3d659193d92bf0d729da695103",
       "chain_seq": 2,
-      "id": "80032d37-2833-4101-9561-d5b5526367ed",
+      "id": "c98da6b4-4bd0-44c0-8488-f7a13690ef81",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "us-globex-health-security_admin"
       },
-      "occurred_at": "2026-06-18T12:52:02.112597Z",
-      "prev_hash": "e63ebd365150b7bde3b3604b8ed4ca78990679d2547c13927f713b0753caedee",
+      "occurred_at": "2026-06-18T14:11:32.057055Z",
+      "prev_hash": "ea699c6de72f335206a09a742270d16ebeeaec5d60ac6053d83811498641db02",
       "target_ref": "us-globex-health-security_admin",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "rbac.member.added",
       "actor": "us-globex-health-owner",
-      "chain_hash": "8038227dd0ca51547a32070b09f778269963897e6d82faae81b52f39232804f2",
+      "chain_hash": "2389f874fbbe442b681a5fd01ebb3097e4aed5e8ca383647d5be2d21a13503a1",
       "chain_seq": 3,
-      "id": "eb84b0fe-4a2a-4306-bf98-4824b3843bfc",
+      "id": "78894d59-4c8e-4549-8202-5d6d716fb5f7",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "us-globex-health-operator"
       },
-      "occurred_at": "2026-06-18T12:52:02.117617Z",
-      "prev_hash": "9f3944c884b101a284f75b7b5b19956be95bd73159041363511d46feb1a966bb",
+      "occurred_at": "2026-06-18T14:11:32.06212Z",
+      "prev_hash": "17b2768a05da8317aa6327268435961a17ecdf3d659193d92bf0d729da695103",
       "target_ref": "us-globex-health-operator",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "rbac.member.added",
       "actor": "us-globex-health-owner",
-      "chain_hash": "3b138e2b1d0f049d14664318eacc64991eeee77c79cf9e9dfc8fb266f2592197",
+      "chain_hash": "5ec575f8798613b242bc75e933a7137f14791b0289932f46354afc9ae0bc134a",
       "chain_seq": 4,
-      "id": "b12f3d9c-5cec-4c47-bc92-89e362b69c0e",
+      "id": "1bb7b04f-0c32-4cc5-858a-4a061550b686",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "us-globex-health-auditor"
       },
-      "occurred_at": "2026-06-18T12:52:02.122466Z",
-      "prev_hash": "8038227dd0ca51547a32070b09f778269963897e6d82faae81b52f39232804f2",
+      "occurred_at": "2026-06-18T14:11:32.067037Z",
+      "prev_hash": "2389f874fbbe442b681a5fd01ebb3097e4aed5e8ca383647d5be2d21a13503a1",
       "target_ref": "us-globex-health-auditor",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "9c46aa0581f296c7310883297178c74a16b615ba60145f1ba94c369d9e90e2af",
+      "chain_hash": "3a7763be4b1dd484a4cdc1a24962ff614a3d50db4107fa7e693ac97c421202e5",
       "chain_seq": 5,
-      "id": "232a27bd-d1b0-4aaf-9285-0459680dc8a5",
+      "id": "c5e43943-111a-4fe7-a90b-0c13aba20d9a",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T12:52:02.141898Z",
-      "prev_hash": "3b138e2b1d0f049d14664318eacc64991eeee77c79cf9e9dfc8fb266f2592197",
-      "target_ref": "1562ad95-fa07-4aad-be94-b1857a65be3b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.087481Z",
+      "prev_hash": "5ec575f8798613b242bc75e933a7137f14791b0289932f46354afc9ae0bc134a",
+      "target_ref": "2c83806b-5584-43b3-b65c-2238cfbb5a12",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "408224aac2b7da24897bd26124614012b722266afee4824615188eec16a1681e",
+      "chain_hash": "71f13f73218baa6df6fa9368c0d8ded2c324d021088c09c109cac3937ee85561",
       "chain_seq": 6,
-      "id": "a0174f29-74d1-4a68-8353-00471d5f98e0",
+      "id": "4a311756-bb8b-404f-bfeb-5d127be6e6bb",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T12:52:02.143793Z",
-      "prev_hash": "9c46aa0581f296c7310883297178c74a16b615ba60145f1ba94c369d9e90e2af",
-      "target_ref": "8e65de36-6d04-4c5a-8701-d157ba451a23",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.089607Z",
+      "prev_hash": "3a7763be4b1dd484a4cdc1a24962ff614a3d50db4107fa7e693ac97c421202e5",
+      "target_ref": "94d109d1-33a1-4b78-9c60-e953ec9a3192",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "3ce1e0b514996979ce24b6b128bffc8345a3e6fc2370339f188220ae574d7d93",
+      "chain_hash": "e6300390c67d958e61e34ced3b99facd762a3306d3c41543ccf18acdf1f70bb4",
       "chain_seq": 7,
-      "id": "5d76d745-1d91-47b8-9516-67d0f19ab7da",
+      "id": "41ac924f-cf15-4a46-9e2e-806e89c46049",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T12:52:02.145181Z",
-      "prev_hash": "408224aac2b7da24897bd26124614012b722266afee4824615188eec16a1681e",
-      "target_ref": "d8c49e40-0bc5-48ac-8649-d641c3c9d91c",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.09096Z",
+      "prev_hash": "71f13f73218baa6df6fa9368c0d8ded2c324d021088c09c109cac3937ee85561",
+      "target_ref": "34ddd26b-0655-46c2-a5c8-458ba4f1d127",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "f8ffe7dd653383333077527ef623092b915998ac6443ee4bbe92071ea75b09f3",
+      "chain_hash": "e1cef10c777c4a6b2eb3f42d25b8e1f3c30d0ce34b44cd8e307eb451b0447c04",
       "chain_seq": 8,
-      "id": "53b50ec6-1714-4f8c-9ccd-8dcabb5faca3",
+      "id": "dac093e9-0c7c-49c7-83c7-d9973e63e105",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T12:52:02.149544Z",
-      "prev_hash": "3ce1e0b514996979ce24b6b128bffc8345a3e6fc2370339f188220ae574d7d93",
-      "target_ref": "3818b0a6-ebba-4254-8003-45539418110b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.095082Z",
+      "prev_hash": "e6300390c67d958e61e34ced3b99facd762a3306d3c41543ccf18acdf1f70bb4",
+      "target_ref": "3b756d4f-aa79-466a-b348-0002107180ba",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "4835c4cc499eba09f3db00bb17f5e977ce8b68086c3075549193a95dedd8767b",
+      "chain_hash": "16432eddc4161e3ed171f465ca0c7599a3178b0282bedf8a0e01393d685eb0db",
       "chain_seq": 9,
-      "id": "f109d374-dccf-4775-a6c5-3e52de55093c",
+      "id": "ca2e22fb-cda0-4efe-98ae-fd0531cb9ee4",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T12:52:02.151048Z",
-      "prev_hash": "f8ffe7dd653383333077527ef623092b915998ac6443ee4bbe92071ea75b09f3",
-      "target_ref": "2217e7e2-9583-4c28-8329-e9a4886ba61d",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.096492Z",
+      "prev_hash": "e1cef10c777c4a6b2eb3f42d25b8e1f3c30d0ce34b44cd8e307eb451b0447c04",
+      "target_ref": "b45960ba-4c68-493a-8186-7ad2f8e0c24f",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.promoted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "73ad100374fdaf75d0b2f70282731028d6642ee30085eb954f3ea0f83657ae37",
+      "chain_hash": "75907691fa13f755c64083b2550f314b0c9208542bd25a3ab752799af4efb729",
       "chain_seq": 10,
-      "id": "c18816a2-73f3-43c2-b567-20b589a198c3",
+      "id": "40d16ee6-9f22-4b58-a925-6eb2ac9baf9d",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T12:52:02.188349Z",
-      "prev_hash": "4835c4cc499eba09f3db00bb17f5e977ce8b68086c3075549193a95dedd8767b",
-      "target_ref": "2217e7e2-9583-4c28-8329-e9a4886ba61d",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.130764Z",
+      "prev_hash": "16432eddc4161e3ed171f465ca0c7599a3178b0282bedf8a0e01393d685eb0db",
+      "target_ref": "b45960ba-4c68-493a-8186-7ad2f8e0c24f",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.promoted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "87824d6ad7650f2a4f6f30577cf26eb02df79429da66e12c9bb0637929114cc3",
+      "chain_hash": "e03c3de64341a15f9b768f567022f0ec0b473ada25c9813f21c97edeabb01911",
       "chain_seq": 11,
-      "id": "204e7fe3-e56f-469f-89c8-eda95a5067b4",
+      "id": "b7a999af-647a-4509-b4f8-bb1ee9835ac7",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T12:52:02.196836Z",
-      "prev_hash": "73ad100374fdaf75d0b2f70282731028d6642ee30085eb954f3ea0f83657ae37",
-      "target_ref": "3818b0a6-ebba-4254-8003-45539418110b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.138446Z",
+      "prev_hash": "75907691fa13f755c64083b2550f314b0c9208542bd25a3ab752799af4efb729",
+      "target_ref": "3b756d4f-aa79-466a-b348-0002107180ba",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.promoted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "a94996627d21cdc687a31e5d146632fa508f12cb72d43bdb61ad73a1c13a6e03",
+      "chain_hash": "69e307dfaba5be420e8b610eadc3c1768064d888ff9390e3fa71606da7009ddd",
       "chain_seq": 12,
-      "id": "c164a2c8-1bc5-4765-9370-5d498481d89c",
+      "id": "796dcc82-3696-4e9d-8502-b3a98eea35a3",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T12:52:02.206181Z",
-      "prev_hash": "87824d6ad7650f2a4f6f30577cf26eb02df79429da66e12c9bb0637929114cc3",
-      "target_ref": "d8c49e40-0bc5-48ac-8649-d641c3c9d91c",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:11:32.145792Z",
+      "prev_hash": "e03c3de64341a15f9b768f567022f0ec0b473ada25c9813f21c97edeabb01911",
+      "target_ref": "34ddd26b-0655-46c2-a5c8-458ba4f1d127",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.promoted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "fda4f48f571185386da11e8f4350bf190de703e71b0d4674a38873742eddcaba",
+      "chain_hash": "7e1538a5bdfca2b252b27f1c90381161efd90097381bb7e2fe3a5313ea13c9c0",
       "chain_seq": 13,
-      "id": "b56251bc-ac13-412a-91cd-0644393bd0d1",
+      "id": "c8f9f098-3ee8-4c32-a0a3-e0c05520e7f9",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T12:52:31.231496Z",
-      "prev_hash": "a94996627d21cdc687a31e5d146632fa508f12cb72d43bdb61ad73a1c13a6e03",
-      "target_ref": "8e65de36-6d04-4c5a-8701-d157ba451a23",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:01.176844Z",
+      "prev_hash": "69e307dfaba5be420e8b610eadc3c1768064d888ff9390e3fa71606da7009ddd",
+      "target_ref": "94d109d1-33a1-4b78-9c60-e953ec9a3192",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "policy.promoted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "5ba595e4d0bd621174045a793f9cc423b5bb1dc7a9c4c8eec629ddb90c821304",
+      "chain_hash": "1180ae9b6fbac644a7c72c4b7f025cdfd7e77c941b17a31beccce4323f801a5e",
       "chain_seq": 14,
-      "id": "e5e84b68-5f91-4cd3-a0a1-c54627aeade5",
+      "id": "c16107ef-e70a-45f9-bcbb-17893a256524",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T12:53:01.288091Z",
-      "prev_hash": "fda4f48f571185386da11e8f4350bf190de703e71b0d4674a38873742eddcaba",
-      "target_ref": "1562ad95-fa07-4aad-be94-b1857a65be3b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.286078Z",
+      "prev_hash": "7e1538a5bdfca2b252b27f1c90381161efd90097381bb7e2fe3a5313ea13c9c0",
+      "target_ref": "2c83806b-5584-43b3-b65c-2238cfbb5a12",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "d9f198f938493dcd5c1a505128197d85dd426796f27d3ea344cad763e90cdaea",
+      "chain_hash": "58de997a8862dff12d8b424920885e50ed4b0d481d0e3dcfe487b0125fc0c260",
       "chain_seq": 15,
-      "id": "685c3143-b9dc-42d4-b328-0e6301f6e9f1",
+      "id": "a868db9c-86fa-410d-870c-c737d3156ed6",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T12:53:01.296358Z",
-      "prev_hash": "5ba595e4d0bd621174045a793f9cc423b5bb1dc7a9c4c8eec629ddb90c821304",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.292714Z",
+      "prev_hash": "1180ae9b6fbac644a7c72c4b7f025cdfd7e77c941b17a31beccce4323f801a5e",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "13574b5db6ac48471fb64e6ceada98d1b2115b2df53d93e9b98215856b0e4ac1",
+      "chain_hash": "ebfc664143c4fe8e8762cbbd9c0b9e0012f9d5032e18d4f2ac96f309d7f2a0dd",
       "chain_seq": 16,
-      "id": "3e000a4a-cf0e-496a-bd70-a347562d9ec3",
+      "id": "03dc33ef-e298-405e-adb5-f861b53c2ace",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "long_duration_hours:720"
         ],
         "recommendation": "needs_review",
         "score": "medium",
-        "source": "fallback"
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-18T12:53:01.303769Z",
-      "prev_hash": "d9f198f938493dcd5c1a505128197d85dd426796f27d3ea344cad763e90cdaea",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.304483Z",
+      "prev_hash": "58de997a8862dff12d8b424920885e50ed4b0d481d0e3dcfe487b0125fc0c260",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "ee0e3153b8330fd8eb3f71243b4a8e75e489d5436581c772737039530553cf8a",
+      "chain_hash": "8daeafcd03623fce8ef15eb87064bfc6cae11aa07de95b8c6b8bc387f9beea66",
       "chain_seq": 17,
-      "id": "7cc6df60-6716-4f8d-afbd-69d76ffbc3a6",
+      "id": "5d352d14-395b-46b4-8f29-b8c935fd86bc",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.311731Z",
-      "prev_hash": "13574b5db6ac48471fb64e6ceada98d1b2115b2df53d93e9b98215856b0e4ac1",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.309934Z",
+      "prev_hash": "ebfc664143c4fe8e8762cbbd9c0b9e0012f9d5032e18d4f2ac96f309d7f2a0dd",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "a9cfcd6f8730335bd0878bab7ca0c6f969321feb4e42cb6d64752347e8a3a92e",
+      "chain_hash": "21351746cd2405d3074fca7ba198901a1c277b7d466916a4dc20bdf7b4d4ae7f",
       "chain_seq": 18,
-      "id": "5da34556-656a-4b82-9990-30c5298e884f",
+      "id": "7fa489a6-7ecd-4f14-a617-2652902abb9b",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.32044Z",
-      "prev_hash": "ee0e3153b8330fd8eb3f71243b4a8e75e489d5436581c772737039530553cf8a",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.317007Z",
+      "prev_hash": "8daeafcd03623fce8ef15eb87064bfc6cae11aa07de95b8c6b8bc387f9beea66",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioning",
       "actor": "us-globex-health-owner",
-      "chain_hash": "55cbc563f516ca2dcc13d38bf9d6137df32e1edc7bcac2c91c10a568320c1892",
+      "chain_hash": "0dc52cf717dc9336ce925303c27cd7db209097f03e4f5354acdca2a506f5688a",
       "chain_seq": 19,
-      "id": "f990fe1d-3197-44f5-8ebf-3d25baa161c3",
+      "id": "8f397c3c-96ae-44e1-b4c3-af63aec458b2",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.327517Z",
-      "prev_hash": "a9cfcd6f8730335bd0878bab7ca0c6f969321feb4e42cb6d64752347e8a3a92e",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.323684Z",
+      "prev_hash": "21351746cd2405d3074fca7ba198901a1c277b7d466916a4dc20bdf7b4d4ae7f",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioned",
       "actor": "us-globex-health-owner",
-      "chain_hash": "2a3c2c9766bb56f2d787d81697fb41678018dd956498afe7139bab026c3179e2",
+      "chain_hash": "9897417ba18ebed772249c7991956e5b45791c6dbbb9102796bda65ae340266c",
       "chain_seq": 20,
-      "id": "4a39fbee-c9ec-4b5a-b332-6b9431c703b6",
+      "id": "8bbb20d7-cefc-4aca-91f3-3a3beed60df1",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.333531Z",
-      "prev_hash": "55cbc563f516ca2dcc13d38bf9d6137df32e1edc7bcac2c91c10a568320c1892",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.330576Z",
+      "prev_hash": "0dc52cf717dc9336ce925303c27cd7db209097f03e4f5354acdca2a506f5688a",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.active",
       "actor": "us-globex-health-owner",
-      "chain_hash": "56a82b37a68c2b082670aa4de000ca384f83e1770ddacb94cbe1ead15c7027a1",
+      "chain_hash": "34bdd6cb515f4623ec788323c0328726c5b0775b8e04ebddf884949f82025bc0",
       "chain_seq": 21,
-      "id": "1c129bd2-707c-4944-a087-a7edda3ce850",
+      "id": "1111ecbf-f70a-4085-9fc1-697a77609018",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.337741Z",
-      "prev_hash": "2a3c2c9766bb56f2d787d81697fb41678018dd956498afe7139bab026c3179e2",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.334679Z",
+      "prev_hash": "9897417ba18ebed772249c7991956e5b45791c6dbbb9102796bda65ae340266c",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "cd2573ccacce228e79be7db6056c34bce643fb4d2b3c5d7c8509e6b9f4648092",
+      "chain_hash": "70b1a132f9cb6780f1a15185bafb247ed2283b558b07c53a0d9aa6d9633754ec",
       "chain_seq": 22,
-      "id": "bc4753ae-0db0-43da-ab6a-13e4b7b41d4d",
+      "id": "1175cbf8-bfed-4c69-a13e-1be070a71d8f",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:01.331453Z",
-      "prev_hash": "56a82b37a68c2b082670aa4de000ca384f83e1770ddacb94cbe1ead15c7027a1",
-      "target_ref": "46131960-c04b-4cfa-84af-e8e4490db31c",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.328381Z",
+      "prev_hash": "34bdd6cb515f4623ec788323c0328726c5b0775b8e04ebddf884949f82025bc0",
+      "target_ref": "02766da5-6d9a-459f-9513-eae956611a0b",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "814eec708454eb45a7214983b94966517db074d3280989b10d7c615a259f4fbe",
+      "chain_hash": "471c176c82a7406514d409cd7e6b38a2d59957a488e9664d1b48dd8db91286b0",
       "chain_seq": 23,
-      "id": "50c974e0-a7d8-4667-ba18-7dadf6a0b986",
+      "id": "fcdc1fa4-6cf5-40bf-a1ac-adc8a87cbd4f",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T12:53:01.343532Z",
-      "prev_hash": "cd2573ccacce228e79be7db6056c34bce643fb4d2b3c5d7c8509e6b9f4648092",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.340307Z",
+      "prev_hash": "70b1a132f9cb6780f1a15185bafb247ed2283b558b07c53a0d9aa6d9633754ec",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "1b3d198287b443ba6370eb6c29221565e8fe13d3c7963c8929b913aa56aecb9b",
+      "chain_hash": "20e1cd57b22667d47a9a9e7c44da70b41381cf547add123c540c13ca95326130",
       "chain_seq": 24,
-      "id": "2e82c79d-b415-486e-826f-e4174d29e638",
+      "id": "6b114d4c-93a9-4a5e-8e88-69f55ebcd511",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "baseline_low_risk"
         ],
-        "recommendation": "needs_review",
-        "score": "medium",
-        "source": "fallback"
+        "recommendation": "auto_approve_eligible",
+        "score": "low",
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-18T12:53:01.348286Z",
-      "prev_hash": "814eec708454eb45a7214983b94966517db074d3280989b10d7c615a259f4fbe",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.345604Z",
+      "prev_hash": "471c176c82a7406514d409cd7e6b38a2d59957a488e9664d1b48dd8db91286b0",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "d008027528a6f6fe726979631cd13cbeeeef10703df38b43c1eec88079ebd740",
+      "chain_hash": "924b0facf6e9c456778f2879cccaf879bda2c0c4532fc6797a6986986a4a27c0",
       "chain_seq": 25,
-      "id": "adfade7b-9e65-47ac-b53c-5627b69d0bb1",
+      "id": "a33fcfc6-98dc-467e-99df-a21fddfb225b",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.351503Z",
-      "prev_hash": "1b3d198287b443ba6370eb6c29221565e8fe13d3c7963c8929b913aa56aecb9b",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.349063Z",
+      "prev_hash": "20e1cd57b22667d47a9a9e7c44da70b41381cf547add123c540c13ca95326130",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "83d746580d805109e39a3ddb12c43dc15e1f221c4e1ec1ac6217073382a665b2",
+      "chain_hash": "5ed0b7585b9e8199978fa433f3bbf4ad823160c624bdb9106afdb8410141230e",
       "chain_seq": 26,
-      "id": "a48412f3-0ca5-4172-a2e8-01348f79c774",
+      "id": "9880d054-c23f-40d4-a1b2-a836e2f04370",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.358376Z",
-      "prev_hash": "d008027528a6f6fe726979631cd13cbeeeef10703df38b43c1eec88079ebd740",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.353125Z",
+      "prev_hash": "924b0facf6e9c456778f2879cccaf879bda2c0c4532fc6797a6986986a4a27c0",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioning",
       "actor": "us-globex-health-owner",
-      "chain_hash": "c9ef6af2df2bab4375ff97589d142905c64208a709338d9534b0c2d3e16df226",
+      "chain_hash": "bf8560f345c15c8a34b2b7061bb803dc432e28276d63e0232749fe527063500e",
       "chain_seq": 27,
-      "id": "122d106f-256d-484c-b21c-b30a0afbede6",
+      "id": "4bdf3f30-a1ac-41a7-b5cb-76a63912d932",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.364639Z",
-      "prev_hash": "83d746580d805109e39a3ddb12c43dc15e1f221c4e1ec1ac6217073382a665b2",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.362667Z",
+      "prev_hash": "5ed0b7585b9e8199978fa433f3bbf4ad823160c624bdb9106afdb8410141230e",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioned",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b2d4072f52b191058f9ffdf2e2e11f2a33d01781cd1feb9b39f5e58ca15d8125",
+      "chain_hash": "95064c22524629d17f07ef4fb44b7c8e55c3902985e5ca6caa31b878762b4a06",
       "chain_seq": 28,
-      "id": "c385ffef-0e47-44e8-a3cc-fa27a97946fb",
+      "id": "f1a77236-55a6-4a33-a73a-59c516a8a213",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.369722Z",
-      "prev_hash": "c9ef6af2df2bab4375ff97589d142905c64208a709338d9534b0c2d3e16df226",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.367927Z",
+      "prev_hash": "bf8560f345c15c8a34b2b7061bb803dc432e28276d63e0232749fe527063500e",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.active",
       "actor": "us-globex-health-owner",
-      "chain_hash": "d3a63313e93f1df2cbda38ab3d4d6a80f3f520c0e0bea34158095a0ca26eb8b4",
+      "chain_hash": "26ecbe7d12a54400e5ee43c4e196802356dabb2547303b00fa058e41b25a0c34",
       "chain_seq": 29,
-      "id": "2b63658c-3400-461f-91dd-7e218c216e73",
+      "id": "6c981a31-5815-4867-ad23-cd994d6e7214",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.372886Z",
-      "prev_hash": "b2d4072f52b191058f9ffdf2e2e11f2a33d01781cd1feb9b39f5e58ca15d8125",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.37132Z",
+      "prev_hash": "95064c22524629d17f07ef4fb44b7c8e55c3902985e5ca6caa31b878762b4a06",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "3e80a5d47e99b9301c85cd40a7abd90d7cc91a32ac03f3c2727286a47d896df5",
+      "chain_hash": "18ae6c2d1f77a68fcb88d563b5f70e0822b61e95eff62448d369244f1bd528f6",
       "chain_seq": 30,
-      "id": "4073ba30-ac30-4a2f-8992-2ff78106e349",
+      "id": "e8d67d51-21ae-4299-bfb5-0ba6f083676b",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:01.368318Z",
-      "prev_hash": "d3a63313e93f1df2cbda38ab3d4d6a80f3f520c0e0bea34158095a0ca26eb8b4",
-      "target_ref": "45b1eab2-7132-4169-96e6-2e1d77f7775b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.366303Z",
+      "prev_hash": "26ecbe7d12a54400e5ee43c4e196802356dabb2547303b00fa058e41b25a0c34",
+      "target_ref": "1d2601e7-abb7-4a3a-a346-cefc72cfe7a4",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b2c255a03893ec150b88ba8be8c04a046ca05ed59f7fd219200433dc38cf60cf",
+      "chain_hash": "703eff51771dbed86628fd83282fbe0afe37bca482d768e0b592dbc450ac55e8",
       "chain_seq": 31,
-      "id": "a18373de-faee-4e98-be5f-87e1c3b54b97",
+      "id": "598ac7c9-48ff-4c5c-827d-d5cab4de0136",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T12:53:01.378633Z",
-      "prev_hash": "3e80a5d47e99b9301c85cd40a7abd90d7cc91a32ac03f3c2727286a47d896df5",
-      "target_ref": "e7a049e1-5a81-4755-900c-ce2733053811",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.376902Z",
+      "prev_hash": "18ae6c2d1f77a68fcb88d563b5f70e0822b61e95eff62448d369244f1bd528f6",
+      "target_ref": "8923761e-feb2-415a-b6f0-4c6949ffc182",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "073b68d69a390c88642d8ebf8ec95e02446660d2ac27d6c72c88134ff07f4f2f",
+      "chain_hash": "19f1e5aab448543712e1a72b10d830378d8c46c2febf88354fd4120f0f053f4d",
       "chain_seq": 32,
-      "id": "9278ff7a-6ecc-4bcd-94f8-09843701da5d",
+      "id": "6bad1822-6abd-4da1-bada-6fac634d1ad3",
       "kind": "other",
       "metadata": {
-        "degraded": true,
+        "degraded": false,
         "factors": [
-          "ai_unavailable"
+          "baseline_low_risk"
         ],
-        "recommendation": "needs_review",
-        "score": "medium",
-        "source": "fallback"
+        "recommendation": "auto_approve_eligible",
+        "score": "low",
+        "source": "ai_agent"
       },
-      "occurred_at": "2026-06-18T12:53:01.383351Z",
-      "prev_hash": "b2c255a03893ec150b88ba8be8c04a046ca05ed59f7fd219200433dc38cf60cf",
-      "target_ref": "e7a049e1-5a81-4755-900c-ce2733053811",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.382079Z",
+      "prev_hash": "703eff51771dbed86628fd83282fbe0afe37bca482d768e0b592dbc450ac55e8",
+      "target_ref": "8923761e-feb2-415a-b6f0-4c6949ffc182",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "4c51fcdd3dfa1f21c9937b06f8273dce81657f5e0c2de6c744c89f0a4f90b033",
+      "chain_hash": "67e5370f0063ac8e7e13792ed3f8012e2b3efcbbede4eeb1b6001c413332f6c8",
       "chain_seq": 33,
-      "id": "3f0416f4-68d2-4394-9e5b-72917cc30550",
+      "id": "6c287b0c-f688-4082-b6f1-47db43e83d77",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.386794Z",
-      "prev_hash": "073b68d69a390c88642d8ebf8ec95e02446660d2ac27d6c72c88134ff07f4f2f",
-      "target_ref": "e7a049e1-5a81-4755-900c-ce2733053811",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.385954Z",
+      "prev_hash": "19f1e5aab448543712e1a72b10d830378d8c46c2febf88354fd4120f0f053f4d",
+      "target_ref": "8923761e-feb2-415a-b6f0-4c6949ffc182",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "6b711d5841c076659ad018eb378b5952d65d99ac00bff168ef8804bc6b50578c",
+      "chain_hash": "0dac25a130ececefc15f885bd0af541fb31c60017465584770be8fdac7bb3c43",
       "chain_seq": 34,
-      "id": "e16ac452-6872-4502-94a2-bc0314028edc",
+      "id": "fa6a71cb-14ba-482a-bf87-2d54213d55f6",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.393615Z",
-      "prev_hash": "4c51fcdd3dfa1f21c9937b06f8273dce81657f5e0c2de6c744c89f0a4f90b033",
-      "target_ref": "e7a049e1-5a81-4755-900c-ce2733053811",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.389922Z",
+      "prev_hash": "67e5370f0063ac8e7e13792ed3f8012e2b3efcbbede4eeb1b6001c413332f6c8",
+      "target_ref": "8923761e-feb2-415a-b6f0-4c6949ffc182",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_review.started",
       "actor": "us-globex-health-owner",
-      "chain_hash": "a1f3ba2713767ddc1d47a114370e6a0009e69bae14770d57cf1c1568398b9ecd",
+      "chain_hash": "47316710d45092dcb820d537200a68579f4bfb0f3ac20f68b69fb6b929c4f3bb",
       "chain_seq": 35,
-      "id": "d494d744-a677-440e-a4cc-63e7bbbd0add",
+      "id": "189e9f99-86ea-4cf4-8eda-df1f1749b0e9",
       "kind": "review_started",
-      "occurred_at": "2026-06-18T12:53:01.398384Z",
-      "prev_hash": "6b711d5841c076659ad018eb378b5952d65d99ac00bff168ef8804bc6b50578c",
-      "target_ref": "95609730-c18f-40a9-ae1a-247feb44c798",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.397545Z",
+      "prev_hash": "0dac25a130ececefc15f885bd0af541fb31c60017465584770be8fdac7bb3c43",
+      "target_ref": "d945e6fb-9b69-4aef-baef-9d7363f69fec",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b7d2a4100076d942a728a892fccedb1a32774c2d702c4977df72b4513ca4fe47",
+      "chain_hash": "675400d5052577ab02295992a726290b016f7bc9348e406b4ee8aa66db088a25",
       "chain_seq": 36,
-      "id": "033245d5-eda1-400e-8ae5-fa7b8b54ca0b",
+      "id": "86996376-8ff7-4f70-b5ec-b5e2b9b283d9",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T12:53:01.409282Z",
-      "prev_hash": "a1f3ba2713767ddc1d47a114370e6a0009e69bae14770d57cf1c1568398b9ecd",
-      "target_ref": "1874e27c-45a0-4608-90e1-5963aac94a42",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.408359Z",
+      "prev_hash": "47316710d45092dcb820d537200a68579f4bfb0f3ac20f68b69fb6b929c4f3bb",
+      "target_ref": "4dd25244-1ffa-4452-b39a-7ae0ce2f7101",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.revoked",
       "actor": "us-globex-health-owner",
-      "chain_hash": "679b704e846d5bd87cec5046dbc3960a0841f6d8da00d5131fa23e86e877959e",
+      "chain_hash": "b8221e5f93c490e46fab175ca9ec5d25ea3e088b8cc42963adb997e5b2ba1138",
       "chain_seq": 37,
-      "id": "0849cce4-5587-4439-bc6f-3a3c100bd592",
+      "id": "290558ac-92dd-4458-b892-a1de49ff89c5",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.418836Z",
-      "prev_hash": "b7d2a4100076d942a728a892fccedb1a32774c2d702c4977df72b4513ca4fe47",
-      "target_ref": "566beebf-a144-4f19-acdd-f7dd6cd1e669",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.418766Z",
+      "prev_hash": "675400d5052577ab02295992a726290b016f7bc9348e406b4ee8aa66db088a25",
+      "target_ref": "100b6649-7a8d-44cd-8a81-eac46a486fd7",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.revoked",
       "actor": "us-globex-health-owner",
-      "chain_hash": "2d5f7c7a9c3d066205126f8c8fb8ffd8e0c31e5528753a7b45397a45ecc5668c",
+      "chain_hash": "27509e7f4ede9d8171b19a83075b06c79f4289c809ec1cabd8f80369d1231990",
       "chain_seq": 38,
-      "id": "739e78ec-0c24-4dcd-bb27-ff6f42e7e002",
+      "id": "2412645a-f505-4f31-810e-2fa94f52e70a",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T12:53:01.416573Z",
-      "prev_hash": "679b704e846d5bd87cec5046dbc3960a0841f6d8da00d5131fa23e86e877959e",
-      "target_ref": "46131960-c04b-4cfa-84af-e8e4490db31c",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.415986Z",
+      "prev_hash": "b8221e5f93c490e46fab175ca9ec5d25ea3e088b8cc42963adb997e5b2ba1138",
+      "target_ref": "1d2601e7-abb7-4a3a-a346-cefc72cfe7a4",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "us-globex-health-owner",
-      "chain_hash": "8dcaf8c1ce2289cf6601e74634994966499d7de2754dfe2c9cda4380302c56bc",
+      "chain_hash": "53c7f863b759b9d5df4172daf68060a8c36ef326bbe60b60e6f1961c01999a04",
       "chain_seq": 39,
-      "id": "c0012809-5125-4e9f-addf-81f6e0643af0",
+      "id": "88bd58f9-90e4-4100-b9fb-819c9bc18e84",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T12:53:01.423767Z",
-      "prev_hash": "2d5f7c7a9c3d066205126f8c8fb8ffd8e0c31e5528753a7b45397a45ecc5668c",
-      "target_ref": "87690880-5e47-4d84-b850-4b271577f69c",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.423739Z",
+      "prev_hash": "27509e7f4ede9d8171b19a83075b06c79f4289c809ec1cabd8f80369d1231990",
+      "target_ref": "b0b2e059-5b82-4a22-b89e-e3bb15e36d86",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "certification.campaign.started",
       "actor": "us-globex-health-owner",
-      "chain_hash": "c28ed6976ca576db316f3358817ee6242caca3c196f74bcc39ac3f31615dd26c",
+      "chain_hash": "c04f2e895aacf83858722324244f78307c73380ba438b08453ff8574c8f90885",
       "chain_seq": 40,
-      "id": "6e54d19f-9a11-48e8-b0e7-f4f004dae168",
+      "id": "a6e9a3a2-0caa-401a-a041-faaa4dba80e1",
       "kind": "certification_started",
       "metadata": {
         "framework": "SOC 2",
         "item_count": 1,
         "name": "Q2 2026 HIPAA Security Rule certification",
         "scope": {
-          "connector_id": "b271b7aa-e17a-4f79-8c16-e4b82433ce97"
+          "connector_id": "509ee3e7-1dbe-48f8-8659-8332a28ac9cc"
         }
       },
-      "occurred_at": "2026-06-18T12:53:01.428444Z",
-      "prev_hash": "8dcaf8c1ce2289cf6601e74634994966499d7de2754dfe2c9cda4380302c56bc",
-      "target_ref": "24ff1dd2-9aa9-410b-9530-e2355de35f79",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.428358Z",
+      "prev_hash": "53c7f863b759b9d5df4172daf68060a8c36ef326bbe60b60e6f1961c01999a04",
+      "target_ref": "37c0771a-afd1-4361-bf54-4a7654ce8f86",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "us-globex-health-owner",
-      "chain_hash": "dff0669e1308c3aa2f8afd6da90b3b61cc6cb3383e1198953f86e012251faef2",
+      "chain_hash": "a0da590bf2b47c36188fc911c758cde9c69a09220792566cdeb1fcddf2a5ed2d",
       "chain_seq": 41,
-      "id": "023b9dfe-5ad8-456a-856f-44d6643390f2",
+      "id": "52ea50ed-f8af-4184-8b87-0ceaf123358a",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "24ff1dd2-9aa9-410b-9530-e2355de35f79",
-        "grant_id": "45b1eab2-7132-4169-96e6-2e1d77f7775b",
+        "campaign_id": "37c0771a-afd1-4361-bf54-4a7654ce8f86",
+        "grant_id": "02766da5-6d9a-459f-9513-eae956611a0b",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-18T12:53:01.44019Z",
-      "prev_hash": "c28ed6976ca576db316f3358817ee6242caca3c196f74bcc39ac3f31615dd26c",
-      "target_ref": "7d9ec1da-d863-49cd-9458-352ae6a95f2f",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.44059Z",
+      "prev_hash": "c04f2e895aacf83858722324244f78307c73380ba438b08453ff8574c8f90885",
+      "target_ref": "8ef42a5a-177c-451f-bc6e-71d3b3db0e0d",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "7f1e6e75d0513146c02b9b9e365b90a845866aa2c16a07efa686466cdb1f6d57",
+      "chain_hash": "41f86fdb21261932aba4a80257fa2719b57d74808f82b8667bece793f33cb753",
       "chain_seq": 42,
-      "id": "6edad4a8-2648-4132-baaa-aa3ed17c2c4c",
+      "id": "247b325e-a9e0-4287-a2fa-5e2c3a052fb3",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-18T12:53:01.446265Z",
-      "prev_hash": "dff0669e1308c3aa2f8afd6da90b3b61cc6cb3383e1198953f86e012251faef2",
-      "target_ref": "24ff1dd2-9aa9-410b-9530-e2355de35f79",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.446867Z",
+      "prev_hash": "a0da590bf2b47c36188fc911c758cde9c69a09220792566cdeb1fcddf2a5ed2d",
+      "target_ref": "37c0771a-afd1-4361-bf54-4a7654ce8f86",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.revoked",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b70b330ac82bc1ec04b956535345c81ac39040fe74c06b54943374d3ca654e01",
+      "chain_hash": "6c5f168f36cfd0e9e2415612b4f657a5410b68e7e26971930b2a44015a5d098a",
       "chain_seq": 43,
-      "id": "03a71380-0f7c-4ae9-8b2f-3d487815140f",
+      "id": "84cac423-44eb-4cca-96b9-20bb81f38a76",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.454899Z",
-      "prev_hash": "7f1e6e75d0513146c02b9b9e365b90a845866aa2c16a07efa686466cdb1f6d57",
-      "target_ref": "b623c645-982b-415e-b4a9-1954db4e248a",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.455426Z",
+      "prev_hash": "41f86fdb21261932aba4a80257fa2719b57d74808f82b8667bece793f33cb753",
+      "target_ref": "0a317507-2973-43ae-9901-784daea4922e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.revoked",
       "actor": "us-globex-health-owner",
-      "chain_hash": "1969ab6ad024946af006ca3ce4a3472ede0da22abbe358494933f350e4cdf836",
+      "chain_hash": "822074307caed7b3a9822b85e35d35f27971a67357a8cc1463569b45bf417b9e",
       "chain_seq": 44,
-      "id": "52b9b45a-0d46-49d4-8128-104f278c38d5",
+      "id": "b81c3cb2-2058-4b15-94c9-f8afdc8a5e61",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T12:53:01.453077Z",
-      "prev_hash": "b70b330ac82bc1ec04b956535345c81ac39040fe74c06b54943374d3ca654e01",
-      "target_ref": "45b1eab2-7132-4169-96e6-2e1d77f7775b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.453518Z",
+      "prev_hash": "6c5f168f36cfd0e9e2415612b4f657a5410b68e7e26971930b2a44015a5d098a",
+      "target_ref": "02766da5-6d9a-459f-9513-eae956611a0b",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "434ce8f6f2d273b37d0ac33a60672e17283ad9bc71c0bdf12aa88ef5b19c7ff4",
+      "chain_hash": "fadf0202e1d1e5c8299ded1d4b29e5f01676ce61e1c60943be7ec722cfa46bd2",
       "chain_seq": 45,
-      "id": "f818ed66-9643-444c-96ec-d8ae4bcd8f71",
+      "id": "26ec9326-1847-478f-ba73-b6ff8c861d58",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T12:53:01.468483Z",
-      "prev_hash": "1969ab6ad024946af006ca3ce4a3472ede0da22abbe358494933f350e4cdf836",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.468635Z",
+      "prev_hash": "822074307caed7b3a9822b85e35d35f27971a67357a8cc1463569b45bf417b9e",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "6cf9337dc5c1806f48125cd42e55831e0dc013fac14dd267d16e7375004f6c5e",
+      "chain_hash": "7fc004f5af62ac6b478edd5564381d0b1c6aa33929a66e700ad379ddcbdfc580",
       "chain_seq": 46,
-      "id": "959d1615-635b-4c70-b0f6-fc959ed681a6",
+      "id": "c62cc3ff-ea4d-4a3c-8d10-74c7decb056a",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.472742Z",
-      "prev_hash": "434ce8f6f2d273b37d0ac33a60672e17283ad9bc71c0bdf12aa88ef5b19c7ff4",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.472793Z",
+      "prev_hash": "fadf0202e1d1e5c8299ded1d4b29e5f01676ce61e1c60943be7ec722cfa46bd2",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "b81a0193bc836e8531719c18d36cbcead53d49c4b3aa4e56635a8a2aaf60eec7",
+      "chain_hash": "e0740c0a26f3358dc0db75f87b5d9b3672ee3bbca54b1212e0f516fbc50eb2da",
       "chain_seq": 47,
-      "id": "8a781d64-15c2-45a1-99af-880f14c71c73",
+      "id": "a67cbc2d-33e8-4093-a4a5-785d73a249d1",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.4772Z",
-      "prev_hash": "6cf9337dc5c1806f48125cd42e55831e0dc013fac14dd267d16e7375004f6c5e",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.477147Z",
+      "prev_hash": "7fc004f5af62ac6b478edd5564381d0b1c6aa33929a66e700ad379ddcbdfc580",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "ed83a8e9e8e18e27c02ed8a354a370bd951a282541680c18143f3f6ea03b63f1",
+      "chain_hash": "ed40f03be0e0427318cf668b58a703446a64898d8054213b4f03a1b557d14a58",
       "chain_seq": 48,
-      "id": "2b096b03-1d18-40aa-8e7d-82882b9d75fc",
+      "id": "befec237-e2e0-4ba4-924e-ab2b8da7951b",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.48222Z",
-      "prev_hash": "b81a0193bc836e8531719c18d36cbcead53d49c4b3aa4e56635a8a2aaf60eec7",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.481884Z",
+      "prev_hash": "e0740c0a26f3358dc0db75f87b5d9b3672ee3bbca54b1212e0f516fbc50eb2da",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "53763cd4e360ad73983305c5370258116407204beadca8f36cf251087eefb4dd",
+      "chain_hash": "dfbcc69ee76d3301d493c092d29042f9eaf1fccce8813a2f3f3331361d583b12",
       "chain_seq": 49,
-      "id": "4e1dc54b-1cb3-4c6d-84d3-c3642e807387",
+      "id": "39b9d485-836f-4498-8540-34e2a3a32406",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.485421Z",
-      "prev_hash": "ed83a8e9e8e18e27c02ed8a354a370bd951a282541680c18143f3f6ea03b63f1",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.484868Z",
+      "prev_hash": "ed40f03be0e0427318cf668b58a703446a64898d8054213b4f03a1b557d14a58",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "526658ff4dbc9ed4814cc63749729bd86da7b57e8935f7b67eec3fd7053e7abc",
+      "chain_hash": "b8aea7b754fd971b1ba3950727a67b097a6eac41295a2a3fa8c95507f6f35ab5",
       "chain_seq": 50,
-      "id": "d3c411c5-53c0-460e-a872-b674e3e4a919",
+      "id": "9dc41e67-28b6-405f-83da-466c74473719",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:01.480795Z",
-      "prev_hash": "53763cd4e360ad73983305c5370258116407204beadca8f36cf251087eefb4dd",
-      "target_ref": "efc23b6f-0c36-47d6-9c14-b072a6dc6b67",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.480427Z",
+      "prev_hash": "dfbcc69ee76d3301d493c092d29042f9eaf1fccce8813a2f3f3331361d583b12",
+      "target_ref": "94fc3110-0e0e-40c3-8780-ce77f4d19519",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "a2cedbcffce3f807f214f4284db625f8acf36b76ce9c94798e2f909a60f9daaf",
+      "chain_hash": "ba60ff207030f26973fcf7011ff9209d22867fffddea46f682be2a3c59c631d3",
       "chain_seq": 51,
-      "id": "5a53e7c1-5321-4cce-9f0f-3e129b14576c",
+      "id": "9ca94ebf-40b1-4165-b572-68f0cfa68ecb",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-18T12:53:01.490283Z",
-      "prev_hash": "526658ff4dbc9ed4814cc63749729bd86da7b57e8935f7b67eec3fd7053e7abc",
+      "occurred_at": "2026-06-18T14:12:31.489774Z",
+      "prev_hash": "b8aea7b754fd971b1ba3950727a67b097a6eac41295a2a3fa8c95507f6f35ab5",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "3cef4ce61186a4366d3c285dec6acd5bcdf30f3efd69487977104bf4b9919cca",
+      "chain_hash": "bad5688fb403c64c287d45f91b00828eb02a158e08d675aadfb8e78d124e508d",
       "chain_seq": 52,
-      "id": "282cf970-8ae3-456f-b5f7-fe38e49def89",
+      "id": "c4f5a187-4eea-44ee-923c-228ca8afb09f",
       "kind": "other",
-      "occurred_at": "2026-06-18T12:53:01.498559Z",
-      "prev_hash": "a2cedbcffce3f807f214f4284db625f8acf36b76ce9c94798e2f909a60f9daaf",
-      "target_ref": "3105f398-fcce-46be-a176-cc4da49b5f43",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.49805Z",
+      "prev_hash": "ba60ff207030f26973fcf7011ff9209d22867fffddea46f682be2a3c59c631d3",
+      "target_ref": "bd7d8bf3-4e6c-4393-ae18-4f6d17985493",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "304be5757eaefdc4162df78643e4548813479f4556d6023965b2656d25df337d",
+      "chain_hash": "12c4c8be573c2cd12b0026ef9465dc27643d6e5d500ffb6ad43468894e89cd04",
       "chain_seq": 53,
-      "id": "448e6ff9-92af-40fb-9441-bb3c31df02cb",
+      "id": "b3618e87-a2ae-4b43-9d35-88cd3793cbf3",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T12:53:01.496668Z",
-      "prev_hash": "3cef4ce61186a4366d3c285dec6acd5bcdf30f3efd69487977104bf4b9919cca",
-      "target_ref": "efc23b6f-0c36-47d6-9c14-b072a6dc6b67",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:31.496258Z",
+      "prev_hash": "bad5688fb403c64c287d45f91b00828eb02a158e08d675aadfb8e78d124e508d",
+      "target_ref": "94fc3110-0e0e-40c3-8780-ce77f4d19519",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "e090154090316df403ecfeba0e1a3a9035ea52232bad547191e4cd15088fd332",
+      "chain_hash": "c72c5e10f71191bc1ca2192002fb0d15f1c19c38644a861e5a65388253e46207",
       "chain_seq": 54,
-      "id": "0b25228d-df81-4b7f-bc78-7730f2f42378",
+      "id": "c44f8efa-db5f-49fa-bc9e-612ca18fdbf5",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:01.502168Z",
-      "prev_hash": "304be5757eaefdc4162df78643e4548813479f4556d6023965b2656d25df337d",
+      "occurred_at": "2026-06-18T14:12:31.501927Z",
+      "prev_hash": "12c4c8be573c2cd12b0026ef9465dc27643d6e5d500ffb6ad43468894e89cd04",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "ccd8d724cec3d98e2ecdd90b384bb2f56e5409b9f3df09ffc94dc8d5fe800461",
+      "chain_hash": "39816405b3b4ca30f71638ba6563d0f9e8767a72d31bef5710f099b4d8ba343d",
       "chain_seq": 55,
-      "id": "647bb7e3-a425-4e27-9ed9-b065c851984f",
+      "id": "5ab7ab77-5b6a-4d3b-a713-bb4e2791b935",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:01.506961Z",
-      "prev_hash": "e090154090316df403ecfeba0e1a3a9035ea52232bad547191e4cd15088fd332",
+      "occurred_at": "2026-06-18T14:12:31.506484Z",
+      "prev_hash": "c72c5e10f71191bc1ca2192002fb0d15f1c19c38644a861e5a65388253e46207",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "ba33469d6bbc4d1a7eb3a9c35ea2257392939723f9672bcf9289d8f9b7b3bdc3",
+      "chain_hash": "00071b66cd555c4d3949399892ffb8e0cbd053193ecf8d014c7d21cf94559eac",
       "chain_seq": 56,
-      "id": "072723eb-4e6f-4a28-ba30-2f2cea18a707",
+      "id": "4cc37d4d-d64e-4e9b-a650-123a86b24f54",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:01.509476Z",
-      "prev_hash": "ccd8d724cec3d98e2ecdd90b384bb2f56e5409b9f3df09ffc94dc8d5fe800461",
+      "occurred_at": "2026-06-18T14:12:31.508984Z",
+      "prev_hash": "39816405b3b4ca30f71638ba6563d0f9e8767a72d31bef5710f099b4d8ba343d",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "2ea75a6e356b4932556d753eb6d3d96988a39b2854ff522aaacdc4f9481e8eee",
+      "chain_hash": "8a981d60eff445d70c68d9464119bf75a4835c8bbc1092c2055cdec5a3459b72",
       "chain_seq": 57,
-      "id": "1605f36d-ca51-41f1-b061-6bcdcb2ca2bd",
+      "id": "c56dfa37-ccde-42ae-971f-8a639e725914",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:02.132845Z",
-      "prev_hash": "ba33469d6bbc4d1a7eb3a9c35ea2257392939723f9672bcf9289d8f9b7b3bdc3",
+      "occurred_at": "2026-06-18T14:12:32.193243Z",
+      "prev_hash": "00071b66cd555c4d3949399892ffb8e0cbd053193ecf8d014c7d21cf94559eac",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "6fcb3d1687a135d881d4fe8f0e0919516e2c796c34f8612455081f14b7dc45a9",
+      "chain_hash": "d8eb85b2a975c3668f63e794c802ad924e0434e77c611451adfb664d5a989dce",
       "chain_seq": 58,
-      "id": "c82d4f5a-95d8-4c40-9cb4-4b51cad94ede",
+      "id": "0970a6cb-b779-4c10-a1ea-ac3f385586cf",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:02.135771Z",
-      "prev_hash": "2ea75a6e356b4932556d753eb6d3d96988a39b2854ff522aaacdc4f9481e8eee",
+      "occurred_at": "2026-06-18T14:12:32.196075Z",
+      "prev_hash": "8a981d60eff445d70c68d9464119bf75a4835c8bbc1092c2055cdec5a3459b72",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "a79d450bd5c96f7d0c809d2fd40be97c55f1832e0d23d535481059d8a6b81e8d",
+      "chain_hash": "aad671ab27f538e891db430b4775d7652130c156d7cff297b37f04462f579f42",
       "chain_seq": 59,
-      "id": "960d7185-caa8-4d7a-a53d-0db23519eb9b",
+      "id": "49bd0d0e-1fda-45b0-800b-25541312f419",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T12:53:02.141331Z",
-      "prev_hash": "6fcb3d1687a135d881d4fe8f0e0919516e2c796c34f8612455081f14b7dc45a9",
+      "occurred_at": "2026-06-18T14:12:32.20198Z",
+      "prev_hash": "d8eb85b2a975c3668f63e794c802ad924e0434e77c611451adfb664d5a989dce",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "sod.rule.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "32e84633705195fa5714a661b7f17e4461b847a2e14cf7767d42367397320c6f",
+      "chain_hash": "a303d2c6e6feed60f51386a8a6a66aa9671a5f52b4c3ee99ba166c83aefa2c22",
       "chain_seq": 60,
-      "id": "cd2c08eb-b724-4b33-88ba-d310e5de333a",
+      "id": "ce6a1e24-4806-448b-9e38-0b0b58dced18",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -789,425 +789,425 @@
         },
         "severity": "high"
       },
-      "occurred_at": "2026-06-18T12:53:02.145962Z",
-      "prev_hash": "a79d450bd5c96f7d0c809d2fd40be97c55f1832e0d23d535481059d8a6b81e8d",
-      "target_ref": "490c26d8-8cac-4c8c-ac01-a4232971b659",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.206358Z",
+      "prev_hash": "aad671ab27f538e891db430b4775d7652130c156d7cff297b37f04462f579f42",
+      "target_ref": "83b7eece-3213-4c44-85da-7a6e7e20a887",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "us-globex-health-owner",
-      "chain_hash": "1a104eb8dd43efb9a3fe662f710c27ef1a0aab1c1775accc7e94d97de1810a7e",
+      "chain_hash": "b75b93797066f60c336c48301c7b1a9a03e8252103d76dc1de6c5cc3a3f7048f",
       "chain_seq": 61,
-      "id": "acfdbc4f-0391-4b62-9302-5a3dc5aaf3f9",
+      "id": "7c910ae4-99e4-4959-b8f8-adabe5054ffa",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-coding-vendor@billing.example",
-        "expires_at": "2026-07-18T12:53:02Z",
+        "expires_at": "2026-07-18T14:12:32Z",
         "resource_ref": "ehr:billing",
         "role": "operator",
         "sponsor_id": "us-admin"
       },
-      "occurred_at": "2026-06-18T12:53:02.154463Z",
-      "prev_hash": "32e84633705195fa5714a661b7f17e4461b847a2e14cf7767d42367397320c6f",
-      "target_ref": "bdd4a67f-5a2c-4699-a761-2b1db278399b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.215222Z",
+      "prev_hash": "a303d2c6e6feed60f51386a8a6a66aa9671a5f52b4c3ee99ba166c83aefa2c22",
+      "target_ref": "50161137-e343-4551-a674-e0d63de367a0",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "cc4e2d7abbe79aaac95dce3eda3c2e05bdb4dd80419ecd6ea3e42d09e8c3c42c",
+      "chain_hash": "18bea541b218ad086aff5408d1afeda4774fee8eb06c4f68c64db6c2da1dc711",
       "chain_seq": 62,
-      "id": "22ccff69-9ead-4882-8200-1e96d225cff1",
+      "id": "2632fdf0-0f75-4f4b-988f-af2932bd4092",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:02.160092Z",
-      "prev_hash": "1a104eb8dd43efb9a3fe662f710c27ef1a0aab1c1775accc7e94d97de1810a7e",
-      "target_ref": "5abd1b25-c222-43f5-80c5-4ff0fb7da4ed",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.222248Z",
+      "prev_hash": "b75b93797066f60c336c48301c7b1a9a03e8252103d76dc1de6c5cc3a3f7048f",
+      "target_ref": "5c60c9cd-c9aa-4aec-a8c4-a3bcae6fa798",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "383fdbd8c4d7f45cafdc360ebd4d53c045454fded54c001d8bbc34866a3df99a",
+      "chain_hash": "aedc26ca5556b25e6a16a0338ad15662f080c987688077e36b7286ff9242c5bd",
       "chain_seq": 63,
-      "id": "152bce10-7450-4755-af5f-8278bce01a72",
+      "id": "74736abf-f71e-486a-9168-82e7669780a4",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-coding-vendor@billing.example",
-        "expires_at": "2026-07-18T12:53:02Z",
-        "grant_id": "5abd1b25-c222-43f5-80c5-4ff0fb7da4ed"
+        "expires_at": "2026-07-18T14:12:32Z",
+        "grant_id": "5c60c9cd-c9aa-4aec-a8c4-a3bcae6fa798"
       },
-      "occurred_at": "2026-06-18T12:53:02.160092Z",
-      "prev_hash": "cc4e2d7abbe79aaac95dce3eda3c2e05bdb4dd80419ecd6ea3e42d09e8c3c42c",
-      "target_ref": "bdd4a67f-5a2c-4699-a761-2b1db278399b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.222248Z",
+      "prev_hash": "18bea541b218ad086aff5408d1afeda4774fee8eb06c4f68c64db6c2da1dc711",
+      "target_ref": "50161137-e343-4551-a674-e0d63de367a0",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.extended",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b4c5c0ff3426a0f00f4296f1af0b421b13631ba6c74a59555d1aee729af29060",
+      "chain_hash": "6d37bee9b1746794abf76965ef9fdfeb3579c42f4cf3ec9b30f390f29f75a50e",
       "chain_seq": 64,
-      "id": "a214025f-f0b9-42ed-8e3d-d39688242229",
+      "id": "4b39843c-b32e-4ab8-b0bb-4ea8ff77a6d0",
       "kind": "other",
       "metadata": {
-        "new_expires_at": "2026-08-17T12:53:02Z",
-        "previous_expires_at": "2026-07-18T12:53:02Z",
+        "new_expires_at": "2026-08-17T14:12:32Z",
+        "previous_expires_at": "2026-07-18T14:12:32Z",
         "reason": "Sponsor-approved extension: engagement prolonged."
       },
-      "occurred_at": "2026-06-18T12:53:02.168496Z",
-      "prev_hash": "383fdbd8c4d7f45cafdc360ebd4d53c045454fded54c001d8bbc34866a3df99a",
-      "target_ref": "bdd4a67f-5a2c-4699-a761-2b1db278399b",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.230825Z",
+      "prev_hash": "aedc26ca5556b25e6a16a0338ad15662f080c987688077e36b7286ff9242c5bd",
+      "target_ref": "50161137-e343-4551-a674-e0d63de367a0",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.target.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b5c6432c79b3a4fefd2187151ea94a3894438ec306e6d74b10eb6da8c3a147dd",
+      "chain_hash": "f9419aaca231968844f4202c7841341c76c17cfd1d48f0ea8e7da03b67376443",
       "chain_seq": 65,
-      "id": "224de736-3716-4e83-be11-04f52be6edf8",
+      "id": "f55fbc1b-086c-4212-be7f-e30dec9b5ff9",
       "kind": "other",
       "metadata": {
         "address": "clinical-app-1.globex.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T12:53:02.177064Z",
-      "prev_hash": "b4c5c0ff3426a0f00f4296f1af0b421b13631ba6c74a59555d1aee729af29060",
-      "target_ref": "85b9a3f2-0f69-432f-9381-d9e9e7edd5aa",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.241881Z",
+      "prev_hash": "6d37bee9b1746794abf76965ef9fdfeb3579c42f4cf3ec9b30f390f29f75a50e",
+      "target_ref": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.lease.requested",
       "actor": "us-globex-health-owner",
-      "chain_hash": "e6c972fab0e79c1ce3a2f5c34f93925d43273ccf7ce00ae8e58656476709e453",
+      "chain_hash": "461cabffa778dc43b596ec2287f8937fc59c9cf30ab0bc7275405fb807e93d69",
       "chain_seq": 66,
-      "id": "054d93c3-3b15-47b2-836b-ede1a865f116",
+      "id": "d15f6109-be26-4a72-b5a6-9ac81e888928",
       "kind": "other",
       "metadata": {
-        "risk_degraded": true,
-        "risk_level": "medium",
+        "risk_degraded": false,
+        "risk_level": "low",
         "subject": "us-globex-health-owner",
-        "target_id": "85b9a3f2-0f69-432f-9381-d9e9e7edd5aa",
+        "target_id": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-18T12:53:02.180977Z",
-      "prev_hash": "b5c6432c79b3a4fefd2187151ea94a3894438ec306e6d74b10eb6da8c3a147dd",
-      "target_ref": "927caab3-8132-43f1-8218-2fdf92cbbeff",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:12:32.247146Z",
+      "prev_hash": "f9419aaca231968844f4202c7841341c76c17cfd1d48f0ea8e7da03b67376443",
+      "target_ref": "3069b651-e6e8-4628-ab3e-4be579fdd99a",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.lease.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "0948da2505040484cb13e2a7ed8214db1dfeb1595a931c9c670bbe8c99a3ab08",
+      "chain_hash": "e019cb841bafc586bc99725d798298cb67a34540053af298d3f0ae21badc58dc",
       "chain_seq": 67,
-      "id": "1ca70f9f-3d4e-4b43-87d3-563e55efe5f4",
+      "id": "3866d354-87a3-4fed-932b-4498773d0328",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T13:08:31Z",
+        "expires_at": "2026-06-18T14:28:01Z",
         "subject": "us-globex-health-owner",
         "ttl_seconds": 900
       },
-      "occurred_at": "2026-06-18T12:53:31.254385Z",
-      "prev_hash": "e6c972fab0e79c1ce3a2f5c34f93925d43273ccf7ce00ae8e58656476709e453",
-      "target_ref": "927caab3-8132-43f1-8218-2fdf92cbbeff",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.338907Z",
+      "prev_hash": "461cabffa778dc43b596ec2287f8937fc59c9cf30ab0bc7275405fb807e93d69",
+      "target_ref": "3069b651-e6e8-4628-ab3e-4be579fdd99a",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "6b53cefbe8a3dfd45d41339454d94b0ad6133a29faf32c88338282723fab09ff",
+      "chain_hash": "50f9d56ce81650d524f5afc967249737144232babb065cc7bda126185d506278",
       "chain_seq": 68,
-      "id": "f7bb5a41-36d0-4641-84cf-b23d7c2d0f58",
+      "id": "71227a5a-ba32-47d8-b914-6cba0da078ad",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T13:08:31Z",
+        "expires_at": "2026-06-18T14:28:01Z",
         "subject": "us-globex-health-owner"
       },
-      "occurred_at": "2026-06-18T12:53:31.262507Z",
-      "prev_hash": "0948da2505040484cb13e2a7ed8214db1dfeb1595a931c9c670bbe8c99a3ab08",
-      "target_ref": "85b9a3f2-0f69-432f-9381-d9e9e7edd5aa",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.347598Z",
+      "prev_hash": "e019cb841bafc586bc99725d798298cb67a34540053af298d3f0ae21badc58dc",
+      "target_ref": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.target.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "bd5b836c0df5600d132ba2caf1e6373c0869f9ac133ff24d016aa969673a6517",
+      "chain_hash": "b556fa0ca077e0833d8e45bc14185c0978f0f21dc6eef74e80a1ebc6924de1df",
       "chain_seq": 69,
-      "id": "c426cd6d-01a1-4d7b-8038-1ba2ce955ee9",
+      "id": "61b9b6f5-4ea3-4592-a164-8c4b1b53f207",
       "kind": "other",
       "metadata": {
         "address": "ehr-db-1.globex.internal:5432",
         "protocol": "postgres"
       },
-      "occurred_at": "2026-06-18T12:53:31.267696Z",
-      "prev_hash": "6b53cefbe8a3dfd45d41339454d94b0ad6133a29faf32c88338282723fab09ff",
-      "target_ref": "8f426815-1f8c-47df-adcf-bc8527ac6ba7",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.35294Z",
+      "prev_hash": "50f9d56ce81650d524f5afc967249737144232babb065cc7bda126185d506278",
+      "target_ref": "6863a44f-b4cd-4315-9fd9-dc59f491adde",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.target.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "1e6b97fa65c011fcd76b52b887e67dfd641293c78945dc9c95b3bd96a86a43e6",
+      "chain_hash": "5593a6938d7315db5758704f6bd5630ab11b945d65cb90b8b1b8942e25685375",
       "chain_seq": 70,
-      "id": "89415e73-ecfc-459e-b452-08148ff4a73f",
+      "id": "4913209b-b85b-4b3c-a81c-a3aa4b4c87b2",
       "kind": "other",
       "metadata": {
         "address": "ehr-bastion.globex.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T12:53:31.27482Z",
-      "prev_hash": "bd5b836c0df5600d132ba2caf1e6373c0869f9ac133ff24d016aa969673a6517",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.36043Z",
+      "prev_hash": "b556fa0ca077e0833d8e45bc14185c0978f0f21dc6eef74e80a1ebc6924de1df",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "us-globex-health-owner",
-      "chain_hash": "c4b8181572842c09f5a92d578648ba3e5e957ee6d4cb16d2f56e65cc4c22111d",
+      "chain_hash": "08f9f1362bffc0b8c1c4631907bee973edb1b258c3ace0091b2903424ca75840",
       "chain_seq": 71,
-      "id": "e0adb3e4-6d4c-425b-ac57-265dfeee4dee",
+      "id": "593c5e9f-91fe-4369-85d5-866fe8b07a3c",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T13:23:31Z",
+        "expires_at": "2026-06-18T14:43:01Z",
         "subject": "us-globex-health-owner"
       },
-      "occurred_at": "2026-06-18T12:53:31.279536Z",
-      "prev_hash": "1e6b97fa65c011fcd76b52b887e67dfd641293c78945dc9c95b3bd96a86a43e6",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.365056Z",
+      "prev_hash": "5593a6938d7315db5758704f6bd5630ab11b945d65cb90b8b1b8942e25685375",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.session.opened",
       "actor": "us-globex-health-owner",
-      "chain_hash": "46c32f9f4773725df7b497310fa804cea2e9aacc222351c985b19b3364439f25",
+      "chain_hash": "62cf67e1c74a1be569b7c89b9575a38fa0cefaf5784e8357f0cc5aa2abf7d40b",
       "chain_seq": 72,
-      "id": "ec032a23-a7f9-476e-bf80-6aeb33cc4b85",
+      "id": "541778a3-c805-41ad-b686-9b7b90bd07c2",
       "kind": "privileged_session",
       "metadata": {
         "client_addr": "blog-seed",
         "protocol": "ssh",
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce"
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601"
       },
-      "occurred_at": "2026-06-18T12:53:31.28392Z",
-      "prev_hash": "c4b8181572842c09f5a92d578648ba3e5e957ee6d4cb16d2f56e65cc4c22111d",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.369755Z",
+      "prev_hash": "08f9f1362bffc0b8c1c4631907bee973edb1b258c3ace0091b2903424ca75840",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.command",
       "actor": "us-globex-health-owner",
-      "chain_hash": "889a8ca2f1db6044618ba548eda4f0d2ae8de4c120e0f04cbc95041721eca759",
+      "chain_hash": "fd1574acb2f4d8519be151d49cf27c9d65d50c0d8fb9cb1726ce287e6804ae47",
       "chain_seq": 73,
-      "id": "32881612-b9e1-47da-addf-52c964cc749d",
+      "id": "7ff9024d-be1a-44b5-a67f-6f3bf0eee5c3",
       "kind": "privileged_command",
       "metadata": {
         "command": "whoami",
         "decision": "allow",
         "reason": "",
         "seq": 1,
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce"
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601"
       },
-      "occurred_at": "2026-06-18T12:53:31.286731Z",
-      "prev_hash": "46c32f9f4773725df7b497310fa804cea2e9aacc222351c985b19b3364439f25",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.372462Z",
+      "prev_hash": "62cf67e1c74a1be569b7c89b9575a38fa0cefaf5784e8357f0cc5aa2abf7d40b",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.command",
       "actor": "us-globex-health-owner",
-      "chain_hash": "b795c52703a0ea2d629d85acc6079fb3b5504d5966d718ed3c67271604ecc92f",
+      "chain_hash": "f2a76a1508701c2f3902be7399e98fb1aa99b9d572ad189225a328d956a33ee4",
       "chain_seq": 74,
-      "id": "f4d79799-95a6-4e85-9af5-df4bfbc0c98c",
+      "id": "5c78be9e-0680-4077-ac5d-1a069a3ea23e",
       "kind": "privileged_command",
       "metadata": {
         "command": "sudo systemctl status epic-interconnect",
         "decision": "allow",
         "reason": "",
         "seq": 2,
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce"
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601"
       },
-      "occurred_at": "2026-06-18T12:53:31.290404Z",
-      "prev_hash": "889a8ca2f1db6044618ba548eda4f0d2ae8de4c120e0f04cbc95041721eca759",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.376152Z",
+      "prev_hash": "fd1574acb2f4d8519be151d49cf27c9d65d50c0d8fb9cb1726ce287e6804ae47",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.command",
       "actor": "us-globex-health-owner",
-      "chain_hash": "7c9c3fd9a01c974f46a45add45c4d9b603939d4d769af4d38898fcfd4745550b",
+      "chain_hash": "7d50d5d950e61fcf7a4ca1ca5711aacbd0fb73fa4ae79cadc574dd259c8062f6",
       "chain_seq": 75,
-      "id": "c5b3a45f-1ada-4da1-8968-e40b82c3f123",
+      "id": "21b4a51a-2ccd-4b3f-b57d-5a57d9ce7c80",
       "kind": "privileged_command",
       "metadata": {
         "command": "tail -n 1 /var/log/epic/audit.log",
         "decision": "allow",
         "reason": "",
         "seq": 3,
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce"
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601"
       },
-      "occurred_at": "2026-06-18T12:53:31.294128Z",
-      "prev_hash": "b795c52703a0ea2d629d85acc6079fb3b5504d5966d718ed3c67271604ecc92f",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.379711Z",
+      "prev_hash": "f2a76a1508701c2f3902be7399e98fb1aa99b9d572ad189225a328d956a33ee4",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.command",
       "actor": "us-globex-health-owner",
-      "chain_hash": "c213c5e5b8f27bd0d948500cc7e18797fe4dbef01eb8889e236060cdcd419837",
+      "chain_hash": "5641c0033c8edfb067c25c528a9faa227d4313a52d2a0c2b6b73bf50d6c83a3a",
       "chain_seq": 76,
-      "id": "72009264-9fb2-4164-aa92-89cc5a9bc801",
+      "id": "5d38b4ba-6de4-4b01-b85c-fe19b4a89f5d",
       "kind": "privileged_command",
       "metadata": {
         "command": "exit",
         "decision": "allow",
         "reason": "",
         "seq": 4,
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce"
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601"
       },
-      "occurred_at": "2026-06-18T12:53:31.297588Z",
-      "prev_hash": "7c9c3fd9a01c974f46a45add45c4d9b603939d4d769af4d38898fcfd4745550b",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.382767Z",
+      "prev_hash": "7d50d5d950e61fcf7a4ca1ca5711aacbd0fb73fa4ae79cadc574dd259c8062f6",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.session.recording",
       "actor": "us-globex-health-owner",
-      "chain_hash": "337b0aa5f560b575dc6b50908a250f0fcfd3c80f3c39c0646dff599753dae338",
+      "chain_hash": "409c7147f6e2f6cfc85939a02ca6c4f535c0ec8daf1db9c7c5f48e6d4b3a3df8",
       "chain_seq": 77,
-      "id": "53b8c2b9-bcc0-406d-aef7-61f2984af3e2",
+      "id": "b9c13dd2-1d60-48fe-bab0-c1ed47d3f5a2",
       "kind": "privileged_recording",
       "metadata": {
         "bytes": 377,
-        "replay_key": "sessions/477e690f-d0c4-41ad-9c78-91cef752b0ce/replay.bin",
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce",
-        "sha256": "a120497d6328b794222314b8617e3f6feb7a199afe9abd1572f42df22205ae3e",
+        "replay_key": "sessions/03bb4995-5f77-47c2-8fad-7ca78f6ee601/replay.bin",
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601",
+        "sha256": "736307f3cf1f95c0c395e58d69af538dbd2fe6ac6afc118d4fc2f9ee085c26f6",
         "truncated": false
       },
-      "occurred_at": "2026-06-18T12:53:31.300999Z",
-      "prev_hash": "c213c5e5b8f27bd0d948500cc7e18797fe4dbef01eb8889e236060cdcd419837",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.386253Z",
+      "prev_hash": "5641c0033c8edfb067c25c528a9faa227d4313a52d2a0c2b6b73bf50d6c83a3a",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.session.closed",
       "actor": "us-globex-health-owner",
-      "chain_hash": "081cc5bdf0cc390de9297fb8d65a0c91f8f243891c63509967704d8f663c8d2a",
+      "chain_hash": "de9bc6c78691520eb162107cd37930e5f6230fed8c18e4b5c39f9bba4277794c",
       "chain_seq": 78,
-      "id": "c27e268b-4fc1-4061-81bb-d5f123923835",
+      "id": "93dc1ed3-e186-4ba6-aa28-5b6c7a437528",
       "kind": "privileged_session",
       "metadata": {
-        "session_id": "477e690f-d0c4-41ad-9c78-91cef752b0ce",
+        "session_id": "03bb4995-5f77-47c2-8fad-7ca78f6ee601",
         "state": "closed"
       },
-      "occurred_at": "2026-06-18T12:53:31.303491Z",
-      "prev_hash": "337b0aa5f560b575dc6b50908a250f0fcfd3c80f3c39c0646dff599753dae338",
-      "target_ref": "fe001f79-36cc-4bef-bc00-eddb74f18110",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.388595Z",
+      "prev_hash": "409c7147f6e2f6cfc85939a02ca6c4f535c0ec8daf1db9c7c5f48e6d4b3a3df8",
+      "target_ref": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "us-globex-health-owner",
-      "chain_hash": "16ed46b0107e97d968f4ee5f106f1eac4af4ac1fd6446837f98c4c432b2caba4",
+      "chain_hash": "0f8d7e92769054919f0e2cf266c7f23fe7e9319f948dd8c8af3f5c6fd26464ba",
       "chain_seq": 79,
-      "id": "0132ff0f-501e-4561-9da1-430039d05758",
+      "id": "63c78c57-de6a-40e9-b674-b3804a7396fe",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@us-globex-health.example",
-        "expires_at": "2026-07-18T12:53:31Z",
+        "expires_at": "2026-07-18T14:13:01Z",
         "resource_ref": "ehr:clinician",
         "role": "operator",
         "sponsor_id": "us-admin"
       },
-      "occurred_at": "2026-06-18T12:53:31.313513Z",
-      "prev_hash": "081cc5bdf0cc390de9297fb8d65a0c91f8f243891c63509967704d8f663c8d2a",
-      "target_ref": "44ecf9da-d255-426b-afcf-fe99ce2005df",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.399123Z",
+      "prev_hash": "de9bc6c78691520eb162107cd37930e5f6230fed8c18e4b5c39f9bba4277794c",
+      "target_ref": "5b2e8a36-f9fe-45b2-b103-fe6ed75c3a67",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "ec19e062b03996e1a2b0612e5ea3544aa711bee2c4879c777393f33706f5b6d0",
+      "chain_hash": "59209a8610f5d7ebb7e3807dc62a0347847ecce39798f41b94b648a2f1f10156",
       "chain_seq": 80,
-      "id": "fc8691b2-db8e-4496-83a9-5c7c0a3b1b5b",
+      "id": "ea5c68ee-1bd6-4cf8-b1c2-67356a41de5f",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:31.319155Z",
-      "prev_hash": "16ed46b0107e97d968f4ee5f106f1eac4af4ac1fd6446837f98c4c432b2caba4",
-      "target_ref": "18850089-ad5e-43ab-b60f-628c0bee326f",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.405755Z",
+      "prev_hash": "0f8d7e92769054919f0e2cf266c7f23fe7e9319f948dd8c8af3f5c6fd26464ba",
+      "target_ref": "82270cbd-1654-4ec0-946f-aa4450d8ef24",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "0f9981745a25f48625f7b3aaf31b1e1503af9ea5ff73f8314810d3c095b5e2c8",
+      "chain_hash": "3025f8e4c6461bfc08ce43cd2d3e7ece2b859450e4c13ccb6e53ec8050c78c10",
       "chain_seq": 81,
-      "id": "d44ab93f-a3a9-490a-8121-27198a0a5970",
+      "id": "68da64f2-22e2-4ee2-a91e-aedfa9e9657b",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@us-globex-health.example",
-        "expires_at": "2026-07-18T12:53:31Z",
-        "grant_id": "18850089-ad5e-43ab-b60f-628c0bee326f"
+        "expires_at": "2026-07-18T14:13:01Z",
+        "grant_id": "82270cbd-1654-4ec0-946f-aa4450d8ef24"
       },
-      "occurred_at": "2026-06-18T12:53:31.319155Z",
-      "prev_hash": "ec19e062b03996e1a2b0612e5ea3544aa711bee2c4879c777393f33706f5b6d0",
-      "target_ref": "44ecf9da-d255-426b-afcf-fe99ce2005df",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.405755Z",
+      "prev_hash": "59209a8610f5d7ebb7e3807dc62a0347847ecce39798f41b94b648a2f1f10156",
+      "target_ref": "5b2e8a36-f9fe-45b2-b103-fe6ed75c3a67",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "us-globex-health-owner",
-      "chain_hash": "6d5c5fce41075b186ba2b3e2f599afbcf60a61bf59b0105217d65efc42a0a249",
+      "chain_hash": "ad81dbcdc18872c1feb7232c0134ba3d96a2baa09dce42774400d3c221ff8947",
       "chain_seq": 82,
-      "id": "45c14d18-2583-4c47-afb6-e75b1c9e4ec7",
+      "id": "b0e17b08-8966-4617-b37f-6a442ac122b8",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@us-globex-health.example",
-        "expires_at": "2026-07-18T12:53:31Z",
+        "expires_at": "2026-07-18T14:13:01Z",
         "resource_ref": "ehr:billing",
         "role": "operator",
         "sponsor_id": "us-admin"
       },
-      "occurred_at": "2026-06-18T12:53:31.327527Z",
-      "prev_hash": "0f9981745a25f48625f7b3aaf31b1e1503af9ea5ff73f8314810d3c095b5e2c8",
-      "target_ref": "2b4a017e-ac93-4ac5-9f5c-e183c1d5bc26",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.413918Z",
+      "prev_hash": "3025f8e4c6461bfc08ce43cd2d3e7ece2b859450e4c13ccb6e53ec8050c78c10",
+      "target_ref": "dc81f82a-84eb-4f02-ba79-b179604f8d16",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "access_grant.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "0b4395ec019b9fca1592945873fdfcbc72773e3c34aa797628d4a85c6ac86283",
+      "chain_hash": "b2f91c6dac92dbef26e49433c571fa52cac44ab7b36a0539863873b120f7a655",
       "chain_seq": 83,
-      "id": "e9e61033-f14d-4d12-a9d9-8e2bfe991336",
+      "id": "4d24a1fc-d802-4bdf-a58f-59d2a8728228",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T12:53:31.3337Z",
-      "prev_hash": "6d5c5fce41075b186ba2b3e2f599afbcf60a61bf59b0105217d65efc42a0a249",
-      "target_ref": "5eff6479-d2f7-4400-8a49-20698ac1767f",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.419924Z",
+      "prev_hash": "ad81dbcdc18872c1feb7232c0134ba3d96a2baa09dce42774400d3c221ff8947",
+      "target_ref": "9e22f2cb-01d6-43d1-bb06-a21d991b5f9b",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "us-globex-health-owner",
-      "chain_hash": "ce16ecb0b980ba4d6755cc4c0a6281578c6572a6d1b51058d8bd18260e00ec88",
+      "chain_hash": "2cd34b5a09ab4c2b1a5fccc1b323446a2b969c2123d4cf2c227780a433dc01ce",
       "chain_seq": 84,
-      "id": "0e2c1d3a-f898-4d47-a57f-358774192709",
+      "id": "6134bed9-9929-4e50-ae86-7ee06f395818",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@us-globex-health.example",
-        "expires_at": "2026-07-18T12:53:31Z",
-        "grant_id": "5eff6479-d2f7-4400-8a49-20698ac1767f"
+        "expires_at": "2026-07-18T14:13:01Z",
+        "grant_id": "9e22f2cb-01d6-43d1-bb06-a21d991b5f9b"
       },
-      "occurred_at": "2026-06-18T12:53:31.3337Z",
-      "prev_hash": "0b4395ec019b9fca1592945873fdfcbc72773e3c34aa797628d4a85c6ac86283",
-      "target_ref": "2b4a017e-ac93-4ac5-9f5c-e183c1d5bc26",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.419924Z",
+      "prev_hash": "b2f91c6dac92dbef26e49433c571fa52cac44ab7b36a0539863873b120f7a655",
+      "target_ref": "dc81f82a-84eb-4f02-ba79-b179604f8d16",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "orphan.detected",
       "actor": "system:anomaly-detector",
-      "chain_hash": "f1b62948ebdd3cdb19992a50fac83458e97dfe3e909512a3e975ff9771ecd730",
+      "chain_hash": "010dbaa4e8c08f7dc57eea8321f3fc47510df7682f46a2c363bafacf5f248bef",
       "chain_seq": 85,
-      "id": "e1858972-101e-480e-9546-ca8d4a04a5b0",
+      "id": "0c4b6740-4962-4057-a922-58762acbcc2b",
       "kind": "orphan_detected",
       "metadata": {
-        "anomaly_id": "80be148b-82ab-40e0-8171-c022fb77d9b1",
+        "anomaly_id": "faecd827-8d9f-46f8-b61b-596f711abe27",
         "anomaly_kind": "sod_violation",
         "conflicting": {
           "resource": "ehr:billing",
@@ -1217,110 +1217,110 @@
           "resource": "ehr:clinician",
           "role": "operator"
         },
-        "rule_id": "490c26d8-8cac-4c8c-ac01-a4232971b659",
+        "rule_id": "83b7eece-3213-4c44-85da-7a6e7e20a887",
         "rule_name": "Clinician role must not hold billing export",
         "severity": "high",
         "subject": "ext-dual-role@us-globex-health.example"
       },
-      "occurred_at": "2026-06-18T12:53:31.34331Z",
-      "prev_hash": "ce16ecb0b980ba4d6755cc4c0a6281578c6572a6d1b51058d8bd18260e00ec88",
-      "target_ref": "80be148b-82ab-40e0-8171-c022fb77d9b1",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.430295Z",
+      "prev_hash": "2cd34b5a09ab4c2b1a5fccc1b323446a2b969c2123d4cf2c227780a433dc01ce",
+      "target_ref": "faecd827-8d9f-46f8-b61b-596f711abe27",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "orphan.disposition.flagged",
       "actor": "system:anomaly-detector",
-      "chain_hash": "a754456b359461cc53c9290eeb300ceccf7d386ff63cee262ebd294b466e08b2",
+      "chain_hash": "dc763af0437510d811a13bac68f6ee8bbd9949ac0a0331465776117af16affc7",
       "chain_seq": 86,
-      "id": "a5bd72da-1ec7-411a-b38d-f2d290518052",
+      "id": "e4fbc56f-7931-42de-bf0d-2a6be8a49bbf",
       "kind": "orphan_disposition",
       "metadata": {
-        "anomaly_id": "80be148b-82ab-40e0-8171-c022fb77d9b1",
+        "anomaly_id": "faecd827-8d9f-46f8-b61b-596f711abe27",
         "anomaly_kind": "sod_violation",
         "automated": true,
         "disposition": "flagged",
         "severity": "high",
         "subject": "ext-dual-role@us-globex-health.example"
       },
-      "occurred_at": "2026-06-18T12:53:31.34331Z",
-      "prev_hash": "f1b62948ebdd3cdb19992a50fac83458e97dfe3e909512a3e975ff9771ecd730",
-      "target_ref": "80be148b-82ab-40e0-8171-c022fb77d9b1",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:01.430295Z",
+      "prev_hash": "010dbaa4e8c08f7dc57eea8321f3fc47510df7682f46a2c363bafacf5f248bef",
+      "target_ref": "faecd827-8d9f-46f8-b61b-596f711abe27",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "compliance.export",
       "actor": "us-globex-health-owner",
-      "chain_hash": "f4cc86d60b12fe0178bf62e978d1e4c103dc2100cfb078626167ac5b06f41835",
+      "chain_hash": "cadec7d959c4e8b081c873344d1838d0e42af79c6374f65aa0f55c16d7b6e7ac",
       "chain_seq": 87,
-      "id": "eb6eaed1-f46a-4467-9ee7-4626d38f7449",
+      "id": "405dc0e1-057f-4275-922d-0549b3354e46",
       "kind": "evidence_exported",
       "metadata": {
         "chain_status": "valid",
-        "content_sha256": "e3b355ccd203004b943b6a28ae9931ec128d93b4ac231cfe0fff0d1574c02271",
+        "content_sha256": "e903f9e16e60c02fa2a526bd73ddb4d0d976e04083b94270792ab1f8fe6286de",
         "evidence_total": 86,
         "framework": "SOC 2",
         "mfa_satisfied": true
       },
-      "occurred_at": "2026-06-18T12:54:01.387366Z",
-      "prev_hash": "a754456b359461cc53c9290eeb300ceccf7d386ff63cee262ebd294b466e08b2",
+      "occurred_at": "2026-06-18T14:13:31.547704Z",
+      "prev_hash": "dc763af0437510d811a13bac68f6ee8bbd9949ac0a0331465776117af16affc7",
       "target_ref": "SOC 2",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "discovery.agent_reachable_import",
       "actor": "us-globex-health-owner",
-      "chain_hash": "0db533d5add0434ba58e839afe3f23626c193000e81af752a61f70ef1f47847b",
+      "chain_hash": "b5b4a5be614b54daf8e286fe2b12fe1c97aea573338165917b1d3d2082a1172b",
       "chain_seq": 88,
-      "id": "56d2664a-6e0b-48e6-8ee3-3b7e0771123c",
+      "id": "49349586-dbc5-43fc-a3ac-8be409751914",
       "kind": "other",
       "metadata": {
         "assets_new": 5,
         "reported": 5,
-        "scan_id": "7d5e1189-f095-4d10-98d7-eb44edc7e04a"
+        "scan_id": "27e469d1-d672-45bf-9f14-6ce2d028ae7f"
       },
-      "occurred_at": "2026-06-18T12:54:01.420658Z",
-      "prev_hash": "f4cc86d60b12fe0178bf62e978d1e4c103dc2100cfb078626167ac5b06f41835",
-      "target_ref": "5f45ff9d-22eb-4876-91fb-cc9c88d193e0",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.580028Z",
+      "prev_hash": "cadec7d959c4e8b081c873344d1838d0e42af79c6374f65aa0f55c16d7b6e7ac",
+      "target_ref": "d9a3defc-5ac6-4a28-ac09-7d133c2d811a",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.target.created",
       "actor": "us-globex-health-owner",
-      "chain_hash": "11759348946e55ff3b7a6c51aed60c013c967aac765d07b114fb5fbe055f13e7",
+      "chain_hash": "e0a6605bbd42b50a4abf852f967a238fbc0337bbacbd707bca6e007679def63e",
       "chain_seq": 89,
-      "id": "44e9eecb-fdb2-4922-98b7-166fb892a8e8",
+      "id": "15bfa101-3304-43b2-854d-7b25bf39dbef",
       "kind": "other",
       "metadata": {
         "address": "bastion.corp.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T12:54:01.428868Z",
-      "prev_hash": "0db533d5add0434ba58e839afe3f23626c193000e81af752a61f70ef1f47847b",
-      "target_ref": "c3a7c2a7-289c-4675-a801-648d6f26df5d",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.588741Z",
+      "prev_hash": "b5b4a5be614b54daf8e286fe2b12fe1c97aea573338165917b1d3d2082a1172b",
+      "target_ref": "a88efb66-4bef-4332-8ce0-4c6e98a07b65",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "discovery.onboard",
       "actor": "us-globex-health-owner",
-      "chain_hash": "3f80e765527d47cfd275353d06ef93a550358bc8ea617645b4742579d64290fa",
+      "chain_hash": "8ae57ebb2b0c7453cf168ae4edd1f2eb53a45bf2a24cdcd58a5dd648e71c1791",
       "chain_seq": 90,
-      "id": "c0e4c75a-61a7-4250-8849-315a5f6f8b2b",
+      "id": "db75ef04-7069-4ecd-84f4-82245721e712",
       "kind": "other",
       "metadata": {
-        "asset_id": "5dfca4c6-f715-4c7c-99b8-0660324254c0",
+        "asset_id": "88d76635-c34b-4f9e-92ad-97a82a70b2c5",
         "trigger": "manual"
       },
-      "occurred_at": "2026-06-18T12:54:01.432548Z",
-      "prev_hash": "11759348946e55ff3b7a6c51aed60c013c967aac765d07b114fb5fbe055f13e7",
-      "target_ref": "c3a7c2a7-289c-4675-a801-648d6f26df5d",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.592272Z",
+      "prev_hash": "e0a6605bbd42b50a4abf852f967a238fbc0337bbacbd707bca6e007679def63e",
+      "target_ref": "a88efb66-4bef-4332-8ce0-4c6e98a07b65",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "discovery.policy_update",
       "actor": "us-globex-health-owner",
-      "chain_hash": "a0b8a8da39d6509a1804afce137cec5780fa062a1281386127b00e82f62fe93f",
+      "chain_hash": "0b202a13d2a511389c45802ce93d1ec90b14c21561afb030b0b721cc698f8e9c",
       "chain_seq": 91,
-      "id": "675b9aa1-cf7d-47aa-9ab7-7bff3b808d06",
+      "id": "54e173b8-1fdc-45c3-9321-a24deee3078d",
       "kind": "other",
       "metadata": {
         "active_sweep": false,
@@ -1329,17 +1329,17 @@
         "has_credential": false,
         "rules": 1
       },
-      "occurred_at": "2026-06-18T12:54:01.436502Z",
-      "prev_hash": "3f80e765527d47cfd275353d06ef93a550358bc8ea617645b4742579d64290fa",
-      "target_ref": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.596467Z",
+      "prev_hash": "8ae57ebb2b0c7453cf168ae4edd1f2eb53a45bf2a24cdcd58a5dd648e71c1791",
+      "target_ref": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "us-globex-health-owner",
-      "chain_hash": "89d1014e9658f7d7d63aa92d7e23e0b50e9dc6c1891c32b6179e86d56d2ec157",
+      "chain_hash": "a82f95b135ee5d6eb33cf5dd20320fb38a4f71630175df33192c1a883d945eb6",
       "chain_seq": 92,
-      "id": "61778cc1-b9d8-460d-a483-14c98c5fb88d",
+      "id": "68f99bcb-18f5-4d59-82a8-1ce777e9ea56",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": false,
@@ -1348,17 +1348,17 @@
         "mode": "disabled",
         "rotate_on_checkin": true
       },
-      "occurred_at": "2026-06-18T12:54:01.442725Z",
-      "prev_hash": "a0b8a8da39d6509a1804afce137cec5780fa062a1281386127b00e82f62fe93f",
-      "target_ref": "85b9a3f2-0f69-432f-9381-d9e9e7edd5aa",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.603451Z",
+      "prev_hash": "0b202a13d2a511389c45802ce93d1ec90b14c21561afb030b0b721cc698f8e9c",
+      "target_ref": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "us-globex-health-owner",
-      "chain_hash": "605aa7eaec2e60d2bf7c3780a29faa61ba04969aaf372feb20149c2289da4383",
+      "chain_hash": "48864dc41127bb429147e1ab37860ad89da2b8b290650262409c086b8ef6cf24",
       "chain_seq": 93,
-      "id": "0b03624c-3bce-4454-b27e-b3dccccbe3f5",
+      "id": "d61e11c3-e266-4c7f-a744-3de9ed5219c5",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": true,
@@ -1367,10 +1367,10 @@
         "mode": "interval",
         "rotate_on_checkin": false
       },
-      "occurred_at": "2026-06-18T12:54:01.447173Z",
-      "prev_hash": "89d1014e9658f7d7d63aa92d7e23e0b50e9dc6c1891c32b6179e86d56d2ec157",
-      "target_ref": "8f426815-1f8c-47df-adcf-bc8527ac6ba7",
-      "workspace_id": "a1aa331b-8c71-4e0d-a947-7ee1c0f7cf51"
+      "occurred_at": "2026-06-18T14:13:31.607403Z",
+      "prev_hash": "a82f95b135ee5d6eb33cf5dd20320fb38a4f71630175df33192c1a883d945eb6",
+      "target_ref": "6863a44f-b4cd-4315-9fd9-dc59f491adde",
+      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
     }
   ]
 }

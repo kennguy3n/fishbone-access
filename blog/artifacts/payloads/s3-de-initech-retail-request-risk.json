@@ -1,30 +1,30 @@
 {
   "request": {
-    "connector_id": "97bbf8f4-96cd-4950-bdc5-29be00c90dae",
-    "created_at": "2026-06-18T12:56:32.01136Z",
+    "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab",
+    "created_at": "2026-06-18T14:16:02.056587Z",
     "deleted_at": null,
-    "id": "554106bb-94b6-4984-922d-c2fff458cff1",
+    "id": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
     "justification": "GDPR Article 15 data-subject access request export.",
     "requester_id": "de-initech-retail-owner",
     "resource_ref": "customer:gdpr-export",
     "risk_factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "risk_level": "medium",
+    "risk_level": "low",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "de-initech-retail-owner",
-    "updated_at": "2026-06-18T12:56:32.024101Z",
-    "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+    "updated_at": "2026-06-18T14:16:02.068021Z",
+    "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
   },
   "risk": {
-    "created_at": "2026-06-18T12:56:32.015384Z",
-    "degraded": true,
+    "created_at": "2026-06-18T14:16:02.061162Z",
+    "degraded": false,
     "deleted_at": null,
     "factors": [
-      "ai_unavailable"
+      "baseline_low_risk"
     ],
-    "id": "a522c51d-637a-472d-874f-eede63ca2a70",
+    "id": "bd2e90c6-b698-455c-b66e-0c7106fad08b",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +33,12 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "ai agent unavailable; applied fail-safe default",
-    "recommendation": "needs_review",
-    "request_id": "554106bb-94b6-4984-922d-c2fff458cff1",
-    "score": "medium",
-    "source": "fallback",
-    "updated_at": "2026-06-18T12:56:32.015384Z",
-    "workspace_id": "27a18cc0-4c77-4979-aefa-85016f1bbad7"
+    "rationale": "rule-based risk=low from 1 factor(s)",
+    "recommendation": "auto_approve_eligible",
+    "request_id": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
+    "score": "low",
+    "source": "ai_agent",
+    "updated_at": "2026-06-18T14:16:02.061162Z",
+    "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
   }
 }

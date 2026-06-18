@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-18T13:03:31.151127Z",
+      "created_at": "2026-06-18T14:23:01.519696Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,21 @@
           "resource": "prod:deploy",
           "role": "operator"
         },
-        "rule_id": "2a932c38-56c9-4ec8-99c6-6eb21e2e15f3",
+        "rule_id": "46a2ba2b-9089-4df3-a841-16bbf15c247f",
         "rule_name": "Production deploy must not also hold billing admin",
         "severity": "high",
         "subject": "ext-dual-role@au-contoso-saas.example"
       },
-      "detected_at": "2026-06-18T13:03:31.151127Z",
+      "detected_at": "2026-06-18T14:23:01.519696Z",
       "disposition": "flagged",
-      "fingerprint": "6044c9c72bb3650e6986e4067e625fa16d9cbab873ff531635c8c610a7bd469e",
-      "id": "548b55df-78e9-4fc6-9026-92979e510d18",
+      "fingerprint": "fa0f1853b7cc5b67a91c62827c7b56256618ec7a4523be59727a8f78a108ad48",
+      "id": "cc1feab3-e68f-438e-9047-66ae3a8cd3fb",
       "kind": "sod_violation",
-      "rule_id": "2a932c38-56c9-4ec8-99c6-6eb21e2e15f3",
+      "rule_id": "46a2ba2b-9089-4df3-a841-16bbf15c247f",
       "severity": "high",
       "subject": "ext-dual-role@au-contoso-saas.example",
-      "updated_at": "2026-06-18T13:03:31.151127Z",
-      "workspace_id": "621ffb1c-431f-40de-936e-c02e86ff4956"
+      "updated_at": "2026-06-18T14:23:01.519696Z",
+      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
     }
   ]
 }

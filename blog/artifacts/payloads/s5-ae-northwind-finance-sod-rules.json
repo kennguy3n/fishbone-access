@@ -1,19 +1,19 @@
 {
   "rules": [
     {
-      "created_at": "2026-06-18T12:59:32.745955Z",
+      "created_at": "2026-06-18T14:19:01.992258Z",
       "deleted_at": null,
       "description": "DESC + ISO 27001 A.5.3: privileged core-banking administration and treasury settlement are a catastrophic toxic combination.",
       "enabled": true,
-      "id": "f008c24a-24bb-43cd-ab39-6fdf25702c76",
+      "id": "c8f99d2e-4bc9-4bff-8535-8a12970d395f",
       "name": "Core-banking admin must not run treasury settlement",
       "resource_a": "t24:privileged-admin",
       "resource_b": "t24:treasury",
       "role_a": "operator",
       "role_b": "operator",
       "severity": "critical",
-      "updated_at": "2026-06-18T12:59:32.745955Z",
-      "workspace_id": "e3843563-dbb3-4b40-811d-2e505bc30ac2"
+      "updated_at": "2026-06-18T14:19:01.992258Z",
+      "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
     }
   ]
 }
