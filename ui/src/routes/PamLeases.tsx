@@ -182,14 +182,16 @@ export function PamLeases() {
   const targetName = (id: string) =>
     targets.data?.find((t) => t.id === id)?.name ?? id.slice(0, 8);
 
-  // Default a request's TTL to the target's configured cap (when it sets one),
-  // so the operator starts inside policy rather than guessing a number.
+  // Default a request's TTL to the target's configured cap when it sets one, so
+  // the operator starts inside policy rather than guessing a number. An uncapped
+  // target falls back to the standard default so the field never carries a
+  // previously-selected target's cap.
   const selectTarget = (id: string) => {
     const cap = targets.data?.find((t) => t.id === id)?.lease_ttl_seconds ?? 0;
     setDraft((d) => ({
       ...d,
       target_id: id,
-      ttl_seconds: cap > 0 ? cap : d.ttl_seconds,
+      ttl_seconds: cap > 0 ? cap : emptyDraft.ttl_seconds,
     }));
   };
 

@@ -100,6 +100,12 @@ export function PamTargets() {
   const addressMissing = !draft.address.trim();
   const valid = !nameMissing && !addressMissing && hasSecret;
 
+  // When the "add a credential" error is showing, point the credential inputs at
+  // it (alongside the hint) so assistive tech ties the error to the fields, not
+  // only via its role="alert".
+  const secretDescribedBy =
+    attempted && !hasSecret ? `${secretHintId} ${secretErrId}` : secretHintId;
+
   const openModal = () => {
     setDraft(emptyDraft);
     setAttempted(false);
@@ -137,6 +143,7 @@ export function PamTargets() {
       setOpen(false);
       setDraft(emptyDraft);
       setAttempted(false);
+      refetch();
     } catch (err) {
       toast.error(
         intl.formatMessage({
@@ -498,7 +505,7 @@ export function PamTargets() {
               <input
                 type="password"
                 value={draft.secret.password ?? ""}
-                aria-describedby={secretHintId}
+                aria-describedby={secretDescribedBy}
                 aria-invalid={attempted && !hasSecret ? true : undefined}
                 onChange={(e) =>
                   setDraft({
@@ -519,7 +526,7 @@ export function PamTargets() {
                 rows={3}
                 value={draft.secret.private_key ?? ""}
                 placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                aria-describedby={secretHintId}
+                aria-describedby={secretDescribedBy}
                 onChange={(e) =>
                   setDraft({
                     ...draft,
@@ -538,7 +545,7 @@ export function PamTargets() {
               <input
                 type="password"
                 value={draft.secret.token ?? ""}
-                aria-describedby={secretHintId}
+                aria-describedby={secretDescribedBy}
                 onChange={(e) =>
                   setDraft({
                     ...draft,
