@@ -30,6 +30,7 @@ import {
 import { formatRelative } from "@/lib/format";
 import { TerminalSession } from "./webaccess/TerminalSession";
 import { DbSession } from "./webaccess/DbSession";
+import { protocolLabel } from "./discovery/labels";
 
 /** Protocols this clientless surface can drive, mapped to a bridge endpoint. */
 const PROTOCOL_KIND: Record<string, WebAccessKind> = {
@@ -100,7 +101,12 @@ export function WebAccess() {
       });
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Could not start the session.";
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: "webaccess.launch.errorGeneric",
+              defaultMessage: "Could not start the session.",
+            });
       toast.error(
         intl.formatMessage({
           id: "webaccess.launch.error",
@@ -222,7 +228,7 @@ function LaunchCard({
           <strong>{target.name}</strong>
           <span className="muted">{target.address}</span>
         </div>
-        <Badge tone="info">{target.protocol}</Badge>
+        <Badge tone="info">{protocolLabel(target.protocol)}</Badge>
       </div>
 
       <dl className="webaccess-card__meta">

@@ -11,6 +11,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import { useIntl } from "react-intl";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -38,8 +39,19 @@ function cssVar(name: string, fallback: string): string {
   return v.trim() || fallback;
 }
 
+// Builds an rgba() string from an `--*-rgb` triplet token (e.g. "--brand-rgb")
+// so the terminal's selection highlight tracks the brand colour in both
+// themes. xterm needs a resolved colour string, not a CSS var, so we read the
+// triplet at init. (No `--terminal-selection` token exists in the frozen
+// foundation — see the WS0 follow-up in the PR.)
+function cssVarRgba(name: string, alpha: number, fallback: string): string {
+  const triplet = cssVar(name, "");
+  return triplet ? `rgba(${triplet}, ${alpha})` : fallback;
+}
+
 export const Terminal = forwardRef<TerminalHandle, TerminalProps>(
   function Terminal({ onData, onResize, disabled }, ref) {
+    const intl = useIntl();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const termRef = useRef<XTerm | null>(null);
     const fitRef = useRef<FitAddon | null>(null);
@@ -67,11 +79,15 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(
         fontFamily:
           cssVar("--mono", "'JetBrains Mono', ui-monospace, monospace"),
         theme: {
-          background: cssVar("--terminal-bg", "#0a0d12"),
-          foreground: cssVar("--terminal-fg", "#eef2f8"),
+          background: cssVar("--terminal-bg", "#0b1020"),
+          foreground: cssVar("--terminal-fg", "#e6edf6"),
           cursor: cssVar("--brand", "#4d83f0"),
-          cursorAccent: cssVar("--terminal-bg", "#0a0d12"),
-          selectionBackground: "rgba(77, 131, 240, 0.35)",
+          cursorAccent: cssVar("--terminal-bg", "#0b1020"),
+          selectionBackground: cssVarRgba(
+            "--brand-rgb",
+            0.35,
+            "rgba(77, 131, 240, 0.35)",
+          ),
         },
       });
       const fit = new FitAddon();
@@ -118,7 +134,10 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(
         ref={containerRef}
         className="webaccess-terminal"
         role="application"
-        aria-label="Interactive SSH terminal"
+        aria-label={intl.formatMessage({
+          id: "webaccess.terminal.aria",
+          defaultMessage: "Interactive terminal session",
+        })}
         aria-disabled={disabled}
         tabIndex={-1}
       />

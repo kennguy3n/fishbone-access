@@ -10,6 +10,7 @@ import {
   type DiscoveredAsset,
   type OnboardAssetInput,
 } from "@/api/discovery";
+import { sourceLabel } from "./labels";
 
 // Protocols that take an interactive credential we can seal. Mirrors the PAM
 // target registration form; an onboarded asset becomes a real PAMTarget.
@@ -330,12 +331,12 @@ export function OnboardAssetModal({
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <Badge tone="info">{asset.source}</Badge>{" "}
+        <Badge tone="info">{sourceLabel(intl, asset.source)}</Badge>{" "}
         <span className="muted" style={{ fontSize: 12 }}>
           <FormattedMessage
             id="discovery.onboard.discoveredVia"
             defaultMessage="Discovered via {source}"
-            values={{ source: asset.source }}
+            values={{ source: sourceLabel(intl, asset.source) }}
           />
         </span>
       </div>

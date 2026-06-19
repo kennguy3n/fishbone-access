@@ -6,9 +6,10 @@
 // — an SME admin should never wonder whether a privileged session is audited.
 
 import { useEffect, useState } from "react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Badge } from "@/components/ui";
 import { Icon } from "@/components/Icon";
+import { protocolLabel } from "../discovery/labels";
 import type {
   ReadyInfo,
   StatusFrame,
@@ -107,10 +108,18 @@ export function SessionChrome({
   onDisconnect,
   children,
 }: SessionChromeProps) {
+  const intl = useIntl();
   const { tone } = phaseTone(phase);
   const countdown = useCountdown(ready?.leaseExpiresAt);
   const paused = status?.state === "paused";
   const terminated = status?.state === "terminated";
+  const terminatedReason =
+    status?.reason ||
+    closeReason ||
+    intl.formatMessage({
+      id: "webaccess.session.endedByPolicy",
+      defaultMessage: "ended by policy",
+    });
 
   return (
     <div className="webaccess-session">
@@ -121,7 +130,9 @@ export function SessionChrome({
             <strong>{ready?.targetName ?? "—"}</strong>
             <span className="muted">{ready?.targetAddress}</span>
           </div>
-          {ready?.protocol && <Badge tone="info">{ready.protocol}</Badge>}
+          {ready?.protocol && (
+            <Badge tone="info">{protocolLabel(ready.protocol)}</Badge>
+          )}
         </div>
 
         <div className="webaccess-session__meta">
@@ -129,12 +140,24 @@ export function SessionChrome({
             <PhaseLabel phase={phase} />
           </span>
           {phase === "ready" && latencyMs !== undefined && (
-            <span className="webaccess-session__latency muted" title="Round-trip latency of the governed link">
+            <span
+              className="webaccess-session__latency muted"
+              title={intl.formatMessage({
+                id: "webaccess.session.latencyHint",
+                defaultMessage: "Round-trip latency of the governed link",
+              })}
+            >
               <Icon name="network" size={14} /> {latencyMs} ms
             </span>
           )}
           {countdown && (
-            <span className="webaccess-session__lease muted" title="Time remaining on your lease">
+            <span
+              className="webaccess-session__lease muted"
+              title={intl.formatMessage({
+                id: "webaccess.session.leaseHint",
+                defaultMessage: "Time remaining on your lease",
+              })}
+            >
               <Icon name="key" size={14} /> {countdown}
             </span>
           )}
@@ -190,7 +213,7 @@ export function SessionChrome({
           <FormattedMessage
             id="webaccess.session.terminated"
             defaultMessage="Session terminated: {reason}"
-            values={{ reason: status?.reason || closeReason || "ended by policy" }}
+            values={{ reason: terminatedReason }}
           />
         </div>
       )}

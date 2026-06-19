@@ -367,6 +367,12 @@ function GuidedConnectionForm({
   // Values are keyed by field key and shared across methods, so a field common
   // to several methods (e.g. account_id) keeps its value when switching.
   const [values, setValues] = useState<Record<string, string>>({});
+  const [triedSubmit, setTriedSubmit] = useState(false);
+  // The frozen `.auth-method > input` reset zeroes the radio's box-shadow at a
+  // higher specificity than the global `:focus-visible` ring, so a keyboard
+  // user otherwise gets no focus cue on the method picker. Mirror the ring onto
+  // the card for keyboard focus only (see WS0 follow-up).
+  const [kbFocusedMethod, setKbFocusedMethod] = useState<string | null>(null);
   const createMut = useCreateConnector();
 
   const method: ConnectorSetupAuthMethod | undefined = useMemo(
@@ -384,7 +390,11 @@ function GuidedConnectionForm({
   }, [method, values]);
 
   const submit = () => {
-    if (!method || missingRequired.length > 0) return;
+    if (!method) return;
+    if (missingRequired.length > 0) {
+      setTriedSubmit(true);
+      return;
+    }
     const config: Record<string, string> = {};
     const secrets: Record<string, string> = {};
     for (const f of method.fields) {
@@ -447,13 +457,26 @@ function GuidedConnectionForm({
             })}
           </legend>
           {schema.auth_methods.map((m) => (
-            <label key={m.id} className="auth-method">
+            <label
+              key={m.id}
+              className="auth-method"
+              style={
+                kbFocusedMethod === m.id
+                  ? { boxShadow: "var(--focus-ring)" }
+                  : undefined
+              }
+            >
               <input
                 type="radio"
                 name="auth-method"
                 value={m.id}
                 checked={method?.id === m.id}
                 onChange={() => setMethodId(m.id)}
+                onFocus={(e) => {
+                  if (e.currentTarget.matches(":focus-visible"))
+                    setKbFocusedMethod(m.id);
+                }}
+                onBlur={() => setKbFocusedMethod(null)}
               />
               <span className="auth-method__body">
                 <span className="auth-method__label">
@@ -468,7 +491,13 @@ function GuidedConnectionForm({
                   )}
                 </span>
                 {m.description && (
-                  <span className="muted auth-method__desc">
+                  // Explanatory copy in the wizard reads at the "dim" text tier
+                  // rather than the faintest `.muted` tier so it clears AA
+                  // contrast on the method card's tinted surface.
+                  <span
+                    className="auth-method__desc"
+                    style={{ color: "var(--text-dim)" }}
+                  >
                     {m.description}
                   </span>
                 )}
@@ -512,7 +541,7 @@ function GuidedConnectionForm({
         />
       ))}
 
-      {(missingRequired.length > 0 || createMut.isError) && (
+      {((triedSubmit && missingRequired.length > 0) || createMut.isError) && (
         <p className="form-error" role="alert">
           {createMut.isError
             ? createMut.error?.message
@@ -528,7 +557,7 @@ function GuidedConnectionForm({
 
       <button
         className="btn btn--primary"
-        disabled={missingRequired.length > 0 || createMut.isPending}
+        disabled={createMut.isPending}
         onClick={submit}
       >
         {createMut.isPending
@@ -650,15 +679,25 @@ function ManualConnectionForm({
   // every populated secret/config row needs a key). Surfacing it inline avoids
   // a round-trip for the obvious mistakes while the server stays authoritative.
   const validationError = useMemo(() => {
-    if (!provider) return "Missing connector provider.";
+    if (!provider)
+      return intl.formatMessage({
+        id: "connectorSetup.manual.missingProvider",
+        defaultMessage: "Missing connector provider.",
+      });
     const danglingValue = (rows: KV[]) =>
       rows.some((r) => !r.key.trim() && r.value.trim());
     if (danglingValue(config))
-      return "Every configuration value needs a field name.";
+      return intl.formatMessage({
+        id: "connectorSetup.manual.danglingConfig",
+        defaultMessage: "Every configuration value needs a field name.",
+      });
     if (danglingValue(secrets))
-      return "Every secret value needs a field name.";
+      return intl.formatMessage({
+        id: "connectorSetup.manual.danglingSecret",
+        defaultMessage: "Every secret value needs a field name.",
+      });
     return null;
-  }, [provider, config, secrets]);
+  }, [intl, provider, config, secrets]);
 
   const submit = () => {
     if (validationError) return;
@@ -781,6 +820,7 @@ function KVEditor({
   valuePlaceholder: string;
   secret?: boolean;
 }) {
+  const intl = useIntl();
   const update = (i: number, patch: Partial<KV>) =>
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const remove = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
@@ -810,16 +850,22 @@ function KVEditor({
           <button
             type="button"
             className="btn btn--ghost btn--sm"
-            aria-label="Remove field"
+            aria-label={intl.formatMessage({
+              id: "connectorSetup.manual.removeField",
+              defaultMessage: "Remove field",
+            })}
             onClick={() => remove(i)}
             disabled={rows.length === 1}
           >
-            ✕
+            <span aria-hidden>✕</span>
           </button>
         </div>
       ))}
       <button type="button" className="btn btn--ghost btn--sm" onClick={add}>
-        + Add field
+        {intl.formatMessage({
+          id: "connectorSetup.manual.addField",
+          defaultMessage: "+ Add field",
+        })}
       </button>
     </fieldset>
   );

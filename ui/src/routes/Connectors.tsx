@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useIntl } from "react-intl";
+import { useIntl, type IntlShape } from "react-intl";
 import { PageHeader, Card, Badge, AsyncBoundary } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
 import {
@@ -28,32 +28,83 @@ import { titleCase } from "@/lib/format";
 type UserFacingColumn = {
   dimension: "user_facing";
   key: keyof UserFacingCapabilities;
-  label: string;
+  labelId: string;
+  defaultLabel: string;
 };
 type OperationalColumn = {
   dimension: "operational";
   key: keyof OperationalCapabilities;
-  label: string;
+  labelId: string;
+  defaultLabel: string;
 };
 type CapabilityColumn = UserFacingColumn | OperationalColumn;
 
 const USER_FACING: UserFacingColumn[] = [
-  { dimension: "user_facing", key: "sync_identity", label: "Sync identities" },
-  { dimension: "user_facing", key: "provision_access", label: "Provision access" },
-  { dimension: "user_facing", key: "list_entitlements", label: "List entitlements" },
-  { dimension: "user_facing", key: "get_access_log", label: "Access logs" },
-  { dimension: "user_facing", key: "sso_federation", label: "SSO federation" },
+  { dimension: "user_facing", key: "sync_identity", labelId: "connectors.cap.sync_identity", defaultLabel: "Sync identities" },
+  { dimension: "user_facing", key: "provision_access", labelId: "connectors.cap.provision_access", defaultLabel: "Provision access" },
+  { dimension: "user_facing", key: "list_entitlements", labelId: "connectors.cap.list_entitlements", defaultLabel: "List entitlements" },
+  { dimension: "user_facing", key: "get_access_log", labelId: "connectors.cap.get_access_log", defaultLabel: "Access logs" },
+  { dimension: "user_facing", key: "sso_federation", labelId: "connectors.cap.sso_federation", defaultLabel: "SSO federation" },
 ];
 
 const OPERATIONAL: OperationalColumn[] = [
-  { dimension: "operational", key: "group_sync", label: "Group sync" },
-  { dimension: "operational", key: "identity_delta_sync", label: "Delta sync" },
-  { dimension: "operational", key: "access_audit_stream", label: "Audit stream" },
-  { dimension: "operational", key: "scim_provisioning", label: "SCIM" },
-  { dimension: "operational", key: "session_revoke", label: "Session revoke" },
-  { dimension: "operational", key: "sso_enforcement_check", label: "SSO enforcement" },
-  { dimension: "operational", key: "credential_renewal", label: "Credential renewal" },
+  { dimension: "operational", key: "group_sync", labelId: "connectors.cap.group_sync", defaultLabel: "Group sync" },
+  { dimension: "operational", key: "identity_delta_sync", labelId: "connectors.cap.identity_delta_sync", defaultLabel: "Delta sync" },
+  { dimension: "operational", key: "access_audit_stream", labelId: "connectors.cap.access_audit_stream", defaultLabel: "Audit stream" },
+  { dimension: "operational", key: "scim_provisioning", labelId: "connectors.cap.scim_provisioning", defaultLabel: "SCIM" },
+  { dimension: "operational", key: "session_revoke", labelId: "connectors.cap.session_revoke", defaultLabel: "Session revoke" },
+  { dimension: "operational", key: "sso_enforcement_check", labelId: "connectors.cap.sso_enforcement_check", defaultLabel: "SSO enforcement" },
+  { dimension: "operational", key: "credential_renewal", labelId: "connectors.cap.credential_renewal", defaultLabel: "Credential renewal" },
 ];
+
+/** Localized capability-column label. */
+function colLabel(intl: IntlShape, c: CapabilityColumn): string {
+  return intl.formatMessage({ id: c.labelId, defaultMessage: c.defaultLabel });
+}
+
+// Capability key -> column, so the capability filter renders the exact same
+// localized label as the gallery chips and matrix headers (no second source of
+// truth to drift out of sync, and no titleCase mangling of "SSO"/"SCIM").
+const CAP_BY_KEY = new Map<string, CapabilityColumn>(
+  [...USER_FACING, ...OPERATIONAL].map((c) => [c.key as string, c]),
+);
+
+/** Localized label for a capability facet value, reusing the column labels. */
+function capabilityFacetLabel(intl: IntlShape, value: string): string {
+  const col = CAP_BY_KEY.get(value);
+  return col ? colLabel(intl, col) : titleCase(value);
+}
+
+// Brand acronyms that plain titleCase would flatten inside a category label
+// ("saas_application" -> "Saas Application"). Categories are a controlled
+// backend taxonomy, so a token-level casing pass is enough to keep them
+// on-brand without translating the vocabulary itself.
+const CATEGORY_ACRONYMS: Record<string, string> = {
+  saas: "SaaS",
+  hr: "HR",
+  it: "IT",
+  itsm: "ITSM",
+  crm: "CRM",
+  erp: "ERP",
+  api: "API",
+  mdm: "MDM",
+  siem: "SIEM",
+  pam: "PAM",
+  iam: "IAM",
+};
+
+/** Display label for a connector category slug, preserving brand acronym
+ *  casing that plain titleCase would mangle (e.g. "saas_application"). */
+function categoryLabel(raw: string | undefined | null): string {
+  if (!raw) return "";
+  return raw
+    .trim()
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => CATEGORY_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 // Tier tone: T1 connectors are the most-adopted, fully-supported integrations
 // (info/brand); deeper tiers are progressively more specialized (neutral).
@@ -75,6 +126,42 @@ function statusTone(status: string | undefined): "ok" | "warn" | "danger" | "neu
       return "danger";
     default:
       return "neutral";
+  }
+}
+
+// Plain-language label for a connection status, paired with the dot tone above.
+function connectorStatusLabel(
+  intl: IntlShape,
+  status: string | undefined,
+): string {
+  switch (status) {
+    case "active":
+      return intl.formatMessage({
+        id: "connectors.status.active",
+        defaultMessage: "Connected",
+      });
+    case "degraded":
+      return intl.formatMessage({
+        id: "connectors.status.degraded",
+        defaultMessage: "Needs attention",
+      });
+    case "error":
+      return intl.formatMessage({
+        id: "connectors.status.error",
+        defaultMessage: "Connection error",
+      });
+    case "pending":
+      return intl.formatMessage({
+        id: "connectors.status.pending",
+        defaultMessage: "Connecting\u2026",
+      });
+    default:
+      return status
+        ? titleCase(status)
+        : intl.formatMessage({
+            id: "connectors.status.connected",
+            defaultMessage: "Connected",
+          });
   }
 }
 
@@ -181,7 +268,12 @@ export function Connectors() {
             defaultMessage: "Tier",
           })}
         >
-          <option value="">All tiers</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "connectors.filter.allTiers",
+              defaultMessage: "All tiers",
+            })}
+          </option>
           {(facets.data?.tiers ?? []).map((t) => (
             <option key={t} value={t}>
               {t}
@@ -197,10 +289,15 @@ export function Connectors() {
             defaultMessage: "Category",
           })}
         >
-          <option value="">All categories</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "connectors.filter.allCategories",
+              defaultMessage: "All categories",
+            })}
+          </option>
           {(facets.data?.categories ?? []).map((c) => (
             <option key={c} value={c}>
-              {titleCase(c)}
+              {categoryLabel(c)}
             </option>
           ))}
         </select>
@@ -213,10 +310,15 @@ export function Connectors() {
             defaultMessage: "Capability",
           })}
         >
-          <option value="">All capabilities</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "connectors.filter.allCapabilities",
+              defaultMessage: "All capabilities",
+            })}
+          </option>
           {capabilityOptions.map((o) => (
             <option key={o.value} value={o.value}>
-              {titleCase(o.value)}
+              {capabilityFacetLabel(intl, o.value)}
             </option>
           ))}
         </select>
@@ -274,6 +376,7 @@ export function Connectors() {
 }
 
 function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
+  const intl = useIntl();
   const navigate = useNavigate();
   return (
     <div className="grid grid--3">
@@ -288,15 +391,15 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
               <div>
                 <h3 className="connector-card__title">{entry.display_name}</h3>
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {titleCase(entry.category)}
+                  {categoryLabel(entry.category)}
                 </span>
               </div>
               <Badge tone={tierTone(entry.tier)}>{entry.tier}</Badge>
             </div>
             <div className="connector-card__caps">
               {caps.slice(0, 6).map((c) => (
-                <Badge key={c.label} tone="neutral">
-                  {c.label}
+                <Badge key={c.key} tone="neutral">
+                  {colLabel(intl, c)}
                 </Badge>
               ))}
               {caps.length > 6 && (
@@ -308,11 +411,14 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
             <div className="connector-card__foot">
               {entry.connected ? (
                 <Badge tone={statusTone(entry.status)} dot>
-                  {titleCase(entry.status) || "Connected"}
+                  {connectorStatusLabel(intl, entry.status)}
                 </Badge>
               ) : (
                 <span className="muted" style={{ fontSize: 12.5 }}>
-                  Not connected
+                  {intl.formatMessage({
+                    id: "connectors.notConnected",
+                    defaultMessage: "Not connected",
+                  })}
                 </span>
               )}
               <button
@@ -324,7 +430,15 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
                   })
                 }
               >
-                {entry.connected ? "Configure" : "Set up"}
+                {entry.connected
+                  ? intl.formatMessage({
+                      id: "connectors.configure",
+                      defaultMessage: "Configure",
+                    })
+                  : intl.formatMessage({
+                      id: "connectors.setUp",
+                      defaultMessage: "Set up",
+                    })}
               </button>
             </div>
           </Card>
@@ -335,17 +449,34 @@ function ConnectorGallery({ rows }: { rows: ConnectorCatalogueEntry[] }) {
 }
 
 function CapabilityMatrix({ rows }: { rows: ConnectorCatalogueEntry[] }) {
+  const intl = useIntl();
   const navigate = useNavigate();
   const columns: CapabilityColumn[] = [...USER_FACING, ...OPERATIONAL];
+  const openSetup = (provider: string) =>
+    navigate({
+      to: "/connectors/$provider/setup",
+      params: { provider },
+    });
   return (
     <div className="matrix-scroll">
-      <table className="table matrix">
+      <table
+        className="table matrix"
+        aria-label={intl.formatMessage({
+          id: "connectors.matrix.caption",
+          defaultMessage: "Connector capability matrix",
+        })}
+      >
         <thead>
           <tr>
-            <th className="matrix__rowhead">Connector</th>
+            <th scope="col" className="matrix__rowhead">
+              {intl.formatMessage({
+                id: "connectors.matrix.connector",
+                defaultMessage: "Connector",
+              })}
+            </th>
             {columns.map((c) => (
-              <th key={c.label} className="matrix__cap">
-                <span>{c.label}</span>
+              <th key={c.key} scope="col" className="matrix__cap">
+                <span>{colLabel(intl, c)}</span>
               </th>
             ))}
           </tr>
@@ -355,15 +486,19 @@ function CapabilityMatrix({ rows }: { rows: ConnectorCatalogueEntry[] }) {
             <tr
               key={entry.provider}
               className="matrix__row"
-              onClick={() =>
-                navigate({
-                  to: "/connectors/$provider/setup",
-                  params: { provider: entry.provider },
-                })
-              }
+              onClick={() => openSetup(entry.provider)}
             >
               <th scope="row" className="matrix__rowhead">
-                <span className="matrix__name">{entry.display_name}</span>
+                <button
+                  type="button"
+                  className="link-button matrix__name"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openSetup(entry.provider);
+                  }}
+                >
+                  {entry.display_name}
+                </button>
                 <Badge tone={tierTone(entry.tier)}>{entry.tier}</Badge>
               </th>
               {columns.map((c) => {
@@ -371,21 +506,32 @@ function CapabilityMatrix({ rows }: { rows: ConnectorCatalogueEntry[] }) {
                   c.dimension === "user_facing"
                     ? entry.user_facing[c.key]
                     : entry.operational[c.key];
+                const label = colLabel(intl, c);
                 return (
-                  <td key={c.label} className="matrix__cell">
-                    {supported ? (
-                      <span
-                        className="matrix__dot matrix__dot--ok"
-                        role="img"
-                        aria-label={`${c.label}: supported`}
-                      />
-                    ) : (
-                      <span
-                        className="matrix__dot matrix__dot--no"
-                        role="img"
-                        aria-label={`${c.label}: not supported`}
-                      />
-                    )}
+                  <td key={c.key} className="matrix__cell">
+                    <span
+                      className={`matrix__dot ${
+                        supported ? "matrix__dot--ok" : "matrix__dot--no"
+                      }`}
+                      role="img"
+                      aria-label={
+                        supported
+                          ? intl.formatMessage(
+                              {
+                                id: "connectors.matrix.supported",
+                                defaultMessage: "{cap}: supported",
+                              },
+                              { cap: label },
+                            )
+                          : intl.formatMessage(
+                              {
+                                id: "connectors.matrix.notSupported",
+                                defaultMessage: "{cap}: not supported",
+                              },
+                              { cap: label },
+                            )
+                      }
+                    />
                   </td>
                 );
               })}

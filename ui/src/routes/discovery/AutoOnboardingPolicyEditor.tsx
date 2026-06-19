@@ -11,6 +11,7 @@ import {
   type PolicyView,
   type SavePolicyInput,
 } from "@/api/discovery";
+import { protocolLabel } from "./labels";
 
 const PROTOCOL_OPTIONS = ["ssh", "rdp", "postgres", "mysql", "mssql"];
 
@@ -507,7 +508,7 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
                 key={i}
                 style={{
                   border: "1px solid var(--border-soft)",
-                  borderRadius: 8,
+                  borderRadius: "var(--radius-sm)",
                   padding: 14,
                   display: "flex",
                   flexDirection: "column",
@@ -527,7 +528,10 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
                       onChange={(e) =>
                         updateRule(i, { name: e.target.value })
                       }
-                      placeholder="SSH in office subnet"
+                      placeholder={intl.formatMessage({
+                        id: "discovery.policy.rule.namePlaceholder",
+                        defaultMessage: "SSH in office subnet",
+                      })}
                     />
                   </label>
                   <label className="field">
@@ -577,7 +581,7 @@ function PolicyForm({ policy }: { policy: PolicyView }) {
                             })
                           }
                         >
-                          {p}
+                          {protocolLabel(p)}
                         </button>
                       );
                     })}
