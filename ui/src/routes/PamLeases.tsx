@@ -334,7 +334,11 @@ export function PamLeases() {
           busy={requestMut.isPending}
           footer={
             <>
-              <button className="btn btn--ghost" onClick={() => setOpen(false)}>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setOpen(false)}
+                disabled={requestMut.isPending}
+              >
                 <FormattedMessage id="pam.leases.cancel" defaultMessage="Cancel" />
               </button>
               <button
@@ -511,7 +515,11 @@ function LeaseDetailModal({
       busy={approveMut.isPending || revokeMut.isPending}
       footer={
         <>
-          <button className="btn btn--ghost" onClick={onClose}>
+          <button
+            className="btn btn--ghost"
+            onClick={onClose}
+            disabled={approveMut.isPending || revokeMut.isPending}
+          >
             <FormattedMessage id="pam.leases.close" defaultMessage="Close" />
           </button>
           {canApprove && (

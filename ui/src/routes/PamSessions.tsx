@@ -255,7 +255,11 @@ function SessionDetailModal({
       busy={resumeMut.isPending || pauseMut.isPending || terminateMut.isPending}
       footer={
         <>
-          <button className="btn btn--ghost" onClick={onClose}>
+          <button
+            className="btn btn--ghost"
+            onClick={onClose}
+            disabled={resumeMut.isPending || pauseMut.isPending || terminateMut.isPending}
+          >
             <FormattedMessage id="pam.sessions.close" defaultMessage="Close" />
           </button>
           <button
