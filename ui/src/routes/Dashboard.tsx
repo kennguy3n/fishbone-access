@@ -147,6 +147,42 @@ function CardBodySkeleton({ lines = 3 }: { lines?: number }) {
   );
 }
 
+// Brand-voice failure state for a card whose query errored, so a failed load is
+// never mistaken for an "all caught up" / empty result. Uses the design-system
+// `.state--error` surface; copy stays plain-language with no raw error code,
+// and `role="alert"` announces it to assistive tech.
+function CardBodyError({ onRetry }: { onRetry: () => void }) {
+  const intl = useIntl();
+  return (
+    <div className="state state--error" role="alert">
+      <div className="state__icon" aria-hidden>
+        <Icon name="alerts" size={22} />
+      </div>
+      <p style={{ fontWeight: 600 }}>
+        {intl.formatMessage({
+          id: "dashboard.loadError.title",
+          defaultMessage: "We couldn't load this just now",
+        })}
+      </p>
+      <p>
+        {intl.formatMessage({
+          id: "dashboard.loadError.desc",
+          defaultMessage:
+            "This is usually a brief network hiccup — nothing is lost. Check your connection and try again.",
+        })}
+      </p>
+      <div style={{ marginTop: 12 }}>
+        <button type="button" className="btn btn--sm" onClick={onRetry}>
+          {intl.formatMessage({
+            id: "common.tryAgain",
+            defaultMessage: "Try again",
+          })}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const intl = useIntl();
   const policies = usePolicies();
@@ -178,8 +214,17 @@ export function Dashboard() {
 
   // The attention card sums three independent reads; only trust a zero total
   // (the "all caught up" state) once every one of them has actually resolved.
+  // If any errored, data is undefined → counts fall back to 0, which would
+  // otherwise read as "all caught up" — surface the failure (with retry) first.
   const attentionLoading =
     policies.isLoading || requests.isLoading || orphans.isLoading;
+  const attentionError =
+    policies.isError || requests.isError || orphans.isError;
+  const retryAttention = () => {
+    void policies.refetch();
+    void requests.refetch();
+    void orphans.refetch();
+  };
 
   const recentPolicies: Policy[] = useMemo(
     () =>
@@ -294,6 +339,8 @@ export function Dashboard() {
         >
           {policies.isLoading ? (
             <CardBodySkeleton />
+          ) : policies.isError ? (
+            <CardBodyError onRetry={() => void policies.refetch()} />
           ) : recentPolicies.length === 0 ? (
             <EmptyState
               illustration={<EmptyIllustration kind="policy" />}
@@ -370,6 +417,8 @@ export function Dashboard() {
         >
           {attentionLoading ? (
             <CardBodySkeleton />
+          ) : attentionError ? (
+            <CardBodyError onRetry={retryAttention} />
           ) : attentionTotal === 0 ? (
             <EmptyState
               illustration={<EmptyIllustration kind="shield" />}
