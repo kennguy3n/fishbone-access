@@ -153,7 +153,7 @@ export function RecordingDetail() {
                       })}
                       value={
                         r.deny_count > 0 ? (
-                          <span style={{ color: "var(--color-danger,#dc2626)" }}>
+                          <span style={{ color: "var(--danger)" }}>
                             {r.deny_count}
                           </span>
                         ) : (

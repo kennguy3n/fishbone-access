@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
 import { PageHeader, Badge, StatusBadge, AsyncBoundary, Card } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState, EmptyIllustration } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { ReplayLaunch } from "@/components/ReplayLaunch";
@@ -29,6 +30,7 @@ function isActive(s: PamSession): boolean {
 }
 
 export function PamSessions() {
+  const intl = useIntl();
   const toast = useToast();
   const me = useMe();
   const { data: myPerms } = useMyPermissions();
@@ -40,6 +42,7 @@ export function PamSessions() {
     { refetchInterval: 5000 },
   );
   const [detail, setDetail] = useState<PamSession | null>(null);
+  const denyNoteId = useId();
 
   // Gate against the server's RBAC-resolved permission set (the exact set
   // RequirePermission enforces), not the JWT scopes/roles which no longer drive
@@ -53,15 +56,27 @@ export function PamSessions() {
 
   const canTakeover = hasTakeoverPerm && !!me.data?.mfa_satisfied;
 
+  // Plain-language explanation of why live-control is unavailable, with the
+  // remedy — never a raw permission token or status code.
   const takeoverReason = useMemo(() => {
-    if (!hasTakeoverPerm) return "Requires the pam.takeover permission.";
-    if (!me.data?.mfa_satisfied) return "Requires step-up MFA.";
+    if (!hasTakeoverPerm)
+      return intl.formatMessage({
+        id: "pam.sessions.denyPerm",
+        defaultMessage:
+          "You don't have permission to control live sessions. Ask a workspace owner to grant you privileged-session control.",
+      });
+    if (!me.data?.mfa_satisfied)
+      return intl.formatMessage({
+        id: "pam.sessions.denyMfa",
+        defaultMessage:
+          "Re-verify with step-up MFA to pause, resume, or terminate live sessions.",
+      });
     return "";
-  }, [me.data, hasTakeoverPerm]);
+  }, [me.data, hasTakeoverPerm, intl]);
 
   const columns: Column<PamSession>[] = [
     {
-      header: "Session",
+      header: intl.formatMessage({ id: "pam.sessions.colSession", defaultMessage: "Session" }),
       cell: (s) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <b>{s.subject}</b>
@@ -73,26 +88,30 @@ export function PamSessions() {
       ),
     },
     {
-      header: "State",
+      header: intl.formatMessage({ id: "pam.sessions.colState", defaultMessage: "State" }),
       cell: (s) => (
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <StatusBadge status={s.state} />
-          {s.paused && <Badge tone="warn">Paused</Badge>}
+          {s.paused && (
+            <Badge tone="warn">
+              <FormattedMessage id="pam.sessions.paused" defaultMessage="Paused" />
+            </Badge>
+          )}
         </div>
       ),
     },
     {
-      header: "Started",
+      header: intl.formatMessage({ id: "pam.sessions.colStarted", defaultMessage: "Started" }),
       cell: (s) => <span className="muted">{formatRelative(s.started_at)}</span>,
     },
     {
-      header: "Ended",
+      header: intl.formatMessage({ id: "pam.sessions.colEnded", defaultMessage: "Ended" }),
       cell: (s) =>
         s.ended_at ? (
           <span className="muted">{formatRelative(s.ended_at)}</span>
         ) : (
           <Badge tone="ok" dot>
-            Live
+            <FormattedMessage id="pam.sessions.live" defaultMessage="Live" />
           </Badge>
         ),
     },
@@ -101,29 +120,34 @@ export function PamSessions() {
   return (
     <>
       <PageHeader
-        title="Live sessions"
-        subtitle="Active and recorded privileged sessions. Authorized operators can pause, resume, or terminate a live session; every recording is replayable."
+        title={intl.formatMessage({ id: "pam.sessions.title", defaultMessage: "Live sessions" })}
+        subtitle={intl.formatMessage({
+          id: "pam.sessions.subtitle",
+          defaultMessage:
+            "Privileged sessions brokered through the gateway, live and after they end. Authorized operators can pause, resume, or terminate a live session, and every session is recorded for tamper-evident replay.",
+        })}
         actions={
-          <label
-            className="field"
-            style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-          >
+          <label className="checkbox-inline">
             <input
               type="checkbox"
               checked={activeOnly}
               style={{ width: "auto" }}
               onChange={(e) => setActiveOnly(e.target.checked)}
             />
-            <span>Active only</span>
+            <span>
+              <FormattedMessage id="pam.sessions.activeOnly" defaultMessage="Show live only" />
+            </span>
           </label>
         }
       />
       {!canTakeover && takeoverReason && (
-        <Card>
-          <p className="muted">
-            Live session control (pause / terminate) is disabled: {takeoverReason}
-          </p>
-        </Card>
+        <p className="callout callout--info" id={denyNoteId} style={{ marginBottom: 16 }}>
+          <FormattedMessage
+            id="pam.sessions.denyIntro"
+            defaultMessage="Live-session control is read-only for you right now."
+          />{" "}
+          {takeoverReason}
+        </p>
       )}
       <AsyncBoundary
         isLoading={isLoading}
@@ -133,8 +157,23 @@ export function PamSessions() {
         isEmpty={(rows) => rows.length === 0}
         empty={
           <EmptyState
-            title="No sessions"
-            description="Privileged sessions opened through the gateway appear here, live and after they end, with full replay."
+            illustration={<EmptyIllustration kind="search" />}
+            title={
+              activeOnly
+                ? intl.formatMessage({
+                    id: "pam.sessions.emptyTitleLive",
+                    defaultMessage: "No live sessions right now",
+                  })
+                : intl.formatMessage({
+                    id: "pam.sessions.emptyTitleAll",
+                    defaultMessage: "No sessions yet",
+                  })
+            }
+            description={intl.formatMessage({
+              id: "pam.sessions.emptyBody",
+              defaultMessage:
+                "Privileged sessions opened against a target through an approved lease appear here in real time, and stay available for full replay after they end.",
+            })}
           />
         }
       >
@@ -182,12 +221,15 @@ function SessionDetailModal({
   notifyError: (title: string, err: unknown) => void;
   notifySuccess: (title: string) => void;
 }) {
+  const intl = useIntl();
   const pauseMut = usePausePamSession(session.id);
   const resumeMut = useResumePamSession(session.id);
   const terminateMut = useTerminatePamSession(session.id);
   const [showReplay, setShowReplay] = useState(false);
+  const denyNoteId = useId();
 
   const live = isActive(session);
+  const showDenyNote = live && !canTakeover && !!takeoverReason;
 
   const run = async (
     fn: () => Promise<unknown>,
@@ -205,18 +247,25 @@ function SessionDetailModal({
 
   return (
     <Modal
-      title={`Session · ${session.subject}`}
+      title={intl.formatMessage(
+        { id: "pam.sessions.detailTitle", defaultMessage: "Session · {subject}" },
+        { subject: session.subject },
+      )}
       onClose={onClose}
       footer={
         <>
           <button className="btn btn--ghost" onClick={onClose}>
-            Close
+            <FormattedMessage id="pam.sessions.close" defaultMessage="Close" />
           </button>
           <button
             className="btn btn--ghost"
             onClick={() => setShowReplay((v) => !v)}
           >
-            {showReplay ? "Hide replay" : "View replay"}
+            {showReplay ? (
+              <FormattedMessage id="pam.sessions.hideReplay" defaultMessage="Hide replay" />
+            ) : (
+              <FormattedMessage id="pam.sessions.viewReplay" defaultMessage="View replay" />
+            )}
           </button>
           <ReplayLaunch sessionId={session.id} />
           {live && (
@@ -226,45 +275,48 @@ function SessionDetailModal({
                   className="btn btn--primary"
                   disabled={!canTakeover || resumeMut.isPending}
                   title={canTakeover ? undefined : takeoverReason}
+                  aria-describedby={showDenyNote ? denyNoteId : undefined}
                   onClick={() =>
                     run(
                       () => resumeMut.mutateAsync(),
-                      "Session resumed",
-                      "Could not resume",
+                      intl.formatMessage({ id: "pam.sessions.toastResumed", defaultMessage: "Session resumed" }),
+                      intl.formatMessage({ id: "pam.sessions.toastResumeErr", defaultMessage: "Could not resume the session" }),
                     )
                   }
                 >
-                  Resume
+                  <FormattedMessage id="pam.sessions.resume" defaultMessage="Resume" />
                 </button>
               ) : (
                 <button
                   className="btn btn--primary"
                   disabled={!canTakeover || pauseMut.isPending}
                   title={canTakeover ? undefined : takeoverReason}
+                  aria-describedby={showDenyNote ? denyNoteId : undefined}
                   onClick={() =>
                     run(
                       () => pauseMut.mutateAsync(),
-                      "Session paused",
-                      "Could not pause",
+                      intl.formatMessage({ id: "pam.sessions.toastPaused", defaultMessage: "Session paused" }),
+                      intl.formatMessage({ id: "pam.sessions.toastPauseErr", defaultMessage: "Could not pause the session" }),
                     )
                   }
                 >
-                  Pause
+                  <FormattedMessage id="pam.sessions.pause" defaultMessage="Pause" />
                 </button>
               )}
               <button
                 className="btn btn--danger"
                 disabled={!canTakeover || terminateMut.isPending}
                 title={canTakeover ? undefined : takeoverReason}
+                aria-describedby={showDenyNote ? denyNoteId : undefined}
                 onClick={() =>
                   run(
                     () => terminateMut.mutateAsync(),
-                    "Session terminated",
-                    "Could not terminate",
+                    intl.formatMessage({ id: "pam.sessions.toastTerminated", defaultMessage: "Session terminated" }),
+                    intl.formatMessage({ id: "pam.sessions.toastTerminateErr", defaultMessage: "Could not terminate the session" }),
                   )
                 }
               >
-                Terminate
+                <FormattedMessage id="pam.sessions.terminate" defaultMessage="Terminate" />
               </button>
             </>
           )}
@@ -272,32 +324,52 @@ function SessionDetailModal({
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <Card title="Details">
+        {showDenyNote && (
+          <p className="callout callout--info" id={denyNoteId}>
+            {takeoverReason}
+          </p>
+        )}
+        <Card title={intl.formatMessage({ id: "pam.sessions.detailsCard", defaultMessage: "Details" })}>
           <dl className="kv">
-            <dt>State</dt>
+            <dt>
+              <FormattedMessage id="pam.sessions.state" defaultMessage="State" />
+            </dt>
             <dd>
               <StatusBadge status={session.state} />
               {session.paused && (
                 <Badge tone="warn" dot>
-                  Paused{session.paused_by ? ` by ${session.paused_by}` : ""}
+                  <FormattedMessage id="pam.sessions.paused" defaultMessage="Paused" />
+                  {session.paused_by
+                    ? ` ${intl.formatMessage({ id: "pam.sessions.pausedBy", defaultMessage: "by {who}" }, { who: session.paused_by })}`
+                    : ""}
                 </Badge>
               )}
             </dd>
-            <dt>Protocol</dt>
+            <dt>
+              <FormattedMessage id="pam.sessions.protocol" defaultMessage="Protocol" />
+            </dt>
             <dd>{session.protocol}</dd>
-            <dt>Client</dt>
+            <dt>
+              <FormattedMessage id="pam.sessions.client" defaultMessage="Client address" />
+            </dt>
             <dd>{session.client_addr || "—"}</dd>
-            <dt>Started</dt>
+            <dt>
+              <FormattedMessage id="pam.sessions.started" defaultMessage="Started" />
+            </dt>
             <dd>{formatDateTime(session.started_at)}</dd>
             {session.ended_at && (
               <>
-                <dt>Ended</dt>
+                <dt>
+                  <FormattedMessage id="pam.sessions.ended" defaultMessage="Ended" />
+                </dt>
                 <dd>{formatDateTime(session.ended_at)}</dd>
               </>
             )}
             {session.terminated_by && (
               <>
-                <dt>Terminated by</dt>
+                <dt>
+                  <FormattedMessage id="pam.sessions.terminatedBy" defaultMessage="Terminated by" />
+                </dt>
                 <dd>{session.terminated_by}</dd>
               </>
             )}
@@ -310,14 +382,28 @@ function SessionDetailModal({
 }
 
 // ReplayPanel fetches the recorded session frames and renders them as a
-// direction-coloured transcript. Input (operator→target) and output
-// (target→operator) are decoded from base64 for display.
+// terminal-styled, direction-coloured transcript. Input (operator→target),
+// control (proxy) and output (target→operator) are decoded from base64; a
+// legend reinforces the colour cue with a label (WCAG 1.4.1).
 function ReplayPanel({ sessionId }: { sessionId: string }) {
+  const intl = useIntl();
   const { data, isLoading, error, refetch } = useSessionReplay(sessionId);
+  const legend = [
+    { color: "var(--accent)", label: intl.formatMessage({ id: "pam.sessions.legendInput", defaultMessage: "Operator input" }) },
+    { color: "var(--warn-alt)", label: intl.formatMessage({ id: "pam.sessions.legendControl", defaultMessage: "Proxy control" }) },
+    { color: "var(--terminal-fg)", label: intl.formatMessage({ id: "pam.sessions.legendOutput", defaultMessage: "Target output" }) },
+  ];
   return (
     <Card
-      title="Session replay"
-      subtitle={data?.truncated ? "Recording truncated (size cap reached)" : undefined}
+      title={intl.formatMessage({ id: "pam.sessions.replayCard", defaultMessage: "Session replay" })}
+      subtitle={
+        data?.truncated
+          ? intl.formatMessage({
+              id: "pam.sessions.replayTruncated",
+              defaultMessage: "Recording truncated — it reached the size cap, so later activity isn't shown.",
+            })
+          : undefined
+      }
     >
       <AsyncBoundary
         isLoading={isLoading}
@@ -325,36 +411,73 @@ function ReplayPanel({ sessionId }: { sessionId: string }) {
         data={data}
         onRetry={refetch}
         isEmpty={(r) => r.frames.length === 0}
-        empty={<EmptyState title="No recording" description="This session has no replay yet." />}
+        empty={
+          <EmptyState
+            title={intl.formatMessage({ id: "pam.sessions.replayEmptyTitle", defaultMessage: "No recording yet" })}
+            description={intl.formatMessage({
+              id: "pam.sessions.replayEmptyBody",
+              defaultMessage: "This session hasn't produced any recorded activity to replay.",
+            })}
+          />
+        }
       >
         {(r) => (
-          <pre
-            style={{
-              maxHeight: 320,
-              overflow: "auto",
-              fontSize: 12,
-              lineHeight: 1.5,
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-            }}
-          >
-            {r.frames.map((f, i) => (
-              <span
-                key={i}
-                style={{
-                  color:
-                    f.direction === "input"
-                      ? "var(--color-accent, #2563eb)"
-                      : f.direction === "control"
-                        ? "var(--color-warn, #b45309)"
-                        : "inherit",
-                }}
-              >
-                {decodeFrame(f.payload)}
-              </span>
-            ))}
-          </pre>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <pre
+              aria-label={intl.formatMessage({ id: "pam.sessions.replayAria", defaultMessage: "Session transcript" })}
+              style={{
+                maxHeight: 320,
+                overflow: "auto",
+                fontSize: 12,
+                lineHeight: 1.5,
+                margin: 0,
+                padding: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                background: "var(--terminal-bg)",
+                color: "var(--terminal-fg)",
+                fontFamily: "var(--mono)",
+                borderRadius: "var(--radius)",
+                border: "1px solid var(--border-soft)",
+              }}
+            >
+              {r.frames.map((f, i) => (
+                <span
+                  key={i}
+                  style={{
+                    color:
+                      f.direction === "input"
+                        ? "var(--accent)"
+                        : f.direction === "control"
+                          ? "var(--warn-alt)"
+                          : "var(--terminal-fg)",
+                  }}
+                >
+                  {decodeFrame(f.payload)}
+                </span>
+              ))}
+            </pre>
+            <div
+              className="muted"
+              style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, alignItems: "center" }}
+            >
+              {legend.map((item) => (
+                <span key={item.label} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "var(--radius-xs)",
+                      background: item.color,
+                      flex: "none",
+                    }}
+                  />
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </AsyncBoundary>
     </Card>

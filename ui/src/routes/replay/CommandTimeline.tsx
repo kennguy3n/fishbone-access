@@ -82,13 +82,13 @@ export function CommandTimeline({
                 border: "none",
                 borderLeft: `3px solid ${
                   entry.denied
-                    ? "var(--color-danger, #dc2626)"
+                    ? "var(--danger)"
                     : active
-                      ? "var(--color-accent, #2563eb)"
+                      ? "var(--brand)"
                       : "transparent"
                 }`,
                 background: active
-                  ? "var(--surface-hover, rgba(37,99,235,0.08))"
+                  ? "rgba(var(--brand-rgb), 0.08)"
                   : "transparent",
                 padding: "8px 12px",
                 cursor: locatable ? "pointer" : "default",

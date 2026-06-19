@@ -8,11 +8,14 @@ const SPEEDS = [0.5, 1, 2, 4] as const;
 
 // ReplayPlayer renders the time-ordered transcript as a terminal-styled pane
 // driven by the shared Playback clock, with transport controls (play/pause,
-// restart, speed) and a seek scrubber. Operator keystrokes (input) are tinted
-// with the accent colour and proxy-injected annotations (control) with the warn
-// colour, so an auditor can distinguish who produced each byte. ANSI control
-// sequences are stripped for legible display; the raw bytes remain what the
-// SHA-256 integrity check runs over.
+// restart, speed) and a seek scrubber. The pane is a fixed dark terminal
+// surface (--terminal-bg/--terminal-fg) in both themes. Each byte is tinted by
+// origin so an auditor can tell who produced it: operator keystrokes (input)
+// read the cyan data-viz token, proxy-injected annotations (control) an amber
+// token, and target output the default terminal foreground. A legend names the
+// mapping so meaning never rests on colour alone. ANSI control sequences are
+// stripped for legible display; the raw bytes remain what the SHA-256
+// integrity check runs over.
 export function ReplayPlayer({
   frames,
   playback,
@@ -45,10 +48,36 @@ export function ReplayPlayer({
 
   const color = (direction: string) =>
     direction === "input"
-      ? "var(--color-accent, #60a5fa)"
+      ? "var(--accent)"
       : direction === "control"
-        ? "var(--color-warn, #fbbf24)"
-        : "inherit";
+        ? "var(--warn-alt)"
+        : "var(--terminal-fg)";
+
+  // Legend mapping the transcript tints to plain-language origins, so the
+  // colour cue is reinforced by a label (WCAG 1.4.1 — not colour alone).
+  const legend = [
+    {
+      color: "var(--accent)",
+      label: intl.formatMessage({
+        id: "replay.player.11",
+        defaultMessage: "Operator input",
+      }),
+    },
+    {
+      color: "var(--warn-alt)",
+      label: intl.formatMessage({
+        id: "replay.player.12",
+        defaultMessage: "Proxy control",
+      }),
+    },
+    {
+      color: "var(--terminal-fg)",
+      label: intl.formatMessage({
+        id: "replay.player.13",
+        defaultMessage: "Target output",
+      }),
+    },
+  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -65,16 +94,15 @@ export function ReplayPlayer({
           height: 420,
           overflow: "auto",
           padding: 16,
-          borderRadius: 10,
-          background: "#0b1020",
-          color: "#e5e7eb",
-          fontFamily:
-            "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+          borderRadius: "var(--radius)",
+          background: "var(--terminal-bg)",
+          color: "var(--terminal-fg)",
+          fontFamily: "var(--mono)",
           fontSize: 13,
           lineHeight: 1.55,
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
-          border: "1px solid var(--border-soft, #1f2937)",
+          border: "1px solid var(--border-soft)",
         }}
       >
         {visible.length === 0 ? (
@@ -91,6 +119,37 @@ export function ReplayPlayer({
           ))
         )}
       </pre>
+
+      {/* Colour legend for the transcript tints. */}
+      <div
+        className="muted"
+        style={{
+          display: "flex",
+          gap: 16,
+          flexWrap: "wrap",
+          fontSize: 12,
+          alignItems: "center",
+        }}
+      >
+        {legend.map((item) => (
+          <span
+            key={item.label}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "var(--radius-xs)",
+                background: item.color,
+                flex: "none",
+              }}
+            />
+            {item.label}
+          </span>
+        ))}
+      </div>
 
       {/* Transport controls */}
       <div

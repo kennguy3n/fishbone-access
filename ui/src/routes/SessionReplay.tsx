@@ -274,10 +274,7 @@ export function SessionReplay() {
               flexWrap: "wrap",
             }}
           >
-            <label
-              className="field"
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
+            <label className="checkbox-inline">
               <input
                 type="checkbox"
                 checked={draft.includePruned}
