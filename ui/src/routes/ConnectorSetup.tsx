@@ -20,7 +20,7 @@ import {
   type ConnectorSetupAuthMethod,
   type ConnectorSetupField,
 } from "@/api/access";
-import { titleCase } from "@/lib/format";
+import { categoryLabel } from "./discovery/labels";
 
 interface KV {
   key: string;
@@ -133,7 +133,7 @@ function SetupAssistant({
         id: "connectorSetup.assistant.title",
         defaultMessage: "Setup assistant",
       })}
-      subtitle={titleCase(category)}
+      subtitle={categoryLabel(category)}
     >
       <label className="field">
         <span className="field__label">

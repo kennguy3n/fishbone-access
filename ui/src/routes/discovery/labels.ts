@@ -36,6 +36,41 @@ export function protocolLabel(raw: string | undefined | null): string {
   return PROTOCOL_LABELS[key] ?? titleCase(raw);
 }
 
+// Brand acronyms that plain titleCase would flatten inside a category label
+// ("saas_application" -> "Saas Application"). Categories are a controlled
+// backend taxonomy, so a token-level casing pass is enough to keep them
+// on-brand without translating the vocabulary itself.
+const CATEGORY_ACRONYMS: Record<string, string> = {
+  saas: "SaaS",
+  hr: "HR",
+  it: "IT",
+  itsm: "ITSM",
+  crm: "CRM",
+  erp: "ERP",
+  api: "API",
+  mdm: "MDM",
+  siem: "SIEM",
+  pam: "PAM",
+  iam: "IAM",
+};
+
+/**
+ * Display label for a connector category slug, preserving brand acronym casing
+ * that plain titleCase would mangle (e.g. "saas_application" -> "SaaS
+ * Application"). Shared so the gallery, category filter and the setup-assistant
+ * subtitle all render categories identically.
+ */
+export function categoryLabel(raw: string | undefined | null): string {
+  if (!raw) return "";
+  return raw
+    .trim()
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => CATEGORY_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 /** Localized label for a discovered-asset lifecycle status. */
 export function assetStatusLabel(intl: IntlShape, status: string): string {
   switch (status) {
@@ -132,6 +167,6 @@ export function sourceLabel(intl: IntlShape, source: string): string {
         defaultMessage: "Database",
       });
     default:
-      return source;
+      return titleCase(source);
   }
 }

@@ -12,6 +12,7 @@ import {
   type OperationalCapabilities,
 } from "@/api/access";
 import { titleCase } from "@/lib/format";
+import { categoryLabel } from "./discovery/labels";
 
 // The capability columns rendered in the matrix and as chips on each gallery
 // card. Keys are the JSON field names from the backend descriptor
@@ -73,37 +74,6 @@ const CAP_BY_KEY = new Map<string, CapabilityColumn>(
 function capabilityFacetLabel(intl: IntlShape, value: string): string {
   const col = CAP_BY_KEY.get(value);
   return col ? colLabel(intl, col) : titleCase(value);
-}
-
-// Brand acronyms that plain titleCase would flatten inside a category label
-// ("saas_application" -> "Saas Application"). Categories are a controlled
-// backend taxonomy, so a token-level casing pass is enough to keep them
-// on-brand without translating the vocabulary itself.
-const CATEGORY_ACRONYMS: Record<string, string> = {
-  saas: "SaaS",
-  hr: "HR",
-  it: "IT",
-  itsm: "ITSM",
-  crm: "CRM",
-  erp: "ERP",
-  api: "API",
-  mdm: "MDM",
-  siem: "SIEM",
-  pam: "PAM",
-  iam: "IAM",
-};
-
-/** Display label for a connector category slug, preserving brand acronym
- *  casing that plain titleCase would mangle (e.g. "saas_application"). */
-function categoryLabel(raw: string | undefined | null): string {
-  if (!raw) return "";
-  return raw
-    .trim()
-    .toLowerCase()
-    .split(/[_\s]+/)
-    .filter(Boolean)
-    .map((w) => CATEGORY_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
 }
 
 // Tier tone: T1 connectors are the most-adopted, fully-supported integrations
