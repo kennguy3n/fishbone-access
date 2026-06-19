@@ -323,6 +323,7 @@ function RbacMatrixGroup({
   roles: RbacRole[];
   permsByRole: Map<string, Set<string>>;
 }) {
+  const intl = useIntl();
   return (
     <>
       <tr>
@@ -343,11 +344,23 @@ function RbacMatrixGroup({
             return (
               <td key={r.role} style={{ textAlign: "center" }}>
                 {held ? (
-                  <span aria-label="granted" style={{ color: "var(--ok, #16a34a)" }}>
+                  <span
+                    aria-label={intl.formatMessage({
+                      id: "rbac.matrix.granted",
+                      defaultMessage: "granted",
+                    })}
+                    style={{ color: "var(--ok, #16a34a)" }}
+                  >
                     ●
                   </span>
                 ) : (
-                  <span aria-label="not granted" className="muted">
+                  <span
+                    aria-label={intl.formatMessage({
+                      id: "rbac.matrix.notGranted",
+                      defaultMessage: "not granted",
+                    })}
+                    className="muted"
+                  >
                     ·
                   </span>
                 )}
@@ -454,7 +467,10 @@ function AssignRoleModal({
             <input
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              placeholder="user-id"
+              placeholder={intl.formatMessage({
+                id: "rbac.modal.userIdPlaceholder",
+                defaultMessage: "user-id",
+              })}
               autoFocus
             />
           </label>
