@@ -31,14 +31,15 @@ import {
 import { OnboardAssetModal } from "./discovery/OnboardAssetModal";
 import { RunDiscoveryModal } from "./discovery/RunDiscoveryModal";
 import { AutoOnboardingPolicyEditor } from "./discovery/AutoOnboardingPolicyEditor";
+import {
+  protocolLabel,
+  assetStatusLabel,
+  scanStatusLabel,
+  scanTriggerLabel,
+  sourceLabel,
+} from "./discovery/labels";
 
 type Tab = "assets" | "accounts" | "scans" | "policy";
-
-const SOURCE_LABELS: Record<string, string> = {
-  agent_sweep: "Agent network",
-  connector_inventory: "Cloud connector",
-  db_accounts: "Database",
-};
 
 function statusTone(status: string): "ok" | "warn" | "danger" | "neutral" {
   switch (status) {
@@ -287,7 +288,11 @@ function AssetsTab({
         defaultMessage: "Protocol",
       }),
       cell: (a) =>
-        a.protocol ? <Badge tone="info">{a.protocol}</Badge> : <>—</>,
+        a.protocol ? (
+          <Badge tone="info">{protocolLabel(a.protocol)}</Badge>
+        ) : (
+          <>—</>
+        ),
     },
     {
       header: intl.formatMessage({
@@ -295,7 +300,7 @@ function AssetsTab({
         defaultMessage: "Source",
       }),
       cell: (a) => (
-        <span className="muted">{SOURCE_LABELS[a.source] ?? a.source}</span>
+        <span className="muted">{sourceLabel(intl, a.source)}</span>
       ),
     },
     {
@@ -305,7 +310,7 @@ function AssetsTab({
       }),
       cell: (a) => (
         <Badge tone={statusTone(a.status)} dot>
-          {a.status}
+          {assetStatusLabel(intl, a.status)}
         </Badge>
       ),
     },
@@ -342,7 +347,7 @@ function AssetsTab({
             </option>
             {SOURCES.map((s) => (
               <option key={s} value={s}>
-                {SOURCE_LABELS[s] ?? s}
+                {sourceLabel(intl, s)}
               </option>
             ))}
           </select>
@@ -363,7 +368,7 @@ function AssetsTab({
             </option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {assetStatusLabel(intl, s)}
               </option>
             ))}
           </select>
@@ -387,7 +392,7 @@ function AssetsTab({
             </option>
             {protocols.map((p) => (
               <option key={p} value={p}>
-                {p}
+                {protocolLabel(p)}
               </option>
             ))}
           </select>
@@ -517,11 +522,11 @@ function AssetDetailModal({
     ],
     [
       intl.formatMessage({ id: "discovery.col.protocol", defaultMessage: "Protocol" }),
-      asset.protocol || "—",
+      asset.protocol ? protocolLabel(asset.protocol) : "—",
     ],
     [
       intl.formatMessage({ id: "discovery.col.source", defaultMessage: "Source" }),
-      SOURCE_LABELS[asset.source] ?? asset.source,
+      sourceLabel(intl, asset.source),
     ],
     [
       intl.formatMessage({ id: "discovery.detail.externalId", defaultMessage: "External ID" }),
@@ -573,7 +578,7 @@ function AssetDetailModal({
     >
       <div style={{ marginBottom: 12 }}>
         <Badge tone={statusTone(asset.status)} dot>
-          {asset.status}
+          {assetStatusLabel(intl, asset.status)}
         </Badge>{" "}
         {asset.policy_matched && (
           <Badge tone="info">
@@ -777,7 +782,7 @@ function ScansTab() {
         defaultMessage: "Source",
       }),
       cell: (s) => (
-        <span>{s.source ? SOURCE_LABELS[s.source] ?? s.source : "—"}</span>
+        <span>{s.source ? sourceLabel(intl, s.source) : "—"}</span>
       ),
     },
     {
@@ -785,7 +790,9 @@ function ScansTab() {
         id: "discovery.scan.trigger",
         defaultMessage: "Trigger",
       }),
-      cell: (s) => <Badge tone="neutral">{s.trigger}</Badge>,
+      cell: (s) => (
+        <Badge tone="neutral">{scanTriggerLabel(intl, s.trigger)}</Badge>
+      ),
     },
     {
       header: intl.formatMessage({
@@ -794,7 +801,7 @@ function ScansTab() {
       }),
       cell: (s) => (
         <Badge tone={scanStatusTone(s.status)} dot>
-          {s.status}
+          {scanStatusLabel(intl, s.status)}
         </Badge>
       ),
     },

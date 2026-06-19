@@ -5,7 +5,7 @@
 // prints a local closing line and offers a way back to the target list.
 
 import { useCallback, useRef, useState } from "react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { SessionChrome } from "./SessionChrome";
 import { Terminal, type TerminalHandle } from "./Terminal";
 import { useWebSession, type StatusFrame } from "./useWebSession";
@@ -16,6 +16,7 @@ interface TerminalSessionProps {
 }
 
 export function TerminalSession({ rawToken, onExit }: TerminalSessionProps) {
+  const intl = useIntl();
   const termRef = useRef<TerminalHandle>(null);
   const [status, setStatus] = useState<StatusFrame | undefined>();
 
@@ -27,9 +28,20 @@ export function TerminalSession({ rawToken, onExit }: TerminalSessionProps) {
     onStatus: (s) => {
       setStatus(s);
       if (s.state === "terminated") {
-        termRef.current?.writeln(
-          `\r\n\u001b[31m■ Session terminated: ${s.reason ?? "ended by policy"}\u001b[0m`,
+        const reason =
+          s.reason ??
+          intl.formatMessage({
+            id: "webaccess.session.endedByPolicy",
+            defaultMessage: "ended by policy",
+          });
+        const line = intl.formatMessage(
+          {
+            id: "webaccess.terminal.terminatedLine",
+            defaultMessage: "Session terminated: {reason}",
+          },
+          { reason },
         );
+        termRef.current?.writeln(`\r\n\u001b[31m■ ${line}\u001b[0m`);
       } else if (s.state === "closed" && s.reason) {
         termRef.current?.writeln(`\r\n\u001b[33m■ ${s.reason}\u001b[0m`);
       }

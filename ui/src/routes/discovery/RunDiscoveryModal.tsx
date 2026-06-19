@@ -15,6 +15,7 @@ import {
   useScanConnectorInventory,
   useScanDBAccounts,
 } from "@/api/discovery";
+import { protocolLabel } from "./labels";
 
 type Mode = "agent" | "connector" | "db";
 
@@ -315,7 +316,7 @@ export function RunDiscoveryModal({ onClose }: { onClose: () => void }) {
               </option>
               {dbTargets.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({t.protocol})
+                  {t.name} ({protocolLabel(t.protocol)})
                 </option>
               ))}
             </select>
@@ -329,7 +330,8 @@ export function RunDiscoveryModal({ onClose }: { onClose: () => void }) {
             </p>
           )}
           <div style={{ marginTop: 8 }}>
-            <Badge tone="info">postgres</Badge> <Badge tone="info">mysql</Badge>
+            <Badge tone="info">{protocolLabel("postgres")}</Badge>{" "}
+            <Badge tone="info">{protocolLabel("mysql")}</Badge>
           </div>
         </>
       )}

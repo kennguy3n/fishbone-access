@@ -150,7 +150,11 @@ function ResultView({ result }: { result: ResultFrame }) {
     // A write / DDL statement: show the command tag and affected-row count.
     return (
       <div className="webaccess-db__summary">
-        <Badge tone="ok">{result.command || "OK"}</Badge>
+        <Badge tone="ok">
+          {result.command || (
+            <FormattedMessage id="webaccess.db.ok" defaultMessage="OK" />
+          )}
+        </Badge>
         <span className="muted">
           <FormattedMessage
             id="webaccess.db.rowsAffected"
