@@ -331,6 +331,7 @@ export function PamLeases() {
         <Modal
           title={intl.formatMessage({ id: "pam.leases.modalTitle", defaultMessage: "Request a just-in-time lease" })}
           onClose={() => setOpen(false)}
+          busy={requestMut.isPending}
           footer={
             <>
               <button className="btn btn--ghost" onClick={() => setOpen(false)}>
@@ -507,6 +508,7 @@ function LeaseDetailModal({
         { target: targetName },
       )}
       onClose={onClose}
+      busy={approveMut.isPending || revokeMut.isPending}
       footer={
         <>
           <button className="btn btn--ghost" onClick={onClose}>

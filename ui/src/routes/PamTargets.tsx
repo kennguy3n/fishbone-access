@@ -320,6 +320,7 @@ export function PamTargets() {
             defaultMessage: "Register privileged target",
           })}
           onClose={() => setOpen(false)}
+          busy={createMut.isPending}
           footer={
             <>
               <button className="btn btn--ghost" onClick={() => setOpen(false)}>

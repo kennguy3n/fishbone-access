@@ -252,6 +252,7 @@ function SessionDetailModal({
         { subject: session.subject },
       )}
       onClose={onClose}
+      busy={resumeMut.isPending || pauseMut.isPending || terminateMut.isPending}
       footer={
         <>
           <button className="btn btn--ghost" onClick={onClose}>
