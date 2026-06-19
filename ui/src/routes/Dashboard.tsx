@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
+import { useIntl } from "react-intl";
 import { PageHeader, Card, Stat, Badge, StatusBadge } from "@/components/ui";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState, EmptyIllustration } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import {
   usePolicies,
@@ -18,6 +19,7 @@ import {
   type OnboardingProgress,
   type OnboardingUpdate,
 } from "@/lib/onboarding-store";
+import "./lane-a1.css";
 
 // OnboardingNudge is the day-1 zero-state prompt. It only shows for workspace
 // admins who haven't finished (or dismissed) the guided setup AND whose
@@ -50,6 +52,7 @@ function OnboardingNudgeBody({
   progress: OnboardingProgress;
   update: OnboardingUpdate;
 }) {
+  const intl = useIntl();
   const connectors = useConnectors({});
   const policies = usePolicies();
 
@@ -72,24 +75,43 @@ function OnboardingNudgeBody({
       <div className="banner__body">
         <div className="banner__title">
           {resuming
-            ? "Finish setting up your workspace"
-            : "Welcome — let's get your workspace ready"}
+            ? intl.formatMessage({
+                id: "dashboard.nudge.title.resume",
+                defaultMessage: "Pick up where you left off",
+              })
+            : intl.formatMessage({
+                id: "dashboard.nudge.title.start",
+                defaultMessage: "Welcome — let's get your workspace ready",
+              })}
         </div>
         <div className="banner__sub">
-          A short, guided setup: connect a source, write your first access rule,
-          and invite a teammate. Takes a few minutes, and you can pick up where
-          you left off.
+          {intl.formatMessage({
+            id: "dashboard.nudge.sub",
+            defaultMessage:
+              "A short, guided setup: connect where your team signs in, write your first access rule, and invite a teammate. It takes a few minutes, and your progress is saved as you go.",
+          })}
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         <Link className="btn btn--primary btn--sm" to="/onboarding">
-          {resuming ? "Resume setup" : "Start setup"}
+          {resuming
+            ? intl.formatMessage({
+                id: "dashboard.nudge.resume",
+                defaultMessage: "Resume setup",
+              })
+            : intl.formatMessage({
+                id: "dashboard.nudge.start",
+                defaultMessage: "Start setup",
+              })}
         </Link>
         <button
           className="btn btn--ghost btn--sm"
           onClick={() => update({ nudgeDismissed: true })}
         >
-          Dismiss
+          {intl.formatMessage({
+            id: "dashboard.nudge.dismiss",
+            defaultMessage: "Maybe later",
+          })}
         </button>
       </div>
     </div>
@@ -100,7 +122,69 @@ function OnboardingNudgeBody({
 // these (provisioned/denied/cancelled) is terminal and isn't "pending work".
 const OPEN_REQUEST_STATES = new Set(["requested", "approved"]);
 
+// Shimmer for a card body while its underlying queries resolve. Without this,
+// counts default to 0 from the `?? []` fallback on undefined data, so the
+// "You're all caught up" / "No access policies yet" states would flash a false
+// claim for a frame before the real data arrives.
+function CardBodySkeleton({ lines = 3 }: { lines?: number }) {
+  const intl = useIntl();
+  return (
+    <div
+      aria-busy="true"
+      aria-label={intl.formatMessage({
+        id: "common.loading",
+        defaultMessage: "Loading",
+      })}
+    >
+      {Array.from({ length: lines }).map((_, i) => (
+        <div
+          key={i}
+          className="skeleton skeleton--text"
+          style={{ width: `${Math.max(40, 90 - i * 15)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Brand-voice failure state for a card whose query errored, so a failed load is
+// never mistaken for an "all caught up" / empty result. Uses the design-system
+// `.state--error` surface; copy stays plain-language with no raw error code,
+// and `role="alert"` announces it to assistive tech.
+function CardBodyError({ onRetry }: { onRetry: () => void }) {
+  const intl = useIntl();
+  return (
+    <div className="state state--error" role="alert">
+      <div className="state__icon" aria-hidden>
+        <Icon name="alerts" size={22} />
+      </div>
+      <p style={{ fontWeight: 600 }}>
+        {intl.formatMessage({
+          id: "dashboard.loadError.title",
+          defaultMessage: "We couldn't load this just now",
+        })}
+      </p>
+      <p>
+        {intl.formatMessage({
+          id: "dashboard.loadError.desc",
+          defaultMessage:
+            "This is usually a brief network hiccup — nothing is lost. Check your connection and try again.",
+        })}
+      </p>
+      <div style={{ marginTop: 12 }}>
+        <button type="button" className="btn btn--sm" onClick={onRetry}>
+          {intl.formatMessage({
+            id: "common.tryAgain",
+            defaultMessage: "Try again",
+          })}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
+  const intl = useIntl();
   const policies = usePolicies();
   const requests = useAccessRequests();
   const orphans = useOrphans();
@@ -125,6 +209,23 @@ export function Dashboard() {
     (o) => o.disposition === "pending",
   );
 
+  const attentionTotal =
+    openRequests.length + pendingOrphans.length + counts.untested;
+
+  // The attention card sums three independent reads; only trust a zero total
+  // (the "all caught up" state) once every one of them has actually resolved.
+  // If any errored, data is undefined → counts fall back to 0, which would
+  // otherwise read as "all caught up" — surface the failure (with retry) first.
+  const attentionLoading =
+    policies.isLoading || requests.isLoading || orphans.isLoading;
+  const attentionError =
+    policies.isError || requests.isError || orphans.isError;
+  const retryAttention = () => {
+    void policies.refetch();
+    void requests.refetch();
+    void orphans.refetch();
+  };
+
   const recentPolicies: Policy[] = useMemo(
     () =>
       [...(policies.data ?? [])]
@@ -134,56 +235,130 @@ export function Dashboard() {
   );
 
   return (
-    <>
+    <div className="lane-a1">
       <OnboardingNudge />
       <PageHeader
-        title="Dashboard"
-        subtitle="Who can reach what — and what still needs testing before rollout."
+        title={intl.formatMessage({
+          id: "nav.dashboard",
+          defaultMessage: "Dashboard",
+        })}
+        subtitle={intl.formatMessage({
+          id: "dashboard.subtitle",
+          defaultMessage:
+            "Your starting point: what needs a decision today, and what you can act on right now.",
+        })}
         actions={
           <Link className="btn btn--primary" to="/policies/new">
-            New access policy
+            {intl.formatMessage({
+              id: "dashboard.newPolicy",
+              defaultMessage: "New access policy",
+            })}
           </Link>
         }
       />
 
       <div className="grid grid--stats">
-        <Stat label="Access policies" value={counts.total} />
         <Stat
-          label="Active (live)"
-          value={counts.active}
-          delta={<span className="muted">enforced now</span>}
+          label={intl.formatMessage({
+            id: "dashboard.stat.policies",
+            defaultMessage: "Access policies",
+          })}
+          value={counts.total}
         />
         <Stat
-          label="Drafts"
+          label={intl.formatMessage({
+            id: "dashboard.stat.active",
+            defaultMessage: "Live now",
+          })}
+          value={counts.active}
+          delta={
+            <span className="muted">
+              {intl.formatMessage({
+                id: "dashboard.stat.active.delta",
+                defaultMessage: "enforced right now",
+              })}
+            </span>
+          }
+        />
+        <Stat
+          label={intl.formatMessage({
+            id: "dashboard.stat.drafts",
+            defaultMessage: "Drafts",
+          })}
           value={counts.drafts}
           delta={
             counts.untested > 0 ? (
-              <Badge tone="warn">{counts.untested} need testing</Badge>
+              <Badge tone="warn">
+                {intl.formatMessage(
+                  {
+                    id: "dashboard.stat.drafts.needTesting",
+                    defaultMessage:
+                      "{count, plural, one {# needs testing} other {# need testing}}",
+                  },
+                  { count: counts.untested },
+                )}
+              </Badge>
             ) : (
-              <span className="muted">all simulated</span>
+              <span className="muted">
+                {intl.formatMessage({
+                  id: "dashboard.stat.drafts.allTested",
+                  defaultMessage: "all tested",
+                })}
+              </span>
             )
           }
         />
-        <Stat label="Open access requests" value={openRequests.length} />
+        <Stat
+          label={intl.formatMessage({
+            id: "dashboard.stat.openRequests",
+            defaultMessage: "Open access requests",
+          })}
+          value={openRequests.length}
+        />
       </div>
 
       <div className="grid grid--2" style={{ marginTop: 16 }}>
         <Card
-          title="Recently edited policies"
-          subtitle="Drafts must be simulated since their last edit before they can go live."
+          title={intl.formatMessage({
+            id: "dashboard.recent.title",
+            defaultMessage: "Recently edited policies",
+          })}
+          subtitle={intl.formatMessage({
+            id: "dashboard.recent.subtitle",
+            defaultMessage:
+              "A draft must be tested after its latest edit before it can go live.",
+          })}
           actions={
             <Link className="btn btn--sm" to="/policies">
-              View all
+              {intl.formatMessage({
+                id: "dashboard.viewAll",
+                defaultMessage: "View all",
+              })}
             </Link>
           }
         >
-          {recentPolicies.length === 0 ? (
+          {policies.isLoading ? (
+            <CardBodySkeleton />
+          ) : policies.isError ? (
+            <CardBodyError onRetry={() => void policies.refetch()} />
+          ) : recentPolicies.length === 0 ? (
             <EmptyState
-              title="No access policies yet"
-              description="Create your first who → system rule. Nothing is enforced until you test and promote it."
+              illustration={<EmptyIllustration kind="policy" />}
+              title={intl.formatMessage({
+                id: "dashboard.recent.empty.title",
+                defaultMessage: "No access policies yet",
+              })}
+              description={intl.formatMessage({
+                id: "dashboard.recent.empty.desc",
+                defaultMessage:
+                  "Create your first rule for who can reach which system. Nothing is enforced until you test it and turn it on.",
+              })}
               action={
                 <Link className="btn btn--primary btn--sm" to="/policies/new">
-                  New access policy
+                  {intl.formatMessage({
+                    id: "dashboard.newPolicy",
+                    defaultMessage: "New access policy",
+                  })}
                 </Link>
               }
             />
@@ -195,13 +370,28 @@ export function Dashboard() {
                     <div className="list__main">
                       <b>{p.name}</b>
                       <span className="muted">
-                        {p.definition.action} · {p.definition.subjects.length}{" "}
-                        subject(s) → {p.definition.resources.length} resource(s)
+                        {intl.formatMessage(
+                          {
+                            id: "dashboard.recent.meta",
+                            defaultMessage:
+                              "{action} · {subjects, plural, one {# subject} other {# subjects}} → {resources, plural, one {# resource} other {# resources}}",
+                          },
+                          {
+                            action: p.definition.action,
+                            subjects: p.definition.subjects.length,
+                            resources: p.definition.resources.length,
+                          },
+                        )}
                       </span>
                     </div>
                     <div className="list__meta">
                       {p.state === "draft" && !p.draft_impact && (
-                        <Badge tone="warn">Untested</Badge>
+                        <Badge tone="warn">
+                          {intl.formatMessage({
+                            id: "dashboard.untested",
+                            defaultMessage: "Untested",
+                          })}
+                        </Badge>
                       )}
                       <StatusBadge status={p.state} />
                       <span className="muted">
@@ -216,58 +406,110 @@ export function Dashboard() {
         </Card>
 
         <Card
-          title="Needs attention"
-          subtitle="Lifecycle items waiting on a decision."
+          title={intl.formatMessage({
+            id: "dashboard.attention.title",
+            defaultMessage: "Needs your attention",
+          })}
+          subtitle={intl.formatMessage({
+            id: "dashboard.attention.subtitle",
+            defaultMessage: "Items waiting on a decision from you.",
+          })}
         >
-          <ul className="list">
-            <li>
-              <Link to="/requests">
-                <div className="list__main">
-                  <b>Open access requests</b>
-                  <span className="muted">
-                    Joiner / mover provisioning awaiting approval
-                  </span>
-                </div>
-                <div className="list__meta">
-                  <Badge tone={openRequests.length ? "warn" : "neutral"}>
-                    {openRequests.length}
-                  </Badge>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link to="/directory">
-                <div className="list__main">
-                  <b>Orphan accounts</b>
-                  <span className="muted">
-                    Upstream identities with no active grant (leaver cleanup)
-                  </span>
-                </div>
-                <div className="list__meta">
-                  <Badge tone={pendingOrphans.length ? "warn" : "neutral"}>
-                    {pendingOrphans.length}
-                  </Badge>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link to="/policies">
-                <div className="list__main">
-                  <b>Untested drafts</b>
-                  <span className="muted">
-                    Draft policies that must be simulated before rollout
-                  </span>
-                </div>
-                <div className="list__meta">
-                  <Badge tone={counts.untested ? "warn" : "neutral"}>
-                    {counts.untested}
-                  </Badge>
-                </div>
-              </Link>
-            </li>
-          </ul>
+          {attentionLoading ? (
+            <CardBodySkeleton />
+          ) : attentionError ? (
+            <CardBodyError onRetry={retryAttention} />
+          ) : attentionTotal === 0 ? (
+            <EmptyState
+              illustration={<EmptyIllustration kind="shield" />}
+              title={intl.formatMessage({
+                id: "dashboard.attention.clear.title",
+                defaultMessage: "You're all caught up",
+              })}
+              description={intl.formatMessage({
+                id: "dashboard.attention.clear.desc",
+                defaultMessage:
+                  "Nothing needs a decision right now. New requests and clean-up items will show up here when they arrive.",
+              })}
+            />
+          ) : (
+            <ul className="list">
+              <li>
+                <Link to="/requests">
+                  <div className="list__main">
+                    <b>
+                      {intl.formatMessage({
+                        id: "dashboard.attention.requests.title",
+                        defaultMessage: "Open access requests",
+                      })}
+                    </b>
+                    <span className="muted">
+                      {intl.formatMessage({
+                        id: "dashboard.attention.requests.desc",
+                        defaultMessage:
+                          "People waiting for access to be approved and set up",
+                      })}
+                    </span>
+                  </div>
+                  <div className="list__meta">
+                    <Badge tone={openRequests.length ? "warn" : "neutral"}>
+                      {openRequests.length}
+                    </Badge>
+                  </div>
+                </Link>
+              </li>
+              <li>
+                <Link to="/directory">
+                  <div className="list__main">
+                    <b>
+                      {intl.formatMessage({
+                        id: "dashboard.attention.orphans.title",
+                        defaultMessage: "Accounts to clean up",
+                      })}
+                    </b>
+                    <span className="muted">
+                      {intl.formatMessage({
+                        id: "dashboard.attention.orphans.desc",
+                        defaultMessage:
+                          "Leftover accounts with no active access — usually people who have left",
+                      })}
+                    </span>
+                  </div>
+                  <div className="list__meta">
+                    <Badge tone={pendingOrphans.length ? "warn" : "neutral"}>
+                      {pendingOrphans.length}
+                    </Badge>
+                  </div>
+                </Link>
+              </li>
+              <li>
+                <Link to="/policies">
+                  <div className="list__main">
+                    <b>
+                      {intl.formatMessage({
+                        id: "dashboard.attention.untested.title",
+                        defaultMessage: "Untested drafts",
+                      })}
+                    </b>
+                    <span className="muted">
+                      {intl.formatMessage({
+                        id: "dashboard.attention.untested.desc",
+                        defaultMessage:
+                          "Draft policies to test before they can go live",
+                      })}
+                    </span>
+                  </div>
+                  <div className="list__meta">
+                    <Badge tone={counts.untested ? "warn" : "neutral"}>
+                      {counts.untested}
+                    </Badge>
+                  </div>
+                </Link>
+              </li>
+            </ul>
+          )}
         </Card>
       </div>
-    </>
+    </div>
   );
 }

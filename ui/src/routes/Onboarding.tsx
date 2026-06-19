@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useIntl, FormattedMessage } from "react-intl";
 import { PageHeader, Card, Badge, LoadingState } from "@/components/ui";
 import { EmptyIllustration } from "@/components/EmptyState";
 import { HelpTooltip } from "@/components/HelpTooltip";
@@ -26,25 +27,40 @@ import {
   type OnboardingStepId,
 } from "@/lib/onboarding-store";
 import { titleCase } from "@/lib/format";
+import "./lane-a1.css";
 
-// Human labels for the stepper. Kept here (not in the store) so the store stays
-// presentation-free.
-const STEP_LABELS: Record<OnboardingStepId, string> = {
-  welcome: "Welcome",
-  connect: "Connect a source",
-  policy: "First access rule",
-  invite: "Invite a teammate",
-  done: "All set",
-};
+// Rich-text tags for inline emphasis inside localized copy.
+const code = (chunks: ReactNode) => <code>{chunks}</code>;
+const b = (chunks: ReactNode) => <b>{chunks}</b>;
+const i = (chunks: ReactNode) => <i>{chunks}</i>;
+
+// Message ids for the stepper labels. Kept here (not in the store) so the store
+// stays presentation-free.
+const STEP_LABELS: Record<OnboardingStepId, { id: string; defaultMessage: string }> =
+  {
+    welcome: { id: "onboarding.step.welcome", defaultMessage: "Welcome" },
+    connect: { id: "onboarding.step.connect", defaultMessage: "Connect a source" },
+    policy: { id: "onboarding.step.policy", defaultMessage: "First access rule" },
+    invite: { id: "onboarding.step.invite", defaultMessage: "Invite a teammate" },
+    done: { id: "onboarding.step.done", defaultMessage: "All set" },
+  };
 
 export function Onboarding() {
+  const intl = useIntl();
   const me = useMe();
   const perms = useMyPermissions();
   // Resolve the bound tenant before mounting the wizard so the progress store
   // keys on the real tenant id from its first render (the persistence hook
   // initializes lazily and won't re-key afterwards).
   if (me.isLoading || perms.isLoading)
-    return <LoadingState label="Preparing your setup…" />;
+    return (
+      <LoadingState
+        label={intl.formatMessage({
+          id: "onboarding.preparing",
+          defaultMessage: "Preparing your setup…",
+        })}
+      />
+    );
   // The wizard drives admin-only mutations and its nav entry is admin-only, but
   // a non-admin reaching /onboarding directly would otherwise see a wizard that
   // 403s on submit. Once permissions resolve and the caller isn't an admin,
@@ -64,32 +80,51 @@ export function Onboarding() {
 // task, so point them at the surface that is theirs rather than a wizard the
 // server will reject.
 function SetupNotAvailable() {
+  const intl = useIntl();
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
-        title="Get started"
-        subtitle="Guided setup is handled by a workspace admin."
+        title={intl.formatMessage({
+          id: "onboarding.title",
+          defaultMessage: "Get started",
+        })}
+        subtitle={intl.formatMessage({
+          id: "onboarding.notAvailable.subtitle",
+          defaultMessage: "Guided setup is handled by a workspace admin.",
+        })}
       />
       <Card
-        title="Setup is done by an admin"
-        subtitle="Your role doesn't include workspace setup."
+        title={intl.formatMessage({
+          id: "onboarding.notAvailable.title",
+          defaultMessage: "Setup is handled by an admin",
+        })}
+        subtitle={intl.formatMessage({
+          id: "onboarding.notAvailable.cardSubtitle",
+          defaultMessage: "Your role doesn't include workspace setup.",
+        })}
       >
         <div className="callout callout--info" role="status">
-          Connecting identity sources, writing access rules, and inviting people
-          are admin tasks. You can request the access you need from your
-          self-service portal — no setup required.
+          {intl.formatMessage({
+            id: "onboarding.notAvailable.body",
+            defaultMessage:
+              "Connecting identity sources, writing access rules, and inviting people are admin tasks. You can request the access you need from your self-service area — no setup required.",
+          })}
         </div>
         <div className="onboard__actions">
           <Link className="btn btn--primary" to="/self-service">
-            Go to your access
+            {intl.formatMessage({
+              id: "onboarding.notAvailable.cta",
+              defaultMessage: "Go to your access",
+            })}
           </Link>
         </div>
       </Card>
-    </>
+    </div>
   );
 }
 
 function OnboardingWizard({ tenantId }: { tenantId: string }) {
+  const intl = useIntl();
   const navigate = useNavigate();
   const [progress, update] = useOnboardingProgress(tenantId);
 
@@ -117,13 +152,23 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
     });
 
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
-        title="Get started"
-        subtitle="A short, guided setup. You can leave and pick up where you left off — your progress on this browser is saved as you go."
+        title={intl.formatMessage({
+          id: "onboarding.title",
+          defaultMessage: "Get started",
+        })}
+        subtitle={intl.formatMessage({
+          id: "onboarding.subtitle",
+          defaultMessage:
+            "A short, guided setup. You can leave and pick up where you left off — your progress on this browser is saved as you go.",
+        })}
         actions={
           <Link className="btn btn--ghost btn--sm" to="/">
-            Skip for now
+            {intl.formatMessage({
+              id: "onboarding.skip",
+              defaultMessage: "Skip for now",
+            })}
           </Link>
         }
       />
@@ -139,9 +184,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
             onNext={advance}
           />
         )}
-        {step === "connect" && (
-          <ConnectStep onBack={back} onNext={advance} />
-        )}
+        {step === "connect" && <ConnectStep onBack={back} onNext={advance} />}
         {step === "policy" && <PolicyStep onBack={back} onNext={advance} />}
         {step === "invite" && <InviteStep onBack={back} onNext={advance} />}
         {step === "done" && (
@@ -158,7 +201,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
           />
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -169,21 +212,34 @@ function Stepper({
   current: number;
   completed: OnboardingStepId[];
 }) {
+  const intl = useIntl();
   return (
-    <ol className="stepper" aria-label="Setup progress">
-      {ONBOARDING_STEPS.map((id, i) => {
-        const isActive = i === current;
-        const isDone = i < current || completed.includes(id);
+    <ol
+      className="stepper"
+      aria-label={intl.formatMessage({
+        id: "onboarding.stepper.label",
+        defaultMessage: "Setup progress",
+      })}
+    >
+      {ONBOARDING_STEPS.map((id, idx) => {
+        const isActive = idx === current;
+        const isDone = idx < current || completed.includes(id);
         const cls = `stepper__step${isActive ? " stepper__step--active" : ""}${
           isDone && !isActive ? " stepper__step--done" : ""
         }`;
         return (
-          <li className={cls} key={id} aria-current={isActive ? "step" : undefined}>
+          <li
+            className={cls}
+            key={id}
+            aria-current={isActive ? "step" : undefined}
+          >
             <span className="stepper__dot" aria-hidden>
-              {isDone && !isActive ? "✓" : i + 1}
+              {isDone && !isActive ? "✓" : idx + 1}
             </span>
-            <span className="stepper__name">{STEP_LABELS[id]}</span>
-            {i < ONBOARDING_STEPS.length - 1 && (
+            <span className="stepper__name">
+              {intl.formatMessage(STEP_LABELS[id])}
+            </span>
+            {idx < ONBOARDING_STEPS.length - 1 && (
               <span className="stepper__bar" aria-hidden />
             )}
           </li>
@@ -206,37 +262,71 @@ function WelcomeStep({
   onName: (name: string) => void;
   onNext: () => void;
 }) {
+  const intl = useIntl();
   return (
     <Card
-      title="Welcome to ShieldNet Access"
-      subtitle="In a few minutes you'll connect where your team logs in, write your first access rule, and invite a colleague. No prior security experience needed."
+      title={intl.formatMessage({
+        id: "onboarding.welcome.title",
+        defaultMessage: "Welcome to ShieldNet Access",
+      })}
+      subtitle={intl.formatMessage({
+        id: "onboarding.welcome.subtitle",
+        defaultMessage:
+          "In a few minutes you'll connect where your team signs in, write your first access rule, and invite a colleague. No prior security experience needed.",
+      })}
     >
       <div className="overview-anim" aria-hidden>
-        <span className="overview-anim__node">Your people</span>
+        <span className="overview-anim__node">
+          {intl.formatMessage({
+            id: "onboarding.welcome.diagram.people",
+            defaultMessage: "Your people",
+          })}
+        </span>
         <span className="overview-anim__flow" />
         <span className="overview-anim__node overview-anim__node--sng">
           ShieldNet Access
         </span>
         <span className="overview-anim__flow" />
-        <span className="overview-anim__node">Your apps &amp; servers</span>
+        <span className="overview-anim__node">
+          {intl.formatMessage({
+            id: "onboarding.welcome.diagram.apps",
+            defaultMessage: "Your apps & servers",
+          })}
+        </span>
       </div>
       <p className="muted" style={{ maxWidth: "62ch" }}>
-        ShieldNet sits between your people and the apps, servers, and databases
-        they need. It grants access just-in-time — only when someone needs it,
-        only for as long as they need it — and records every grant for you.
+        {intl.formatMessage({
+          id: "onboarding.welcome.body",
+          defaultMessage:
+            "ShieldNet sits between your people and the apps, servers, and databases they need. It grants access just-in-time — only when someone needs it, and only for as long as they need it — and keeps a record of every grant for you.",
+        })}
       </p>
 
       <label className="field" style={{ marginTop: 8 }}>
         <span className="field__label">
-          What should we call this workspace?{" "}
-          <HelpTooltip title="Workspace name">
-            A friendly label just for you, shown in this console on this browser.
-            It doesn't change anything on the server or how access works.
+          {intl.formatMessage({
+            id: "onboarding.welcome.name.label",
+            defaultMessage: "What should we call this workspace?",
+          })}{" "}
+          <HelpTooltip
+            title={intl.formatMessage({
+              id: "onboarding.welcome.name.helpTitle",
+              defaultMessage: "Workspace name",
+            })}
+          >
+            {intl.formatMessage({
+              id: "onboarding.welcome.name.help",
+              defaultMessage:
+                "A friendly label just for you, shown in this console on this browser. It doesn't change anything on the server or how access works.",
+            })}
           </HelpTooltip>
         </span>
         <input
           value={workspaceName}
-          placeholder="e.g. Acme Corp"
+          placeholder={intl.formatMessage({
+            id: "onboarding.welcome.name.placeholder",
+            defaultMessage: "e.g. Acme Corp",
+          })}
           onChange={(e) => onName(e.target.value)}
         />
       </label>
@@ -244,10 +334,21 @@ function WelcomeStep({
       <dl className="kv" style={{ marginTop: 4 }}>
         <div>
           <dt>
-            Bound tenant{" "}
-            <HelpTooltip title="Tenant">
-              The isolated workspace your sign-in maps to. Everything you create
-              here stays inside this tenant and is never visible to others.
+            {intl.formatMessage({
+              id: "onboarding.welcome.tenant.label",
+              defaultMessage: "Your workspace ID",
+            })}{" "}
+            <HelpTooltip
+              title={intl.formatMessage({
+                id: "onboarding.welcome.tenant.helpTitle",
+                defaultMessage: "Workspace ID",
+              })}
+            >
+              {intl.formatMessage({
+                id: "onboarding.welcome.tenant.help",
+                defaultMessage:
+                  "The private space your sign-in maps to. Everything you create here stays inside it and is never visible to anyone else.",
+              })}
             </HelpTooltip>
           </dt>
           <dd>
@@ -258,7 +359,10 @@ function WelcomeStep({
 
       <div className="onboard__actions">
         <button className="btn btn--primary" onClick={onNext}>
-          Let's go
+          {intl.formatMessage({
+            id: "onboarding.welcome.cta",
+            defaultMessage: "Let's go",
+          })}
         </button>
       </div>
     </Card>
@@ -279,7 +383,7 @@ function recommendConnectors(
     const tier = e.tier === "T1" ? 0 : e.tier === "T2" ? 1 : 2;
     return identity * 10 + tier;
   };
-  return [...entries].sort((a, b) => rank(a) - rank(b)).slice(0, 6);
+  return [...entries].sort((a, b2) => rank(a) - rank(b2)).slice(0, 6);
 }
 
 function ConnectStep({
@@ -289,6 +393,7 @@ function ConnectStep({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const intl = useIntl();
   const navigate = useNavigate();
   const { data, isLoading } = useConnectors({});
   const entries = useMemo(() => data ?? [], [data]);
@@ -299,59 +404,109 @@ function ConnectStep({
 
   return (
     <Card
-      title="Connect where your team logs in"
-      subtitle="Link an identity source (like Google Workspace, Okta, or Microsoft Entra) or an app. ShieldNet uses it to know who your people are — it never stores their passwords."
+      title={intl.formatMessage({
+        id: "onboarding.connect.title",
+        defaultMessage: "Connect where your team signs in",
+      })}
+      subtitle={intl.formatMessage({
+        id: "onboarding.connect.subtitle",
+        defaultMessage:
+          "Link an identity source (like Google Workspace, Okta, or Microsoft Entra) or an app. ShieldNet uses it to know who your people are — it never stores their passwords.",
+      })}
     >
       {connectedCount > 0 && (
         <div className="callout callout--ok" role="status">
-          {connectedCount === 1
-            ? "1 source connected. You can connect more, or continue."
-            : `${connectedCount} sources connected. You can connect more, or continue.`}
+          {intl.formatMessage(
+            {
+              id: "onboarding.connect.connectedCount",
+              defaultMessage:
+                "{count, plural, one {# source connected. You can connect more, or continue.} other {# sources connected. You can connect more, or continue.}}",
+            },
+            { count: connectedCount },
+          )}
         </div>
       )}
 
       <div className="explainer">
         <p className="muted" style={{ maxWidth: "64ch" }}>
-          To connect a source you'll usually paste one credential from it:
+          {intl.formatMessage({
+            id: "onboarding.connect.explainer.intro",
+            defaultMessage:
+              "To connect a source you'll usually paste one credential from it:",
+          })}
         </p>
         <ul className="explainer__list">
           <li>
-            an{" "}
-            <b>OAuth client</b>{" "}
-            <HelpTooltip title="OAuth client">
-              A small "app registration" you create inside your provider (e.g.
-              Google or Microsoft). It produces a <i>client ID</i> and{" "}
-              <i>client secret</i> that let ShieldNet read your users on your
-              behalf — without ever seeing anyone's password. You'll usually
-              find it under "APIs &amp; Services", "App registrations", or
-              "Developer" settings.
+            <FormattedMessage
+              id="onboarding.connect.explainer.oauth"
+              defaultMessage="an <b>app connection</b>, or"
+              values={{ b }}
+            />{" "}
+            <HelpTooltip
+              title={intl.formatMessage({
+                id: "onboarding.connect.oauth.helpTitle",
+                defaultMessage: "App connection (OAuth client)",
+              })}
+            >
+              <FormattedMessage
+                id="onboarding.connect.oauth.help"
+                defaultMessage="A small ‘app registration’ you create inside your provider (e.g. Google or Microsoft). It produces a <i>client ID</i> and <i>client secret</i> that let ShieldNet read your users on your behalf — without ever seeing anyone's password. You'll usually find it under ‘APIs & Services’, ‘App registrations’, or ‘Developer’ settings."
+                values={{ i }}
+              />
             </HelpTooltip>
-            , or
           </li>
           <li>
-            an{" "}
-            <b>API token</b>{" "}
-            <HelpTooltip title="API token">
-              A long secret string the provider generates for you (sometimes
-              called an "API key" or "service token"). Copy it once when you
-              create it and paste it into the guided setup — the provider often
-              won't show it again, so keep it handy.
+            <FormattedMessage
+              id="onboarding.connect.explainer.token"
+              defaultMessage="an <b>API token</b>."
+              values={{ b }}
+            />{" "}
+            <HelpTooltip
+              title={intl.formatMessage({
+                id: "onboarding.connect.token.helpTitle",
+                defaultMessage: "API token",
+              })}
+            >
+              {intl.formatMessage({
+                id: "onboarding.connect.token.help",
+                defaultMessage:
+                  "A long secret string the provider generates for you (sometimes called an ‘API key’ or ‘service token’). Copy it once when you create it and paste it into the guided setup — the provider often won't show it again, so keep it handy.",
+              })}
             </HelpTooltip>
-            .
           </li>
         </ul>
         <p className="muted" style={{ maxWidth: "64ch" }}>
-          Don't have one yet? Pick your provider below — the guided setup walks
-          you through exactly where to find it, step by step.
+          {intl.formatMessage({
+            id: "onboarding.connect.explainer.outro",
+            defaultMessage:
+              "Don't have one yet? Pick your provider below — the guided setup walks you through exactly where to find it, step by step.",
+          })}
         </p>
       </div>
 
       {isLoading ? (
-        <LoadingState label="Loading connectors…" />
+        <LoadingState
+          label={intl.formatMessage({
+            id: "onboarding.connect.loading",
+            defaultMessage: "Loading providers…",
+          })}
+        />
       ) : recommended.length === 0 ? (
-        <p className="muted">No connectors are available in this deployment.</p>
+        <p className="muted">
+          {intl.formatMessage({
+            id: "onboarding.connect.none",
+            defaultMessage: "No providers are available in this deployment.",
+          })}
+        </p>
       ) : (
-        <div className="choice-grid" role="radiogroup" aria-label="Recommended connectors">
+        <div
+          className="choice-grid"
+          role="radiogroup"
+          aria-label={intl.formatMessage({
+            id: "onboarding.connect.recommended",
+            defaultMessage: "Recommended providers",
+          })}
+        >
           {recommended.map((e) => {
             const isSel = e.provider === selected;
             return (
@@ -367,7 +522,10 @@ function ConnectStep({
                   {e.display_name}
                   {e.connected && (
                     <Badge tone="ok" dot>
-                      Connected
+                      {intl.formatMessage({
+                        id: "onboarding.connect.connected",
+                        defaultMessage: "Connected",
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -381,10 +539,19 @@ function ConnectStep({
       )}
 
       {selectedEntry && (
-        <div className="callout callout--info" role="status" style={{ marginTop: 12 }}>
-          <b>{selectedEntry.display_name}</b> — the guided setup explains the
-          exact scopes to grant and the common mistakes to avoid, then verifies
-          the connection before anything syncs.
+        <div
+          className="callout callout--info"
+          role="status"
+          style={{ marginTop: 12 }}
+        >
+          {intl.formatMessage(
+            {
+              id: "onboarding.connect.selectedHint",
+              defaultMessage:
+                "<b>{name}</b> — the guided setup explains exactly what to allow and the common mistakes to avoid, then checks the connection before anything syncs.",
+            },
+            { name: selectedEntry.display_name, b },
+          )}
           <div style={{ marginTop: 10 }}>
             <button
               className="btn btn--primary btn--sm"
@@ -395,23 +562,45 @@ function ConnectStep({
                 })
               }
             >
-              Open guided setup for {selectedEntry.display_name}
+              {intl.formatMessage(
+                {
+                  id: "onboarding.connect.openGuided",
+                  defaultMessage: "Open guided setup for {name}",
+                },
+                { name: selectedEntry.display_name },
+              )}
             </button>
           </div>
         </div>
       )}
 
       <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
-        Looking for a different provider?{" "}
-        <Link to="/connectors">Browse all connectors</Link>.
+        <FormattedMessage
+          id="onboarding.connect.browseAll"
+          defaultMessage="Looking for a different provider? <a>Browse all connectors</a>."
+          values={{
+            a: (chunks) => <Link to="/connectors">{chunks}</Link>,
+          }}
+        />
       </p>
 
       <div className="onboard__actions">
         <button className="btn btn--ghost" onClick={onBack}>
-          Back
+          {intl.formatMessage({
+            id: "onboarding.back",
+            defaultMessage: "Back",
+          })}
         </button>
         <button className="btn btn--primary" onClick={onNext}>
-          {connectedCount > 0 ? "Continue" : "Skip for now"}
+          {connectedCount > 0
+            ? intl.formatMessage({
+                id: "onboarding.continue",
+                defaultMessage: "Continue",
+              })
+            : intl.formatMessage({
+                id: "onboarding.skip",
+                defaultMessage: "Skip for now",
+              })}
         </button>
       </div>
     </Card>
@@ -427,6 +616,7 @@ function PolicyStep({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const intl = useIntl();
   const toast = useToast();
   const policies = usePolicies();
   const createMut = useCreatePolicy();
@@ -437,7 +627,10 @@ function PolicyStep({
 
   const policyCount = policies.data?.length ?? 0;
   const subjectList = subjects.split(",").map((s) => s.trim()).filter(Boolean);
-  const resourceList = resources.split(",").map((s) => s.trim()).filter(Boolean);
+  const resourceList = resources
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const valid = subjectList.length > 0 && resourceList.length > 0;
 
   const submit = async () => {
@@ -456,10 +649,22 @@ function PolicyStep({
         },
       });
       setCreatedName(name);
-      toast.success("Draft access rule created", "Test and promote it to go live.");
+      toast.success(
+        intl.formatMessage({
+          id: "onboarding.policy.toast.title",
+          defaultMessage: "Draft access rule created",
+        }),
+        intl.formatMessage({
+          id: "onboarding.policy.toast.body",
+          defaultMessage: "Test it, then turn it on to go live.",
+        }),
+      );
     } catch (err) {
       toast.error(
-        "Could not create the rule",
+        intl.formatMessage({
+          id: "onboarding.policy.toast.error",
+          defaultMessage: "We couldn't create the rule",
+        }),
         err instanceof ApiError ? err.message : undefined,
       );
     }
@@ -467,32 +672,60 @@ function PolicyStep({
 
   return (
     <Card
-      title="Write your first access rule"
-      subtitle="A rule says who can reach what. Nothing is enforced until you test it and turn it on — so it's safe to create one now."
+      title={intl.formatMessage({
+        id: "onboarding.policy.title",
+        defaultMessage: "Write your first access rule",
+      })}
+      subtitle={intl.formatMessage({
+        id: "onboarding.policy.subtitle",
+        defaultMessage:
+          "A rule says who can reach what. Nothing is enforced until you test it and turn it on — so it's safe to create one now.",
+      })}
     >
       {policyCount > 0 && createdName === null && (
         <div className="callout callout--ok" role="status">
-          You already have {policyCount} access{" "}
-          {policyCount === 1 ? "rule" : "rules"}. You can add another, or
-          continue.
+          {intl.formatMessage(
+            {
+              id: "onboarding.policy.existing",
+              defaultMessage:
+                "{count, plural, one {You already have # access rule. You can add another, or continue.} other {You already have # access rules. You can add another, or continue.}}",
+            },
+            { count: policyCount },
+          )}
         </div>
       )}
 
       {createdName ? (
         <div className="callout callout--ok" role="status">
-          <b>Created.</b> Your draft rule "{createdName}" is saved. Next, open it
-          to <Link to="/policies">test and promote it</Link> — that's when it
-          starts protecting access.
+          <FormattedMessage
+            id="onboarding.policy.created"
+            defaultMessage="<b>Created.</b> Your draft rule “{name}” is saved. Next, open it to <a>test and turn it on</a> — that's when it starts protecting access."
+            values={{
+              name: createdName,
+              b,
+              a: (chunks) => <Link to="/policies">{chunks}</Link>,
+            }}
+          />
         </div>
       ) : (
         <>
           <label className="field">
             <span className="field__label">
-              Who should get access?{" "}
-              <HelpTooltip title="Who">
-                A group or person from your connected source — for example a
-                group name like <code>group:engineering</code> or a single user.
-                Separate multiple with commas.
+              {intl.formatMessage({
+                id: "onboarding.policy.who.label",
+                defaultMessage: "Who should get access?",
+              })}{" "}
+              <HelpTooltip
+                title={intl.formatMessage({
+                  id: "onboarding.policy.who.helpTitle",
+                  defaultMessage: "Who",
+                })}
+              >
+                <FormattedMessage
+                  id="onboarding.policy.who.help"
+                  defaultMessage="A group or person from your connected source — for example a group name like <code>group:engineering</code> or a single user. Separate multiple with commas."
+                  values={{ code }}
+                />
               </HelpTooltip>
             </span>
             <input
@@ -504,11 +737,21 @@ function PolicyStep({
 
           <label className="field">
             <span className="field__label">
-              What can they reach?{" "}
-              <HelpTooltip title="What">
-                The app, server, or database this rule covers — for example{" "}
-                <code>app:salesforce</code> or <code>host:10.0.0.0/24</code>.
-                Separate multiple with commas.
+              {intl.formatMessage({
+                id: "onboarding.policy.what.label",
+                defaultMessage: "What can they reach?",
+              })}{" "}
+              <HelpTooltip
+                title={intl.formatMessage({
+                  id: "onboarding.policy.what.helpTitle",
+                  defaultMessage: "What",
+                })}
+              >
+                <FormattedMessage
+                  id="onboarding.policy.what.help"
+                  defaultMessage="The app, server, or database this rule covers — for example <code>app:salesforce</code> or <code>host:10.0.0.0/24</code>. Separate multiple with commas."
+                  values={{ code }}
+                />
               </HelpTooltip>
             </span>
             <input
@@ -519,14 +762,29 @@ function PolicyStep({
           </label>
 
           <details className="disclosure">
-            <summary>Advanced options</summary>
+            <summary>
+              {intl.formatMessage({
+                id: "onboarding.policy.advanced",
+                defaultMessage: "Advanced options",
+              })}
+            </summary>
             <label className="field" style={{ marginTop: 10 }}>
               <span className="field__label">
-                Role (optional){" "}
-                <HelpTooltip title="Role">
-                  The level of access this rule grants on the target, such as{" "}
-                  <code>viewer</code> or <code>admin</code>. Leave blank if your
-                  target doesn't use roles.
+                {intl.formatMessage({
+                  id: "onboarding.policy.role.label",
+                  defaultMessage: "Level of access (optional)",
+                })}{" "}
+                <HelpTooltip
+                  title={intl.formatMessage({
+                    id: "onboarding.policy.role.helpTitle",
+                    defaultMessage: "Access level",
+                  })}
+                >
+                  <FormattedMessage
+                    id="onboarding.policy.role.help"
+                    defaultMessage="The level of access this rule grants on the target, such as <code>viewer</code> or <code>admin</code>. Leave blank if your target doesn't use levels."
+                    values={{ code }}
+                  />
                 </HelpTooltip>
               </span>
               <input
@@ -549,17 +807,33 @@ function PolicyStep({
             onClick={submit}
             style={{ marginTop: 4 }}
           >
-            {createMut.isPending ? "Creating…" : "Create draft rule"}
+            {createMut.isPending
+              ? intl.formatMessage({
+                  id: "onboarding.policy.creating",
+                  defaultMessage: "Creating…",
+                })
+              : intl.formatMessage({
+                  id: "onboarding.policy.create",
+                  defaultMessage: "Create draft rule",
+                })}
           </button>
         </>
       )}
 
       <div className="onboard__actions">
         <button className="btn btn--ghost" onClick={onBack}>
-          Back
+          {intl.formatMessage({ id: "onboarding.back", defaultMessage: "Back" })}
         </button>
         <button className="btn btn--primary" onClick={onNext}>
-          {createdName || policyCount > 0 ? "Continue" : "Skip for now"}
+          {createdName || policyCount > 0
+            ? intl.formatMessage({
+                id: "onboarding.continue",
+                defaultMessage: "Continue",
+              })
+            : intl.formatMessage({
+                id: "onboarding.skip",
+                defaultMessage: "Skip for now",
+              })}
         </button>
       </div>
     </Card>
@@ -575,6 +849,7 @@ function InviteStep({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const intl = useIntl();
   const toast = useToast();
   const canManage = useHasPermission(Perm.RbacManage);
   const roles = useRbacRoles({ enabled: canManage });
@@ -588,7 +863,10 @@ function InviteStep({
   // loads (a teammate rarely needs to be made an owner on day one).
   const roleOptions = roles.data?.roles ?? [];
   const effectiveRole =
-    role || roleOptions.find((r) => r.role !== "owner")?.role || roleOptions[0]?.role || "";
+    role ||
+    roleOptions.find((r) => r.role !== "owner")?.role ||
+    roleOptions[0]?.role ||
+    "";
 
   const memberCount = members.data?.length ?? 0;
 
@@ -598,11 +876,26 @@ function InviteStep({
     try {
       await assignMut.mutateAsync({ userId: uid, role: effectiveRole });
       setInvited(uid);
-      toast.success("Teammate added", `Assigned the ${effectiveRole} role.`);
+      toast.success(
+        intl.formatMessage({
+          id: "onboarding.invite.toast.title",
+          defaultMessage: "Teammate added",
+        }),
+        intl.formatMessage(
+          {
+            id: "onboarding.invite.toast.body",
+            defaultMessage: "Given the {role} role.",
+          },
+          { role: effectiveRole },
+        ),
+      );
       setUserId("");
     } catch (err) {
       toast.error(
-        "Could not add teammate",
+        intl.formatMessage({
+          id: "onboarding.invite.toast.error",
+          defaultMessage: "We couldn't add your teammate",
+        }),
         err instanceof ApiError ? err.message : undefined,
       );
     }
@@ -611,20 +904,34 @@ function InviteStep({
   if (!canManage) {
     return (
       <Card
-        title="Invite a teammate"
-        subtitle="Bring a colleague into this workspace."
+        title={intl.formatMessage({
+          id: "onboarding.invite.title",
+          defaultMessage: "Invite a teammate",
+        })}
+        subtitle={intl.formatMessage({
+          id: "onboarding.invite.subtitle.short",
+          defaultMessage: "Bring a colleague into this workspace.",
+        })}
       >
         <div className="callout callout--info" role="status">
-          Inviting teammates needs the member-management permission, which your
-          current role doesn't have. Ask your workspace owner to add people, or
-          continue — you can always do this later.
+          {intl.formatMessage({
+            id: "onboarding.invite.noPermission",
+            defaultMessage:
+              "Inviting teammates needs permission to manage members, which your current role doesn't have. Ask your workspace owner to add people, or continue — you can always do this later.",
+          })}
         </div>
         <div className="onboard__actions">
           <button className="btn btn--ghost" onClick={onBack}>
-            Back
+            {intl.formatMessage({
+              id: "onboarding.back",
+              defaultMessage: "Back",
+            })}
           </button>
           <button className="btn btn--primary" onClick={onNext}>
-            Continue
+            {intl.formatMessage({
+              id: "onboarding.continue",
+              defaultMessage: "Continue",
+            })}
           </button>
         </div>
       </Card>
@@ -633,46 +940,85 @@ function InviteStep({
 
   return (
     <Card
-      title="Invite a teammate"
-      subtitle="Give a colleague the right level of access to this workspace. They sign in with your identity provider — you just assign their role here."
+      title={intl.formatMessage({
+        id: "onboarding.invite.title",
+        defaultMessage: "Invite a teammate",
+      })}
+      subtitle={intl.formatMessage({
+        id: "onboarding.invite.subtitle",
+        defaultMessage:
+          "Give a colleague the right level of access to this workspace. They sign in with your identity provider — you just choose their role here.",
+      })}
     >
       {memberCount > 0 && (
         <div className="callout callout--ok" role="status">
-          {memberCount} {memberCount === 1 ? "member" : "members"} in this
-          workspace.
+          {intl.formatMessage(
+            {
+              id: "onboarding.invite.memberCount",
+              defaultMessage:
+                "{count, plural, one {# person in this workspace.} other {# people in this workspace.}}",
+            },
+            { count: memberCount },
+          )}
         </div>
       )}
 
       {invited && (
         <div className="callout callout--ok" role="status">
-          <b>{invited}</b> now has access. Add another, or continue.
+          <FormattedMessage
+            id="onboarding.invite.added"
+            defaultMessage="<b>{user}</b> now has access. Add another, or continue."
+            values={{ user: invited, b }}
+          />
         </div>
       )}
 
       <label className="field">
         <span className="field__label">
-          Teammate's user ID{" "}
-          <HelpTooltip title="User ID">
-            The person's unique ID from your identity provider (the same system
-            you connected earlier). It's not an email invite — the teammate must
-            already exist in your identity provider; here you grant them a role
-            in this workspace.
+          {intl.formatMessage({
+            id: "onboarding.invite.user.label",
+            defaultMessage: "Teammate's user ID",
+          })}{" "}
+          <HelpTooltip
+            title={intl.formatMessage({
+              id: "onboarding.invite.user.helpTitle",
+              defaultMessage: "User ID",
+            })}
+          >
+            {intl.formatMessage({
+              id: "onboarding.invite.user.help",
+              defaultMessage:
+                "The person's unique ID from your identity provider (the same system you connected earlier). This isn't an email invite — the teammate must already exist in your identity provider; here you give them a role in this workspace.",
+            })}
           </HelpTooltip>
         </span>
         <input
           value={userId}
-          placeholder="e.g. iam-core user id"
+          placeholder={intl.formatMessage({
+            id: "onboarding.invite.user.placeholder",
+            defaultMessage: "Paste their user ID",
+          })}
           onChange={(e) => setUserId(e.target.value)}
         />
       </label>
 
       <label className="field">
         <span className="field__label">
-          Their role{" "}
-          <HelpTooltip title="Roles">
-            <b>Operator</b>: an everyday user who requests access. <b>Admin</b>:
-            manages connectors, rules, and members. <b>Auditor</b>: read-only
-            for compliance. Pick the least access that lets them do their job.
+          {intl.formatMessage({
+            id: "onboarding.invite.role.label",
+            defaultMessage: "Their role",
+          })}{" "}
+          <HelpTooltip
+            title={intl.formatMessage({
+              id: "onboarding.invite.role.helpTitle",
+              defaultMessage: "Roles",
+            })}
+          >
+            <FormattedMessage
+              id="onboarding.invite.role.help"
+              defaultMessage="<b>Operator</b>: an everyday user who requests access. <b>Admin</b>: manages connectors, rules, and members. <b>Auditor</b>: read-only for compliance. Pick the least access that lets them do their job."
+              values={{ b }}
+            />
           </HelpTooltip>
         </span>
         <select
@@ -700,15 +1046,31 @@ function InviteStep({
         onClick={submit}
         style={{ marginTop: 4 }}
       >
-        {assignMut.isPending ? "Adding…" : "Add teammate"}
+        {assignMut.isPending
+          ? intl.formatMessage({
+              id: "onboarding.invite.adding",
+              defaultMessage: "Adding…",
+            })
+          : intl.formatMessage({
+              id: "onboarding.invite.add",
+              defaultMessage: "Add teammate",
+            })}
       </button>
 
       <div className="onboard__actions">
         <button className="btn btn--ghost" onClick={onBack}>
-          Back
+          {intl.formatMessage({ id: "onboarding.back", defaultMessage: "Back" })}
         </button>
         <button className="btn btn--primary" onClick={onNext}>
-          {invited || memberCount > 1 ? "Continue" : "Skip for now"}
+          {invited || memberCount > 1
+            ? intl.formatMessage({
+                id: "onboarding.continue",
+                defaultMessage: "Continue",
+              })
+            : intl.formatMessage({
+                id: "onboarding.skip",
+                defaultMessage: "Skip for now",
+              })}
         </button>
       </div>
     </Card>
@@ -726,6 +1088,7 @@ function DoneStep({
   onBack: () => void;
   onFinish: () => void;
 }) {
+  const intl = useIntl();
   // Reflect real, server-side state — not just which steps were clicked — so
   // the summary is honest about what actually exists.
   const connectors = useConnectors({});
@@ -733,7 +1096,9 @@ function DoneStep({
   const canManage = useHasPermission(Perm.RbacManage);
   const members = useRbacMembers({ enabled: canManage });
 
-  const connectedCount = (connectors.data ?? []).filter((c) => c.connected).length;
+  const connectedCount = (connectors.data ?? []).filter(
+    (c) => c.connected,
+  ).length;
   const policyCount = policies.data?.length ?? 0;
   const memberCount = members.data?.length ?? 0;
 
@@ -742,15 +1107,35 @@ function DoneStep({
       done: connectedCount > 0,
       label:
         connectedCount > 0
-          ? `Connected ${connectedCount} source${connectedCount === 1 ? "" : "s"}`
-          : "Connect a source (you can do this any time)",
+          ? intl.formatMessage(
+              {
+                id: "onboarding.done.connected",
+                defaultMessage:
+                  "{count, plural, one {Connected # source} other {Connected # sources}}",
+              },
+              { count: connectedCount },
+            )
+          : intl.formatMessage({
+              id: "onboarding.done.connectTodo",
+              defaultMessage: "Connect a source (you can do this any time)",
+            }),
     },
     {
       done: policyCount > 0,
       label:
         policyCount > 0
-          ? `Created ${policyCount} access rule${policyCount === 1 ? "" : "s"}`
-          : "Write your first access rule",
+          ? intl.formatMessage(
+              {
+                id: "onboarding.done.policies",
+                defaultMessage:
+                  "{count, plural, one {Created # access rule} other {Created # access rules}}",
+              },
+              { count: policyCount },
+            )
+          : intl.formatMessage({
+              id: "onboarding.done.policyTodo",
+              defaultMessage: "Write your first access rule",
+            }),
     },
   ];
   // Only summarize membership when this admin can actually manage it — the
@@ -762,25 +1147,56 @@ function DoneStep({
       done: memberCount > 1,
       label:
         memberCount > 1
-          ? `${memberCount} people in the workspace`
-          : "Invite a teammate",
+          ? intl.formatMessage(
+              {
+                id: "onboarding.done.members",
+                defaultMessage:
+                  "{count, plural, one {# person in the workspace} other {# people in the workspace}}",
+              },
+              { count: memberCount },
+            )
+          : intl.formatMessage({
+              id: "onboarding.done.inviteTodo",
+              defaultMessage: "Invite a teammate",
+            }),
     });
   }
 
-  const hello = progress.workspaceName ? ` for ${progress.workspaceName}` : "";
-
   return (
     <Card
-      title={`You're set up${hello}`}
-      subtitle="Here's where things stand and what to do next."
+      title={
+        progress.workspaceName
+          ? intl.formatMessage(
+              {
+                id: "onboarding.done.titleNamed",
+                defaultMessage: "You're set up for {name}",
+              },
+              { name: progress.workspaceName },
+            )
+          : intl.formatMessage({
+              id: "onboarding.done.title",
+              defaultMessage: "You're all set",
+            })
+      }
+      subtitle={intl.formatMessage({
+        id: "onboarding.done.subtitle",
+        defaultMessage: "Here's where things stand and what to do next.",
+      })}
     >
       <div className="done-summary">
-        <div className="state__illustration" aria-hidden style={{ margin: "0 auto" }}>
+        <div
+          className="state__illustration"
+          aria-hidden
+          style={{ margin: "0 auto" }}
+        >
           <EmptyIllustration kind="shield" />
         </div>
         <ul className="check-list">
           {items.map((it) => (
-            <li key={it.label} className={it.done ? "check-list__item--done" : ""}>
+            <li
+              key={it.label}
+              className={it.done ? "check-list__item--done" : ""}
+            >
               <span className="check-list__mark" aria-hidden>
                 {it.done ? "✓" : "○"}
               </span>
@@ -790,32 +1206,53 @@ function DoneStep({
         </ul>
       </div>
 
-      <h4 style={{ margin: "18px 0 6px" }}>What's next</h4>
+      <h4 style={{ margin: "18px 0 6px" }}>
+        {intl.formatMessage({
+          id: "onboarding.done.whatsNext",
+          defaultMessage: "What's next",
+        })}
+      </h4>
       <ul className="done-links">
         <li>
-          <Link to="/policies">Test &amp; promote your access rules</Link> — turn
-          a draft into live protection.
+          <FormattedMessage
+            id="onboarding.done.link.policies"
+            defaultMessage="<a>Test & turn on your access rules</a> — turn a draft into live protection."
+            values={{ a: (chunks) => <Link to="/policies">{chunks}</Link> }}
+          />
         </li>
         <li>
-          <Link to="/connectors">Connect more sources</Link> — add the apps and
-          servers your team uses.
+          <FormattedMessage
+            id="onboarding.done.link.connectors"
+            defaultMessage="<a>Connect more sources</a> — add the apps and servers your team uses."
+            values={{ a: (chunks) => <Link to="/connectors">{chunks}</Link> }}
+          />
         </li>
         <li>
-          <Link to="/requests">Review access requests</Link> — approve or deny
-          what your team asks for.
+          <FormattedMessage
+            id="onboarding.done.link.requests"
+            defaultMessage="<a>Review access requests</a> — approve or decline what your team asks for."
+            values={{ a: (chunks) => <Link to="/requests">{chunks}</Link> }}
+          />
         </li>
         <li>
-          <Link to="/self-service">Self-service portal</Link> — what your team
-          sees when they need access.
+          <FormattedMessage
+            id="onboarding.done.link.selfService"
+            defaultMessage="<a>Self-service area</a> — what your team sees when they need access."
+            values={{ a: (chunks) => <Link to="/self-service">{chunks}</Link> }}
+          />
         </li>
       </ul>
 
       <div className="onboard__actions">
         <button className="btn btn--ghost" onClick={onBack}>
-          Back
+          {intl.formatMessage({ id: "onboarding.back", defaultMessage: "Back" })}
         </button>
         <button className="btn btn--primary" onClick={onFinish}>
-          <Icon name="rocket" size={15} /> Go to dashboard
+          <Icon name="rocket" size={15} />{" "}
+          {intl.formatMessage({
+            id: "onboarding.done.cta",
+            defaultMessage: "Go to dashboard",
+          })}
         </button>
       </div>
     </Card>
