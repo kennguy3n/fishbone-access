@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useIntl } from "react-intl";
+import { useIntl, FormattedMessage, type IntlShape } from "react-intl";
 import { PageHeader, Card, Badge, StatusBadge, Spinner } from "@/components/ui";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { useToast } from "@/components/Toast";
@@ -42,13 +42,23 @@ const OPERATORS: ConditionOperator[] = [
   "contains",
   "not_contains",
 ];
-const OPERATOR_LABELS: Record<ConditionOperator, string> = {
-  eq: "equals",
-  neq: "does not equal",
-  in: "is one of",
-  contains: "contains",
-  not_contains: "does not contain",
-};
+
+// Plain-language operator labels, localized at render time so a non-technical
+// admin reads "equals" / "is one of" rather than the raw enum.
+function operatorLabel(intl: IntlShape, op: ConditionOperator): string {
+  switch (op) {
+    case "eq":
+      return intl.formatMessage({ id: "jml.operator.eq", defaultMessage: "equals" });
+    case "neq":
+      return intl.formatMessage({ id: "jml.operator.neq", defaultMessage: "does not equal" });
+    case "in":
+      return intl.formatMessage({ id: "jml.operator.in", defaultMessage: "is one of" });
+    case "contains":
+      return intl.formatMessage({ id: "jml.operator.contains", defaultMessage: "contains" });
+    case "not_contains":
+      return intl.formatMessage({ id: "jml.operator.not_contains", defaultMessage: "does not contain" });
+  }
+}
 
 // Attributes the subject resolver understands first-class (workflow/subject.go),
 // surfaced as datalist hints so a non-technical admin doesn't have to guess.
@@ -60,47 +70,56 @@ const ATTRIBUTE_HINTS = [
   "external_id",
 ];
 
-// All step types, with the human label and whether the step is destructive.
-// run_kill_switch is leaver-only (enforced server-side); the builder hides it
-// for joiner/mover lanes so it can't be assembled by mistake.
-const STEP_CATALOG: {
-  type: StepType;
-  label: string;
-  hint: string;
-  leaverOnly?: boolean;
-}[] = [
-  {
-    type: "grant_role",
-    label: "Grant role",
-    hint: "Provision a role on a connector for the identity.",
-  },
-  {
-    type: "provision_connector",
-    label: "Provision connector",
-    hint: "Create the identity's account on a downstream connector.",
-  },
-  {
-    type: "request_approval",
-    label: "Request approval",
-    hint: "Route a grant to a human approver before it is provisioned.",
-  },
-  {
-    type: "notify",
-    label: "Notify",
-    hint: "Send a message to a channel (e.g. an onboarding buddy).",
-  },
-  {
-    type: "start_access_review",
-    label: "Start access review",
-    hint: "Kick off a certification campaign for the identity's access.",
-  },
-  {
-    type: "run_kill_switch",
-    label: "Run kill switch",
-    hint: "Six-layer irreversible offboard. Leaver workflows only.",
-    leaverOnly: true,
-  },
+// All step types and whether each is leaver-only. run_kill_switch is leaver-only
+// (enforced server-side); the builder hides it for joiner/mover lanes so it
+// can't be assembled by mistake. Human labels and hints are localized via
+// stepLabel/stepHint so the catalog stays pure data.
+const STEP_CATALOG: { type: StepType; leaverOnly?: boolean }[] = [
+  { type: "grant_role" },
+  { type: "provision_connector" },
+  { type: "request_approval" },
+  { type: "notify" },
+  { type: "start_access_review" },
+  { type: "run_kill_switch", leaverOnly: true },
 ];
+
+function stepLabel(intl: IntlShape, type: StepType): string {
+  switch (type) {
+    case "grant_role":
+      return intl.formatMessage({ id: "jml.step.grant_role.label", defaultMessage: "Grant role" });
+    case "provision_connector":
+      return intl.formatMessage({ id: "jml.step.provision_connector.label", defaultMessage: "Provision connector" });
+    case "request_approval":
+      return intl.formatMessage({ id: "jml.step.request_approval.label", defaultMessage: "Request approval" });
+    case "notify":
+      return intl.formatMessage({ id: "jml.step.notify.label", defaultMessage: "Notify" });
+    case "start_access_review":
+      return intl.formatMessage({ id: "jml.step.start_access_review.label", defaultMessage: "Start access review" });
+    case "run_kill_switch":
+      return intl.formatMessage({ id: "jml.step.run_kill_switch.label", defaultMessage: "Run kill switch" });
+    default:
+      return titleCase(type);
+  }
+}
+
+function stepHint(intl: IntlShape, type: StepType): string | null {
+  switch (type) {
+    case "grant_role":
+      return intl.formatMessage({ id: "jml.step.grant_role.hint", defaultMessage: "Provision a role on a connector for the identity." });
+    case "provision_connector":
+      return intl.formatMessage({ id: "jml.step.provision_connector.hint", defaultMessage: "Create the identity's account on a downstream connector." });
+    case "request_approval":
+      return intl.formatMessage({ id: "jml.step.request_approval.hint", defaultMessage: "Route a grant to a human approver before it is provisioned." });
+    case "notify":
+      return intl.formatMessage({ id: "jml.step.notify.hint", defaultMessage: "Send a message to a channel (e.g. an onboarding buddy)." });
+    case "start_access_review":
+      return intl.formatMessage({ id: "jml.step.start_access_review.hint", defaultMessage: "Kick off a certification campaign for the identity's access." });
+    case "run_kill_switch":
+      return intl.formatMessage({ id: "jml.step.run_kill_switch.hint", defaultMessage: "Six-layer irreversible offboard. Leaver workflows only." });
+    default:
+      return null;
+  }
+}
 
 interface BuilderForm {
   name: string;
@@ -179,10 +198,10 @@ function isUuid(v: string): boolean {
   return UUID_RE.test(v.trim());
 }
 
-function errMessage(err: unknown): string {
+function errMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
-  return "Something went wrong.";
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +221,7 @@ function ChipInput({
   hints?: string[];
   ariaLabel: string;
 }) {
+  const intl = useIntl();
   const [draft, setDraft] = useState("");
   const listId = useMemo(
     () => `chips-${ariaLabel.replace(/\s+/g, "-").toLowerCase()}`,
@@ -221,7 +241,10 @@ function ChipInput({
           <button
             type="button"
             className="chip__remove"
-            aria-label={`Remove ${v}`}
+            aria-label={intl.formatMessage(
+              { id: "jml.chip.remove", defaultMessage: "Remove {value}" },
+              { value: v },
+            )}
             onClick={() => onChange(values.filter((x) => x !== v))}
           >
             ✕
@@ -276,8 +299,9 @@ function StepEditor({
   onRemove: () => void;
   onMove: (dir: -1 | 1) => void;
 }) {
+  const intl = useIntl();
   const set = (patch: Partial<WorkflowStep>) => onChange({ ...step, ...patch });
-  const meta = STEP_CATALOG.find((s) => s.type === step.type);
+  const hint = stepHint(intl, step.type);
   const needsTarget =
     step.type === "grant_role" ||
     step.type === "provision_connector" ||
@@ -296,12 +320,12 @@ function StepEditor({
       >
         <span className="rollout-step__num">{index + 1}</span>
         <Badge tone={step.type === "run_kill_switch" ? "danger" : "info"}>
-          {meta?.label ?? titleCase(step.type)}
+          {stepLabel(intl, step.type)}
         </Badge>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           <button
             className="btn btn--ghost btn--sm"
-            aria-label="Move step up"
+            aria-label={intl.formatMessage({ id: "jml.step.moveUp", defaultMessage: "Move step up" })}
             disabled={index === 0}
             onClick={() => onMove(-1)}
           >
@@ -309,7 +333,7 @@ function StepEditor({
           </button>
           <button
             className="btn btn--ghost btn--sm"
-            aria-label="Move step down"
+            aria-label={intl.formatMessage({ id: "jml.step.moveDown", defaultMessage: "Move step down" })}
             disabled={index === count - 1}
             onClick={() => onMove(1)}
           >
@@ -317,27 +341,33 @@ function StepEditor({
           </button>
           <button
             className="btn btn--ghost btn--sm"
-            aria-label="Remove step"
+            aria-label={intl.formatMessage({ id: "jml.step.remove", defaultMessage: "Remove step" })}
             onClick={onRemove}
           >
-            Remove
+            {intl.formatMessage({ id: "common.remove", defaultMessage: "Remove" })}
           </button>
         </div>
       </div>
 
-      {meta?.hint && (
+      {hint && (
         <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
-          {meta.hint}
+          {hint}
         </p>
       )}
 
       <label className="field">
         <span>
-          Label <span className="muted">(optional)</span>
+          {intl.formatMessage({ id: "jml.step.labelField", defaultMessage: "Label" })}{" "}
+          <span className="muted">
+            {intl.formatMessage({ id: "common.optional", defaultMessage: "(optional)" })}
+          </span>
         </span>
         <input
           value={step.name ?? ""}
-          placeholder="Shown in the run audit"
+          placeholder={intl.formatMessage({
+            id: "jml.step.labelPlaceholder",
+            defaultMessage: "Shown in the run audit",
+          })}
           onChange={(e) => set({ name: e.target.value })}
         />
       </label>
@@ -345,31 +375,44 @@ function StepEditor({
       {needsTarget && (
         <>
           <label className="field">
-            <span>Connector ID</span>
+            <span>{intl.formatMessage({ id: "jml.step.connectorId", defaultMessage: "Connector ID" })}</span>
             <input
               value={step.connector_id ?? ""}
-              placeholder="UUID of the target connector"
+              placeholder={intl.formatMessage({
+                id: "jml.step.connectorIdPlaceholder",
+                defaultMessage: "UUID of the target connector",
+              })}
               onChange={(e) => set({ connector_id: e.target.value })}
             />
             {connectorBad && (
               <span className="field__error">
-                Must be a connector UUID (copy it from the connector's page).
+                {intl.formatMessage({
+                  id: "jml.step.connectorBad",
+                  defaultMessage:
+                    "Enter the connector's ID — a UUID you can copy from the connector's page.",
+                })}
               </span>
             )}
           </label>
           <label className="field">
-            <span>Resource</span>
+            <span>{intl.formatMessage({ id: "jml.step.resource", defaultMessage: "Resource" })}</span>
             <input
               value={step.resource_ref ?? ""}
-              placeholder="e.g. app:salesforce"
+              placeholder={intl.formatMessage({
+                id: "jml.step.resourcePlaceholder",
+                defaultMessage: "e.g. app:salesforce",
+              })}
               onChange={(e) => set({ resource_ref: e.target.value })}
             />
           </label>
           <label className="field">
-            <span>Role</span>
+            <span>{intl.formatMessage({ id: "jml.step.role", defaultMessage: "Role" })}</span>
             <input
               value={step.role ?? ""}
-              placeholder="e.g. viewer, admin"
+              placeholder={intl.formatMessage({
+                id: "jml.step.rolePlaceholder",
+                defaultMessage: "e.g. viewer, admin",
+              })}
               onChange={(e) => set({ role: e.target.value })}
             />
           </label>
@@ -378,10 +421,13 @@ function StepEditor({
 
       {step.type === "request_approval" && (
         <label className="field">
-          <span>Approver role</span>
+          <span>{intl.formatMessage({ id: "jml.step.approverRole", defaultMessage: "Approver role" })}</span>
           <input
             value={step.approver_role ?? ""}
-            placeholder="e.g. manager, security"
+            placeholder={intl.formatMessage({
+              id: "jml.step.approverRolePlaceholder",
+              defaultMessage: "e.g. manager, security",
+            })}
             onChange={(e) => set({ approver_role: e.target.value })}
           />
         </label>
@@ -390,20 +436,29 @@ function StepEditor({
       {step.type === "notify" && (
         <>
           <label className="field">
-            <span>Channel</span>
+            <span>{intl.formatMessage({ id: "jml.step.channel", defaultMessage: "Channel" })}</span>
             <input
               value={step.channel ?? ""}
-              placeholder="e.g. #it-onboarding, email"
+              placeholder={intl.formatMessage({
+                id: "jml.step.channelPlaceholder",
+                defaultMessage: "e.g. #it-onboarding, email",
+              })}
               onChange={(e) => set({ channel: e.target.value })}
             />
           </label>
           <label className="field">
             <span>
-              Message <span className="muted">(optional)</span>
+              {intl.formatMessage({ id: "jml.step.message", defaultMessage: "Message" })}{" "}
+              <span className="muted">
+                {intl.formatMessage({ id: "common.optional", defaultMessage: "(optional)" })}
+              </span>
             </span>
             <input
               value={step.message ?? ""}
-              placeholder="What to say"
+              placeholder={intl.formatMessage({
+                id: "jml.step.messagePlaceholder",
+                defaultMessage: "What to say",
+              })}
               onChange={(e) => set({ message: e.target.value })}
             />
           </label>
@@ -412,10 +467,13 @@ function StepEditor({
 
       {step.type === "start_access_review" && (
         <label className="field">
-          <span>Review name</span>
+          <span>{intl.formatMessage({ id: "jml.step.reviewName", defaultMessage: "Review name" })}</span>
           <input
             value={step.review_name ?? ""}
-            placeholder="e.g. Quarterly access certification"
+            placeholder={intl.formatMessage({
+              id: "jml.step.reviewNamePlaceholder",
+              defaultMessage: "e.g. Quarterly access certification",
+            })}
             onChange={(e) => set({ review_name: e.target.value })}
           />
         </label>
@@ -423,16 +481,21 @@ function StepEditor({
 
       {step.type === "run_kill_switch" && (
         <div className="notice notice--warn">
-          Runs all six offboarding layers (grant revoke → team remove → iam-core
-          disable → session revoke → SCIM deprovision → identity disable). This
-          is irreversible and only valid on a <b>leaver</b> workflow.
+          <FormattedMessage
+            id="jml.step.killWarning"
+            defaultMessage="Runs all six offboarding layers (grant revoke → team remove → iam-core disable → session revoke → SCIM deprovision → identity disable). This is irreversible and only valid on a <b>leaver</b> workflow."
+            values={{ b: (chunks) => <b>{chunks}</b> }}
+          />
         </div>
       )}
 
       {step.type === "run_kill_switch" && kind !== "leaver" && (
         <div className="notice notice--danger">
-          The kill switch is only allowed on a leaver workflow. Change the lane
-          to <b>Leaver</b> or remove this step.
+          <FormattedMessage
+            id="jml.step.killWrongLane"
+            defaultMessage="The kill switch is only allowed on a leaver workflow. Change the lane to <b>Leaver</b> or remove this step."
+            values={{ b: (chunks) => <b>{chunks}</b> }}
+          />
         </div>
       )}
     </div>
@@ -444,11 +507,15 @@ function StepEditor({
 // ---------------------------------------------------------------------------
 
 export function RunOutcome({ result }: { result: WorkflowRunResult }) {
+  const intl = useIntl();
   if (!result.matched) {
     return (
       <div className="notice notice--info">
-        The sample identity does not match this workflow's conditions, so no
-        steps would run for them.
+        {intl.formatMessage({
+          id: "jml.sim.noMatch",
+          defaultMessage:
+            "The sample identity does not match this workflow's conditions, so no steps would run for them.",
+        })}
       </div>
     );
   }
@@ -458,9 +525,9 @@ export function RunOutcome({ result }: { result: WorkflowRunResult }) {
         <thead>
           <tr>
             <th style={{ width: 40 }}>#</th>
-            <th>Step</th>
-            <th style={{ width: 120 }}>Outcome</th>
-            <th>Detail</th>
+            <th>{intl.formatMessage({ id: "jml.step.col.step", defaultMessage: "Step" })}</th>
+            <th style={{ width: 120 }}>{intl.formatMessage({ id: "jml.step.col.outcome", defaultMessage: "Outcome" })}</th>
+            <th>{intl.formatMessage({ id: "jml.step.col.detail", defaultMessage: "Detail" })}</th>
           </tr>
         </thead>
         <tbody>
@@ -565,13 +632,24 @@ export function WorkflowBuilder() {
   const publishMut = usePublishWorkflow(workflowId ?? "");
   const archiveMut = useArchiveWorkflow(workflowId ?? "");
 
+  const genericError = intl.formatMessage({
+    id: "common.genericError",
+    defaultMessage: "Something went wrong. Please try again.",
+  });
+
   const save = async () => {
     if (!valid) return;
     const body = { name: form.name.trim(), definition: toDefinition(form) };
     try {
       if (isNew) {
         const created = await createMut.mutateAsync(body);
-        toast.success("Draft created", "Now simulate it for a sample user.");
+        toast.success(
+          intl.formatMessage({ id: "jml.builder.draftCreated", defaultMessage: "Draft created" }),
+          intl.formatMessage({
+            id: "jml.builder.draftCreatedDetail",
+            defaultMessage: "Now simulate it for a sample user.",
+          }),
+        );
         navigate({
           to: "/workflows/$workflowId",
           params: { workflowId: created.id },
@@ -581,19 +659,32 @@ export function WorkflowBuilder() {
         baselineRef.current = JSON.stringify(form);
         setSim(null);
         toast.info(
-          "Draft saved",
-          "Editing cleared the previous test — simulate again before publishing.",
+          intl.formatMessage({ id: "jml.builder.draftSaved", defaultMessage: "Draft saved" }),
+          intl.formatMessage({
+            id: "jml.builder.draftSavedDetail",
+            defaultMessage:
+              "Editing cleared the previous test — simulate again before publishing.",
+          }),
         );
       }
     } catch (err) {
-      toast.error("Could not save draft", errMessage(err));
+      toast.error(
+        intl.formatMessage({ id: "jml.builder.saveFailed", defaultMessage: "Could not save draft" }),
+        errMessage(err, genericError),
+      );
     }
   };
 
   const simulate = async () => {
     if (!workflowId) return;
     if (!subject.external_id.trim()) {
-      toast.error("Sample user required", "Enter a sample external ID to simulate.");
+      toast.error(
+        intl.formatMessage({ id: "jml.sim.userRequired", defaultMessage: "Sample user required" }),
+        intl.formatMessage({
+          id: "jml.sim.userRequiredDetail",
+          defaultMessage: "Enter a sample external ID to simulate.",
+        }),
+      );
       return;
     }
     try {
@@ -601,22 +692,36 @@ export function WorkflowBuilder() {
       setSim(result);
       if (result.status === "failed") {
         toast.info(
-          "Simulation complete",
-          "One or more steps would fail — resolve them before publishing.",
+          intl.formatMessage({ id: "jml.sim.complete", defaultMessage: "Simulation complete" }),
+          intl.formatMessage({
+            id: "jml.sim.completeFailed",
+            defaultMessage:
+              "One or more steps would fail — resolve them before publishing.",
+          }),
         );
       } else if (!result.matched) {
         toast.info(
-          "Simulation complete",
-          "This sample identity doesn't match the workflow conditions.",
+          intl.formatMessage({ id: "jml.sim.complete", defaultMessage: "Simulation complete" }),
+          intl.formatMessage({
+            id: "jml.sim.completeNoMatch",
+            defaultMessage:
+              "This sample identity doesn't match the workflow conditions.",
+          }),
         );
       } else {
         toast.success(
-          "Simulation complete",
-          "No failures. This draft is ready to publish.",
+          intl.formatMessage({ id: "jml.sim.complete", defaultMessage: "Simulation complete" }),
+          intl.formatMessage({
+            id: "jml.sim.completeOk",
+            defaultMessage: "No failures. This draft is ready to publish.",
+          }),
         );
       }
     } catch (err) {
-      toast.error("Simulation failed", errMessage(err));
+      toast.error(
+        intl.formatMessage({ id: "jml.sim.failed", defaultMessage: "Simulation failed" }),
+        errMessage(err, genericError),
+      );
     }
   };
 
@@ -624,17 +729,29 @@ export function WorkflowBuilder() {
     if (!workflowId) return;
     try {
       await publishMut.mutateAsync();
-      toast.success("Workflow published", "The engine now runs this workflow.");
+      toast.success(
+        intl.formatMessage({ id: "jml.publish.done", defaultMessage: "Workflow published" }),
+        intl.formatMessage({
+          id: "jml.publish.doneDetail",
+          defaultMessage: "The engine now runs this workflow.",
+        }),
+      );
       navigate({ to: "/workflows/$workflowId", params: { workflowId } });
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         toast.error(
-          "Step-up MFA required",
-          "Re-authenticate with MFA to publish this workflow.",
+          intl.formatMessage({ id: "jml.publish.stepupTitle", defaultMessage: "Step-up MFA required" }),
+          intl.formatMessage({
+            id: "jml.publish.stepupDetail",
+            defaultMessage: "Re-authenticate with MFA to publish this workflow.",
+          }),
         );
         return;
       }
-      toast.error("Could not publish", errMessage(err));
+      toast.error(
+        intl.formatMessage({ id: "jml.publish.failed", defaultMessage: "Could not publish" }),
+        errMessage(err, genericError),
+      );
     }
   };
 
@@ -642,10 +759,19 @@ export function WorkflowBuilder() {
     if (!workflowId) return;
     try {
       await archiveMut.mutateAsync();
-      toast.success("Workflow archived", "It will no longer run.");
+      toast.success(
+        intl.formatMessage({ id: "jml.archive.done", defaultMessage: "Workflow archived" }),
+        intl.formatMessage({
+          id: "jml.archive.doneDetail",
+          defaultMessage: "It will no longer run.",
+        }),
+      );
       navigate({ to: "/workflows/$workflowId", params: { workflowId } });
     } catch (err) {
-      toast.error("Could not archive", errMessage(err));
+      toast.error(
+        intl.formatMessage({ id: "jml.archive.failed", defaultMessage: "Could not archive" }),
+        errMessage(err, genericError),
+      );
     }
   };
 
@@ -690,18 +816,29 @@ export function WorkflowBuilder() {
     return (
       <div className="state">
         <Spinner />
-        <p style={{ marginTop: 12 }}>Loading workflow…</p>
+        <p style={{ marginTop: 12 }}>
+          {intl.formatMessage({
+            id: "jml.builder.loading",
+            defaultMessage: "Loading workflow…",
+          })}
+        </p>
       </div>
     );
   }
   if (workflowId && wfQuery.error) {
     return (
       <PageHeader
-        title="Workflow not found"
-        subtitle={errMessage(wfQuery.error)}
+        title={intl.formatMessage({
+          id: "jml.builder.notFound",
+          defaultMessage: "Workflow not found",
+        })}
+        subtitle={errMessage(wfQuery.error, genericError)}
         actions={
           <button className="btn" onClick={() => navigate({ to: "/workflows" })}>
-            Back to workflows
+            {intl.formatMessage({
+              id: "jml.builder.backToWorkflows",
+              defaultMessage: "Back to workflows",
+            })}
           </button>
         }
       />
@@ -736,7 +873,7 @@ export function WorkflowBuilder() {
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
             {workflow && <StatusBadge status={workflow.state} />}
             <button className="btn" onClick={() => navigate({ to: "/workflows" })}>
-              Back
+              {intl.formatMessage({ id: "common.back", defaultMessage: "Back" })}
             </button>
           </span>
         }
@@ -744,9 +881,11 @@ export function WorkflowBuilder() {
 
       {readOnly && (
         <div className="notice notice--info" style={{ marginBottom: 16 }}>
-          This workflow is <b>{workflow?.state}</b> and is read-only. To change
-          it, create a new draft — a published workflow keeps running until it
-          is archived.
+          <FormattedMessage
+            id="jml.builder.readOnly"
+            defaultMessage="This workflow is <b>{state}</b> and is read-only. To change it, create a new draft — a published workflow keeps running until it is archived."
+            values={{ state: workflow?.state ?? "", b: (chunks) => <b>{chunks}</b> }}
+          />
         </div>
       )}
 
@@ -754,22 +893,33 @@ export function WorkflowBuilder() {
         {/* ---- Authoring column ---- */}
         <div>
           <Card
-            title="Workflow"
-            subtitle="The lane and what fires it. The lane gates which steps are allowed."
+            title={intl.formatMessage({ id: "jml.builder.card.workflow", defaultMessage: "Workflow" })}
+            subtitle={intl.formatMessage({
+              id: "jml.builder.card.workflowSub",
+              defaultMessage:
+                "The lane and what fires it. The lane gates which steps are allowed.",
+            })}
           >
             <label className="field">
-              <span>Name</span>
+              <span>{intl.formatMessage({ id: "jml.builder.name", defaultMessage: "Name" })}</span>
               <input
                 value={form.name}
                 disabled={readOnly}
-                placeholder="e.g. Engineering joiner onboarding"
+                placeholder={intl.formatMessage({
+                  id: "jml.builder.namePlaceholder",
+                  defaultMessage: "e.g. Engineering joiner onboarding",
+                })}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </label>
 
             <div className="field">
-              <span>Lane</span>
-              <div className="segmented" role="radiogroup" aria-label="Lane">
+              <span>{intl.formatMessage({ id: "jml.builder.lane", defaultMessage: "Lane" })}</span>
+              <div
+                className="segmented"
+                role="radiogroup"
+                aria-label={intl.formatMessage({ id: "jml.builder.lane", defaultMessage: "Lane" })}
+              >
                 {KIND_OPTIONS.map((k) => (
                   <button
                     key={k}
@@ -788,10 +938,13 @@ export function WorkflowBuilder() {
 
             <label className="field">
               <span>
-                Trigger{" "}
+                {intl.formatMessage({ id: "jml.builder.trigger", defaultMessage: "Trigger" })}{" "}
                 <HelpTooltip>
-                  What fires a published workflow: an identity event from SCIM, a
-                  schedule, or a manual run.
+                  {intl.formatMessage({
+                    id: "jml.builder.triggerHelp",
+                    defaultMessage:
+                      "What fires a published workflow: an identity event from SCIM, a schedule, or a manual run.",
+                  })}
                 </HelpTooltip>
               </span>
               <select
@@ -811,12 +964,21 @@ export function WorkflowBuilder() {
           </Card>
 
           <Card
-            title="Conditions"
-            subtitle="All conditions must hold for the workflow to act on an identity. No conditions means it acts on everyone in the lane."
+            title={intl.formatMessage({ id: "jml.builder.card.conditions", defaultMessage: "Conditions" })}
+            subtitle={intl.formatMessage({
+              id: "jml.builder.card.conditionsSub",
+              defaultMessage:
+                "All conditions must hold for the workflow to act on an identity. No conditions means it acts on everyone in the lane.",
+            })}
             className="mt-16"
           >
             {form.conditions.length === 0 && (
-              <p className="muted">No conditions — acts on every identity.</p>
+              <p className="muted">
+                {intl.formatMessage({
+                  id: "jml.builder.noConditions",
+                  defaultMessage: "No conditions — acts on every identity.",
+                })}
+              </p>
             )}
             {form.conditions.map((c, i) => (
               <div
@@ -834,16 +996,25 @@ export function WorkflowBuilder() {
                   <input
                     style={{ flex: 1 }}
                     list="condition-attrs"
-                    aria-label={`Condition ${i + 1} attribute`}
+                    aria-label={intl.formatMessage(
+                      { id: "jml.cond.attribute", defaultMessage: "Condition {n} attribute" },
+                      { n: i + 1 },
+                    )}
                     value={c.attribute}
                     disabled={readOnly}
-                    placeholder="attribute (e.g. department)"
+                    placeholder={intl.formatMessage({
+                      id: "jml.cond.attributePlaceholder",
+                      defaultMessage: "attribute (e.g. department)",
+                    })}
                     onChange={(e) =>
                       updateCondition(i, { ...c, attribute: e.target.value })
                     }
                   />
                   <select
-                    aria-label={`Condition ${i + 1} operator`}
+                    aria-label={intl.formatMessage(
+                      { id: "jml.cond.operator", defaultMessage: "Condition {n} operator" },
+                      { n: i + 1 },
+                    )}
                     value={c.operator}
                     disabled={readOnly}
                     onChange={(e) =>
@@ -855,14 +1026,17 @@ export function WorkflowBuilder() {
                   >
                     {OPERATORS.map((op) => (
                       <option key={op} value={op}>
-                        {OPERATOR_LABELS[op]}
+                        {operatorLabel(intl, op)}
                       </option>
                     ))}
                   </select>
                   {!readOnly && (
                     <button
                       className="btn btn--ghost btn--sm"
-                      aria-label={`Remove condition ${i + 1}`}
+                      aria-label={intl.formatMessage(
+                        { id: "jml.cond.remove", defaultMessage: "Remove condition {n}" },
+                        { n: i + 1 },
+                      )}
                       onClick={() => removeCondition(i)}
                     >
                       ✕
@@ -870,10 +1044,16 @@ export function WorkflowBuilder() {
                   )}
                 </div>
                 <ChipInput
-                  ariaLabel={`Condition ${i + 1} values`}
+                  ariaLabel={intl.formatMessage(
+                    { id: "jml.cond.values", defaultMessage: "Condition {n} values" },
+                    { n: i + 1 },
+                  )}
                   values={c.values}
                   onChange={(values) => updateCondition(i, { ...c, values })}
-                  placeholder="value, then Enter"
+                  placeholder={intl.formatMessage({
+                    id: "jml.cond.valuePlaceholder",
+                    defaultMessage: "value, then Enter",
+                  })}
                 />
               </div>
             ))}
@@ -884,19 +1064,30 @@ export function WorkflowBuilder() {
             </datalist>
             {!readOnly && (
               <button className="btn btn--sm" onClick={addCondition}>
-                Add condition
+                {intl.formatMessage({
+                  id: "jml.builder.addCondition",
+                  defaultMessage: "Add condition",
+                })}
               </button>
             )}
           </Card>
 
           <Card
-            title="Steps"
-            subtitle="The ordered pipeline. Steps run top to bottom; each appends to the audit chain on a live run."
+            title={intl.formatMessage({ id: "jml.builder.card.steps", defaultMessage: "Steps" })}
+            subtitle={intl.formatMessage({
+              id: "jml.builder.card.stepsSub",
+              defaultMessage:
+                "The ordered pipeline. Steps run top to bottom; each appends to the audit chain on a live run.",
+            })}
             className="mt-16"
           >
             {form.steps.length === 0 && (
               <div className="notice notice--warn">
-                Add at least one step. A workflow with no steps can't be saved.
+                {intl.formatMessage({
+                  id: "jml.builder.noSteps",
+                  defaultMessage:
+                    "Add at least one step. A workflow with no steps can't be saved.",
+                })}
               </div>
             )}
             {form.steps.map((s, i) => (
@@ -919,7 +1110,7 @@ export function WorkflowBuilder() {
                     className="btn btn--sm"
                     onClick={() => addStep(s.type)}
                   >
-                    + {s.label}
+                    + {stepLabel(intl, s.type)}
                   </button>
                 ))}
               </div>
@@ -936,9 +1127,9 @@ export function WorkflowBuilder() {
                 {createMut.isPending || updateMut.isPending ? (
                   <Spinner />
                 ) : isNew ? (
-                  "Create draft"
+                  intl.formatMessage({ id: "jml.builder.createDraft", defaultMessage: "Create draft" })
                 ) : (
-                  "Save draft"
+                  intl.formatMessage({ id: "jml.builder.saveDraft", defaultMessage: "Save draft" })
                 )}
               </button>
               {!isNew && (
@@ -947,7 +1138,7 @@ export function WorkflowBuilder() {
                   onClick={archive}
                   disabled={archiveMut.isPending}
                 >
-                  Archive
+                  {intl.formatMessage({ id: "jml.builder.archive", defaultMessage: "Archive" })}
                 </button>
               )}
             </div>
@@ -957,21 +1148,34 @@ export function WorkflowBuilder() {
         {/* ---- Simulate + publish column ---- */}
         <div>
           <Card
-            title="Simulate for a sample user"
-            subtitle="A dry-run shows exactly what would happen for a sample identity, with no side effects. Required before publishing."
+            title={intl.formatMessage({
+              id: "jml.sim.cardTitle",
+              defaultMessage: "Simulate for a sample user",
+            })}
+            subtitle={intl.formatMessage({
+              id: "jml.sim.cardSub",
+              defaultMessage:
+                "A dry-run shows exactly what would happen for a sample identity, with no side effects. Required before publishing.",
+            })}
           >
             {isNew ? (
               <div className="notice notice--info">
-                Create the draft first, then simulate it here. Nothing runs until
-                you publish.
+                {intl.formatMessage({
+                  id: "jml.sim.createFirst",
+                  defaultMessage:
+                    "Create the draft first, then simulate it here. Nothing runs until you publish.",
+                })}
               </div>
             ) : (
               <>
                 <label className="field">
-                  <span>External ID</span>
+                  <span>{intl.formatMessage({ id: "jml.sim.externalId", defaultMessage: "External ID" })}</span>
                   <input
                     value={subject.external_id}
-                    placeholder="e.g. ada@corp.example"
+                    placeholder={intl.formatMessage({
+                      id: "jml.sim.externalIdPlaceholder",
+                      defaultMessage: "e.g. ada@corp.example",
+                    })}
                     onChange={(e) =>
                       setSubject({ ...subject, external_id: e.target.value })
                     }
@@ -979,20 +1183,26 @@ export function WorkflowBuilder() {
                 </label>
                 <div className="grid grid--2">
                   <label className="field">
-                    <span>Department</span>
+                    <span>{intl.formatMessage({ id: "jml.sim.department", defaultMessage: "Department" })}</span>
                     <input
                       value={subject.department ?? ""}
-                      placeholder="e.g. engineering"
+                      placeholder={intl.formatMessage({
+                        id: "jml.sim.departmentPlaceholder",
+                        defaultMessage: "e.g. engineering",
+                      })}
                       onChange={(e) =>
                         setSubject({ ...subject, department: e.target.value })
                       }
                     />
                   </label>
                   <label className="field">
-                    <span>Email</span>
+                    <span>{intl.formatMessage({ id: "jml.sim.email", defaultMessage: "Email" })}</span>
                     <input
                       value={subject.email ?? ""}
-                      placeholder="e.g. ada@corp.example"
+                      placeholder={intl.formatMessage({
+                        id: "jml.sim.emailPlaceholder",
+                        defaultMessage: "e.g. ada@corp.example",
+                      })}
                       onChange={(e) =>
                         setSubject({ ...subject, email: e.target.value })
                       }
@@ -1000,12 +1210,18 @@ export function WorkflowBuilder() {
                   </label>
                 </div>
                 <label className="field">
-                  <span>Groups</span>
+                  <span>{intl.formatMessage({ id: "jml.sim.groups", defaultMessage: "Groups" })}</span>
                   <ChipInput
-                    ariaLabel="Sample user groups"
+                    ariaLabel={intl.formatMessage({
+                      id: "jml.sim.groupsAria",
+                      defaultMessage: "Sample user groups",
+                    })}
                     values={subject.groups ?? []}
                     onChange={(groups) => setSubject({ ...subject, groups })}
-                    placeholder="group, then Enter"
+                    placeholder={intl.formatMessage({
+                      id: "jml.sim.groupsPlaceholder",
+                      defaultMessage: "group, then Enter",
+                    })}
                   />
                 </label>
 
@@ -1015,15 +1231,28 @@ export function WorkflowBuilder() {
                     onClick={simulate}
                     disabled={dirty || simulateMut.isPending}
                     title={
-                      dirty ? "Save your edits before simulating." : undefined
+                      dirty
+                        ? intl.formatMessage({
+                            id: "jml.sim.saveFirstTitle",
+                            defaultMessage: "Save your edits before simulating.",
+                          })
+                        : undefined
                     }
                   >
-                    {simulateMut.isPending ? <Spinner /> : "Simulate"}
+                    {simulateMut.isPending ? (
+                      <Spinner />
+                    ) : (
+                      intl.formatMessage({ id: "jml.sim.run", defaultMessage: "Simulate" })
+                    )}
                   </button>
                 </div>
                 {dirty && (
                   <p className="muted" style={{ fontSize: 12 }}>
-                    You have unsaved edits. Save the draft before simulating.
+                    {intl.formatMessage({
+                      id: "jml.sim.dirtyHint",
+                      defaultMessage:
+                        "You have unsaved edits. Save the draft before simulating.",
+                    })}
                   </p>
                 )}
               </>
@@ -1031,11 +1260,22 @@ export function WorkflowBuilder() {
           </Card>
 
           {sim && (
-            <Card title="What would happen" className="mt-16">
+            <Card
+              title={intl.formatMessage({
+                id: "jml.sim.outcomeTitle",
+                defaultMessage: "What would happen",
+              })}
+              className="mt-16"
+            >
               <div style={{ marginBottom: 10 }}>
                 <StatusBadge status={sim.status} />{" "}
                 <span className="muted">
-                  {sim.mode === "dry_run" ? "Dry-run (no side effects)" : "Live"}
+                  {sim.mode === "dry_run"
+                    ? intl.formatMessage({
+                        id: "jml.sim.modeDryRun",
+                        defaultMessage: "Dry-run (no side effects)",
+                      })
+                    : intl.formatMessage({ id: "jml.mode.live", defaultMessage: "Live" })}
                 </span>
               </div>
               <RunOutcome result={sim} />
@@ -1043,41 +1283,68 @@ export function WorkflowBuilder() {
           )}
 
           {!isNew && isDraft && (
-            <Card title="Publish" className="mt-16">
+            <Card
+              title={intl.formatMessage({ id: "jml.publish.cardTitle", defaultMessage: "Publish" })}
+              className="mt-16"
+            >
               <div className="rollout-steps">
                 <div className={`rollout-step${!dirty ? " done" : ""}`}>
                   <span className="rollout-step__num">1</span>
                   <div>
-                    <b>Save the draft</b>
+                    <b>{intl.formatMessage({ id: "jml.publish.step1", defaultMessage: "Save the draft" })}</b>
                     <p className="muted">
                       {dirty
-                        ? "You have unsaved edits. Save them before testing."
-                        : "Draft saved."}
+                        ? intl.formatMessage({
+                            id: "jml.publish.step1Dirty",
+                            defaultMessage:
+                              "You have unsaved edits. Save them before testing.",
+                          })
+                        : intl.formatMessage({
+                            id: "jml.publish.step1Done",
+                            defaultMessage: "Draft saved.",
+                          })}
                     </p>
                   </div>
                 </div>
                 <div className={`rollout-step${simulatedSinceEdit ? " done" : ""}`}>
                   <span className="rollout-step__num">2</span>
                   <div>
-                    <b>Simulate</b>
+                    <b>{intl.formatMessage({ id: "jml.publish.step2", defaultMessage: "Simulate" })}</b>
                     <p className="muted">
                       {simulatedSinceEdit
                         ? simulationFailed
-                          ? "Last dry-run had failures — fix them to publish."
+                          ? intl.formatMessage({
+                              id: "jml.publish.step2Failed",
+                              defaultMessage: "Last dry-run had failures — fix them to publish.",
+                            })
                           : !simulationMatched
-                            ? "Sample didn't match the conditions — simulate a matching identity to publish."
-                            : "Dry-run passed for the sample identity."
-                        : "Required before publishing — runs a no-side-effect dry-run."}
+                            ? intl.formatMessage({
+                                id: "jml.publish.step2NoMatch",
+                                defaultMessage:
+                                  "Sample didn't match the conditions — simulate a matching identity to publish.",
+                              })
+                            : intl.formatMessage({
+                                id: "jml.publish.step2Ok",
+                                defaultMessage: "Dry-run passed for the sample identity.",
+                              })
+                        : intl.formatMessage({
+                            id: "jml.publish.step2Todo",
+                            defaultMessage:
+                              "Required before publishing — runs a no-side-effect dry-run.",
+                          })}
                     </p>
                   </div>
                 </div>
                 <div className="rollout-step">
                   <span className="rollout-step__num">3</span>
                   <div>
-                    <b>Publish</b>
+                    <b>{intl.formatMessage({ id: "jml.publish.step3", defaultMessage: "Publish" })}</b>
                     <p className="muted">
-                      Makes the workflow live. Requires step-up MFA. Editing a
-                      published workflow means creating a new draft.
+                      {intl.formatMessage({
+                        id: "jml.publish.step3Detail",
+                        defaultMessage:
+                          "Makes the workflow live. Requires step-up MFA. Editing a published workflow means creating a new draft.",
+                      })}
                     </p>
                   </div>
                 </div>
@@ -1089,15 +1356,29 @@ export function WorkflowBuilder() {
                   disabled={!canPublish || publishMut.isPending}
                   title={
                     !simulatedSinceEdit
-                      ? "Simulate the current draft before publishing."
+                      ? intl.formatMessage({
+                          id: "jml.publish.titleSimulate",
+                          defaultMessage: "Simulate the current draft before publishing.",
+                        })
                       : simulationFailed
-                        ? "The last dry-run had failures."
+                        ? intl.formatMessage({
+                            id: "jml.publish.titleFailed",
+                            defaultMessage: "The last dry-run had failures.",
+                          })
                         : !simulationMatched
-                          ? "Simulate a sample identity that matches the conditions before publishing."
+                          ? intl.formatMessage({
+                              id: "jml.publish.titleNoMatch",
+                              defaultMessage:
+                                "Simulate a sample identity that matches the conditions before publishing.",
+                            })
                           : undefined
                   }
                 >
-                  {publishMut.isPending ? <Spinner /> : "Publish"}
+                  {publishMut.isPending ? (
+                    <Spinner />
+                  ) : (
+                    intl.formatMessage({ id: "jml.publish.button", defaultMessage: "Publish" })
+                  )}
                 </button>
               </div>
             </Card>

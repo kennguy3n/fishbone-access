@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { RiskPanel, RecommendationBadge } from "@/components/RiskPanel";
+import { RowActivate } from "@/routes/lane/RowActivate";
 import {
   useAccessRequests,
   useCreateRequest,
@@ -98,15 +99,36 @@ export function Requests() {
     {
       header: intl.formatMessage({ id: "requests.col.resource", defaultMessage: "Resource" }),
       cell: (r) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <RowActivate
+          label={intl.formatMessage(
+            { id: "requests.row.open", defaultMessage: "Open request for {resource}" },
+            { resource: r.resource_ref },
+          )}
+          onActivate={() =>
+            navigate({
+              to: "/requests/$requestId",
+              params: { requestId: r.id },
+            })
+          }
+        >
           <b>
             <code>{r.resource_ref}</code>
           </b>
           <span className="muted" style={{ fontSize: 12 }}>
-            {r.role ? `role ${r.role} · ` : ""}
-            for {r.target_user_id || r.requester_id}
+            {r.role
+              ? intl.formatMessage(
+                  {
+                    id: "requests.col.resourceMetaWithRole",
+                    defaultMessage: "role {role} · for {who}",
+                  },
+                  { role: r.role, who: r.target_user_id || r.requester_id },
+                )
+              : intl.formatMessage(
+                  { id: "requests.col.resourceMeta", defaultMessage: "for {who}" },
+                  { who: r.target_user_id || r.requester_id },
+                )}
           </span>
-        </div>
+        </RowActivate>
       ),
     },
     {
@@ -241,7 +263,10 @@ export function Requests() {
                 </span>
                 <input
                   value={draft.resource_ref}
-                  placeholder="app:salesforce, host:10.0.0.0/24…"
+                  placeholder={intl.formatMessage({
+                    id: "requests.create.resourcePlaceholder",
+                    defaultMessage: "app:salesforce, host:10.0.0.0/24…",
+                  })}
                   onChange={(e) =>
                     setDraft({ ...draft, resource_ref: e.target.value })
                   }
@@ -254,7 +279,10 @@ export function Requests() {
                   </span>
                   <input
                     value={draft.role}
-                    placeholder="viewer, admin…"
+                    placeholder={intl.formatMessage({
+                      id: "requests.create.rolePlaceholder",
+                      defaultMessage: "viewer, admin…",
+                    })}
                     onChange={(e) => setDraft({ ...draft, role: e.target.value })}
                   />
                 </label>
@@ -267,7 +295,10 @@ export function Requests() {
                   </span>
                   <input
                     value={draft.target_user_id}
-                    placeholder="iam-core user id (defaults to you)"
+                    placeholder={intl.formatMessage({
+                      id: "requests.create.targetPlaceholder",
+                      defaultMessage: "iam-core user id (defaults to you)",
+                    })}
                     onChange={(e) =>
                       setDraft({ ...draft, target_user_id: e.target.value })
                     }
@@ -283,7 +314,10 @@ export function Requests() {
                 </span>
                 <input
                   value={draft.connector_id}
-                  placeholder="connector id for automated provisioning"
+                  placeholder={intl.formatMessage({
+                    id: "requests.create.connectorPlaceholder",
+                    defaultMessage: "connector id for automated provisioning",
+                  })}
                   onChange={(e) =>
                     setDraft({ ...draft, connector_id: e.target.value })
                   }
@@ -296,7 +330,10 @@ export function Requests() {
                   </span>
                   <input
                     value={draft.resource_tags}
-                    placeholder="prod, pii, finance…"
+                    placeholder={intl.formatMessage({
+                      id: "requests.create.tagsPlaceholder",
+                      defaultMessage: "prod, pii, finance…",
+                    })}
                     onChange={(e) =>
                       setDraft({ ...draft, resource_tags: e.target.value })
                     }
@@ -310,7 +347,10 @@ export function Requests() {
                     type="number"
                     min={1}
                     value={draft.duration_hours}
-                    placeholder="8"
+                    placeholder={intl.formatMessage({
+                      id: "requests.create.durationPlaceholder",
+                      defaultMessage: "8",
+                    })}
                     onChange={(e) =>
                       setDraft({ ...draft, duration_hours: e.target.value })
                     }
@@ -327,7 +367,10 @@ export function Requests() {
                 <textarea
                   rows={3}
                   value={draft.justification}
-                  placeholder="Why is this access needed?"
+                  placeholder={intl.formatMessage({
+                    id: "requests.create.justificationPlaceholder",
+                    defaultMessage: "Why is this access needed?",
+                  })}
                   onChange={(e) =>
                     setDraft({ ...draft, justification: e.target.value })
                   }

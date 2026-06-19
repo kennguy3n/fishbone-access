@@ -111,7 +111,11 @@ export function RequestDetail() {
       });
       toast.success(
         intl.formatMessage(
-          { id: "requests.actionDone", defaultMessage: "Request {action}d" },
+          {
+            id: "requests.actionDone",
+            defaultMessage:
+              "{action, select, approve {Request approved} deny {Request denied} cancel {Request cancelled} provision {Request provisioned} other {Request updated}}",
+          },
           { action },
         ),
       );
@@ -121,7 +125,13 @@ export function RequestDetail() {
         setProvisionedGrantId(result.grant.id);
         toast.info(
           intl.formatMessage({ id: "requests.grantProvisioned", defaultMessage: "Grant provisioned" }),
-          `Grant ${result.grant.id.slice(0, 8)}… is now ${result.grant.state}.`,
+          intl.formatMessage(
+            {
+              id: "requests.grantProvisionedDetail",
+              defaultMessage: "Grant {id}… is now {state}.",
+            },
+            { id: result.grant.id.slice(0, 8), state: result.grant.state },
+          ),
         );
       }
     } catch (err) {
@@ -536,7 +546,7 @@ function RequestFields({ req }: { req: AccessRequest }) {
         </dd>
       </div>
       <div>
-        <dt>{intl.formatMessage({ id: "requests.create.role", defaultMessage: "Role" })}</dt>
+        <dt>{intl.formatMessage({ id: "requests.detail.role", defaultMessage: "Role" })}</dt>
         <dd>{req.role || <span className="muted">—</span>}</dd>
       </div>
       <div>
@@ -580,6 +590,7 @@ function RequestFields({ req }: { req: AccessRequest }) {
 }
 
 function Timeline({ entries }: { entries: AccessRequestHistoryEntry[] }) {
+  const intl = useIntl();
   // Newest first.
   const sorted = [...entries].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
@@ -600,7 +611,15 @@ function Timeline({ entries }: { entries: AccessRequestHistoryEntry[] }) {
               </span>
             </div>
             <p className="muted" style={{ margin: "2px 0 0", fontSize: 12 }}>
-              {e.actor ? `by ${e.actor}` : "system"}
+              {e.actor
+                ? intl.formatMessage(
+                    { id: "requests.history.byActor", defaultMessage: "by {actor}" },
+                    { actor: e.actor },
+                  )
+                : intl.formatMessage({
+                    id: "requests.history.bySystem",
+                    defaultMessage: "system",
+                  })}
               {e.reason ? ` · ${e.reason}` : ""}
             </p>
           </div>

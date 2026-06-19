@@ -5,6 +5,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { useWorkflows, type Workflow } from "@/api/workflows";
 import { formatRelative, titleCase } from "@/lib/format";
+import { RowActivate } from "@/routes/lane/RowActivate";
 
 // Workflows: the no-code JML builder's catalog. Each row is a versioned
 // Joiner/Mover/Leaver automation in the same draft → simulate → publish
@@ -19,15 +20,40 @@ export function Workflows() {
     {
       header: intl.formatMessage({ id: "jml.col.name", defaultMessage: "Name" }),
       cell: (w) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <RowActivate
+          label={intl.formatMessage(
+            { id: "jml.workflow.open", defaultMessage: "Open workflow {name}" },
+            { name: w.name },
+          )}
+          onActivate={() =>
+            navigate({
+              to: "/workflows/$workflowId",
+              params: { workflowId: w.id },
+            })
+          }
+        >
           <b>{w.name}</b>
           <span className="muted" style={{ fontSize: 12 }}>
-            {titleCase(w.definition.kind)} · {w.definition.steps.length} step(s)
+            {titleCase(w.definition.kind)} ·{" "}
+            {intl.formatMessage(
+              {
+                id: "jml.stepCount",
+                defaultMessage: "{count, plural, one {# step} other {# steps}}",
+              },
+              { count: w.definition.steps.length },
+            )}
             {w.definition.conditions?.length
-              ? ` · ${w.definition.conditions.length} condition(s)`
+              ? ` · ${intl.formatMessage(
+                  {
+                    id: "jml.conditionCount",
+                    defaultMessage:
+                      "{count, plural, one {# condition} other {# conditions}}",
+                  },
+                  { count: w.definition.conditions.length },
+                )}`
               : ""}
           </span>
-        </div>
+        </RowActivate>
       ),
     },
     {
