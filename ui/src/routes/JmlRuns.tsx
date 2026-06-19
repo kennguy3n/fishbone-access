@@ -150,6 +150,11 @@ const KILL_SWITCH_LAYERS = [
   "identity_disable",
 ] as const;
 
+// The confirmation keyword is a fixed safety token, not prose: it stays
+// "OFFBOARD" in every locale so a translated UI can't accidentally make the
+// break-glass action easier to trigger.
+const CONFIRM_TOKEN = "OFFBOARD";
+
 // LeaverBreakdown renders the per-layer outcome of an emergency offboard so the
 // operator can see exactly which of the six layers succeeded, and retry/escalate
 // the ones that failed on a partial failure (errored=true).
@@ -222,10 +227,6 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
   // button after they satisfy MFA out-of-band. The claim drives an advisory
   // banner only; the server stays the source of truth.
   const mfaSatisfied = me.data?.mfa_satisfied ?? false;
-  // The confirmation keyword is a fixed safety token, not prose: it stays
-  // "OFFBOARD" in every locale so a translated UI can't accidentally make the
-  // break-glass action easier to trigger.
-  const CONFIRM_TOKEN = "OFFBOARD";
   const armed =
     externalId.trim().length > 0 && confirm.trim() === CONFIRM_TOKEN;
 
