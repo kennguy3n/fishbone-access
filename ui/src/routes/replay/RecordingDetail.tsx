@@ -23,7 +23,6 @@ import { ReplayPlayer } from "./ReplayPlayer";
 import { CommandTimeline } from "./CommandTimeline";
 import { TamperBadge } from "./TamperBadge";
 import { computeCommandOffsets, formatBytes, formatDurationMs } from "./util";
-import "../pam-a11y.css";
 
 // RecordingDetail is the flagship session-replay player: a recording's
 // metadata, the live tamper verdict, the terminal-style transcript with
@@ -66,7 +65,7 @@ export function RecordingDetail() {
     framesQ.error instanceof ApiError && framesQ.error.status === 409;
 
   return (
-    <div className="pam-lane">
+    <div>
       <PageHeader
         title={intl.formatMessage({ id: "replay.detail.1", defaultMessage: "Session replay" })}
         subtitle={intl.formatMessage({ id: "replay.detail.2",

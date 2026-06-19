@@ -18,7 +18,6 @@ import {
   ApiError,
 } from "@/api/access";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import "./pam-a11y.css";
 
 // TAKEOVER_PERMISSION gates the high-risk live-control actions. The server
 // enforces RequirePermission("pam.takeover") + step-up MFA regardless
@@ -119,7 +118,7 @@ export function PamSessions() {
   ];
 
   return (
-    <div className="pam-lane">
+    <div>
       <PageHeader
         title={intl.formatMessage({ id: "pam.sessions.title", defaultMessage: "Live sessions" })}
         subtitle={intl.formatMessage({
