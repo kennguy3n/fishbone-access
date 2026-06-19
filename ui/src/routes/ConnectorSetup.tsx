@@ -392,6 +392,10 @@ function GuidedConnectionForm({
   const submit = () => {
     if (!method) return;
     if (missingRequired.length > 0) {
+      // Surface the field checklist, not a stale server error from an earlier
+      // attempt — clearing the mutation lets the validation message win the
+      // error slot below.
+      if (createMut.isError) createMut.reset();
       setTriedSubmit(true);
       return;
     }
@@ -471,7 +475,14 @@ function GuidedConnectionForm({
                 name="auth-method"
                 value={m.id}
                 checked={method?.id === m.id}
-                onChange={() => setMethodId(m.id)}
+                onChange={() => {
+                  setMethodId(m.id);
+                  // Each method has its own required fields; starting the new
+                  // method clean avoids flashing validation/server errors the
+                  // user has not yet earned on it.
+                  setTriedSubmit(false);
+                  if (createMut.isError) createMut.reset();
+                }}
                 onFocus={(e) => {
                   if (e.currentTarget.matches(":focus-visible"))
                     setKbFocusedMethod(m.id);
