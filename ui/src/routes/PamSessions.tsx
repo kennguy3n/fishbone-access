@@ -193,7 +193,10 @@ export function PamSessions() {
           canTakeover={canTakeover}
           takeoverReason={takeoverReason}
           onClose={() => setDetail(null)}
-          onChanged={() => refetch()}
+          onChanged={() => {
+            refetch();
+            setDetail(null);
+          }}
           notifyError={(title, err) =>
             toast.error(title, err instanceof ApiError ? err.message : undefined)
           }
