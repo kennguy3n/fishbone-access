@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import { PageHeader, Card, Badge, LoadingState, ErrorState } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -52,6 +53,7 @@ function groupByResource(permissions: string[]): [string, string[]][] {
 }
 
 export function RolesPermissions() {
+  useLaneA5Scope();
   const intl = useIntl();
   const toast = useToast();
   const me = useMe();

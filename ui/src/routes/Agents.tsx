@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import {
   PageHeader,
   Card,
@@ -43,6 +44,7 @@ const HEALTH_TONE: Record<AgentHealth, Tone> = {
 };
 
 export function Agents() {
+  useLaneA5Scope();
   const intl = useIntl();
   const toast = useToast();
   const agents = useAgents({ refetchInterval: 15_000 });

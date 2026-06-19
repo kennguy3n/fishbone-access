@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { useIntl, type IntlShape } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import { PageHeader, Card, Badge, StatusBadge, Spinner } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { HelpTooltip } from "@/components/HelpTooltip";
@@ -99,6 +101,7 @@ function ChipInput({
   disabled?: boolean;
   invalidHint?: string;
 }) {
+  const intl = useIntl();
   const [draft, setDraft] = useState("");
   const listId = useMemo(
     () => `hints-${label.replace(/\s+/g, "-").toLowerCase()}`,
@@ -123,7 +126,10 @@ function ChipInput({
               <button
                 type="button"
                 className="chip__remove"
-                aria-label={`Remove ${v}`}
+                aria-label={intl.formatMessage(
+                  { id: "policyEditor.chip.remove", defaultMessage: "Remove {v}" },
+                  { v },
+                )}
                 onClick={() => onChange(values.filter((x) => x !== v))}
               >
                 ✕
@@ -164,14 +170,35 @@ function ChipInput({
 }
 
 function ConflictTable({ conflicts }: { conflicts: PolicyConflict[] }) {
+  const intl = useIntl();
   return (
     <table className="data">
       <thead>
         <tr>
-          <th>Type</th>
-          <th>Subject</th>
-          <th>Resource</th>
-          <th>Conflicting policy</th>
+          <th>
+            {intl.formatMessage({
+              id: "policyEditor.conflict.col.type",
+              defaultMessage: "Type",
+            })}
+          </th>
+          <th>
+            {intl.formatMessage({
+              id: "policyEditor.conflict.col.subject",
+              defaultMessage: "Subject",
+            })}
+          </th>
+          <th>
+            {intl.formatMessage({
+              id: "policyEditor.conflict.col.resource",
+              defaultMessage: "Resource",
+            })}
+          </th>
+          <th>
+            {intl.formatMessage({
+              id: "policyEditor.conflict.col.policy",
+              defaultMessage: "Conflicting policy",
+            })}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -179,7 +206,15 @@ function ConflictTable({ conflicts }: { conflicts: PolicyConflict[] }) {
           <tr key={`${c.other_policy_id}-${c.subject}-${c.resource}-${i}`}>
             <td>
               <Badge tone={c.kind === "grant_vs_deny" ? "danger" : "warn"}>
-                {c.kind === "grant_vs_deny" ? "Grant vs deny" : "Redundant"}
+                {c.kind === "grant_vs_deny"
+                  ? intl.formatMessage({
+                      id: "policyEditor.conflict.kind.grantVsDeny",
+                      defaultMessage: "Grant vs deny",
+                    })
+                  : intl.formatMessage({
+                      id: "policyEditor.conflict.kind.redundant",
+                      defaultMessage: "Redundant",
+                    })}
               </Badge>
             </td>
             <td>
@@ -200,6 +235,8 @@ function ConflictTable({ conflicts }: { conflicts: PolicyConflict[] }) {
 }
 
 export function PolicyEditor() {
+  useLaneA5Scope();
+  const intl = useIntl();
   const params = useParams({ strict: false }) as { policyId?: string };
   const policyId = params.policyId;
   const isNew = !policyId;
@@ -274,7 +311,16 @@ export function PolicyEditor() {
     try {
       if (isNew) {
         const created = await createMut.mutateAsync(body);
-        toast.success("Draft created", "Now simulate it before rolling out.");
+        toast.success(
+          intl.formatMessage({
+            id: "policyEditor.toast.created",
+            defaultMessage: "Draft created",
+          }),
+          intl.formatMessage({
+            id: "policyEditor.toast.createdBody",
+            defaultMessage: "Now simulate it before rolling out.",
+          }),
+        );
         navigate({
           to: "/policies/$policyId",
           params: { policyId: created.id },
@@ -284,12 +330,25 @@ export function PolicyEditor() {
         baselineRef.current = JSON.stringify(form);
         setSim(null);
         toast.info(
-          "Draft saved",
-          "Editing cleared the previous test — simulate again before rollout.",
+          intl.formatMessage({
+            id: "policyEditor.toast.saved",
+            defaultMessage: "Draft saved",
+          }),
+          intl.formatMessage({
+            id: "policyEditor.toast.savedBody",
+            defaultMessage:
+              "Editing cleared the previous test — simulate again before rollout.",
+          }),
         );
       }
     } catch (err) {
-      toast.error("Could not save draft", errMessage(err));
+      toast.error(
+        intl.formatMessage({
+          id: "policyEditor.toast.saveError",
+          defaultMessage: "Could not save draft",
+        }),
+        errMessage(err, intl),
+      );
     }
   };
 
@@ -303,17 +362,40 @@ export function PolicyEditor() {
       ).length;
       if (hard > 0) {
         toast.info(
-          "Simulation complete",
-          `${hard} grant-vs-deny conflict(s) found — resolve or override to promote.`,
+          intl.formatMessage({
+            id: "policyEditor.toast.simComplete",
+            defaultMessage: "Simulation complete",
+          }),
+          intl.formatMessage(
+            {
+              id: "policyEditor.toast.simConflicts",
+              defaultMessage:
+                "{n, plural, one {# grant-vs-deny conflict} other {# grant-vs-deny conflicts}} found — resolve or override to promote.",
+            },
+            { n: hard },
+          ),
         );
       } else {
         toast.success(
-          "Simulation complete",
-          "No blocking conflicts. This draft is ready to promote.",
+          intl.formatMessage({
+            id: "policyEditor.toast.simComplete",
+            defaultMessage: "Simulation complete",
+          }),
+          intl.formatMessage({
+            id: "policyEditor.toast.simClean",
+            defaultMessage:
+              "No blocking conflicts. This draft is ready to promote.",
+          }),
         );
       }
     } catch (err) {
-      toast.error("Simulation failed", errMessage(err));
+      toast.error(
+        intl.formatMessage({
+          id: "policyEditor.toast.simError",
+          defaultMessage: "Simulation failed",
+        }),
+        errMessage(err, intl),
+      );
     }
   };
 
@@ -334,10 +416,19 @@ export function PolicyEditor() {
         Object.keys(input).length > 0 ? input : undefined,
       );
       toast.success(
-        "Policy promoted",
+        intl.formatMessage({
+          id: "policyEditor.toast.promoted",
+          defaultMessage: "Policy promoted",
+        }),
         force
-          ? "Promoted with an audited conflict override."
-          : "This policy is now live.",
+          ? intl.formatMessage({
+              id: "policyEditor.toast.promotedForce",
+              defaultMessage: "Promoted with an audited conflict override.",
+            })
+          : intl.formatMessage({
+              id: "policyEditor.toast.promotedLive",
+              defaultMessage: "This policy is now live.",
+            }),
       );
       setOverrideOpen(false);
       setOverrideReason("");
@@ -398,12 +489,25 @@ export function PolicyEditor() {
         setMfaOpen(false);
         setOverrideOpen(false);
         toast.error(
-          "Session needs MFA",
-          "Your session is not MFA-verified. Sign out and sign back in with MFA, then retry the promotion.",
+          intl.formatMessage({
+            id: "policyEditor.toast.sessionMfa",
+            defaultMessage: "Session needs MFA",
+          }),
+          intl.formatMessage({
+            id: "policyEditor.toast.sessionMfaBody",
+            defaultMessage:
+              "Your session is not MFA-verified. Sign out and sign back in with MFA, then retry the promotion.",
+          }),
         );
         return;
       }
-      toast.error("Could not promote", errMessage(err));
+      toast.error(
+        intl.formatMessage({
+          id: "policyEditor.toast.promoteError",
+          defaultMessage: "Could not promote",
+        }),
+        errMessage(err, intl),
+      );
     }
   };
 
@@ -417,10 +521,21 @@ export function PolicyEditor() {
     if (!policyId) return;
     try {
       await archiveMut.mutateAsync();
-      toast.success("Policy archived");
+      toast.success(
+        intl.formatMessage({
+          id: "policyEditor.toast.archived",
+          defaultMessage: "Policy archived",
+        }),
+      );
       navigate({ to: "/policies" });
     } catch (err) {
-      toast.error("Could not archive", errMessage(err));
+      toast.error(
+        intl.formatMessage({
+          id: "policyEditor.toast.archiveError",
+          defaultMessage: "Could not archive",
+        }),
+        errMessage(err, intl),
+      );
     }
   };
 
@@ -428,18 +543,29 @@ export function PolicyEditor() {
     return (
       <div className="state">
         <Spinner />
-        <p style={{ marginTop: 12 }}>Loading policy…</p>
+        <p style={{ marginTop: 12 }}>
+          {intl.formatMessage({
+            id: "policyEditor.loading",
+            defaultMessage: "Loading policy…",
+          })}
+        </p>
       </div>
     );
   }
   if (policyId && policyQuery.error) {
     return (
       <PageHeader
-        title="Policy not found"
-        subtitle={errMessage(policyQuery.error)}
+        title={intl.formatMessage({
+          id: "policyEditor.notFound.title",
+          defaultMessage: "Policy not found",
+        })}
+        subtitle={errMessage(policyQuery.error, intl)}
         actions={
           <button className="btn" onClick={() => navigate({ to: "/policies" })}>
-            Back to policies
+            {intl.formatMessage({
+              id: "policyEditor.notFound.back",
+              defaultMessage: "Back to policies",
+            })}
           </button>
         }
       />
@@ -452,13 +578,31 @@ export function PolicyEditor() {
   return (
     <>
       <PageHeader
-        title={isNew ? "New access policy" : form.name || "Access policy"}
-        subtitle="Define who and which groups can reach which systems. Drafts never touch the data plane until you simulate and promote."
+        title={
+          isNew
+            ? intl.formatMessage({
+                id: "policyEditor.title.new",
+                defaultMessage: "New access policy",
+              })
+            : form.name ||
+              intl.formatMessage({
+                id: "policyEditor.title.fallback",
+                defaultMessage: "Access policy",
+              })
+        }
+        subtitle={intl.formatMessage({
+          id: "policyEditor.subtitle",
+          defaultMessage:
+            "Define who and which groups can reach which systems. Drafts never touch the data plane until you simulate and promote.",
+        })}
         actions={
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
             {policy && <StatusBadge status={policy.state} />}
             <button className="btn" onClick={() => navigate({ to: "/policies" })}>
-              Back
+              {intl.formatMessage({
+                id: "policyEditor.back",
+                defaultMessage: "Back",
+              })}
             </button>
           </span>
         }
@@ -466,36 +610,72 @@ export function PolicyEditor() {
 
       {readOnly && (
         <div className="notice notice--info" style={{ marginBottom: 16 }}>
-          This policy is <b>{policy?.state}</b> and is read-only. To change live
-          access, create a new draft — the original stays enforced until the new
-          one is tested and promoted.
+          {intl.formatMessage(
+            {
+              id: "policyEditor.readOnly",
+              defaultMessage:
+                "This policy is <b>{state}</b> and is read-only. To change live access, create a new draft — the original stays enforced until the new one is tested and promoted.",
+            },
+            {
+              state: policy?.state ?? "",
+              b: (chunks) => <b>{chunks}</b>,
+            },
+          )}
         </div>
       )}
 
       <div className="grid grid--2">
         <Card
-          title="Rule"
-          subtitle="A policy grants or denies a set of subjects access to a set of resources. Deny always wins on conflict."
+          title={intl.formatMessage({
+            id: "policyEditor.rule.title",
+            defaultMessage: "Rule",
+          })}
+          subtitle={intl.formatMessage({
+            id: "policyEditor.rule.subtitle",
+            defaultMessage:
+              "A policy grants or denies a set of subjects access to a set of resources. Deny always wins on conflict.",
+          })}
         >
           <label className="field">
-            <span>Policy name</span>
+            <span>
+              {intl.formatMessage({
+                id: "policyEditor.field.name",
+                defaultMessage: "Policy name",
+              })}
+            </span>
             <input
               value={form.name}
               disabled={readOnly}
-              placeholder="e.g. Engineering → production apps"
+              placeholder={intl.formatMessage({
+                id: "policyEditor.field.namePlaceholder",
+                defaultMessage: "e.g. Engineering → production apps",
+              })}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </label>
 
           <div className="field">
             <span>
-              Decision{" "}
+              {intl.formatMessage({
+                id: "policyEditor.field.decision",
+                defaultMessage: "Decision",
+              })}{" "}
               <HelpTooltip>
-                Grant opens access; Deny blocks it. When a subject/resource pair
-                is matched by both a grant and a deny, deny wins.
+                {intl.formatMessage({
+                  id: "policyEditor.field.decisionHelp",
+                  defaultMessage:
+                    "Grant opens access; Deny blocks it. When a subject/resource pair is matched by both a grant and a deny, deny wins.",
+                })}
               </HelpTooltip>
             </span>
-            <div className="segmented" role="radiogroup" aria-label="Decision">
+            <div
+              className="segmented"
+              role="radiogroup"
+              aria-label={intl.formatMessage({
+                id: "policyEditor.field.decision",
+                defaultMessage: "Decision",
+              })}
+            >
               <button
                 type="button"
                 role="radio"
@@ -504,7 +684,10 @@ export function PolicyEditor() {
                 className={`segmented__option${form.action === "grant" ? " active" : ""}`}
                 onClick={() => setForm({ ...form, action: "grant" })}
               >
-                Grant
+                {intl.formatMessage({
+                  id: "policyEditor.decision.grant",
+                  defaultMessage: "Grant",
+                })}
               </button>
               <button
                 type="button"
@@ -514,55 +697,99 @@ export function PolicyEditor() {
                 className={`segmented__option${form.action === "deny" ? " active" : ""}`}
                 onClick={() => setForm({ ...form, action: "deny" })}
               >
-                Deny
+                {intl.formatMessage({
+                  id: "policyEditor.decision.deny",
+                  defaultMessage: "Deny",
+                })}
               </button>
             </div>
           </div>
 
           <ChipInput
-            label="Who / which groups"
+            label={intl.formatMessage({
+              id: "policyEditor.field.subjects",
+              defaultMessage: "Who / which groups",
+            })}
             values={form.subjects}
             disabled={readOnly}
             onChange={(subjects) => setForm({ ...form, subjects })}
-            placeholder="user:ada@corp, team:engineering, contractor:acme…"
+            placeholder={intl.formatMessage({
+              id: "policyEditor.field.subjectsPlaceholder",
+              defaultMessage: "user:ada@corp, team:engineering, contractor:acme…",
+            })}
             hints={SUBJECT_HINTS}
             invalidHint={
               !readOnly && form.subjects.length === 0
-                ? "Add at least one subject (a user, team, group or contractor)."
+                ? intl.formatMessage({
+                    id: "policyEditor.field.subjectsError",
+                    defaultMessage:
+                      "Add at least one subject (a user, team, group or contractor).",
+                  })
                 : undefined
             }
           />
 
           <ChipInput
-            label="Which systems / resources"
+            label={intl.formatMessage({
+              id: "policyEditor.field.resources",
+              defaultMessage: "Which systems / resources",
+            })}
             values={form.resources}
             disabled={readOnly}
             onChange={(resources) => setForm({ ...form, resources })}
-            placeholder="app:salesforce, host:10.0.0.0/24, *…"
+            placeholder={intl.formatMessage({
+              id: "policyEditor.field.resourcesPlaceholder",
+              defaultMessage: "app:salesforce, host:10.0.0.0/24, *…",
+            })}
             hints={RESOURCE_HINTS}
             invalidHint={
               !readOnly && form.resources.length === 0
-                ? "Add at least one resource. Use * for all resources (with care)."
+                ? intl.formatMessage({
+                    id: "policyEditor.field.resourcesError",
+                    defaultMessage:
+                      "Add at least one resource. Use * for all resources (with care).",
+                  })
                 : undefined
             }
           />
 
           <label className="field">
             <span>
-              Role <span className="muted">(optional)</span>
+              {intl.formatMessage({
+                id: "policyEditor.field.role",
+                defaultMessage: "Role",
+              })}{" "}
+              <span className="muted">
+                {intl.formatMessage({
+                  id: "policyEditor.field.optional",
+                  defaultMessage: "(optional)",
+                })}
+              </span>
             </span>
             <input
               value={form.role}
               disabled={readOnly}
-              placeholder="e.g. viewer, admin"
+              placeholder={intl.formatMessage({
+                id: "policyEditor.field.rolePlaceholder",
+                defaultMessage: "e.g. viewer, admin",
+              })}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
             />
           </label>
 
           {form.resources.includes("*") && !readOnly && (
             <div className="notice notice--warn">
-              This rule targets <b>all resources</b> (<code>*</code>). Simulate
-              carefully before rollout.
+              {intl.formatMessage(
+                {
+                  id: "policyEditor.wildcardWarn",
+                  defaultMessage:
+                    "This rule targets <b>all resources</b> (<code>*</code>). Simulate carefully before rollout.",
+                },
+                {
+                  b: (chunks) => <b>{chunks}</b>,
+                  code: (chunks) => <code>{chunks}</code>,
+                },
+              )}
             </div>
           )}
 
@@ -576,9 +803,15 @@ export function PolicyEditor() {
                 {createMut.isPending || updateMut.isPending ? (
                   <Spinner />
                 ) : isNew ? (
-                  "Create draft"
+                  intl.formatMessage({
+                    id: "policyEditor.action.createDraft",
+                    defaultMessage: "Create draft",
+                  })
                 ) : (
-                  "Save draft"
+                  intl.formatMessage({
+                    id: "policyEditor.action.saveDraft",
+                    defaultMessage: "Save draft",
+                  })
                 )}
               </button>
               {readOnlyArchiveHidden(isNew) && (
@@ -587,7 +820,10 @@ export function PolicyEditor() {
                   onClick={archive}
                   disabled={archiveMut.isPending}
                 >
-                  Archive
+                  {intl.formatMessage({
+                    id: "policyEditor.action.archive",
+                    defaultMessage: "Archive",
+                  })}
                 </button>
               )}
             </div>
@@ -595,13 +831,23 @@ export function PolicyEditor() {
         </Card>
 
         <Card
-          title="Test before rollout"
-          subtitle="Simulate computes the real impact and any conflicts against live policies. A draft can't go live until it's been simulated since its last edit."
+          title={intl.formatMessage({
+            id: "policyEditor.test.title",
+            defaultMessage: "Test before rollout",
+          })}
+          subtitle={intl.formatMessage({
+            id: "policyEditor.test.subtitle",
+            defaultMessage:
+              "Simulate computes the real impact and any conflicts against live policies. A draft can't go live until it's been simulated since its last edit.",
+          })}
         >
           {isNew ? (
             <div className="notice notice--info">
-              Create the draft first, then simulate it here. Nothing is enforced
-              until you promote.
+              {intl.formatMessage({
+                id: "policyEditor.test.newHint",
+                defaultMessage:
+                  "Create the draft first, then simulate it here. Nothing is enforced until you promote.",
+              })}
             </div>
           ) : (
             <>
@@ -609,11 +855,23 @@ export function PolicyEditor() {
                 <div className={`rollout-step${!dirty ? " done" : ""}`}>
                   <span className="rollout-step__num">1</span>
                   <div>
-                    <b>Save the draft</b>
+                    <b>
+                      {intl.formatMessage({
+                        id: "policyEditor.step.save",
+                        defaultMessage: "Save the draft",
+                      })}
+                    </b>
                     <p className="muted">
                       {dirty
-                        ? "You have unsaved edits. Save them before testing."
-                        : "Draft saved."}
+                        ? intl.formatMessage({
+                            id: "policyEditor.step.saveDirty",
+                            defaultMessage:
+                              "You have unsaved edits. Save them before testing.",
+                          })
+                        : intl.formatMessage({
+                            id: "policyEditor.step.saveDone",
+                            defaultMessage: "Draft saved.",
+                          })}
                     </p>
                   </div>
                 </div>
@@ -622,33 +880,57 @@ export function PolicyEditor() {
                 >
                   <span className="rollout-step__num">2</span>
                   <div>
-                    <b>Simulate</b>
+                    <b>
+                      {intl.formatMessage({
+                        id: "policyEditor.step.simulate",
+                        defaultMessage: "Simulate",
+                      })}
+                    </b>
                     <p className="muted">
                       {simulatedSinceEdit
-                        ? "Tested against current live policies."
-                        : "Required before rollout — computes impact + conflicts."}
+                        ? intl.formatMessage({
+                            id: "policyEditor.step.simulateDone",
+                            defaultMessage:
+                              "Tested against current live policies.",
+                          })
+                        : intl.formatMessage({
+                            id: "policyEditor.step.simulateTodo",
+                            defaultMessage:
+                              "Required before rollout — computes impact + conflicts.",
+                          })}
                     </p>
                   </div>
                 </div>
                 <div className="rollout-step">
                   <span className="rollout-step__num">3</span>
                   <div>
-                    <b>Promote</b>
+                    <b>
+                      {intl.formatMessage({
+                        id: "policyEditor.step.promote",
+                        defaultMessage: "Promote",
+                      })}
+                    </b>
                     <p className="muted">
-                      Flips the policy live. Blocked on grant-vs-deny conflicts
-                      unless you override with a reason (audited).
+                      {intl.formatMessage({
+                        id: "policyEditor.step.promoteHint",
+                        defaultMessage:
+                          "Flips the policy live. Blocked on grant-vs-deny conflicts unless you override with a reason (audited).",
+                      })}
                     </p>
                   </div>
                 </div>
               </div>
 
               {readOnly ? (
-                <div className="kv" style={{ marginTop: 12 }}>
-                  <div>
-                    <dt>Promoted</dt>
-                    <dd>{formatDateTime(policy?.promoted_at)}</dd>
-                  </div>
-                </div>
+                <dl className="kv" style={{ marginTop: 12 }}>
+                  <dt>
+                    {intl.formatMessage({
+                      id: "policyEditor.promotedAt",
+                      defaultMessage: "Promoted",
+                    })}
+                  </dt>
+                  <dd>{formatDateTime(policy?.promoted_at)}</dd>
+                </dl>
               ) : (
                 <div className="field-row" style={{ marginTop: 12 }}>
                   <button
@@ -656,10 +938,22 @@ export function PolicyEditor() {
                     onClick={simulate}
                     disabled={dirty || simulateMut.isPending}
                     title={
-                      dirty ? "Save your edits before simulating." : undefined
+                      dirty
+                        ? intl.formatMessage({
+                            id: "policyEditor.simulate.dirtyTitle",
+                            defaultMessage: "Save your edits before simulating.",
+                          })
+                        : undefined
                     }
                   >
-                    {simulateMut.isPending ? <Spinner /> : "Simulate"}
+                    {simulateMut.isPending ? (
+                      <Spinner />
+                    ) : (
+                      intl.formatMessage({
+                        id: "policyEditor.step.simulate",
+                        defaultMessage: "Simulate",
+                      })
+                    )}
                   </button>
                   <button
                     className="btn btn--primary"
@@ -670,11 +964,21 @@ export function PolicyEditor() {
                     disabled={!canPromote || promoteMut.isPending}
                     title={
                       !simulatedSinceEdit
-                        ? "Simulate this draft before promoting."
+                        ? intl.formatMessage({
+                            id: "policyEditor.promote.needSim",
+                            defaultMessage: "Simulate this draft before promoting.",
+                          })
                         : undefined
                     }
                   >
-                    {promoteMut.isPending ? <Spinner /> : "Promote to live"}
+                    {promoteMut.isPending ? (
+                      <Spinner />
+                    ) : (
+                      intl.formatMessage({
+                        id: "policyEditor.action.promote",
+                        defaultMessage: "Promote to live",
+                      })
+                    )}
                   </button>
                 </div>
               )}
@@ -682,9 +986,17 @@ export function PolicyEditor() {
               {!canPromote && !readOnly && (
                 <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
                   {dirty
-                    ? "Save your edits, then simulate, to enable promotion."
+                    ? intl.formatMessage({
+                        id: "policyEditor.promote.hintDirty",
+                        defaultMessage:
+                          "Save your edits, then simulate, to enable promotion.",
+                      })
                     : !simulatedSinceEdit
-                      ? "Simulate this draft to enable promotion."
+                      ? intl.formatMessage({
+                          id: "policyEditor.promote.hintSim",
+                          defaultMessage:
+                            "Simulate this draft to enable promotion.",
+                        })
                       : ""}
                 </p>
               )}
@@ -693,22 +1005,62 @@ export function PolicyEditor() {
 
           {impact && (
             <div style={{ marginTop: 16 }}>
-              <h4 style={{ margin: "0 0 8px" }}>Impact</h4>
+              <h4 style={{ margin: "0 0 8px" }}>
+                {intl.formatMessage({
+                  id: "policyEditor.impact.title",
+                  defaultMessage: "Impact",
+                })}
+              </h4>
               <div className="grid grid--stats">
-                <ImpactStat label="Subjects" value={impact.subject_count} />
-                <ImpactStat label="Resources" value={impact.resource_count} />
-                <ImpactStat label="Pairs" value={impact.pair_count} />
                 <ImpactStat
-                  label="New grants"
+                  label={intl.formatMessage({
+                    id: "policyEditor.impact.subjects",
+                    defaultMessage: "Subjects",
+                  })}
+                  value={impact.subject_count}
+                />
+                <ImpactStat
+                  label={intl.formatMessage({
+                    id: "policyEditor.impact.resources",
+                    defaultMessage: "Resources",
+                  })}
+                  value={impact.resource_count}
+                />
+                <ImpactStat
+                  label={intl.formatMessage({
+                    id: "policyEditor.impact.pairs",
+                    defaultMessage: "Pairs",
+                  })}
+                  value={impact.pair_count}
+                />
+                <ImpactStat
+                  label={intl.formatMessage({
+                    id: "policyEditor.impact.newGrants",
+                    defaultMessage: "New grants",
+                  })}
                   value={impact.new_grant_pairs}
                 />
               </div>
               {impact.wildcard_resource && (
                 <p className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-                  Includes a wildcard resource ·{" "}
+                  {intl.formatMessage({
+                    id: "policyEditor.impact.wildcard",
+                    defaultMessage: "Includes a wildcard resource",
+                  })}{" "}
+                  ·{" "}
                   {impact.redundant_pairs > 0
-                    ? `${impact.redundant_pairs} redundant pair(s)`
-                    : "no redundancy"}
+                    ? intl.formatMessage(
+                        {
+                          id: "policyEditor.impact.redundant",
+                          defaultMessage:
+                            "{n, plural, one {# redundant pair} other {# redundant pairs}}",
+                        },
+                        { n: impact.redundant_pairs },
+                      )
+                    : intl.formatMessage({
+                        id: "policyEditor.impact.noRedundancy",
+                        defaultMessage: "no redundancy",
+                      })}
                 </p>
               )}
             </div>
@@ -717,11 +1069,27 @@ export function PolicyEditor() {
           {sim && sim.conflicts.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <h4 style={{ margin: "0 0 8px" }}>
-                Conflicts{" "}
+                {intl.formatMessage({
+                  id: "policyEditor.conflicts.title",
+                  defaultMessage: "Conflicts",
+                })}{" "}
                 {hardConflicts.length > 0 ? (
-                  <Badge tone="danger">{hardConflicts.length} blocking</Badge>
+                  <Badge tone="danger">
+                    {intl.formatMessage(
+                      {
+                        id: "policyEditor.conflicts.blocking",
+                        defaultMessage: "{n} blocking",
+                      },
+                      { n: hardConflicts.length },
+                    )}
+                  </Badge>
                 ) : (
-                  <Badge tone="warn">advisory only</Badge>
+                  <Badge tone="warn">
+                    {intl.formatMessage({
+                      id: "policyEditor.conflicts.advisory",
+                      defaultMessage: "advisory only",
+                    })}
+                  </Badge>
                 )}
               </h4>
               <ConflictTable conflicts={sim.conflicts} />
@@ -732,7 +1100,10 @@ export function PolicyEditor() {
 
       {overrideOpen && (
         <Modal
-          title="Override conflicts and promote"
+          title={intl.formatMessage({
+            id: "policyEditor.override.title",
+            defaultMessage: "Override conflicts and promote",
+          })}
           onClose={() => setOverrideOpen(false)}
           footer={
             <>
@@ -740,22 +1111,45 @@ export function PolicyEditor() {
                 className="btn btn--ghost"
                 onClick={() => setOverrideOpen(false)}
               >
-                Cancel
+                {intl.formatMessage({
+                  id: "policyEditor.override.cancel",
+                  defaultMessage: "Cancel",
+                })}
               </button>
               <button
                 className="btn btn--danger"
                 disabled={!overrideReason.trim() || promoteMut.isPending}
                 onClick={() => promote(true, overrideReason.trim())}
               >
-                {promoteMut.isPending ? <Spinner /> : "Override and promote"}
+                {promoteMut.isPending ? (
+                  <Spinner />
+                ) : (
+                  intl.formatMessage({
+                    id: "policyEditor.override.confirm",
+                    defaultMessage: "Override and promote",
+                  })
+                )}
               </button>
             </>
           }
         >
           <p>
-            This draft has <b>{hardConflicts.length || "unresolved"}</b>{" "}
-            grant-vs-deny conflict(s). Promoting anyway requires a written
-            reason, which is recorded in the tamper-evident audit log.
+            {intl.formatMessage(
+              {
+                id: "policyEditor.override.body",
+                defaultMessage:
+                  "This draft has <b>{n}</b> grant-vs-deny conflict(s). Promoting anyway requires a written reason, which is recorded in the tamper-evident audit log.",
+              },
+              {
+                n:
+                  hardConflicts.length ||
+                  intl.formatMessage({
+                    id: "policyEditor.override.unresolved",
+                    defaultMessage: "unresolved",
+                  }),
+                b: (chunks) => <b>{chunks}</b>,
+              },
+            )}
           </p>
           {hardConflicts.length > 0 && (
             <div style={{ margin: "12px 0" }}>
@@ -763,11 +1157,20 @@ export function PolicyEditor() {
             </div>
           )}
           <label className="field">
-            <span>Reason for override (required)</span>
+            <span>
+              {intl.formatMessage({
+                id: "policyEditor.override.reasonLabel",
+                defaultMessage: "Reason for override (required)",
+              })}
+            </span>
             <textarea
               rows={3}
               value={overrideReason}
-              placeholder="e.g. Break-glass access approved by CISO under ticket SEC-1421."
+              placeholder={intl.formatMessage({
+                id: "policyEditor.override.reasonPlaceholder",
+                defaultMessage:
+                  "e.g. Break-glass access approved by CISO under ticket SEC-1421.",
+              })}
               onChange={(e) => setOverrideReason(e.target.value)}
             />
           </label>
@@ -776,7 +1179,10 @@ export function PolicyEditor() {
 
       {mfaOpen && (
         <Modal
-          title="Confirm with step-up MFA"
+          title={intl.formatMessage({
+            id: "policyEditor.mfa.title",
+            defaultMessage: "Confirm with step-up MFA",
+          })}
           onClose={() => setMfaOpen(false)}
           footer={
             <>
@@ -784,25 +1190,42 @@ export function PolicyEditor() {
                 className="btn btn--ghost"
                 onClick={() => setMfaOpen(false)}
               >
-                Cancel
+                {intl.formatMessage({
+                  id: "policyEditor.mfa.cancel",
+                  defaultMessage: "Cancel",
+                })}
               </button>
               <button
                 className="btn btn--primary"
                 disabled={mfaCode.trim().length < 6 || promoteMut.isPending}
                 onClick={submitMfa}
               >
-                {promoteMut.isPending ? <Spinner /> : "Verify and promote"}
+                {promoteMut.isPending ? (
+                  <Spinner />
+                ) : (
+                  intl.formatMessage({
+                    id: "policyEditor.mfa.confirm",
+                    defaultMessage: "Verify and promote",
+                  })
+                )}
               </button>
             </>
           }
         >
           <p>
-            Promoting a policy is a high-risk action and requires a fresh
-            multi-factor confirmation. Enter the current 6-digit code from your
-            authenticator app.
+            {intl.formatMessage({
+              id: "policyEditor.mfa.body",
+              defaultMessage:
+                "Promoting a policy is a high-risk action and requires a fresh multi-factor confirmation. Enter the current 6-digit code from your authenticator app.",
+            })}
           </p>
           <label className="field">
-            <span>Authentication code</span>
+            <span>
+              {intl.formatMessage({
+                id: "policyEditor.mfa.codeLabel",
+                defaultMessage: "Authentication code",
+              })}
+            </span>
             <input
               type="text"
               inputMode="numeric"
@@ -866,8 +1289,11 @@ function readOnlyArchiveHidden(isNew: boolean): boolean {
   return !isNew;
 }
 
-function errMessage(err: unknown): string {
+function errMessage(err: unknown, intl: IntlShape): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
-  return "Unexpected error";
+  return intl.formatMessage({
+    id: "policyEditor.error.unexpected",
+    defaultMessage: "Unexpected error",
+  });
 }

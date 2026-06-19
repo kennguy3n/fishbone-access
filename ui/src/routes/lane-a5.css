@@ -1,0 +1,78 @@
+/* =====================================================================
+   Lane A5 — scoped accessibility overrides (governance / certification /
+   identity screens).
+
+   These rules ONLY raise foreground/background contrast to WCAG 2.2 AA
+   (>= 4.5:1) for elements rendered inside this lane's screens. They are a
+   stop-gap for KNOWN WS0-foundation token gaps that are shared across every
+   lane and are tracked for a coordinated WS0 follow-up (see PR description):
+
+     - faint secondary text (--text-faint) on tinted surfaces  (~4.3:1 light / ~3.4:1 dark)
+     - status/info badge tints (--ok / --warn / --danger / --brand on soft fills)
+     - chip text in dark theme
+     - white-on-brand for primary buttons / active segmented control in dark (~3.6:1)
+     - undersized contextual-help target (16px -> 24px, WCAG 2.2 target-size)
+
+   We deliberately do NOT edit ui/src/styles.css or any WS0 token/primitive.
+   Everything is scoped under .lane-a5 so sibling lanes are unaffected.
+   ===================================================================== */
+
+/* --- Faint secondary text (muted, stat labels, card subtitles, table
+       headers, inactive segmented options, definition terms) ------------- */
+.lane-a5 {
+  /* light: was #6b7280 (~4.3:1 on tinted #eef3fd) -> #586173 (>= 4.8:1) */
+  --text-faint: #586173;
+}
+:root[data-theme="dark"] .lane-a5 {
+  /* dark: was #69748a (~3.4:1 on #1b232f) -> #8c95a8 (>= 4.8:1) */
+  --text-faint: #8c95a8;
+}
+
+/* --- Status / info badges ------------------------------------------------ */
+/* Light theme: deepen the tint text to clear 4.5:1 on the soft fills. */
+.lane-a5 .badge--ok {
+  color: #036648;
+}
+.lane-a5 .badge--warn {
+  color: #9a5500;
+}
+.lane-a5 .badge--danger {
+  color: #b91c1c;
+}
+.lane-a5 .badge--info {
+  color: #1e4fc4;
+}
+/* Dark theme: lighten badge text instead (light-on-dark fills). The soft
+   fills are dark (e.g. #183232 / #322f23), so the deep light-theme tints above
+   read at only ~2.3-2.5:1; light pastel text restores >= 4.5:1 (here >= 8:1). */
+:root[data-theme="dark"] .lane-a5 .badge--ok {
+  color: #6ee7b7;
+}
+:root[data-theme="dark"] .lane-a5 .badge--warn {
+  color: #fcd34d;
+}
+:root[data-theme="dark"] .lane-a5 .badge--danger {
+  color: #fca5a5;
+}
+:root[data-theme="dark"] .lane-a5 .badge--info {
+  color: #9bb8f7;
+}
+
+/* --- Chips (subject / resource) in dark theme --------------------------- */
+:root[data-theme="dark"] .lane-a5 .chip {
+  color: #9bb8f7;
+}
+
+/* --- White-on-brand: primary button + active segmented option (dark) ---- */
+:root[data-theme="dark"] .lane-a5 .btn--primary,
+:root[data-theme="dark"] .lane-a5 .segmented__option.active {
+  background: #255fe5;
+  border-color: #255fe5;
+}
+
+/* --- WCAG 2.2 target-size for the contextual-help trigger --------------- */
+.lane-a5 .help__trigger {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}

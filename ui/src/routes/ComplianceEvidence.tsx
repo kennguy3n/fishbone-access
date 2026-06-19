@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import {
   PageHeader,
   Card,
@@ -31,6 +33,8 @@ const EXPORT_PERMISSION = "compliance.export";
 // server-side by RequirePermission("compliance.export") + step-up MFA; the UI
 // mirrors that gate so the affordance reads honestly.
 export function ComplianceEvidence() {
+  useLaneA5Scope();
+  const intl = useIntl();
   const [framework, setFramework] = useState<Framework>("SOC 2");
 
   const coverageQ = useCoverage(framework);
@@ -42,14 +46,28 @@ export function ComplianceEvidence() {
   return (
     <>
       <PageHeader
-        title="Compliance evidence"
-        subtitle="Control coverage and tamper-evident evidence assembled as a side effect of normal access operations — every grant, revocation, policy promotion, review and certification is recorded on the workspace audit hash chain."
+        title={intl.formatMessage({
+          id: "evidence.title",
+          defaultMessage: "Compliance evidence",
+        })}
+        subtitle={intl.formatMessage({
+          id: "evidence.subtitle",
+          defaultMessage:
+            "Control coverage and tamper-evident evidence assembled as a side effect of normal access operations — every grant, revocation, policy promotion, review and certification is recorded on the workspace audit hash chain.",
+        })}
         actions={<ExportButton framework={framework} />}
       />
 
       <ChainStatus />
 
-      <div className="pill-tabs" role="tablist" aria-label="Framework">
+      <div
+        className="pill-tabs"
+        role="tablist"
+        aria-label={intl.formatMessage({
+          id: "evidence.framework.aria",
+          defaultMessage: "Framework",
+        })}
+      >
         {FRAMEWORKS.map((f) => (
           <button
             key={f}
@@ -73,22 +91,48 @@ export function ComplianceEvidence() {
           <>
             <div className="grid grid--stats">
               <Stat
-                label="Controls covered"
+                label={intl.formatMessage({
+                  id: "evidence.stat.covered",
+                  defaultMessage: "Controls covered",
+                })}
                 value={`${cov.controls_covered} / ${cov.controls_total}`}
               />
-              <Stat label="Evidence records" value={cov.evidence_total} />
               <Stat
-                label="Coverage"
+                label={intl.formatMessage({
+                  id: "evidence.stat.records",
+                  defaultMessage: "Evidence records",
+                })}
+                value={cov.evidence_total}
+              />
+              <Stat
+                label={intl.formatMessage({
+                  id: "evidence.stat.coverage",
+                  defaultMessage: "Coverage",
+                })}
                 value={`${cov.controls_total === 0 ? 0 : Math.round((cov.controls_covered / cov.controls_total) * 100)}%`}
               />
             </div>
 
             <Card
-              title={`${cov.framework} control coverage`}
-              subtitle="A control is covered when the chain holds at least one evidence record of a kind that demonstrates it."
+              title={intl.formatMessage(
+                {
+                  id: "evidence.coverage.title",
+                  defaultMessage: "{framework} control coverage",
+                },
+                { framework: cov.framework },
+              )}
+              subtitle={intl.formatMessage({
+                id: "evidence.coverage.subtitle",
+                defaultMessage:
+                  "A control is covered when the chain holds at least one evidence record of a kind that demonstrates it.",
+              })}
             >
               {cov.controls.map((ctrl) => (
-                <ControlMeter key={ctrl.id} control={ctrl} total={cov.evidence_total} />
+                <ControlMeter
+                  key={ctrl.id}
+                  control={ctrl}
+                  total={cov.evidence_total}
+                />
               ))}
             </Card>
           </>
@@ -96,8 +140,14 @@ export function ComplianceEvidence() {
       </AsyncBoundary>
 
       <Card
-        title="Evidence timeline"
-        subtitle="Most recent control-relevant events on the audit chain."
+        title={intl.formatMessage({
+          id: "evidence.timeline.title",
+          defaultMessage: "Evidence timeline",
+        })}
+        subtitle={intl.formatMessage({
+          id: "evidence.timeline.subtitle",
+          defaultMessage: "Most recent control-relevant events on the audit chain.",
+        })}
       >
         <AsyncBoundary
           isLoading={evidenceQ.isLoading}
@@ -107,8 +157,15 @@ export function ComplianceEvidence() {
           isEmpty={(rows) => rows.length === 0}
           empty={
             <EmptyState
-              title="No evidence yet"
-              description="As access is granted, reviewed and certified, tamper-evident records will appear here."
+              title={intl.formatMessage({
+                id: "evidence.empty.title",
+                defaultMessage: "No evidence yet",
+              })}
+              description={intl.formatMessage({
+                id: "evidence.empty.body",
+                defaultMessage:
+                  "As access is granted, reviewed and certified, tamper-evident records will appear here.",
+              })}
             />
           }
         >
@@ -120,6 +177,7 @@ export function ComplianceEvidence() {
 }
 
 function ChainStatus() {
+  const intl = useIntl();
   const chainQ = useChainVerification();
   if (chainQ.isLoading || !chainQ.data) return null;
   const v = chainQ.data;
@@ -127,20 +185,46 @@ function ChainStatus() {
     <Card className={v.ok ? "card--accent-ok" : "card--accent-danger"}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Badge tone={v.ok ? "ok" : "danger"} dot>
-          {v.ok ? "Chain intact" : "Chain broken"}
+          {v.ok
+            ? intl.formatMessage({
+                id: "evidence.chain.intact",
+                defaultMessage: "Chain intact",
+              })
+            : intl.formatMessage({
+                id: "evidence.chain.broken",
+                defaultMessage: "Chain broken",
+              })}
         </Badge>
         <div>
           <div style={{ fontWeight: 600 }}>
             {v.ok
-              ? `${v.length} evidence record${v.length === 1 ? "" : "s"} verified`
-              : "Tamper detected on the audit hash chain"}
+              ? intl.formatMessage(
+                  {
+                    id: "evidence.chain.verified",
+                    defaultMessage:
+                      "{n, plural, one {# evidence record verified} other {# evidence records verified}}",
+                  },
+                  { n: v.length },
+                )
+              : intl.formatMessage({
+                  id: "evidence.chain.tamper",
+                  defaultMessage: "Tamper detected on the audit hash chain",
+                })}
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>
             {v.ok
-              ? "Every record's SHA-256 link was recomputed and matched."
+              ? intl.formatMessage({
+                  id: "evidence.chain.okBody",
+                  defaultMessage:
+                    "Every record's SHA-256 link was recomputed and matched.",
+                })
               : v.reason
-                ? `${v.reason}${v.broken_at_seq != null ? ` (sequence ${v.broken_at_seq})` : ""}`
-                : "Recomputed hashes did not match stored links."}
+                ? `${v.reason}${v.broken_at_seq != null ? intl.formatMessage({ id: "evidence.chain.seq", defaultMessage: " (sequence {seq})" }, { seq: v.broken_at_seq }) : ""}`
+                : intl.formatMessage({
+                    id: "evidence.chain.mismatch",
+                    defaultMessage:
+                      "Recomputed hashes did not match stored links.",
+                  })}
           </div>
         </div>
       </div>
@@ -155,6 +239,7 @@ function ControlMeter({
   control: ControlCoverage;
   total: number;
 }) {
+  const intl = useIntl();
   const pct = total === 0 ? 0 : Math.round((control.evidence_count / total) * 100);
   return (
     <div className="meter">
@@ -163,13 +248,29 @@ function ControlMeter({
           <b style={{ marginRight: 6 }}>{control.id}</b>
           {control.title}{" "}
           {control.covered ? (
-            <Badge tone="ok">Covered</Badge>
+            <Badge tone="ok">
+              {intl.formatMessage({
+                id: "evidence.control.covered",
+                defaultMessage: "Covered",
+              })}
+            </Badge>
           ) : (
-            <Badge tone="warn">No evidence</Badge>
+            <Badge tone="warn">
+              {intl.formatMessage({
+                id: "evidence.control.none",
+                defaultMessage: "No evidence",
+              })}
+            </Badge>
           )}
         </span>
         <b>
-          {control.evidence_count} record{control.evidence_count === 1 ? "" : "s"}
+          {intl.formatMessage(
+            {
+              id: "evidence.control.count",
+              defaultMessage: "{n, plural, one {# record} other {# records}}",
+            },
+            { n: control.evidence_count },
+          )}
         </b>
       </div>
       <div className="meter__track">
@@ -183,12 +284,24 @@ function ControlMeter({
 }
 
 function EvidenceTimeline({ records }: { records: EvidenceRecord[] }) {
+  const intl = useIntl();
+  const systemLabel = intl.formatMessage({
+    id: "evidence.timeline.system",
+    defaultMessage: "system",
+  });
   return (
     <ul className="timeline">
       {records.map((r) => (
         <li className="timeline__item" key={r.id}>
           <span className="timeline__dot" />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
             <Badge tone={r.kind === "other" ? "neutral" : "info"}>
               {titleCase(r.kind)}
             </Badge>
@@ -198,8 +311,9 @@ function EvidenceTimeline({ records }: { records: EvidenceRecord[] }) {
             </span>
           </div>
           <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-            {r.actor || "system"}
-            {r.target_ref ? ` · ${r.target_ref}` : ""} · {formatDateTime(r.occurred_at)}
+            {r.actor || systemLabel}
+            {r.target_ref ? ` · ${r.target_ref}` : ""} ·{" "}
+            {formatDateTime(r.occurred_at)}
           </div>
         </li>
       ))}
@@ -208,6 +322,7 @@ function EvidenceTimeline({ records }: { records: EvidenceRecord[] }) {
 }
 
 function ExportButton({ framework }: { framework: Framework }) {
+  const intl = useIntl();
   const toast = useToast();
   const { data: me } = useMe();
   const { data: myPerms } = useMyPermissions();
@@ -225,9 +340,15 @@ function ExportButton({ framework }: { framework: Framework }) {
   const mfaOk = me?.mfa_satisfied ?? false;
   const blocked = !hasPerm || !mfaOk;
   const reason = !hasPerm
-    ? "Requires the compliance.export permission."
+    ? intl.formatMessage({
+        id: "evidence.export.needPerm",
+        defaultMessage: "Requires the compliance.export permission.",
+      })
     : !mfaOk
-      ? "Requires step-up MFA — re-authenticate to export."
+      ? intl.formatMessage({
+          id: "evidence.export.needMfa",
+          defaultMessage: "Requires step-up MFA — re-authenticate to export.",
+        })
       : "";
 
   const doExport = async () => {
@@ -235,15 +356,36 @@ function ExportButton({ framework }: { framework: Framework }) {
       const pack = await exportMut.mutateAsync({ framework });
       triggerDownload(pack.blob, pack.filename);
       toast.success(
-        "Evidence pack exported",
+        intl.formatMessage({
+          id: "evidence.export.toast.title",
+          defaultMessage: "Evidence pack exported",
+        }),
         pack.digest
-          ? `Digest ${pack.digest.slice(0, 12)}… — recorded on the audit chain.`
-          : "The export is recorded on the audit chain.",
+          ? intl.formatMessage(
+              {
+                id: "evidence.export.toast.digest",
+                defaultMessage:
+                  "Digest {digest}… — recorded on the audit chain.",
+              },
+              { digest: pack.digest.slice(0, 12) },
+            )
+          : intl.formatMessage({
+              id: "evidence.export.toast.body",
+              defaultMessage: "The export is recorded on the audit chain.",
+            }),
       );
     } catch (e) {
       toast.error(
-        "Could not export evidence pack",
-        e instanceof Error ? e.message : "Please try again.",
+        intl.formatMessage({
+          id: "evidence.export.toast.error",
+          defaultMessage: "Could not export evidence pack",
+        }),
+        e instanceof Error
+          ? e.message
+          : intl.formatMessage({
+              id: "evidence.export.toast.retry",
+              defaultMessage: "Please try again.",
+            }),
       );
     }
   };
@@ -257,7 +399,18 @@ function ExportButton({ framework }: { framework: Framework }) {
         title={blocked ? reason : undefined}
         onClick={doExport}
       >
-        {exportMut.isPending ? "Exporting…" : `Export ${framework} pack`}
+        {exportMut.isPending
+          ? intl.formatMessage({
+              id: "evidence.export.exporting",
+              defaultMessage: "Exporting…",
+            })
+          : intl.formatMessage(
+              {
+                id: "evidence.export.label",
+                defaultMessage: "Export {framework} pack",
+              },
+              { framework },
+            )}
       </button>
     </span>
   );

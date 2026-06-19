@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import { PageHeader, Card, Badge, AsyncBoundary } from "@/components/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { usePacks, type Pack } from "@/api/access";
@@ -8,14 +10,16 @@ import { usePacks, type Pack } from "@/api/access";
 //   1 — global compliance frameworks (PCI-DSS, HIPAA, GDPR, SOC 2, ISO 27001)
 //   2 — South-East Asia data-protection regimes
 //   3 — remaining jurisdictions (GCC/UAE, AU, UK, US, CH, DE, FR, LATAM)
-const TIERS: { value: number | undefined; label: string }[] = [
-  { value: undefined, label: "All packs" },
-  { value: 1, label: "Global compliance" },
-  { value: 2, label: "South-East Asia" },
-  { value: 3, label: "Rest of world" },
+const TIERS: { value: number | undefined; id: string; label: string }[] = [
+  { value: undefined, id: "packs.tier.all", label: "All packs" },
+  { value: 1, id: "packs.tier.global", label: "Global compliance" },
+  { value: 2, id: "packs.tier.sea", label: "South-East Asia" },
+  { value: 3, id: "packs.tier.row", label: "Rest of world" },
 ];
 
 export function Packs() {
+  useLaneA5Scope();
+  const intl = useIntl();
   const navigate = useNavigate();
   const [tier, setTier] = useState<number | undefined>(undefined);
   const [framework, setFramework] = useState<string>("");
@@ -40,34 +44,57 @@ export function Packs() {
   return (
     <>
       <PageHeader
-        title="Policy packs"
-        subtitle="Curated, expert-built access rules for common compliance frameworks and regional data-protection laws. Applying a pack creates draft policies — nothing is enforced until you simulate and promote each one."
+        title={intl.formatMessage({
+          id: "packs.title",
+          defaultMessage: "Policy packs",
+        })}
+        subtitle={intl.formatMessage({
+          id: "packs.subtitle",
+          defaultMessage:
+            "Curated, expert-built access rules for common compliance frameworks and regional data-protection laws. Applying a pack creates draft policies — nothing is enforced until you simulate and promote each one.",
+        })}
       />
 
-      <div className="pill-tabs" role="tablist" aria-label="Pack tier">
+      <div
+        className="pill-tabs"
+        role="tablist"
+        aria-label={intl.formatMessage({
+          id: "packs.tier.aria",
+          defaultMessage: "Pack tier",
+        })}
+      >
         {TIERS.map((t) => (
           <button
-            key={t.label}
+            key={t.id}
             role="tab"
             aria-selected={tier === t.value}
             className={tier === t.value ? "active" : ""}
             onClick={() => setTier(t.value)}
           >
-            {t.label}
+            {intl.formatMessage({ id: t.id, defaultMessage: t.label })}
           </button>
         ))}
       </div>
 
       <div className="filter-bar">
-        <label className="muted" style={{ fontSize: 13 }}>
-          Framework
+        <label className="muted" style={{ fontSize: 13 }} htmlFor="pack-framework">
+          {intl.formatMessage({
+            id: "packs.filter.framework",
+            defaultMessage: "Framework",
+          })}
         </label>
         <select
+          id="pack-framework"
           value={framework}
           onChange={(e) => setFramework(e.target.value)}
           style={{ width: "auto", minWidth: 160 }}
         >
-          <option value="">All frameworks</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "packs.filter.allFrameworks",
+              defaultMessage: "All frameworks",
+            })}
+          </option>
           {frameworks.map((f) => (
             <option key={f} value={f}>
               {f}
@@ -82,7 +109,10 @@ export function Packs() {
               setFramework("");
             }}
           >
-            Clear filters
+            {intl.formatMessage({
+              id: "packs.filter.clear",
+              defaultMessage: "Clear filters",
+            })}
           </button>
         )}
       </div>
@@ -95,8 +125,15 @@ export function Packs() {
         isEmpty={(rows) => rows.length === 0}
         empty={
           <EmptyState
-            title="No packs match these filters"
-            description="Try a different tier or framework, or clear the filters to see the full catalog."
+            title={intl.formatMessage({
+              id: "packs.empty.title",
+              defaultMessage: "No packs match these filters",
+            })}
+            description={intl.formatMessage({
+              id: "packs.empty.body",
+              defaultMessage:
+                "Try a different tier or framework, or clear the filters to see the full catalog.",
+            })}
           />
         }
       >
@@ -119,6 +156,7 @@ export function Packs() {
 }
 
 function PackCard({ pack, onOpen }: { pack: Pack; onOpen: () => void }) {
+  const intl = useIntl();
   return (
     <Card className="pack-card">
       <div className="pack-card__body">
@@ -144,11 +182,19 @@ function PackCard({ pack, onOpen }: { pack: Pack; onOpen: () => void }) {
       </div>
       <div className="pack-card__foot">
         <span className="muted" style={{ fontSize: 12.5 }}>
-          {pack.templates.length} rule
-          {pack.templates.length === 1 ? "" : "s"}
+          {intl.formatMessage(
+            {
+              id: "packs.card.ruleCount",
+              defaultMessage: "{n, plural, one {# rule} other {# rules}}",
+            },
+            { n: pack.templates.length },
+          )}
         </span>
         <button className="btn btn--primary btn--sm" onClick={onOpen}>
-          Review &amp; apply
+          {intl.formatMessage({
+            id: "packs.card.review",
+            defaultMessage: "Review & apply",
+          })}
         </button>
       </div>
     </Card>
