@@ -546,7 +546,7 @@ function RequestFields({ req }: { req: AccessRequest }) {
         </dd>
       </div>
       <div>
-        <dt>{intl.formatMessage({ id: "requests.create.role", defaultMessage: "Role" })}</dt>
+        <dt>{intl.formatMessage({ id: "requests.detail.role", defaultMessage: "Role" })}</dt>
         <dd>{req.role || <span className="muted">—</span>}</dd>
       </div>
       <div>

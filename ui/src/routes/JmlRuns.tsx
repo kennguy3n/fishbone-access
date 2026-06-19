@@ -67,7 +67,7 @@ function RunDetail({ run }: { run: WorkflowRun }) {
           <dd>{modeLabel(intl, run.mode)}</dd>
         </div>
         <div>
-          <dt>{intl.formatMessage({ id: "jml.col.state", defaultMessage: "Status" })}</dt>
+          <dt>{intl.formatMessage({ id: "jml.run.status", defaultMessage: "Status" })}</dt>
           <dd>
             <StatusBadge status={run.status} />
           </dd>
@@ -461,9 +461,8 @@ export function JmlRuns() {
           <span className="muted" style={{ fontSize: 12 }}>
             {intl.formatMessage(
               {
-                id: "jml.run.stepCount",
-                defaultMessage:
-                  "{count, plural, one {# step} other {# steps}}",
+                id: "jml.stepCount",
+                defaultMessage: "{count, plural, one {# step} other {# steps}}",
               },
               { count: (r.steps ?? []).length },
             )}
