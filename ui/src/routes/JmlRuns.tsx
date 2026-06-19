@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useIntl } from "react-intl";
+import { useIntl, FormattedMessage, type IntlShape } from "react-intl";
 import {
   PageHeader,
   Card,
@@ -20,11 +20,20 @@ import {
 } from "@/api/workflows";
 import { ApiError, useMe } from "@/api/access";
 import { formatRelative, titleCase } from "@/lib/format";
+import { RowActivate } from "@/routes/lane/RowActivate";
 
-function errMessage(err: unknown): string {
+function errMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
-  return "Something went wrong.";
+  return fallback;
+}
+
+// Short, reusable label for a run's execution mode. Live runs touch real
+// systems; dry-runs are side-effect-free rehearsals.
+function modeLabel(intl: IntlShape, mode: string): string {
+  return mode === "live"
+    ? intl.formatMessage({ id: "jml.mode.live", defaultMessage: "Live" })
+    : intl.formatMessage({ id: "jml.mode.dryRun", defaultMessage: "Dry-run" });
 }
 
 // emergency-offboard is gated ONLY by middleware.RequireMFA, which 403s with
@@ -42,42 +51,48 @@ const isSessionMfaRequired = (err: ApiError) =>
 
 // Per-run step audit, shown in a modal from the dashboard.
 function RunDetail({ run }: { run: WorkflowRun }) {
+  const intl = useIntl();
   const steps = run.steps ?? [];
   return (
     <div>
       <div className="kv" style={{ marginBottom: 12 }}>
         <div>
-          <dt>Subject</dt>
+          <dt>{intl.formatMessage({ id: "jml.run.subject", defaultMessage: "Subject" })}</dt>
           <dd>
             <code>{run.subject_external_id || "—"}</code>
           </dd>
         </div>
         <div>
-          <dt>Mode</dt>
-          <dd>{run.mode === "dry_run" ? "Dry-run" : "Live"}</dd>
+          <dt>{intl.formatMessage({ id: "jml.run.mode", defaultMessage: "Mode" })}</dt>
+          <dd>{modeLabel(intl, run.mode)}</dd>
         </div>
         <div>
-          <dt>Status</dt>
+          <dt>{intl.formatMessage({ id: "jml.col.state", defaultMessage: "Status" })}</dt>
           <dd>
             <StatusBadge status={run.status} />
           </dd>
         </div>
         <div>
-          <dt>Started</dt>
+          <dt>{intl.formatMessage({ id: "jml.run.started", defaultMessage: "Started" })}</dt>
           <dd>{formatRelative(run.started_at)}</dd>
         </div>
       </div>
       {steps.length === 0 ? (
-        <p className="muted">No per-step detail recorded for this run.</p>
+        <p className="muted">
+          {intl.formatMessage({
+            id: "jml.run.noSteps",
+            defaultMessage: "No per-step detail was recorded for this run.",
+          })}
+        </p>
       ) : (
         <div className="table-wrap">
           <table className="data">
             <thead>
               <tr>
                 <th style={{ width: 40 }}>#</th>
-                <th>Step</th>
-                <th style={{ width: 120 }}>Outcome</th>
-                <th>Detail</th>
+                <th>{intl.formatMessage({ id: "jml.step.col.step", defaultMessage: "Step" })}</th>
+                <th style={{ width: 120 }}>{intl.formatMessage({ id: "jml.step.col.outcome", defaultMessage: "Outcome" })}</th>
+                <th>{intl.formatMessage({ id: "jml.step.col.detail", defaultMessage: "Detail" })}</th>
               </tr>
             </thead>
             <tbody>
@@ -139,15 +154,16 @@ const KILL_SWITCH_LAYERS = [
 // operator can see exactly which of the six layers succeeded, and retry/escalate
 // the ones that failed on a partial failure (errored=true).
 function LeaverBreakdown({ result }: { result: LeaverResult }) {
+  const intl = useIntl();
   const byLayer = new Map(result.layers.map((l) => [l.layer, l]));
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>Layer</th>
-            <th style={{ width: 120 }}>Outcome</th>
-            <th>Detail</th>
+            <th>{intl.formatMessage({ id: "jml.layer.col.layer", defaultMessage: "Layer" })}</th>
+            <th style={{ width: 120 }}>{intl.formatMessage({ id: "jml.step.col.outcome", defaultMessage: "Outcome" })}</th>
+            <th>{intl.formatMessage({ id: "jml.step.col.detail", defaultMessage: "Detail" })}</th>
           </tr>
         </thead>
         <tbody>
@@ -162,7 +178,12 @@ function LeaverBreakdown({ result }: { result: LeaverResult }) {
                   {outcome ? (
                     <StatusBadge status={outcome.status} />
                   ) : (
-                    <Badge tone="neutral">Skipped</Badge>
+                    <Badge tone="neutral">
+                      {intl.formatMessage({
+                        id: "jml.layer.skipped",
+                        defaultMessage: "Skipped",
+                      })}
+                    </Badge>
                   )}
                 </td>
                 <td className="muted">{outcome?.detail || "—"}</td>
@@ -201,7 +222,22 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
   // button after they satisfy MFA out-of-band. The claim drives an advisory
   // banner only; the server stays the source of truth.
   const mfaSatisfied = me.data?.mfa_satisfied ?? false;
-  const armed = externalId.trim().length > 0 && confirm.trim() === "OFFBOARD";
+  // The confirmation keyword is a fixed safety token, not prose: it stays
+  // "OFFBOARD" in every locale so a translated UI can't accidentally make the
+  // break-glass action easier to trigger.
+  const CONFIRM_TOKEN = "OFFBOARD";
+  const armed =
+    externalId.trim().length > 0 && confirm.trim() === CONFIRM_TOKEN;
+
+  const failuresTitle = intl.formatMessage({
+    id: "jml.offboard.failuresTitle",
+    defaultMessage: "Offboard completed with failures",
+  });
+  const failuresDetail = intl.formatMessage({
+    id: "jml.offboard.failuresDetail",
+    defaultMessage:
+      "One or more layers failed — review the per-layer breakdown below.",
+  });
 
   const run = async () => {
     try {
@@ -211,21 +247,31 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
       });
       setResult(res);
       if (res.errored) {
-        toast.error(
-          "Offboard completed with failures",
-          "One or more layers failed — review the per-layer breakdown.",
-        );
+        toast.error(failuresTitle, failuresDetail);
       } else {
         toast.success(
-          "Emergency offboard complete",
-          "All six layers ran for this identity.",
+          intl.formatMessage({
+            id: "jml.offboard.completeTitle",
+            defaultMessage: "Emergency offboard complete",
+          }),
+          intl.formatMessage({
+            id: "jml.offboard.completeDetail",
+            defaultMessage: "All six layers ran for this identity.",
+          }),
         );
       }
     } catch (err) {
       if (err instanceof ApiError && isSessionMfaRequired(err)) {
         toast.error(
-          "Step-up MFA required",
-          "Re-authenticate with MFA to run an emergency offboard.",
+          intl.formatMessage({
+            id: "jml.offboard.stepupTitle",
+            defaultMessage: "Step-up MFA required",
+          }),
+          intl.formatMessage({
+            id: "jml.offboard.stepupDetail",
+            defaultMessage:
+              "Re-authenticate with MFA to run an emergency offboard.",
+          }),
         );
         return;
       }
@@ -236,13 +282,22 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
       const partial = failedOffboardFromError(err);
       if (partial) {
         setResult(partial);
-        toast.error(
-          "Offboard completed with failures",
-          "One or more layers failed — review the per-layer breakdown.",
-        );
+        toast.error(failuresTitle, failuresDetail);
         return;
       }
-      toast.error("Could not offboard", errMessage(err));
+      toast.error(
+        intl.formatMessage({
+          id: "jml.offboard.couldNot",
+          defaultMessage: "Could not run the emergency offboard",
+        }),
+        errMessage(
+          err,
+          intl.formatMessage({
+            id: "common.genericError",
+            defaultMessage: "Something went wrong. Please try again.",
+          }),
+        ),
+      );
     }
   };
 
@@ -256,19 +311,21 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
       footer={
         result ? (
           <button className="btn btn--primary" onClick={onClose}>
-            Done
+            {intl.formatMessage({ id: "common.done", defaultMessage: "Done" })}
           </button>
         ) : (
           <>
             <button className="btn btn--ghost" onClick={onClose}>
-              Cancel
+              {intl.formatMessage({ id: "common.cancel", defaultMessage: "Cancel" })}
             </button>
             <button
               className="btn btn--danger"
               onClick={run}
               disabled={!armed || offboard.isPending}
             >
-              {offboard.isPending ? "Running…" : "Run kill switch"}
+              {offboard.isPending
+                ? intl.formatMessage({ id: "jml.offboard.running", defaultMessage: "Running…" })
+                : intl.formatMessage({ id: "jml.offboard.run", defaultMessage: "Run kill switch" })}
             </button>
           </>
         )
@@ -281,51 +338,91 @@ function EmergencyOffboard({ onClose }: { onClose: () => void }) {
             style={{ marginBottom: 12 }}
           >
             {result.errored
-              ? `Offboard of ${result.user_external_id} completed with failures — retry the failed layers below.`
-              : `All six layers ran for ${result.user_external_id}.`}
+              ? intl.formatMessage(
+                  {
+                    id: "jml.offboard.resultFailed",
+                    defaultMessage:
+                      "Offboard of {user} completed with failures — retry the failed layers below.",
+                  },
+                  { user: result.user_external_id },
+                )
+              : intl.formatMessage(
+                  {
+                    id: "jml.offboard.resultOk",
+                    defaultMessage: "All six layers ran for {user}.",
+                  },
+                  { user: result.user_external_id },
+                )}
           </div>
           <LeaverBreakdown result={result} />
         </>
       ) : (
         <>
           <div className="notice notice--danger" style={{ marginBottom: 12 }}>
-            This runs all six offboarding layers (grant revoke → team remove →
-            iam-core disable → session revoke → SCIM deprovision → identity
-            disable) for the identity. It is irreversible and requires step-up
-            MFA.
+            {intl.formatMessage({
+              id: "jml.offboard.warning",
+              defaultMessage:
+                "This runs all six offboarding layers (grant revoke → team remove → iam-core disable → session revoke → SCIM deprovision → identity disable) for the identity. It is irreversible and requires step-up MFA.",
+            })}
           </div>
           {!mfaSatisfied && (
             <div className="notice notice--warn" style={{ marginBottom: 12 }}>
-              Your session has not completed step-up MFA, so the server will
-              reject this offboard. Re-authenticate with MFA, then run the kill
-              switch.
+              {intl.formatMessage({
+                id: "jml.offboard.mfaAdvisory",
+                defaultMessage:
+                  "Your session has not completed step-up MFA, so the server will reject this offboard. Re-authenticate with MFA, then run the kill switch.",
+              })}
             </div>
           )}
           <label className="field">
-            <span>User external ID</span>
+            <span>
+              {intl.formatMessage({
+                id: "jml.offboard.externalId",
+                defaultMessage: "User external ID",
+              })}
+            </span>
             <input
               value={externalId}
-              placeholder="e.g. ada@corp.example"
+              placeholder={intl.formatMessage({
+                id: "jml.offboard.externalIdPlaceholder",
+                defaultMessage: "e.g. ada@corp.example",
+              })}
               onChange={(e) => setExternalId(e.target.value)}
             />
           </label>
           <label className="field">
             <span>
-              Reason <span className="muted">(audited)</span>
+              {intl.formatMessage({
+                id: "jml.offboard.reason",
+                defaultMessage: "Reason",
+              })}{" "}
+              <span className="muted">
+                {intl.formatMessage({
+                  id: "jml.offboard.reasonAudited",
+                  defaultMessage: "(audited)",
+                })}
+              </span>
             </span>
             <input
               value={reason}
-              placeholder="Why this offboard is happening"
+              placeholder={intl.formatMessage({
+                id: "jml.offboard.reasonPlaceholder",
+                defaultMessage: "Why this offboard is happening",
+              })}
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
           <label className="field">
             <span>
-              Type <code>OFFBOARD</code> to confirm
+              <FormattedMessage
+                id="jml.offboard.confirmLabel"
+                defaultMessage="Type {token} to confirm"
+                values={{ token: <code>{CONFIRM_TOKEN}</code> }}
+              />
             </span>
             <input
               value={confirm}
-              placeholder="OFFBOARD"
+              placeholder={CONFIRM_TOKEN}
               onChange={(e) => setConfirm(e.target.value)}
             />
           </label>
@@ -350,15 +447,28 @@ export function JmlRuns() {
         defaultMessage: "Subject",
       }),
       cell: (r) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <RowActivate
+          label={intl.formatMessage(
+            { id: "jml.run.open", defaultMessage: "Open run for {subject}" },
+            { subject: r.subject_external_id || "—" },
+          )}
+          onActivate={() => setSelected(r)}
+        >
           <b>
             <code>{r.subject_external_id || "—"}</code>
           </b>
           <span className="muted" style={{ fontSize: 12 }}>
-            {(r.steps ?? []).length} step(s)
+            {intl.formatMessage(
+              {
+                id: "jml.run.stepCount",
+                defaultMessage:
+                  "{count, plural, one {# step} other {# steps}}",
+              },
+              { count: (r.steps ?? []).length },
+            )}
             {r.trigger ? ` · ${titleCase(r.trigger)}` : ""}
           </span>
-        </div>
+        </RowActivate>
       ),
     },
     {
@@ -369,7 +479,7 @@ export function JmlRuns() {
       width: 110,
       cell: (r) => (
         <Badge tone={r.mode === "live" ? "info" : "neutral"}>
-          {r.mode === "live" ? "Live" : "Dry-run"}
+          {modeLabel(intl, r.mode)}
         </Badge>
       ),
     },
@@ -457,7 +567,7 @@ export function JmlRuns() {
           onClose={() => setSelected(null)}
           footer={
             <button className="btn" onClick={() => setSelected(null)}>
-              Close
+              {intl.formatMessage({ id: "common.close", defaultMessage: "Close" })}
             </button>
           }
         >
