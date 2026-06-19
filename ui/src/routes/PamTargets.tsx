@@ -320,9 +320,14 @@ export function PamTargets() {
             defaultMessage: "Register privileged target",
           })}
           onClose={() => setOpen(false)}
+          busy={createMut.isPending}
           footer={
             <>
-              <button className="btn btn--ghost" onClick={() => setOpen(false)}>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setOpen(false)}
+                disabled={createMut.isPending}
+              >
                 <FormattedMessage
                   id="pam.targets.cancel"
                   defaultMessage="Cancel"

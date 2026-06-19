@@ -331,9 +331,14 @@ export function PamLeases() {
         <Modal
           title={intl.formatMessage({ id: "pam.leases.modalTitle", defaultMessage: "Request a just-in-time lease" })}
           onClose={() => setOpen(false)}
+          busy={requestMut.isPending}
           footer={
             <>
-              <button className="btn btn--ghost" onClick={() => setOpen(false)}>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setOpen(false)}
+                disabled={requestMut.isPending}
+              >
                 <FormattedMessage id="pam.leases.cancel" defaultMessage="Cancel" />
               </button>
               <button
@@ -455,6 +460,7 @@ function LeaseDetailModal({
   const me = useMe();
   const approveMut = useApprovePamLease(lease.id);
   const revokeMut = useRevokePamLease(lease.id);
+  const actionPending = approveMut.isPending || revokeMut.isPending;
   const [reason, setReason] = useState("");
   const mfaNoteId = useId();
 
@@ -507,15 +513,20 @@ function LeaseDetailModal({
         { target: targetName },
       )}
       onClose={onClose}
+      busy={actionPending}
       footer={
         <>
-          <button className="btn btn--ghost" onClick={onClose}>
+          <button
+            className="btn btn--ghost"
+            onClick={onClose}
+            disabled={actionPending}
+          >
             <FormattedMessage id="pam.leases.close" defaultMessage="Close" />
           </button>
           {canApprove && (
             <button
               className="btn btn--primary"
-              disabled={approveMut.isPending || !mfaSatisfied}
+              disabled={actionPending || !mfaSatisfied}
               aria-describedby={showMfaNote ? mfaNoteId : undefined}
               onClick={approve}
             >
@@ -525,7 +536,7 @@ function LeaseDetailModal({
           {canRevoke && (
             <button
               className="btn btn--danger"
-              disabled={revokeMut.isPending || !mfaSatisfied}
+              disabled={actionPending || !mfaSatisfied}
               aria-describedby={showMfaNote ? mfaNoteId : undefined}
               onClick={revoke}
             >
