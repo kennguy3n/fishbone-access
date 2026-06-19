@@ -548,7 +548,13 @@ function GuidedConnectionForm({
           key={f.key}
           field={f}
           value={values[f.key] ?? ""}
-          onChange={(v) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+          onChange={(v) => {
+            setValues((prev) => ({ ...prev, [f.key]: v }));
+            // Editing an input is the user correcting course; drop a stale
+            // server error so the live field checklist (not last attempt's
+            // message) governs the error slot.
+            if (createMut.isError) createMut.reset();
+          }}
         />
       ))}
 
