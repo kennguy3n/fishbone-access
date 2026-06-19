@@ -16,6 +16,7 @@ import {
 } from "@/api/access";
 import { formatRelative } from "@/lib/format";
 import { stashRequestTarget } from "./pamHandoff";
+import "./pam-a11y.css";
 
 // Protocols the gateway proxies. Kept in sync with internal/models PAM protocol
 // constants so an operator only ever registers a target the gateway can serve.
@@ -252,7 +253,7 @@ export function PamTargets() {
   ];
 
   return (
-    <>
+    <div className="pam-lane">
       <PageHeader
         title={intl.formatMessage({
           id: "pam.targets.title",
@@ -580,6 +581,6 @@ export function PamTargets() {
           </label>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -26,6 +26,7 @@ import {
 } from "@/api/access";
 import { formatDateTime } from "@/lib/format";
 import { takeRequestTarget } from "./pamHandoff";
+import "./pam-a11y.css";
 
 // The lease state machine, in order. Expired and Revoked are both terminal and
 // share the final slot; which one is reached depends on whether the TTL lapsed
@@ -278,7 +279,7 @@ export function PamLeases() {
   ];
 
   return (
-    <>
+    <div className="pam-lane">
       <PageHeader
         title={intl.formatMessage({ id: "pam.leases.title", defaultMessage: "Just-in-time leases" })}
         subtitle={intl.formatMessage({
@@ -430,7 +431,7 @@ export function PamLeases() {
           }}
         />
       )}
-    </>
+    </div>
   );
 }
 

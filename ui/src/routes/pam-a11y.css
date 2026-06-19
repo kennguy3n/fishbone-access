@@ -1,0 +1,51 @@
+/*
+ * PAM lane (A2) accessibility overrides.
+ *
+ * WS0 follow-up: every selector below targets a FROZEN WS0 token or shared
+ * primitive whose default pairing falls just short of WCAG 2.2 AA contrast
+ * (< 4.5:1) on the surfaces the foundation places it on. These rules are
+ * scoped to the PAM lane wrapper (.pam-lane), use existing design tokens
+ * only (no hard-coded colours), and keep full light/dark parity. They should
+ * be deleted once WS0 corrects the underlying tokens/primitives -- see the
+ * "WS0 follow-up" section of the PR description.
+ */
+
+/* Secondary text (--text-faint) misses AA on --surface / --surface-2 in both
+   themes: table column headers, card subtitles, stat labels. --text-dim is the
+   design system's next step up and clears AA on the same surfaces. */
+.pam-lane table.data th,
+.pam-lane .card__subtitle,
+.pam-lane .stat__label,
+.pam-lane .muted {
+  color: var(--text-dim);
+}
+
+/* Status badge text on the light tints misses AA in light theme; the *-strong
+   tokens are the same hue, one step deeper, and clear AA. Dark badges already
+   pass, so these are scoped to light only. */
+[data-theme="light"] .pam-lane .badge--ok {
+  color: var(--ok-strong);
+}
+[data-theme="light"] .pam-lane .badge--danger {
+  color: var(--danger-strong);
+}
+/* Amber on the light warn tint is only 3.0:1 and WS0 has no --warn-strong token.
+   Derive a deeper amber from --warn (mixed toward --text) so it stays in-hue and
+   token-based -- no hard-coded colour. WS0 follow-up: add a --warn-strong token. */
+[data-theme="light"] .pam-lane .badge--warn {
+  color: color-mix(in srgb, var(--warn) 64%, var(--text));
+}
+
+/* Primary button: white on --brand (#4d83f0) is 3.6:1 in dark theme. --brand-strong
+   is the deeper brand token and clears AA with white text. Light already passes. */
+[data-theme="dark"] .pam-lane .btn--primary {
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+}
+
+/* Info badge: brand text on the brand-soft tint is 4.0:1 in dark theme. Deepening
+   the tint toward the card surface (lower brand alpha) lifts it past AA while
+   keeping the informational brand hue. Light already passes. */
+[data-theme="dark"] .pam-lane .badge--info {
+  background: rgba(var(--brand-rgb), 0.05);
+}
