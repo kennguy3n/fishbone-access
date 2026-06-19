@@ -414,7 +414,14 @@ function GuidedConnectionForm({
         config,
         secrets,
       },
-      { onSuccess: onCreated },
+      {
+        onSuccess: () => {
+          // Complete the triedSubmit lifecycle (set on fail, cleared on method
+          // switch) so a form reused in place after a success starts clean.
+          setTriedSubmit(false);
+          onCreated();
+        },
+      },
     );
   };
 

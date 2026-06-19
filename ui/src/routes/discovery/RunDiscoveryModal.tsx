@@ -330,7 +330,8 @@ export function RunDiscoveryModal({ onClose }: { onClose: () => void }) {
             </p>
           )}
           <div style={{ marginTop: 8 }}>
-            <Badge tone="info">postgres</Badge> <Badge tone="info">mysql</Badge>
+            <Badge tone="info">{protocolLabel("postgres")}</Badge>{" "}
+            <Badge tone="info">{protocolLabel("mysql")}</Badge>
           </div>
         </>
       )}
