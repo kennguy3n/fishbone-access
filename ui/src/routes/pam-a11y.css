@@ -42,6 +42,16 @@
   background: var(--brand-strong);
   border-color: var(--brand-strong);
 }
+/* Because the AA fix above raises the resting background to --brand-strong --
+   the same token the foundation's .btn--primary:hover lands on -- a dark-theme
+   hover would otherwise change only the glow, not the fill. Deepen the hover one
+   step past --brand-strong (mixed toward --surface, so it stays token-based and
+   only darkens, keeping white text above AA) to restore the background shift.
+   WS0 follow-up: a --brand-strong-hover token would remove this shim. */
+[data-theme="dark"] .pam-lane .btn--primary:hover {
+  background: color-mix(in srgb, var(--brand-strong) 86%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand-strong) 86%, var(--surface));
+}
 
 /* Info badge: brand text on the brand-soft tint is 4.0:1 in dark theme. Deepening
    the tint toward the card surface (lower brand alpha) lifts it past AA while
