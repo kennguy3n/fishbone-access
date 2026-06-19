@@ -65,7 +65,7 @@ export function categoryLabel(raw: string | undefined | null): string {
   return raw
     .trim()
     .toLowerCase()
-    .split(/[_\s]+/)
+    .split(/[-_\s]+/)
     .filter(Boolean)
     .map((w) => CATEGORY_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
