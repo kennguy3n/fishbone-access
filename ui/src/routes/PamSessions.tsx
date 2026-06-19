@@ -225,6 +225,8 @@ function SessionDetailModal({
   const pauseMut = usePausePamSession(session.id);
   const resumeMut = useResumePamSession(session.id);
   const terminateMut = useTerminatePamSession(session.id);
+  const actionPending =
+    pauseMut.isPending || resumeMut.isPending || terminateMut.isPending;
   const [showReplay, setShowReplay] = useState(false);
   const denyNoteId = useId();
 
@@ -252,13 +254,13 @@ function SessionDetailModal({
         { subject: session.subject },
       )}
       onClose={onClose}
-      busy={resumeMut.isPending || pauseMut.isPending || terminateMut.isPending}
+      busy={actionPending}
       footer={
         <>
           <button
             className="btn btn--ghost"
             onClick={onClose}
-            disabled={resumeMut.isPending || pauseMut.isPending || terminateMut.isPending}
+            disabled={actionPending}
           >
             <FormattedMessage id="pam.sessions.close" defaultMessage="Close" />
           </button>
@@ -278,7 +280,7 @@ function SessionDetailModal({
               {session.paused ? (
                 <button
                   className="btn btn--primary"
-                  disabled={!canTakeover || resumeMut.isPending}
+                  disabled={!canTakeover || actionPending}
                   title={canTakeover ? undefined : takeoverReason}
                   aria-describedby={showDenyNote ? denyNoteId : undefined}
                   onClick={() =>
@@ -294,7 +296,7 @@ function SessionDetailModal({
               ) : (
                 <button
                   className="btn btn--primary"
-                  disabled={!canTakeover || pauseMut.isPending}
+                  disabled={!canTakeover || actionPending}
                   title={canTakeover ? undefined : takeoverReason}
                   aria-describedby={showDenyNote ? denyNoteId : undefined}
                   onClick={() =>
@@ -310,7 +312,7 @@ function SessionDetailModal({
               )}
               <button
                 className="btn btn--danger"
-                disabled={!canTakeover || terminateMut.isPending}
+                disabled={!canTakeover || actionPending}
                 title={canTakeover ? undefined : takeoverReason}
                 aria-describedby={showDenyNote ? denyNoteId : undefined}
                 onClick={() =>

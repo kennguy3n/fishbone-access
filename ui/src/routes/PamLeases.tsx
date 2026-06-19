@@ -460,6 +460,7 @@ function LeaseDetailModal({
   const me = useMe();
   const approveMut = useApprovePamLease(lease.id);
   const revokeMut = useRevokePamLease(lease.id);
+  const actionPending = approveMut.isPending || revokeMut.isPending;
   const [reason, setReason] = useState("");
   const mfaNoteId = useId();
 
@@ -512,20 +513,20 @@ function LeaseDetailModal({
         { target: targetName },
       )}
       onClose={onClose}
-      busy={approveMut.isPending || revokeMut.isPending}
+      busy={actionPending}
       footer={
         <>
           <button
             className="btn btn--ghost"
             onClick={onClose}
-            disabled={approveMut.isPending || revokeMut.isPending}
+            disabled={actionPending}
           >
             <FormattedMessage id="pam.leases.close" defaultMessage="Close" />
           </button>
           {canApprove && (
             <button
               className="btn btn--primary"
-              disabled={approveMut.isPending || !mfaSatisfied}
+              disabled={actionPending || !mfaSatisfied}
               aria-describedby={showMfaNote ? mfaNoteId : undefined}
               onClick={approve}
             >
@@ -535,7 +536,7 @@ function LeaseDetailModal({
           {canRevoke && (
             <button
               className="btn btn--danger"
-              disabled={revokeMut.isPending || !mfaSatisfied}
+              disabled={actionPending || !mfaSatisfied}
               aria-describedby={showMfaNote ? mfaNoteId : undefined}
               onClick={revoke}
             >
