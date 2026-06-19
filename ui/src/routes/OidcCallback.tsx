@@ -4,6 +4,7 @@ import { useIntl } from "react-intl";
 import { completeOidcLogin } from "@/auth/oidc";
 import { useAuth } from "@/auth/auth-context";
 import { LoadingState, ErrorState } from "@/components/ui";
+import "./lane-a1.css";
 
 export function OidcCallback() {
   const intl = useIntl();
@@ -44,7 +45,7 @@ export function OidcCallback() {
 
   if (error) {
     return (
-      <div className="login">
+      <div className="login lane-a1">
         <div className="login__card">
           <ErrorState error={error} />
           <button
@@ -63,7 +64,7 @@ export function OidcCallback() {
   }
 
   return (
-    <div className="login">
+    <div className="login lane-a1">
       <div className="login__card">
         <LoadingState
           label={intl.formatMessage({

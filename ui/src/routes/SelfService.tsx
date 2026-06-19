@@ -16,6 +16,7 @@ import {
   ApiError,
 } from "@/api/access";
 import { formatRelative, formatDateTime } from "@/lib/format";
+import "./lane-a1.css";
 
 // Rich-text tag for inline <code> samples inside localized help copy.
 const code = (chunks: ReactNode) => <code>{chunks}</code>;
@@ -61,7 +62,7 @@ export function SelfService() {
   const pending = myRequests.filter((r) => isPending(r.state));
 
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
         title={intl.formatMessage({
           id: "nav.selfService",
@@ -225,7 +226,7 @@ export function SelfService() {
           {(rows) => <MyRequestsTable rows={rows} />}
         </AsyncBoundary>
       </Card>
-    </>
+    </div>
   );
 }
 

@@ -27,6 +27,7 @@ import {
   type OnboardingStepId,
 } from "@/lib/onboarding-store";
 import { titleCase } from "@/lib/format";
+import "./lane-a1.css";
 
 // Rich-text tags for inline emphasis inside localized copy.
 const code = (chunks: ReactNode) => <code>{chunks}</code>;
@@ -81,7 +82,7 @@ export function Onboarding() {
 function SetupNotAvailable() {
   const intl = useIntl();
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
         title={intl.formatMessage({
           id: "onboarding.title",
@@ -118,7 +119,7 @@ function SetupNotAvailable() {
           </Link>
         </div>
       </Card>
-    </>
+    </div>
   );
 }
 
@@ -151,7 +152,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
     });
 
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
         title={intl.formatMessage({
           id: "onboarding.title",
@@ -200,7 +201,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
           />
         )}
       </div>
-    </>
+    </div>
   );
 }
 

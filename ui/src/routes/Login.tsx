@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useIntl } from "react-intl";
 import { useAuth } from "@/auth/auth-context";
+import "./lane-a1.css";
 
 export function Login() {
   const intl = useIntl();
@@ -64,7 +65,7 @@ export function Login() {
   };
 
   return (
-    <div className="login">
+    <div className="login lane-a1">
       <div className="login__card">
         <div className="login__brand">
           <span

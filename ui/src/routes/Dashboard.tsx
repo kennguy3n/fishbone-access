@@ -19,6 +19,7 @@ import {
   type OnboardingProgress,
   type OnboardingUpdate,
 } from "@/lib/onboarding-store";
+import "./lane-a1.css";
 
 // OnboardingNudge is the day-1 zero-state prompt. It only shows for workspace
 // admins who haven't finished (or dismissed) the guided setup AND whose
@@ -159,7 +160,7 @@ export function Dashboard() {
   );
 
   return (
-    <>
+    <div className="lane-a1">
       <OnboardingNudge />
       <PageHeader
         title={intl.formatMessage({
@@ -426,6 +427,6 @@ export function Dashboard() {
           )}
         </Card>
       </div>
-    </>
+    </div>
   );
 }

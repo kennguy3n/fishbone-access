@@ -11,6 +11,7 @@ import {
   setTheme,
   type ThemeChoice,
 } from "@/lib/theme";
+import "./lane-a1.css";
 
 const THEME_OPTIONS: {
   value: ThemeChoice;
@@ -59,7 +60,7 @@ export function Settings() {
   const resolved = resolveTheme(choice);
 
   return (
-    <>
+    <div className="lane-a1">
       <PageHeader
         title={intl.formatMessage({
           id: "nav.settings",
@@ -289,6 +290,6 @@ export function Settings() {
 
         <SecurityCard />
       </div>
-    </>
+    </div>
   );
 }
