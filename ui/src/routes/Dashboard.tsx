@@ -122,6 +122,31 @@ function OnboardingNudgeBody({
 // these (provisioned/denied/cancelled) is terminal and isn't "pending work".
 const OPEN_REQUEST_STATES = new Set(["requested", "approved"]);
 
+// Shimmer for a card body while its underlying queries resolve. Without this,
+// counts default to 0 from the `?? []` fallback on undefined data, so the
+// "You're all caught up" / "No access policies yet" states would flash a false
+// claim for a frame before the real data arrives.
+function CardBodySkeleton({ lines = 3 }: { lines?: number }) {
+  const intl = useIntl();
+  return (
+    <div
+      aria-busy="true"
+      aria-label={intl.formatMessage({
+        id: "common.loading",
+        defaultMessage: "Loading",
+      })}
+    >
+      {Array.from({ length: lines }).map((_, i) => (
+        <div
+          key={i}
+          className="skeleton skeleton--text"
+          style={{ width: `${Math.max(40, 90 - i * 15)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function Dashboard() {
   const intl = useIntl();
   const policies = usePolicies();
@@ -150,6 +175,11 @@ export function Dashboard() {
 
   const attentionTotal =
     openRequests.length + pendingOrphans.length + counts.untested;
+
+  // The attention card sums three independent reads; only trust a zero total
+  // (the "all caught up" state) once every one of them has actually resolved.
+  const attentionLoading =
+    policies.isLoading || requests.isLoading || orphans.isLoading;
 
   const recentPolicies: Policy[] = useMemo(
     () =>
@@ -262,7 +292,9 @@ export function Dashboard() {
             </Link>
           }
         >
-          {recentPolicies.length === 0 ? (
+          {policies.isLoading ? (
+            <CardBodySkeleton />
+          ) : recentPolicies.length === 0 ? (
             <EmptyState
               illustration={<EmptyIllustration kind="policy" />}
               title={intl.formatMessage({
@@ -336,7 +368,9 @@ export function Dashboard() {
             defaultMessage: "Items waiting on a decision from you.",
           })}
         >
-          {attentionTotal === 0 ? (
+          {attentionLoading ? (
+            <CardBodySkeleton />
+          ) : attentionTotal === 0 ? (
             <EmptyState
               illustration={<EmptyIllustration kind="shield" />}
               title={intl.formatMessage({

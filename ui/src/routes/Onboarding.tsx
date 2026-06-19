@@ -1150,7 +1150,8 @@ function DoneStep({
           ? intl.formatMessage(
               {
                 id: "onboarding.done.members",
-                defaultMessage: "{count} people in the workspace",
+                defaultMessage:
+                  "{count, plural, one {# person in the workspace} other {# people in the workspace}}",
               },
               { count: memberCount },
             )
