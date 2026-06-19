@@ -115,17 +115,18 @@ export function Requests() {
             <code>{r.resource_ref}</code>
           </b>
           <span className="muted" style={{ fontSize: 12 }}>
-            {intl.formatMessage(
-              {
-                id: "requests.col.resourceMeta",
-                defaultMessage:
-                  "{role, select, _none_ {} other {role {role} · }}for {who}",
-              },
-              {
-                role: r.role || "_none_",
-                who: r.target_user_id || r.requester_id,
-              },
-            )}
+            {r.role
+              ? intl.formatMessage(
+                  {
+                    id: "requests.col.resourceMetaWithRole",
+                    defaultMessage: "role {role} · for {who}",
+                  },
+                  { role: r.role, who: r.target_user_id || r.requester_id },
+                )
+              : intl.formatMessage(
+                  { id: "requests.col.resourceMeta", defaultMessage: "for {who}" },
+                  { who: r.target_user_id || r.requester_id },
+                )}
           </span>
         </RowActivate>
       ),
