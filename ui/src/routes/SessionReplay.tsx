@@ -22,7 +22,6 @@ import {
   type RecordingSearchParams,
 } from "./replay/api";
 import { formatDurationMs } from "./replay/util";
-import "./pam-a11y.css";
 
 const PAGE_SIZE = 20;
 const PAM_ADMIN_PERMISSION = "pam.session.admin";
@@ -165,7 +164,7 @@ export function SessionReplay() {
   const hasNext = (page + 1) * PAGE_SIZE < total;
 
   return (
-    <div className="pam-lane">
+    <div>
       <PageHeader
         title={intl.formatMessage({ id: "recordings.8", defaultMessage: "Session recordings" })}
         subtitle={intl.formatMessage({ id: "recordings.9",
