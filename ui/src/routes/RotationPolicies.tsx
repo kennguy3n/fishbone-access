@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import { PageHeader, Card, Stat, Badge, StatusBadge } from "@/components/ui";
 import { DataTable, type Column } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -71,6 +72,7 @@ function scheduleLabel(
 }
 
 export function RotationPolicies() {
+  useLaneA5Scope();
   const intl = useIntl();
   const targetsQ = usePamTargets();
   const policiesQ = useRotationPolicies();

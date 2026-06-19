@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { useIntl } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import {
   PageHeader,
   Card,
@@ -11,6 +13,8 @@ import { useToast } from "@/components/Toast";
 import { usePack, useApplyPack, type PackTemplate } from "@/api/access";
 
 export function PackDetail() {
+  useLaneA5Scope();
+  const intl = useIntl();
   const params = useParams({ strict: false }) as { packId?: string };
   const packId = params.packId;
   const navigate = useNavigate();
@@ -56,15 +60,33 @@ export function PackDetail() {
       );
       setConfirming(false);
       toast.success(
-        `${res.count} draft ${res.count === 1 ? "policy" : "policies"} created`,
-        "Simulate and promote each one before it can take effect.",
+        intl.formatMessage(
+          {
+            id: "packDetail.toast.created",
+            defaultMessage:
+              "{n, plural, one {# draft policy created} other {# draft policies created}}",
+          },
+          { n: res.count },
+        ),
+        intl.formatMessage({
+          id: "packDetail.toast.createdBody",
+          defaultMessage: "Simulate and promote each one before it can take effect.",
+        }),
       );
       navigate({ to: "/policies" });
     } catch (e) {
       setConfirming(false);
       toast.error(
-        "Could not apply pack",
-        e instanceof Error ? e.message : "Please try again.",
+        intl.formatMessage({
+          id: "packDetail.toast.error",
+          defaultMessage: "Could not apply pack",
+        }),
+        e instanceof Error
+          ? e.message
+          : intl.formatMessage({
+              id: "packDetail.toast.retry",
+              defaultMessage: "Please try again.",
+            }),
       );
     }
   };
@@ -76,7 +98,10 @@ export function PackDetail() {
         onClick={() => navigate({ to: "/packs" })}
         style={{ marginBottom: 12 }}
       >
-        ← All packs
+        {intl.formatMessage({
+          id: "packDetail.back",
+          defaultMessage: "← All packs",
+        })}
       </button>
 
       <AsyncBoundary
@@ -91,9 +116,18 @@ export function PackDetail() {
 
             <Card className="pack-meta">
               <dl className="pack-meta__grid">
-                <Meta label="Authority" value={p.authority} />
                 <Meta
-                  label="Frameworks"
+                  label={intl.formatMessage({
+                    id: "packDetail.meta.authority",
+                    defaultMessage: "Authority",
+                  })}
+                  value={p.authority}
+                />
+                <Meta
+                  label={intl.formatMessage({
+                    id: "packDetail.meta.frameworks",
+                    defaultMessage: "Frameworks",
+                  })}
                   value={
                     <span className="pack-card__tags">
                       {p.frameworks.map((f) => (
@@ -104,17 +138,33 @@ export function PackDetail() {
                     </span>
                   }
                 />
-                <Meta label="Regions" value={p.regions.join(", ")} />
                 <Meta
-                  label="Industries"
+                  label={intl.formatMessage({
+                    id: "packDetail.meta.regions",
+                    defaultMessage: "Regions",
+                  })}
+                  value={p.regions.join(", ")}
+                />
+                <Meta
+                  label={intl.formatMessage({
+                    id: "packDetail.meta.industries",
+                    defaultMessage: "Industries",
+                  })}
                   value={p.industries.join(", ")}
                 />
               </dl>
             </Card>
 
             <Card
-              title="Access rules in this pack"
-              subtitle="Each rule materializes as a draft policy with smart-default subjects and resources. Remap them to your real groups and systems, then simulate before promoting."
+              title={intl.formatMessage({
+                id: "packDetail.rules.title",
+                defaultMessage: "Access rules in this pack",
+              })}
+              subtitle={intl.formatMessage({
+                id: "packDetail.rules.subtitle",
+                defaultMessage:
+                  "Each rule materializes as a draft policy with smart-default subjects and resources. Remap them to your real groups and systems, then simulate before promoting.",
+              })}
               actions={
                 <label className="pack-select-all">
                   <input
@@ -122,7 +172,10 @@ export function PackDetail() {
                     checked={allSelected}
                     onChange={toggleAll}
                   />
-                  Select all
+                  {intl.formatMessage({
+                    id: "packDetail.rules.selectAll",
+                    defaultMessage: "Select all",
+                  })}
                 </label>
               }
             >
@@ -140,21 +193,33 @@ export function PackDetail() {
 
             <div className="pack-apply-bar">
               <span className="muted">
-                {sel.size} of {p.templates.length} rule
-                {p.templates.length === 1 ? "" : "s"} selected
+                {intl.formatMessage(
+                  {
+                    id: "packDetail.applyBar.selected",
+                    defaultMessage:
+                      "{sel} of {total, plural, one {# rule} other {# rules}} selected",
+                  },
+                  { sel: sel.size, total: p.templates.length },
+                )}
               </span>
               <button
                 className="btn btn--primary"
                 disabled={sel.size === 0 || applyMut.isPending}
                 onClick={() => setConfirming(true)}
               >
-                Apply as drafts
+                {intl.formatMessage({
+                  id: "packDetail.applyBar.apply",
+                  defaultMessage: "Apply as drafts",
+                })}
               </button>
             </div>
 
             {confirming && (
               <Modal
-                title="Apply pack as draft policies?"
+                title={intl.formatMessage({
+                  id: "packDetail.confirm.title",
+                  defaultMessage: "Apply pack as draft policies?",
+                })}
                 onClose={() => setConfirming(false)}
                 footer={
                   <>
@@ -162,7 +227,10 @@ export function PackDetail() {
                       className="btn btn--ghost"
                       onClick={() => setConfirming(false)}
                     >
-                      Cancel
+                      {intl.formatMessage({
+                        id: "packDetail.confirm.cancel",
+                        defaultMessage: "Cancel",
+                      })}
                     </button>
                     <button
                       className="btn btn--primary"
@@ -170,18 +238,35 @@ export function PackDetail() {
                       disabled={applyMut.isPending}
                     >
                       {applyMut.isPending
-                        ? "Applying…"
-                        : `Create ${sel.size} draft${sel.size === 1 ? "" : "s"}`}
+                        ? intl.formatMessage({
+                            id: "packDetail.confirm.applying",
+                            defaultMessage: "Applying…",
+                          })
+                        : intl.formatMessage(
+                            {
+                              id: "packDetail.confirm.create",
+                              defaultMessage:
+                                "{n, plural, one {Create # draft} other {Create # drafts}}",
+                            },
+                            { n: sel.size },
+                          )}
                     </button>
                   </>
                 }
               >
                 <p>
-                  This creates <b>{sel.size}</b> draft{" "}
-                  {sel.size === 1 ? "policy" : "policies"} in your workspace from{" "}
-                  <b>{p.name}</b>. Drafts are inert — each must be{" "}
-                  <b>simulated and promoted</b> before it changes who can reach
-                  what. Nothing takes effect now.
+                  {intl.formatMessage(
+                    {
+                      id: "packDetail.confirm.body",
+                      defaultMessage:
+                        "This creates {n, plural, one {<b># draft policy</b>} other {<b># draft policies</b>}} in your workspace from <b>{name}</b>. Drafts are inert — each must be <b>simulated and promoted</b> before it changes who can reach what. Nothing takes effect now.",
+                    },
+                    {
+                      n: sel.size,
+                      name: p.name,
+                      b: (chunks) => <b>{chunks}</b>,
+                    },
+                  )}
                 </p>
               </Modal>
             )}
@@ -210,6 +295,7 @@ function TemplateRow({
   checked: boolean;
   onToggle: () => void;
 }) {
+  const intl = useIntl();
   return (
     <label className={`template-row${checked ? " is-selected" : ""}`}>
       <input type="checkbox" checked={checked} onChange={onToggle} />
@@ -217,9 +303,27 @@ function TemplateRow({
         <div className="template-row__head">
           <b>{template.name}</b>
           <Badge tone={template.action === "deny" ? "danger" : "ok"}>
-            {template.action === "deny" ? "Deny" : "Grant"}
+            {template.action === "deny"
+              ? intl.formatMessage({
+                  id: "packDetail.decision.deny",
+                  defaultMessage: "Deny",
+                })
+              : intl.formatMessage({
+                  id: "packDetail.decision.grant",
+                  defaultMessage: "Grant",
+                })}
           </Badge>
-          {template.role && <Badge tone="neutral">role: {template.role}</Badge>}
+          {template.role && (
+            <Badge tone="neutral">
+              {intl.formatMessage(
+                {
+                  id: "packDetail.role",
+                  defaultMessage: "role: {role}",
+                },
+                { role: template.role },
+              )}
+            </Badge>
+          )}
         </div>
         <p className="template-row__summary">{template.summary}</p>
         <div className="template-row__rule">

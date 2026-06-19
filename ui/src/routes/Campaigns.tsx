@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useIntl, type IntlShape } from "react-intl";
+import { useLaneA5Scope } from "./lane-a5";
 import {
   PageHeader,
   Card,
@@ -27,6 +29,8 @@ import {
 // policy promote path enforces. Each decision and the close append evidence to
 // the workspace audit chain, so the campaign surface doubles as evidence.
 export function Campaigns() {
+  useLaneA5Scope();
+  const intl = useIntl();
   const navigate = useNavigate();
   const toast = useToast();
   const { data, isLoading, error, refetch } = useCampaigns();
@@ -38,48 +42,98 @@ export function Campaigns() {
       const res = await enforceMut.mutateAsync();
       toast.success(
         res.marked_overdue === 0
-          ? "No campaigns are overdue"
-          : `${res.marked_overdue} campaign${res.marked_overdue === 1 ? "" : "s"} marked overdue`,
-        "Overdue transitions are recorded as evidence.",
+          ? intl.formatMessage({
+              id: "campaigns.toast.noneOverdue",
+              defaultMessage: "No campaigns are overdue",
+            })
+          : intl.formatMessage(
+              {
+                id: "campaigns.toast.markedOverdue",
+                defaultMessage:
+                  "{n, plural, one {# campaign marked overdue} other {# campaigns marked overdue}}",
+              },
+              { n: res.marked_overdue },
+            ),
+        intl.formatMessage({
+          id: "campaigns.toast.overdueBody",
+          defaultMessage: "Overdue transitions are recorded as evidence.",
+        }),
       );
     } catch (e) {
       toast.error(
-        "Could not run overdue sweep",
-        e instanceof Error ? e.message : "Please try again.",
+        intl.formatMessage({
+          id: "campaigns.toast.sweepError",
+          defaultMessage: "Could not run overdue sweep",
+        }),
+        e instanceof Error
+          ? e.message
+          : intl.formatMessage({
+              id: "campaigns.toast.retry",
+              defaultMessage: "Please try again.",
+            }),
       );
     }
   };
 
   const columns: Column<CertificationCampaign>[] = [
     {
-      header: "Campaign",
+      header: intl.formatMessage({
+        id: "campaigns.col.campaign",
+        defaultMessage: "Campaign",
+      }),
       cell: (c) => (
         <div>
           <div style={{ fontWeight: 600 }}>{c.name}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            {scopeSummary(c)}
+            {scopeSummary(c, intl)}
           </div>
         </div>
       ),
     },
     {
-      header: "Framework",
+      header: intl.formatMessage({
+        id: "campaigns.col.framework",
+        defaultMessage: "Framework",
+      }),
       cell: (c) =>
-        c.framework ? <Badge tone="info">{c.framework}</Badge> : <span className="muted">—</span>,
+        c.framework ? (
+          <Badge tone="info">{c.framework}</Badge>
+        ) : (
+          <span className="muted">—</span>
+        ),
       width: 130,
     },
     {
-      header: "State",
+      header: intl.formatMessage({
+        id: "campaigns.col.state",
+        defaultMessage: "State",
+      }),
       cell: (c) => <StatusBadge status={campaignStatus(c)} />,
       width: 120,
     },
     {
-      header: "Due",
-      cell: (c) => (c.due_at ? formatDateTime(c.due_at) : <span className="muted">No due date</span>),
+      header: intl.formatMessage({
+        id: "campaigns.col.due",
+        defaultMessage: "Due",
+      }),
+      cell: (c) =>
+        c.due_at ? (
+          formatDateTime(c.due_at)
+        ) : (
+          <span className="muted">
+            {intl.formatMessage({
+              id: "campaigns.noDueDate",
+              defaultMessage: "No due date",
+            })}
+          </span>
+        ),
       width: 180,
     },
     {
-      header: "Created",
+      header: intl.formatMessage({
+        id: "campaigns.col.created",
+        defaultMessage: "Created",
+      }),
       cell: (c) => formatDateTime(c.created_at),
       width: 180,
     },
@@ -88,8 +142,15 @@ export function Campaigns() {
   return (
     <>
       <PageHeader
-        title="Certification campaigns"
-        subtitle="Scope a set of live grants to reviewers, capture certify / revoke decisions, and apply the staged revocations on close. Every decision is recorded as tamper-evident compliance evidence."
+        title={intl.formatMessage({
+          id: "campaigns.title",
+          defaultMessage: "Certification campaigns",
+        })}
+        subtitle={intl.formatMessage({
+          id: "campaigns.subtitle",
+          defaultMessage:
+            "Scope a set of live grants to reviewers, capture certify / revoke decisions, and apply the staged revocations on close. Every decision is recorded as tamper-evident compliance evidence.",
+        })}
         actions={
           <>
             <button
@@ -97,10 +158,19 @@ export function Campaigns() {
               onClick={enforceOverdue}
               disabled={enforceMut.isPending}
             >
-              Run overdue sweep
+              {intl.formatMessage({
+                id: "campaigns.action.sweep",
+                defaultMessage: "Run overdue sweep",
+              })}
             </button>
-            <button className="btn btn--primary" onClick={() => setCreating(true)}>
-              New campaign
+            <button
+              className="btn btn--primary"
+              onClick={() => setCreating(true)}
+            >
+              {intl.formatMessage({
+                id: "campaigns.action.new",
+                defaultMessage: "New campaign",
+              })}
             </button>
           </>
         }
@@ -114,11 +184,24 @@ export function Campaigns() {
         isEmpty={(rows) => rows.length === 0}
         empty={
           <EmptyState
-            title="No certification campaigns yet"
-            description="Create a campaign to certify who has access to what. Scope it by resource, role, or connector and assign reviewers."
+            title={intl.formatMessage({
+              id: "campaigns.empty.title",
+              defaultMessage: "No certification campaigns yet",
+            })}
+            description={intl.formatMessage({
+              id: "campaigns.empty.body",
+              defaultMessage:
+                "Create a campaign to certify who has access to what. Scope it by resource, role, or connector and assign reviewers.",
+            })}
             action={
-              <button className="btn btn--primary" onClick={() => setCreating(true)}>
-                New campaign
+              <button
+                className="btn btn--primary"
+                onClick={() => setCreating(true)}
+              >
+                {intl.formatMessage({
+                  id: "campaigns.action.new",
+                  defaultMessage: "New campaign",
+                })}
               </button>
             }
           />
@@ -156,12 +239,38 @@ export function Campaigns() {
   );
 }
 
-function scopeSummary(c: CertificationCampaign): string {
+function scopeSummary(c: CertificationCampaign, intl: IntlShape): string {
   const parts: string[] = [];
-  if (c.scope_resource) parts.push(`resource ${c.scope_resource}`);
-  if (c.scope_role) parts.push(`role ${c.scope_role}`);
-  if (c.scope_connector_id) parts.push("scoped connector");
-  return parts.length > 0 ? `Scope: ${parts.join(", ")}` : "Scope: all grants";
+  if (c.scope_resource)
+    parts.push(
+      intl.formatMessage(
+        { id: "campaigns.scope.resource", defaultMessage: "resource {v}" },
+        { v: c.scope_resource },
+      ),
+    );
+  if (c.scope_role)
+    parts.push(
+      intl.formatMessage(
+        { id: "campaigns.scope.role", defaultMessage: "role {v}" },
+        { v: c.scope_role },
+      ),
+    );
+  if (c.scope_connector_id)
+    parts.push(
+      intl.formatMessage({
+        id: "campaigns.scope.connector",
+        defaultMessage: "scoped connector",
+      }),
+    );
+  return parts.length > 0
+    ? intl.formatMessage(
+        { id: "campaigns.scope.some", defaultMessage: "Scope: {parts}" },
+        { parts: parts.join(", ") },
+      )
+    : intl.formatMessage({
+        id: "campaigns.scope.all",
+        defaultMessage: "Scope: all grants",
+      });
 }
 
 // A running campaign past its due date with pending items reads as "overdue"
@@ -178,6 +287,7 @@ function CreateCampaignModal({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  const intl = useIntl();
   const toast = useToast();
   const startMut = useStartCampaign();
   const [name, setName] = useState("");
@@ -202,51 +312,97 @@ function CreateCampaignModal({
     try {
       const res = await startMut.mutateAsync(body);
       toast.success(
-        `Campaign created with ${res.item_count} item${res.item_count === 1 ? "" : "s"}`,
-        "Reviewers can now certify or revoke each grant in scope.",
+        intl.formatMessage(
+          {
+            id: "campaigns.toast.created",
+            defaultMessage:
+              "Campaign created with {n, plural, one {# item} other {# items}}",
+          },
+          { n: res.item_count },
+        ),
+        intl.formatMessage({
+          id: "campaigns.toast.createdBody",
+          defaultMessage:
+            "Reviewers can now certify or revoke each grant in scope.",
+        }),
       );
       onCreated(res.campaign.id);
     } catch (e) {
       toast.error(
-        "Could not create campaign",
-        e instanceof Error ? e.message : "Please try again.",
+        intl.formatMessage({
+          id: "campaigns.toast.createError",
+          defaultMessage: "Could not create campaign",
+        }),
+        e instanceof Error
+          ? e.message
+          : intl.formatMessage({
+              id: "campaigns.toast.retry",
+              defaultMessage: "Please try again.",
+            }),
       );
     }
   };
 
   return (
     <Modal
-      title="New certification campaign"
+      title={intl.formatMessage({
+        id: "campaigns.create.title",
+        defaultMessage: "New certification campaign",
+      })}
       onClose={onClose}
       footer={
         <>
           <button className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {intl.formatMessage({
+              id: "campaigns.create.cancel",
+              defaultMessage: "Cancel",
+            })}
           </button>
           <button
             className="btn btn--primary"
             disabled={name.trim() === "" || startMut.isPending}
             onClick={submit}
           >
-            Create campaign
+            {intl.formatMessage({
+              id: "campaigns.create.submit",
+              defaultMessage: "Create campaign",
+            })}
           </button>
         </>
       }
     >
       <label className="field">
-        <span>Campaign name</span>
+        <span>
+          {intl.formatMessage({
+            id: "campaigns.create.name",
+            defaultMessage: "Campaign name",
+          })}
+        </span>
         <input
           value={name}
           autoFocus
-          placeholder="e.g. Q3 production access certification"
+          placeholder={intl.formatMessage({
+            id: "campaigns.create.namePlaceholder",
+            defaultMessage: "e.g. Q3 production access certification",
+          })}
           onChange={(e) => setName(e.target.value)}
         />
       </label>
 
       <label className="field">
-        <span>Framework (optional)</span>
+        <span>
+          {intl.formatMessage({
+            id: "campaigns.create.framework",
+            defaultMessage: "Framework (optional)",
+          })}
+        </span>
         <select value={framework} onChange={(e) => setFramework(e.target.value)}>
-          <option value="">Not framework-tagged</option>
+          <option value="">
+            {intl.formatMessage({
+              id: "campaigns.create.noFramework",
+              defaultMessage: "Not framework-tagged",
+            })}
+          </option>
           {FRAMEWORKS.map((f) => (
             <option key={f} value={f}>
               {f}
@@ -257,34 +413,63 @@ function CreateCampaignModal({
 
       <div className="field-row">
         <label className="field">
-          <span>Scope — resource (optional)</span>
+          <span>
+            {intl.formatMessage({
+              id: "campaigns.create.scopeResource",
+              defaultMessage: "Scope — resource (optional)",
+            })}
+          </span>
           <input
             value={scopeResource}
-            placeholder="e.g. prod-db (blank = all)"
+            placeholder={intl.formatMessage({
+              id: "campaigns.create.scopeResourcePlaceholder",
+              defaultMessage: "e.g. prod-db (blank = all)",
+            })}
             onChange={(e) => setScopeResource(e.target.value)}
           />
         </label>
         <label className="field">
-          <span>Scope — role (optional)</span>
+          <span>
+            {intl.formatMessage({
+              id: "campaigns.create.scopeRole",
+              defaultMessage: "Scope — role (optional)",
+            })}
+          </span>
           <input
             value={scopeRole}
-            placeholder="e.g. admin (blank = all)"
+            placeholder={intl.formatMessage({
+              id: "campaigns.create.scopeRolePlaceholder",
+              defaultMessage: "e.g. admin (blank = all)",
+            })}
             onChange={(e) => setScopeRole(e.target.value)}
           />
         </label>
       </div>
 
       <label className="field">
-        <span>Reviewers (optional, comma-separated)</span>
+        <span>
+          {intl.formatMessage({
+            id: "campaigns.create.reviewers",
+            defaultMessage: "Reviewers (optional, comma-separated)",
+          })}
+        </span>
         <input
           value={reviewers}
-          placeholder="e.g. alice@acme.com, bob@acme.com"
+          placeholder={intl.formatMessage({
+            id: "campaigns.create.reviewersPlaceholder",
+            defaultMessage: "e.g. alice@acme.com, bob@acme.com",
+          })}
           onChange={(e) => setReviewers(e.target.value)}
         />
       </label>
 
       <label className="field">
-        <span>Due date (optional)</span>
+        <span>
+          {intl.formatMessage({
+            id: "campaigns.create.due",
+            defaultMessage: "Due date (optional)",
+          })}
+        </span>
         <input
           type="datetime-local"
           value={dueAt}
