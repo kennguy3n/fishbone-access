@@ -122,19 +122,23 @@ function CampaignBody({
                 id: "campaignDetail.toast.markedEscalate",
                 defaultMessage: "Escalated",
               });
-      toast.success(
-        title,
+      const body =
         decision === "revoke"
           ? intl.formatMessage({
               id: "campaignDetail.toast.revokeBody",
               defaultMessage:
                 "Staged — the grant is torn down when the campaign closes.",
             })
-          : intl.formatMessage({
-              id: "campaignDetail.toast.recordedBody",
-              defaultMessage: "Recorded as compliance evidence.",
-            }),
-      );
+          : decision === "escalate"
+            ? intl.formatMessage({
+                id: "campaignDetail.toast.escalateBody",
+                defaultMessage: "Escalated for another reviewer to decide.",
+              })
+            : intl.formatMessage({
+                id: "campaignDetail.toast.recordedBody",
+                defaultMessage: "Recorded as compliance evidence.",
+              });
+      toast.success(title, body);
     } catch (e) {
       toast.error(
         intl.formatMessage({
