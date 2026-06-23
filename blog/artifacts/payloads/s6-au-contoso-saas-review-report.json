@@ -1,12 +1,12 @@
 {
   "report": {
-    "certified": 1,
+    "certified": 4,
     "escalated": 0,
     "name": "Q2 2026 SOC 2 Type II recertification",
     "pending": 0,
-    "review_id": "6a009997-3b63-42b2-bc88-a8aa2bad4273",
+    "review_id": "a8a877e1-9833-4407-b4ff-1d1a19802520",
     "revoked": 1,
     "state": "active",
-    "total": 2
+    "total": 5
   }
 }

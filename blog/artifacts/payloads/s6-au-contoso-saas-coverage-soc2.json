@@ -2,12 +2,12 @@
   "controls": [
     {
       "by_kind": {
-        "access_granted": 6,
+        "access_granted": 12,
         "policy_created": 6,
         "policy_promoted": 6
       },
       "covered": true,
-      "evidence_count": 18,
+      "evidence_count": 24,
       "id": "CC6.1",
       "kinds": [
         "policy_promoted",
@@ -18,12 +18,12 @@
     },
     {
       "by_kind": {
-        "access_granted": 6,
-        "access_requested": 4,
-        "joiner_provisioned": 1
+        "access_granted": 12,
+        "access_requested": 8,
+        "joiner_provisioned": 2
       },
       "covered": true,
-      "evidence_count": 11,
+      "evidence_count": 22,
       "id": "CC6.2",
       "kinds": [
         "access_requested",
@@ -34,11 +34,11 @@
     },
     {
       "by_kind": {
-        "access_revoked": 3,
-        "kill_switch_fired": 6
+        "access_revoked": 6,
+        "kill_switch_fired": 12
       },
       "covered": true,
-      "evidence_count": 9,
+      "evidence_count": 18,
       "id": "CC6.3",
       "kinds": [
         "access_revoked",
@@ -66,14 +66,14 @@
     },
     {
       "by_kind": {
-        "certification_closed": 1,
-        "certification_decision": 1,
-        "certification_started": 1,
-        "review_decision": 2,
-        "review_started": 1
+        "certification_closed": 2,
+        "certification_decision": 5,
+        "certification_started": 2,
+        "review_decision": 7,
+        "review_started": 2
       },
       "covered": true,
-      "evidence_count": 6,
+      "evidence_count": 18,
       "id": "CC7.2",
       "kinds": [
         "review_started",
@@ -87,11 +87,11 @@
     },
     {
       "by_kind": {
-        "orphan_detected": 1,
-        "orphan_disposition": 1
+        "orphan_detected": 2,
+        "orphan_disposition": 2
       },
       "covered": true,
-      "evidence_count": 2,
+      "evidence_count": 4,
       "id": "CC7.3",
       "kinds": [
         "orphan_detected",
@@ -102,6 +102,6 @@
   ],
   "controls_covered": 6,
   "controls_total": 6,
-  "evidence_total": 49,
+  "evidence_total": 84,
   "framework": "SOC 2"
 }

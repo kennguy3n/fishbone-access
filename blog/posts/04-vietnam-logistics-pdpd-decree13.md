@@ -36,7 +36,7 @@ Two templates, two cited articles of the Decree. The `grant` encodes the
 *sensitive-personal-data* restriction (Art. 2(4)). That's the entire starting
 posture — and it's enough to begin generating evidence.
 
-![Umbrella Logistics dashboard — 2 PDPD policies, the minimal day-one start](../artifacts/screenshots/s4-vn-dashboard.png)
+![Umbrella Logistics dashboard — 2 PDPD policies, the minimal day-one start, with the security-health scorecard](../artifacts/screenshots/s4-vn-dashboard.png)
 
 The fabric is equally lean: **GitHub** (logistics platform), **Slack**
 (operations), and a **manual warehouse-WMS** target. The WMS has no API; the

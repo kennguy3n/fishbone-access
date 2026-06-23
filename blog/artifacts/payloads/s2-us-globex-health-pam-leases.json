@@ -2,25 +2,47 @@
   "leases": [
     {
       "approved_by": "us-globex-health-owner",
-      "created_at": "2026-06-18T14:12:32.247799Z",
+      "created_at": "2026-06-23T16:04:02.894307Z",
       "deleted_at": null,
-      "expires_at": "2026-06-18T14:28:01.338907Z",
-      "granted_at": "2026-06-18T14:13:01.338907Z",
-      "id": "3069b651-e6e8-4628-ab3e-4be579fdd99a",
+      "expires_at": "2026-06-23T16:19:02.9053Z",
+      "granted_at": "2026-06-23T16:04:02.9053Z",
+      "id": "a13b4f79-526f-4be4-ba74-0671e57e4ccc",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "us-globex-health-owner",
       "requested_ttl_seconds": 900,
-      "risk_degraded": false,
+      "risk_degraded": true,
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
-      "risk_reason": "rule-based risk=low from 1 factor(s)",
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "us-globex-health-owner",
-      "target_id": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
-      "updated_at": "2026-06-18T14:13:01.338907Z",
-      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+      "target_id": "4c5630ad-0231-4199-9af8-e77b27ae887a",
+      "updated_at": "2026-06-23T16:04:02.9053Z",
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
+    },
+    {
+      "approved_by": "us-globex-health-owner",
+      "created_at": "2026-06-23T15:52:27.994808Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-23T16:07:28.000501Z",
+      "granted_at": "2026-06-23T15:52:28.000501Z",
+      "id": "ede9e24d-deac-4dac-8f58-7866c8ed422d",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "us-globex-health-owner",
+      "requested_ttl_seconds": 900,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "us-globex-health-owner",
+      "target_id": "4c5630ad-0231-4199-9af8-e77b27ae887a",
+      "updated_at": "2026-06-23T15:52:28.000501Z",
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
     }
   ]
 }

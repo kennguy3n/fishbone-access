@@ -1,21 +1,21 @@
 {
   "chain_verification": {
-    "length": 98,
+    "length": 174,
     "ok": true,
     "status": "valid",
-    "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+    "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
   },
-  "content_sha256": "9b1218810225154d5d09017ea22d09350da64a1658135d074267071775890e82",
+  "content_sha256": "b9c3cc879320157db8cf2b7b642c9af89b00a88a7fec7f79288148405162838d",
   "coverage": {
     "controls": [
       {
         "by_kind": {
-          "access_granted": 6,
+          "access_granted": 12,
           "policy_created": 6,
           "policy_promoted": 6
         },
         "covered": true,
-        "evidence_count": 18,
+        "evidence_count": 24,
         "id": "CC6.1",
         "kinds": [
           "policy_promoted",
@@ -26,12 +26,12 @@
       },
       {
         "by_kind": {
-          "access_granted": 6,
-          "access_requested": 4,
-          "joiner_provisioned": 1
+          "access_granted": 12,
+          "access_requested": 8,
+          "joiner_provisioned": 2
         },
         "covered": true,
-        "evidence_count": 11,
+        "evidence_count": 22,
         "id": "CC6.2",
         "kinds": [
           "access_requested",
@@ -42,11 +42,11 @@
       },
       {
         "by_kind": {
-          "access_revoked": 3,
-          "kill_switch_fired": 6
+          "access_revoked": 6,
+          "kill_switch_fired": 12
         },
         "covered": true,
-        "evidence_count": 9,
+        "evidence_count": 18,
         "id": "CC6.3",
         "kinds": [
           "access_revoked",
@@ -74,14 +74,14 @@
       },
       {
         "by_kind": {
-          "certification_closed": 1,
-          "certification_decision": 1,
-          "certification_started": 1,
-          "review_decision": 2,
-          "review_started": 1
+          "certification_closed": 2,
+          "certification_decision": 5,
+          "certification_started": 2,
+          "review_decision": 7,
+          "review_started": 2
         },
         "covered": true,
-        "evidence_count": 6,
+        "evidence_count": 18,
         "id": "CC7.2",
         "kinds": [
           "review_started",
@@ -95,11 +95,11 @@
       },
       {
         "by_kind": {
-          "orphan_detected": 1,
-          "orphan_disposition": 1
+          "orphan_detected": 2,
+          "orphan_disposition": 2
         },
         "covered": true,
-        "evidence_count": 2,
+        "evidence_count": 4,
         "id": "CC7.3",
         "kinds": [
           "orphan_detected",
@@ -110,69 +110,69 @@
     ],
     "controls_covered": 6,
     "controls_total": 6,
-    "evidence_total": 48,
+    "evidence_total": 83,
     "framework": "SOC 2"
   },
-  "evidence_total": 98,
+  "evidence_total": 174,
   "files": [
     {
       "comment": "Every control-relevant audit-chain event in the period, projected to an evidence record. One JSON object per line, in chain order.",
       "name": "evidence.jsonl",
-      "rows": 98,
-      "sha256": "49b28152992d502488e1598b3fe9ffbdbd32a13bc125ce0467969342bdf7ee76"
+      "rows": 174,
+      "sha256": "63bffe9b7f03e918432b10e73430097a6d926e7be3f11a9cf3c4d2bec7c88b2d"
     },
     {
       "comment": "Privileged-session recording references in the period: replay key + SHA-256 integrity hash + anchoring chain position. One JSON object per line, in chain order.",
       "name": "pam-recordings.jsonl",
       "rows": 1,
-      "sha256": "94058d2f19596d72de3c473d15c46532a353a4a02a74e9dd9a0c18f8fb9671ee"
+      "sha256": "a78d2a9c3008bb3d070944377c8d3cc86638b7f2b28798e9eb102bd98671e0c9"
     },
     {
       "comment": "Every grant active at any point during the period (granted_at < to AND (revoked_at IS NULL OR revoked_at >= from)).",
       "name": "access-grants.jsonl",
-      "rows": 6,
-      "sha256": "e1fcff9826da07c05d5cf76e734a3fa638d50a10281c9907e9f52b36506bee42"
+      "rows": 12,
+      "sha256": "29d4ce286e8ea5392c456a72ee71a92619418ec9adcd84f5db33636ac6552052"
     },
     {
       "comment": "Certification campaigns whose lifecycle overlapped the period.",
       "name": "certification-campaigns.jsonl",
-      "rows": 1,
-      "sha256": "221d916b4c9ae15a67366dc8d68e9185266c4b0c08be9869a4e23a2a96537179"
+      "rows": 2,
+      "sha256": "25a9233463f8970c0ae5d4fe2b4b02e0524398aa4fb0a9667cc53cfa23961bf4"
     },
     {
       "comment": "Per-grant certification decisions for the campaigns above. Sorted by (campaign_id, created_at).",
       "name": "certification-items.jsonl",
-      "rows": 1,
-      "sha256": "bc23164d82688a6174388137d8eedaf299174177c85a860d6b21880113965981"
+      "rows": 5,
+      "sha256": "8fe1689ca4a3cd94433b8549531af6e8aee319b2a7b2bbc36d5bd2e3a9cf9648"
     },
     {
       "comment": "Every policy in force at any point during the period: all policies still live at export time (created before the period end) plus any soft-deleted within the period. Includes soft-deleted rows.",
       "name": "policies.jsonl",
       "rows": 6,
-      "sha256": "696d66a445b2974bd0fe96fd01e876ea50126411f513b1477e1751fc2c7ac687"
+      "sha256": "7a54f229365484516a67d76f276df275c374dba499a5af7210ce94bfad269b89"
     },
     {
       "comment": "Per-control evidence coverage for the framework over the period.",
       "name": "control-coverage.json",
       "rows": 0,
-      "sha256": "32669e310fd9c376fc29d308172fb32479547c1d513a5e520de2f8f49e506056"
+      "sha256": "b89be63f580b73436cba85559600934d95b211ddd08132d8c3ee58384eeb5972"
     },
     {
       "comment": "Audit hash-chain tamper-evidence verdict computed at export time.",
       "name": "chain-verification.json",
       "rows": 0,
-      "sha256": "b697000b10f29f5100371a74c6c0703538a320bc6a6c7f8c19abb09059fe776d"
+      "sha256": "ef1b5c559f01356c9b90d12bb8f1d9aff15ac09bdb1d1ae5fa82eac346a8ce4b"
     },
     {
       "comment": "Auditor-facing guide to this evidence pack.",
       "name": "README.md",
       "rows": 0,
-      "sha256": "fc97fe2b0187c07e0f609e11c67ce63eeaa444716e895b8c1b85ed1de662dd27"
+      "sha256": "2e637937e1e461a772fdb394d0af4616aaa6420b426853fa16fe28646024f731"
     }
   ],
   "framework": "SOC 2",
-  "generated_at": "2026-06-18T14:23:47.318126541Z",
+  "generated_at": "2026-06-23T16:05:07.285689845Z",
   "generated_by": "au-contoso-saas-owner",
   "schema_version": "1.1",
-  "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+  "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
 }

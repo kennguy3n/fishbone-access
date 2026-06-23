@@ -12,9 +12,9 @@
         "vn-umbrella-logistics-owner"
       ],
       "catastrophic": false,
-      "new_grant_pairs": 2,
+      "new_grant_pairs": 1,
       "pair_count": 2,
-      "redundant_pairs": 0,
+      "redundant_pairs": 1,
       "resource_count": 2,
       "sod_violations": [
         {
@@ -27,7 +27,22 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "43b7bc5d-daf0-4acd-a186-ecc77039db56",
+          "rule_id": "33341b3f-8ab5-4537-b0c0-a6d9ff4d085e",
+          "rule_name": "Dispatcher must not also adjust inventory",
+          "severity": "medium",
+          "subject": "vn-umbrella-logistics-owner"
+        },
+        {
+          "conflicting": {
+            "resource": "wms:inventory",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "wms:dispatcher",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "ccd01025-2fb0-4d9a-8fcf-86a464d94a1f",
           "rule_name": "Dispatcher must not also adjust inventory",
           "severity": "medium",
           "subject": "vn-umbrella-logistics-owner"

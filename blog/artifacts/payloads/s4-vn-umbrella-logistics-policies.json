@@ -1,7 +1,7 @@
 {
   "policies": [
     {
-      "created_at": "2026-06-18T14:17:01.954998Z",
+      "created_at": "2026-06-23T15:57:02.049528Z",
       "definition": {
         "action": "deny",
         "resources": [
@@ -12,16 +12,16 @@
         ]
       },
       "deleted_at": null,
-      "id": "0f990bda-fdeb-43fa-bb6c-ebcead2ce810",
+      "id": "c59f1e4c-64d7-4a41-afb6-919e4474349d",
       "name": "Restrict sensitive personal data",
-      "promoted_at": "2026-06-18T14:17:01.97695Z",
+      "promoted_at": "2026-06-23T15:57:02.097793Z",
       "state": "active",
-      "updated_at": "2026-06-18T14:17:01.97695Z",
+      "updated_at": "2026-06-23T15:57:02.097793Z",
       "version": 1,
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
-      "created_at": "2026-06-18T14:17:01.952854Z",
+      "created_at": "2026-06-23T15:57:02.045632Z",
       "definition": {
         "action": "grant",
         "resources": [
@@ -33,13 +33,13 @@
         ]
       },
       "deleted_at": null,
-      "id": "a2aad8bd-ab5c-4279-8292-1d076372417d",
+      "id": "dcaecd34-8049-42ff-b7eb-13b3880c7765",
       "name": "Authorised processors → personal data",
-      "promoted_at": "2026-06-18T14:17:01.985256Z",
+      "promoted_at": "2026-06-23T15:57:02.117657Z",
       "state": "active",
-      "updated_at": "2026-06-18T14:17:01.985256Z",
+      "updated_at": "2026-06-23T15:57:02.117657Z",
       "version": 1,
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     }
   ]
 }

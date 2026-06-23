@@ -178,6 +178,7 @@ await shot("vn-umbrella-logistics", "en", "/compliance/evidence", "compliance");
 // ---- S5 UAE (ar, RTL) — PAM ----
 await shot("ae-northwind-finance", "ar", "/", "dashboard-ar");
 await shot("ae-northwind-finance", "en", "/", "dashboard");
+await shot("ae-northwind-finance", "en", "/pam", "pam-overview");
 await shot("ae-northwind-finance", "en", "/pam/targets", "pam-targets");
 await shot("ae-northwind-finance", "en", "/pam/leases", "pam-leases");
 

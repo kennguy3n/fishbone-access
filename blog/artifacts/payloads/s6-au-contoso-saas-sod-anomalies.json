@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-18T14:23:01.519696Z",
+      "created_at": "2026-06-23T16:04:17.005777Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,50 @@
           "resource": "prod:deploy",
           "role": "operator"
         },
-        "rule_id": "46a2ba2b-9089-4df3-a841-16bbf15c247f",
+        "rule_id": "6f4d9b4b-d7ff-4234-9efb-acc030cc81f7",
         "rule_name": "Production deploy must not also hold billing admin",
         "severity": "high",
         "subject": "ext-dual-role@au-contoso-saas.example"
       },
-      "detected_at": "2026-06-18T14:23:01.519696Z",
+      "detected_at": "2026-06-23T16:04:17.005777Z",
       "disposition": "flagged",
-      "fingerprint": "fa0f1853b7cc5b67a91c62827c7b56256618ec7a4523be59727a8f78a108ad48",
-      "id": "cc1feab3-e68f-438e-9047-66ae3a8cd3fb",
+      "fingerprint": "6f9cbf99337ee9137d6972f9d7236e14f112ab7bfbf86e496a4cfcc96d2588b8",
+      "id": "59d637c9-23b7-4070-87c5-47667d29ef50",
       "kind": "sod_violation",
-      "rule_id": "46a2ba2b-9089-4df3-a841-16bbf15c247f",
+      "rule_id": "6f4d9b4b-d7ff-4234-9efb-acc030cc81f7",
       "severity": "high",
       "subject": "ext-dual-role@au-contoso-saas.example",
-      "updated_at": "2026-06-18T14:23:01.519696Z",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "updated_at": "2026-06-23T16:04:17.005777Z",
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
+    },
+    {
+      "created_at": "2026-06-23T16:03:01.84691Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "billing:admin",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "prod:deploy",
+          "role": "operator"
+        },
+        "rule_id": "23bae309-379d-485f-8f34-25e767f1cbba",
+        "rule_name": "Production deploy must not also hold billing admin",
+        "severity": "high",
+        "subject": "ext-dual-role@au-contoso-saas.example"
+      },
+      "detected_at": "2026-06-23T16:03:01.84691Z",
+      "disposition": "flagged",
+      "fingerprint": "1f363d0467d2317e661e2a40013f89ffbd7e729fa37ef3eda4ee4f8ba6592958",
+      "id": "56498ab1-3ba4-44fb-bbea-e97549dfd081",
+      "kind": "sod_violation",
+      "rule_id": "23bae309-379d-485f-8f34-25e767f1cbba",
+      "severity": "high",
+      "subject": "ext-dual-role@au-contoso-saas.example",
+      "updated_at": "2026-06-23T16:03:01.84691Z",
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     }
   ]
 }

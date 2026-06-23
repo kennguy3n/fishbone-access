@@ -15,9 +15,9 @@
       "catastrophic_reasons": [
         "introduces high/critical separation-of-duties toxic combination(s)"
       ],
-      "new_grant_pairs": 2,
+      "new_grant_pairs": 1,
       "pair_count": 2,
-      "redundant_pairs": 0,
+      "redundant_pairs": 1,
       "resource_count": 2,
       "sod_violations": [
         {
@@ -30,7 +30,22 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "83b7eece-3213-4c44-85da-7a6e7e20a887",
+          "rule_id": "c7254a74-b857-4867-8ee8-358b402d73b8",
+          "rule_name": "Clinician role must not hold billing export",
+          "severity": "high",
+          "subject": "us-globex-health-owner"
+        },
+        {
+          "conflicting": {
+            "resource": "ehr:billing",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "ehr:clinician",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "dc0e4b42-b973-460f-a989-1f4225ab0a28",
           "rule_name": "Clinician role must not hold billing export",
           "severity": "high",
           "subject": "us-globex-health-owner"

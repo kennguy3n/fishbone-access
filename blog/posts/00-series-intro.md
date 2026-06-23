@@ -1,12 +1,18 @@
 # Access governance you can actually audit — a series intro
 
 This is the opening post of an evidence-based engineering series about
-**fishbone-access**, a multi-tenant access-governance control plane built for
-SMEs. The premise of the series is simple and a little unusual: **nothing here
-is hand-drawn.** Every screenshot is a real page over real seeded data, every
-API payload is a verbatim capture from a running control plane, and every
-compliance artifact is a real export you can re-verify. Where the system falls
-short, the post says so.
+**ShieldNet Access** (`fishbone-access`), the multi-tenant access-governance
+control plane in the **ShieldNet 360** security suite for SMEs. The premise of
+the series is simple and a little unusual: **nothing here is hand-drawn.** Every
+screenshot is a real page over real seeded data, every API payload is a verbatim
+capture from a running control plane, and every compliance artifact is a real
+export you can re-verify. Where the system falls short, the post says so.
+
+The console itself was redesigned for low-touch, low-skill operators: a single
+security-health scorecard on the dashboard, a global help drawer with FAQ and a
+keyword-matching assistant, a "What's New" resources card, and a PAM overview
+page that explains privileged access in plain language before an operator dives
+into targets and leases.
 
 ## What fishbone-access is
 
@@ -82,6 +88,36 @@ goes well beyond simple SaaS grants:
    the content digest and chain-verification status, plus a `pam-recordings.jsonl`
    line for each recorded privileged session in the pack) for an auditor — the
    **access-certification** artifact regulators ask to see.
+
+## Console UX: built for the operator who wears five hats
+
+SME security teams do not have a dedicated UI researcher. The ShieldNet Access
+console therefore treats clarity as a control: an operator who cannot find a
+feature cannot enforce a policy. Four recent UX changes run through every
+screenshot in this series:
+
+1. **Dashboard security-health scorecard.** The first thing an operator sees is a
+   circular score derived from active policies, pending access requests, orphan
+   accounts, and online connectors. It gives a busy CISO or compliance officer an
+   at-a-glance pulse check before they drill into the numbers.
+2. **Global help drawer.** A question-mark icon in the top bar opens a drawer
+   with FAQ, quick actions, support links, and a keyword-matching assistant. The
+   assistant answers common questions ("What is a connector?", "How do I promote a
+   policy?") without leaving the page, and escalates to support links for
+   account-specific issues.
+3. **"What's New" / Resources card.** The dashboard surfaces links to ShieldNet 360
+   guidance — new features, compliance packs, and security announcements — so a
+   low-skill admin does not have to hunt for context.
+4. **PAM overview page.** Before an operator registers a target or approves a lease,
+   they can land on `/pam` for a plain-language explanation of privileged access,
+   just-in-time leases, and session recording. Jargon is deferred until the
+   operator needs it.
+
+These are real screens in the seeded console, not mock-ups. The screenshot below
+is the Acme Payments dashboard after seeding, showing the scorecard and resources
+card alongside the policy counts:
+
+![Acme Payments dashboard — security-health scorecard, policy counts, and resources card](../artifacts/screenshots/s1-sg-dashboard.png)
 
 ## The honesty contract
 
@@ -259,7 +295,8 @@ boundaries.
   of a rule (`sod_anomalies = 1` per workspace this seed). Declared rules, not
   graph-mined discovery — the honest line every country post repeats.
 - **12 UI locales**, exercised across the cast (en, zh-Hans, de, ar, vi, ja in
-  the screenshot sets).
+  the screenshot sets), plus a global help drawer and keyword-matching assistant
+  so operators can get answers without switching context.
 - **Recorded privileged sessions** — every workspace opens one real JIT-leased,
   gateway-recorded session (`pam_sessions = 1`); the framed transcript is
   retrievable over `GET /pam/sessions/:id/replay` and its digest is chained, and

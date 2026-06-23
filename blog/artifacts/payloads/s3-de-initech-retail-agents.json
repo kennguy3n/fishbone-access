@@ -4,19 +4,19 @@
       "agent": {
         "agent_version": "1.6.0",
         "cert_fingerprint": "1fb68fec92385e1b13555638d73fe7d466ff4a27a6f999d3744d5dc68b20baab",
-        "cert_not_after": "2027-06-18T14:17:01.813248Z",
+        "cert_not_after": "2027-06-23T15:57:01.367143Z",
         "cert_serial": "1fb68fec92385e1b13555638d73fe7d4",
-        "created_at": "2026-06-18T14:17:01.813964Z",
+        "created_at": "2026-06-23T15:57:01.370003Z",
         "deleted_at": null,
-        "id": "c4ffc325-11c9-40d0-99f4-688981a404d7",
-        "last_seen_at": "2026-06-18T14:23:46.593461Z",
+        "id": "f9d5e313-e50f-497e-9864-33b219f8c608",
+        "last_seen_at": "2026-06-23T15:57:01.367143Z",
         "name": "de-initech-retail-edge-01",
         "platform": "linux/amd64",
         "status": "online",
-        "updated_at": "2026-06-18T14:23:46.594521Z",
-        "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+        "updated_at": "2026-06-23T15:57:01.370003Z",
+        "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
       },
-      "health": "online"
+      "health": "stale"
     }
   ]
 }

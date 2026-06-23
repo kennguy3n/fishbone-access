@@ -1,710 +1,710 @@
 {
-  "count": 86,
+  "count": 157,
   "records": [
     {
       "action": "rbac.member.added",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "110eb7a498a63b2414f3885b85047a00bd84a1ed8747dde05c2ece5c9ebee9af",
+      "chain_hash": "645d130b81cfaf42c4d461b7388ceb0f2c41685ee5661f9b357711272d141639",
       "chain_seq": 1,
-      "id": "5bdc4bd6-7bce-4958-bacb-60b218452e04",
+      "id": "bc64a215-0f48-4953-83c0-a5abec2f8070",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "vn-umbrella-logistics-admin"
       },
-      "occurred_at": "2026-06-18T14:17:01.915964Z",
+      "occurred_at": "2026-06-23T15:57:01.949392Z",
       "target_ref": "vn-umbrella-logistics-admin",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "rbac.member.added",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "addeeba078324568bc151637b20de1de7607fb4b07ac8f711603ac22cccfdfac",
+      "chain_hash": "a2a38d8bc4aa088565b4c9ed4513acb6143a08ee7134152bc7b808c09fa89437",
       "chain_seq": 2,
-      "id": "f5bc15b7-5cf1-4699-9b4d-492fdbf43ebb",
+      "id": "0ab9142d-1d0a-43c1-add6-a0abeaa0e7ec",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "vn-umbrella-logistics-security_admin"
       },
-      "occurred_at": "2026-06-18T14:17:01.922494Z",
-      "prev_hash": "110eb7a498a63b2414f3885b85047a00bd84a1ed8747dde05c2ece5c9ebee9af",
+      "occurred_at": "2026-06-23T15:57:01.963837Z",
+      "prev_hash": "645d130b81cfaf42c4d461b7388ceb0f2c41685ee5661f9b357711272d141639",
       "target_ref": "vn-umbrella-logistics-security_admin",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "rbac.member.added",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "6d53e0d280dae115d3cdcc0ef7e72a901a01a11b97212ac12f72e871f58da1a9",
+      "chain_hash": "cde6b5abca88b5ad93c1ee803cbc2bc21434c5002f065360b1c234fbe859931d",
       "chain_seq": 3,
-      "id": "34e7db4a-b13e-49c4-bcf5-d0bead0df020",
+      "id": "5ba6ce52-8f58-4bc1-9d08-e0cb4f0ebc11",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "vn-umbrella-logistics-operator"
       },
-      "occurred_at": "2026-06-18T14:17:01.927669Z",
-      "prev_hash": "addeeba078324568bc151637b20de1de7607fb4b07ac8f711603ac22cccfdfac",
+      "occurred_at": "2026-06-23T15:57:01.976128Z",
+      "prev_hash": "a2a38d8bc4aa088565b4c9ed4513acb6143a08ee7134152bc7b808c09fa89437",
       "target_ref": "vn-umbrella-logistics-operator",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "rbac.member.added",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "e20c1a86cce9e6b58779021e1a4051b1e2f9a817f283f60da480da114c7f55ed",
+      "chain_hash": "3744b8036f17a3e394c7286495b4163529b9d9cd68f053186ee8032de37de826",
       "chain_seq": 4,
-      "id": "ba89e206-4feb-43fc-8120-a208f21c0ef5",
+      "id": "36a82108-fc08-4f24-9417-bba2a9b018ac",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "vn-umbrella-logistics-auditor"
       },
-      "occurred_at": "2026-06-18T14:17:01.933121Z",
-      "prev_hash": "6d53e0d280dae115d3cdcc0ef7e72a901a01a11b97212ac12f72e871f58da1a9",
+      "occurred_at": "2026-06-23T15:57:01.989119Z",
+      "prev_hash": "cde6b5abca88b5ad93c1ee803cbc2bc21434c5002f065360b1c234fbe859931d",
       "target_ref": "vn-umbrella-logistics-auditor",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "policy.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "8d573a81e06ca01a39eaddd2a480952ade9188edb78a27359db36dded829aa4e",
+      "chain_hash": "c9292713af13edac23cd472b6a9429656022514b03865a180e82a27c4fc9cd87",
       "chain_seq": 5,
-      "id": "fd9bbda0-c015-4d64-9e9c-e837a1462f24",
+      "id": "e0de94f7-44fb-4f25-a703-a145f587832b",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:17:01.952854Z",
-      "prev_hash": "e20c1a86cce9e6b58779021e1a4051b1e2f9a817f283f60da480da114c7f55ed",
-      "target_ref": "a2aad8bd-ab5c-4279-8292-1d076372417d",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.045632Z",
+      "prev_hash": "3744b8036f17a3e394c7286495b4163529b9d9cd68f053186ee8032de37de826",
+      "target_ref": "dcaecd34-8049-42ff-b7eb-13b3880c7765",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "policy.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "0e86f93bfc012ed2fcd8d7a7eea37f4ca9fcdb6e232ba75572005c74f4e5aac8",
+      "chain_hash": "b27a43488b8fd20a1a7d3434539260b21e1c392814bd0157613bd7c280c08d48",
       "chain_seq": 6,
-      "id": "bdf0a931-bf84-44b6-9951-39735a7d10f1",
+      "id": "0eb3c209-40bb-4bc7-a664-40d201e73d59",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:17:01.954998Z",
-      "prev_hash": "8d573a81e06ca01a39eaddd2a480952ade9188edb78a27359db36dded829aa4e",
-      "target_ref": "0f990bda-fdeb-43fa-bb6c-ebcead2ce810",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.049528Z",
+      "prev_hash": "c9292713af13edac23cd472b6a9429656022514b03865a180e82a27c4fc9cd87",
+      "target_ref": "c59f1e4c-64d7-4a41-afb6-919e4474349d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "policy.promoted",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "54c1e85c70b82d99e2a5d8b6081c9323c74f5853223555d69bd205889a2d5b9f",
+      "chain_hash": "b881510831d1519e55d6c701117259aa0cf00312b9fe21f4386af8827576e535",
       "chain_seq": 7,
-      "id": "8c373863-9b46-4fe9-bc87-2d88ec33846d",
+      "id": "3c5168e5-7b7c-467d-9c33-38e29fd43ac9",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:17:01.97695Z",
-      "prev_hash": "0e86f93bfc012ed2fcd8d7a7eea37f4ca9fcdb6e232ba75572005c74f4e5aac8",
-      "target_ref": "0f990bda-fdeb-43fa-bb6c-ebcead2ce810",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.097793Z",
+      "prev_hash": "b27a43488b8fd20a1a7d3434539260b21e1c392814bd0157613bd7c280c08d48",
+      "target_ref": "c59f1e4c-64d7-4a41-afb6-919e4474349d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "policy.promoted",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "c685c407a34b439c4bd822c3d38acb48f3041cd7a6fc3e1de99592a8be2c839d",
+      "chain_hash": "6a81f2b2b2380ac4a82ce7f91dde665ecc06da9f073e739912995b102fe1ef9b",
       "chain_seq": 8,
-      "id": "396c9c94-47fc-4098-a269-7ab4863ae1e7",
+      "id": "fc7f44c2-af7c-47c0-8adb-7cd26538ab83",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:17:01.985256Z",
-      "prev_hash": "54c1e85c70b82d99e2a5d8b6081c9323c74f5853223555d69bd205889a2d5b9f",
-      "target_ref": "a2aad8bd-ab5c-4279-8292-1d076372417d",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.117657Z",
+      "prev_hash": "b881510831d1519e55d6c701117259aa0cf00312b9fe21f4386af8827576e535",
+      "target_ref": "dcaecd34-8049-42ff-b7eb-13b3880c7765",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "2793cf276dd895c9d1aa5697ac281ae25a5dbc8828b2fe96097ee278ea9269b8",
+      "chain_hash": "40ec046b405ced002e4186e1b1594a91b85930956f5c97797cb95bc77266c529",
       "chain_seq": 9,
-      "id": "e0ed0c11-ad88-4121-842e-55898db611b4",
+      "id": "86d6cdcb-7495-4d0f-bd02-3f0958737d91",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:17:01.991022Z",
-      "prev_hash": "c685c407a34b439c4bd822c3d38acb48f3041cd7a6fc3e1de99592a8be2c839d",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.133488Z",
+      "prev_hash": "6a81f2b2b2380ac4a82ce7f91dde665ecc06da9f073e739912995b102fe1ef9b",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "05b8455cfc48b04565715300925385cd00ef4f1feb41e1f6ee949c8b601bb7de",
+      "chain_hash": "a2a91509440ae2ef7bcbf10e0c16ee6a0dbbc8796d2ac5490d749dfe7164678e",
       "chain_seq": 10,
-      "id": "71d16860-fc53-4195-8c79-43b0ac4a0b24",
+      "id": "fdc45fc3-0c3e-4ab6-a304-e7f9bfe3805c",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "long_duration_hours:720"
+          "ai_unavailable"
         ],
         "recommendation": "needs_review",
         "score": "medium",
-        "source": "ai_agent"
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:17:02.001953Z",
-      "prev_hash": "2793cf276dd895c9d1aa5697ac281ae25a5dbc8828b2fe96097ee278ea9269b8",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.14905Z",
+      "prev_hash": "40ec046b405ced002e4186e1b1594a91b85930956f5c97797cb95bc77266c529",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "193f3831bdcf8d472f232509c2c3d5292ebc62798ab2518027b13b86b535f597",
+      "chain_hash": "7f3ea2786752533a6f60b1077aedf7d04e6e046c8aee190eb8497461994774f2",
       "chain_seq": 11,
-      "id": "cd65ba54-a399-4692-872f-60c61256e3c1",
+      "id": "84d8fcac-7ca0-4bcb-83b2-28f7a26492a9",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.006872Z",
-      "prev_hash": "05b8455cfc48b04565715300925385cd00ef4f1feb41e1f6ee949c8b601bb7de",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.158724Z",
+      "prev_hash": "a2a91509440ae2ef7bcbf10e0c16ee6a0dbbc8796d2ac5490d749dfe7164678e",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "24a24e4064824faddbe608b65f930bbd5bd568a989534ff23e157275423aaaf6",
+      "chain_hash": "d11be96ea40fc31dd953dd094998ac075c5ab8d95d12bdae0bd175a586655e28",
       "chain_seq": 12,
-      "id": "e0948f30-8d2a-4b6d-905f-bb39aa36031b",
+      "id": "6c17f0f6-e630-4417-a442-7fad4ea357c3",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.015178Z",
-      "prev_hash": "193f3831bdcf8d472f232509c2c3d5292ebc62798ab2518027b13b86b535f597",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.17645Z",
+      "prev_hash": "7f3ea2786752533a6f60b1077aedf7d04e6e046c8aee190eb8497461994774f2",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioning",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "c317189827545be4e76af0424771b473b35790036b4b60030289e876caa3c5b9",
+      "chain_hash": "336e5d16ea80632a380440ceb344b7de5bdeb7d7fe6999f6b84db021b88da4dc",
       "chain_seq": 13,
-      "id": "5b660cfd-76bd-46f5-94ca-697254df76b2",
+      "id": "8bf7c954-69eb-4bed-a0ab-55caca98ee58",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.022022Z",
-      "prev_hash": "24a24e4064824faddbe608b65f930bbd5bd568a989534ff23e157275423aaaf6",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.192063Z",
+      "prev_hash": "d11be96ea40fc31dd953dd094998ac075c5ab8d95d12bdae0bd175a586655e28",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioned",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "73bb94c90411db06e5e68027861930413181b04300261ca775b32917c90d4f8b",
+      "chain_hash": "863acc132fa91dfaae42c0a4a6abde664b65de85e92bae586d6df55ae59b56e1",
       "chain_seq": 14,
-      "id": "52cdb91e-03ab-4c0a-88fb-f30444c58fa4",
+      "id": "462ec666-eccf-40d8-862c-2bc0593366f9",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.028264Z",
-      "prev_hash": "c317189827545be4e76af0424771b473b35790036b4b60030289e876caa3c5b9",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.204001Z",
+      "prev_hash": "336e5d16ea80632a380440ceb344b7de5bdeb7d7fe6999f6b84db021b88da4dc",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.active",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "13b26b42b081058c71e5928ef3c5d587a87264850996fb3f5b732b1a31e7ec2a",
+      "chain_hash": "4ae73c8d171191d65164de4e076da45acbb14b339b719289572132a2305be410",
       "chain_seq": 15,
-      "id": "fb120385-b453-4a8a-9be2-7d60d38a8283",
+      "id": "cb80867f-4217-4e95-b9f6-af5b02f29422",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.032207Z",
-      "prev_hash": "73bb94c90411db06e5e68027861930413181b04300261ca775b32917c90d4f8b",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.211533Z",
+      "prev_hash": "863acc132fa91dfaae42c0a4a6abde664b65de85e92bae586d6df55ae59b56e1",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "40ca6bfac00778305c17451ad0c310b2b954d471047d5f8411f58bda1603f9fa",
+      "chain_hash": "b46ee7e49497674ae42cb93c4e0d8b669bb80d27b380854a00ac3ec6c376617d",
       "chain_seq": 16,
-      "id": "9a73ebe2-6170-43b9-b6cc-d2bab6753bf0",
+      "id": "0f0baf0a-21dd-4961-975c-7ee6710d4b89",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.026191Z",
-      "prev_hash": "13b26b42b081058c71e5928ef3c5d587a87264850996fb3f5b732b1a31e7ec2a",
-      "target_ref": "e34f4fc1-65dd-4cb5-9b5a-601cfb9cb996",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.20086Z",
+      "prev_hash": "4ae73c8d171191d65164de4e076da45acbb14b339b719289572132a2305be410",
+      "target_ref": "61c7dcc8-624a-4358-b208-cbc57a206293",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "ee8ce6617816a210181917bc5eaabeebbef033f819aaefd744339b8cba925a1e",
+      "chain_hash": "ef69127bcd7c2705a598f04832f2249c4c16801cac52e51a88565df79b5e023f",
       "chain_seq": 17,
-      "id": "b068c427-549c-43bf-a097-83681834b41e",
+      "id": "f5c0353d-74a6-43f1-b811-388b86981030",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:17:02.037836Z",
-      "prev_hash": "40ca6bfac00778305c17451ad0c310b2b954d471047d5f8411f58bda1603f9fa",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.225626Z",
+      "prev_hash": "b46ee7e49497674ae42cb93c4e0d8b669bb80d27b380854a00ac3ec6c376617d",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "427375aaf57992587f4712e9a844b9e3027fd3afd55acb03f67bde9ddfc5a88d",
+      "chain_hash": "b3f2f4e02e86bdfe07643130a0978eeff70a8bb498d841512b9d059fb778801e",
       "chain_seq": 18,
-      "id": "8e847f75-1471-4cad-9394-c29eeffc651d",
+      "id": "f42139a2-5598-425b-a588-cf5eee959494",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:17:02.043109Z",
-      "prev_hash": "ee8ce6617816a210181917bc5eaabeebbef033f819aaefd744339b8cba925a1e",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.23454Z",
+      "prev_hash": "ef69127bcd7c2705a598f04832f2249c4c16801cac52e51a88565df79b5e023f",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "8642749897585b75c8f3e911c15763a6facaf78716d8df6bee54802332bdfc9a",
+      "chain_hash": "054eb656f9704d2511461dd9d6f382488d97597dd8b5a626e68ebf74a73eb842",
       "chain_seq": 19,
-      "id": "6c38b520-764f-40c5-9cec-29b54214eb49",
+      "id": "757290d6-4b8e-4a50-9cde-9d600de52f51",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.046454Z",
-      "prev_hash": "427375aaf57992587f4712e9a844b9e3027fd3afd55acb03f67bde9ddfc5a88d",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.240834Z",
+      "prev_hash": "b3f2f4e02e86bdfe07643130a0978eeff70a8bb498d841512b9d059fb778801e",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "d46408c9b9e8b17f2f5176b1e6d6615e09cc87ddbcdb9288270bb040c1329dd4",
+      "chain_hash": "d10cea9d793acf8e0c91cf3c4e64b04f04acce1851910b95c44e458358fa1b99",
       "chain_seq": 20,
-      "id": "737f3761-8403-46d9-ba5f-e4c5e3872fa5",
+      "id": "5ab4bd88-f660-4612-9214-8243ca4d1853",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.050256Z",
-      "prev_hash": "8642749897585b75c8f3e911c15763a6facaf78716d8df6bee54802332bdfc9a",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.256706Z",
+      "prev_hash": "054eb656f9704d2511461dd9d6f382488d97597dd8b5a626e68ebf74a73eb842",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioning",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "34e4bcc35e7104fe6177600bf56e7cfbf91eb1975ebd9c8a19a4b7a973128ac2",
+      "chain_hash": "d9d209febee6e2849043d1ecff6cb7fefefa8b11fe41e0d017c8ed481e503101",
       "chain_seq": 21,
-      "id": "2d6376e9-4119-4923-8043-05025ca61f2d",
+      "id": "8b7a36f7-c13e-4456-9624-6720b11a4b59",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.059483Z",
-      "prev_hash": "d46408c9b9e8b17f2f5176b1e6d6615e09cc87ddbcdb9288270bb040c1329dd4",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.271653Z",
+      "prev_hash": "d10cea9d793acf8e0c91cf3c4e64b04f04acce1851910b95c44e458358fa1b99",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioned",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "5158314e3c13d7ead0ce20b1c20c30874ae1058590c8237a3af91bf4ca70dd7b",
+      "chain_hash": "cc22ad7588ce02a16a2aca9664bdc13f3cd111a9a57a29e2d9ba186ab60aa9c3",
       "chain_seq": 22,
-      "id": "d4cd097c-8425-47a5-9007-48cca5b2abac",
+      "id": "7053fe57-339a-40a9-b520-0c33db3fb7df",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.064767Z",
-      "prev_hash": "34e4bcc35e7104fe6177600bf56e7cfbf91eb1975ebd9c8a19a4b7a973128ac2",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.29289Z",
+      "prev_hash": "d9d209febee6e2849043d1ecff6cb7fefefa8b11fe41e0d017c8ed481e503101",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.active",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "bfcc843fc0ae99cf26238436373f3152584f5c362b83ab8744690a4b2ca7d12d",
+      "chain_hash": "bd04bb3fe88fc47a7a35605a24caf1551b1aa63199d74d81ce30ca53fa9d560f",
       "chain_seq": 23,
-      "id": "6ac99142-a2dc-4bea-9a2a-a61bf62d3da0",
+      "id": "22f4abb5-a09f-4b82-88fd-b0766e512bc8",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.067889Z",
-      "prev_hash": "5158314e3c13d7ead0ce20b1c20c30874ae1058590c8237a3af91bf4ca70dd7b",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.299634Z",
+      "prev_hash": "cc22ad7588ce02a16a2aca9664bdc13f3cd111a9a57a29e2d9ba186ab60aa9c3",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "462ecaac4683fd114004810ec0af26e0630fa3bbe8686a15f849c328d5a53161",
+      "chain_hash": "4e861d457c1a130973b5584c447083a0ce8b4a1a487f30c848bb9f43016ea63c",
       "chain_seq": 24,
-      "id": "9860e445-cf2f-45fe-a9b4-18c640d6c78f",
+      "id": "ebb792b7-258c-4005-b5dd-df57416ad906",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.063272Z",
-      "prev_hash": "bfcc843fc0ae99cf26238436373f3152584f5c362b83ab8744690a4b2ca7d12d",
-      "target_ref": "8207bd6f-c80d-4ffb-81d0-3e92641dd215",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.285715Z",
+      "prev_hash": "bd04bb3fe88fc47a7a35605a24caf1551b1aa63199d74d81ce30ca53fa9d560f",
+      "target_ref": "48348cb9-3b82-4568-8624-0649551a7ff9",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "51dc3b14838f5a2b9a186674557dad46cc075377bcf3d8bd04a64bdb7050e31f",
+      "chain_hash": "09ed5c301cb5e4b5717f3432c80c3115e4ab3137ffdda80662902a58e09b9219",
       "chain_seq": 25,
-      "id": "a6bffb5a-5d04-45aa-89a1-bcf5fb8faa3a",
+      "id": "d91b6aff-3e06-48e3-a5b0-28c7817c3fef",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:17:02.073418Z",
-      "prev_hash": "462ecaac4683fd114004810ec0af26e0630fa3bbe8686a15f849c328d5a53161",
-      "target_ref": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.321215Z",
+      "prev_hash": "4e861d457c1a130973b5584c447083a0ce8b4a1a487f30c848bb9f43016ea63c",
+      "target_ref": "eb0352cf-e158-49e7-b879-a1f7c7959cca",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "1ac4d3ebe0f35d4be74257c7c9a47e1f04b21385def78fc0a2dd20906ce4a9b9",
+      "chain_hash": "b3a9bb6eca9f4d0439aeac2f97f6a45433d43af4cc9b75f3f592fd2f20f32181",
       "chain_seq": 26,
-      "id": "56d7f92c-559b-410b-9b9b-bd0406b7b5fa",
+      "id": "a2300d26-31ef-49b2-a834-6bce5bf59a5d",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:17:02.078938Z",
-      "prev_hash": "51dc3b14838f5a2b9a186674557dad46cc075377bcf3d8bd04a64bdb7050e31f",
-      "target_ref": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.332452Z",
+      "prev_hash": "09ed5c301cb5e4b5717f3432c80c3115e4ab3137ffdda80662902a58e09b9219",
+      "target_ref": "eb0352cf-e158-49e7-b879-a1f7c7959cca",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "84fff96bb8278aea50384cd6cbb1502e6beaf8c9b21fdd8b347357775d275437",
+      "chain_hash": "7d9ab3108935805f35e1ab6e6a557901f429f7e4000768b2c8f3fec19789c3c3",
       "chain_seq": 27,
-      "id": "54343299-070b-4bc1-af88-1cd66e70fc74",
+      "id": "9ac27d62-1446-40e5-8bd8-f1ba0d8b865e",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.082963Z",
-      "prev_hash": "1ac4d3ebe0f35d4be74257c7c9a47e1f04b21385def78fc0a2dd20906ce4a9b9",
-      "target_ref": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.338433Z",
+      "prev_hash": "b3a9bb6eca9f4d0439aeac2f97f6a45433d43af4cc9b75f3f592fd2f20f32181",
+      "target_ref": "eb0352cf-e158-49e7-b879-a1f7c7959cca",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "26a9307ed2f7f2829e66331873977bbd8096cc2b7fba3526240a15f1d19e01dd",
+      "chain_hash": "7ab1a822f0b6bf7e5d56ed1846000a8c4c193da715ba56f973cf95bc8319fb44",
       "chain_seq": 28,
-      "id": "73c14369-da8e-405f-864b-be5b1fabcf44",
+      "id": "bd77dba6-1cf2-490a-b4f5-08bbc3ba2a94",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.086912Z",
-      "prev_hash": "84fff96bb8278aea50384cd6cbb1502e6beaf8c9b21fdd8b347357775d275437",
-      "target_ref": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.353114Z",
+      "prev_hash": "7d9ab3108935805f35e1ab6e6a557901f429f7e4000768b2c8f3fec19789c3c3",
+      "target_ref": "eb0352cf-e158-49e7-b879-a1f7c7959cca",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_review.started",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "86448be0355e53ab15c2aab2ab5a9279b31465fe26dbf6e0a33a0207036d2e4a",
+      "chain_hash": "353f575cf985b8d0a03a2cf778b8d3e081b2fa18732dcc4a02c6bebf7725e32d",
       "chain_seq": 29,
-      "id": "822b7d75-8cbc-4c9d-8950-ac87be337973",
+      "id": "639bfab1-b5f6-4920-ac47-2239cfa57c8b",
       "kind": "review_started",
-      "occurred_at": "2026-06-18T14:17:02.094664Z",
-      "prev_hash": "26a9307ed2f7f2829e66331873977bbd8096cc2b7fba3526240a15f1d19e01dd",
-      "target_ref": "ac6a0484-f382-40e6-806c-6b921370823c",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.366618Z",
+      "prev_hash": "7ab1a822f0b6bf7e5d56ed1846000a8c4c193da715ba56f973cf95bc8319fb44",
+      "target_ref": "cebe4d18-2d22-4cd9-9b9f-6183cb244c60",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "6ed94285f01c5e1ab74b3743c1f1be5e0900307596f2fb00157fb6a271c91f0d",
+      "chain_hash": "ffd7d89427b0cea723fa5a914e584e434bca181198b08003d28da6bf045525c9",
       "chain_seq": 30,
-      "id": "04056be9-ff17-41c9-b0a3-b444e774f071",
+      "id": "4f9de194-91a8-48fe-bb7b-f6949713ecbb",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T14:17:02.103664Z",
-      "prev_hash": "86448be0355e53ab15c2aab2ab5a9279b31465fe26dbf6e0a33a0207036d2e4a",
-      "target_ref": "9dcfbb26-60a8-420a-9415-3dd1c7897aa2",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.391541Z",
+      "prev_hash": "353f575cf985b8d0a03a2cf778b8d3e081b2fa18732dcc4a02c6bebf7725e32d",
+      "target_ref": "464d5073-8f9f-4592-9f52-a25d390b4df0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "008f6c94442f4e83eda7c6c88857ff36c7d365cfbd694a4aba06fcf138f56c89",
+      "chain_hash": "bcf0675e0084ed13e72c78ebd372e9f82997f59c90e8d6cb42599cd632a9fe7c",
       "chain_seq": 31,
-      "id": "bfb1359e-92c3-4a45-a37e-5fc7016a2010",
+      "id": "fa02bdab-3898-4ca4-8d88-d82131c9ac9f",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.11257Z",
-      "prev_hash": "6ed94285f01c5e1ab74b3743c1f1be5e0900307596f2fb00157fb6a271c91f0d",
-      "target_ref": "e719a64f-9d5f-482e-be71-ba1d9dc388b8",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.412146Z",
+      "prev_hash": "ffd7d89427b0cea723fa5a914e584e434bca181198b08003d28da6bf045525c9",
+      "target_ref": "e47bb11c-9c7f-4709-9cef-0535e97fdc40",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "2d0eab636798a0da7722d6b0fc98d1f1ca4357e4e10964a4c53909f477c25095",
+      "chain_hash": "7b2ea88796bfe98f537b94c97a45aa3442bff4eee41635e2605d012e8e4fc423",
       "chain_seq": 32,
-      "id": "38b9f7e9-3416-46f6-971f-90ea0a46829c",
+      "id": "fac1b1af-2d52-49f6-a661-b86903ded171",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:17:02.110217Z",
-      "prev_hash": "008f6c94442f4e83eda7c6c88857ff36c7d365cfbd694a4aba06fcf138f56c89",
-      "target_ref": "8207bd6f-c80d-4ffb-81d0-3e92641dd215",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.406257Z",
+      "prev_hash": "bcf0675e0084ed13e72c78ebd372e9f82997f59c90e8d6cb42599cd632a9fe7c",
+      "target_ref": "48348cb9-3b82-4568-8624-0649551a7ff9",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "d8b0421b0f264409b95d7cabd6ac99b2a979783a5c5bbe7e9d19ac577a2b0eec",
+      "chain_hash": "377ae4e929b03bcb5399b358be013deba66fd9d2a7d0f21f6f0eb157911846e5",
       "chain_seq": 33,
-      "id": "0859692a-5ffa-4b48-a9f7-7abafb31369d",
+      "id": "3b4280cc-64e0-4033-9a15-40a9d3a18505",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T14:17:02.1174Z",
-      "prev_hash": "2d0eab636798a0da7722d6b0fc98d1f1ca4357e4e10964a4c53909f477c25095",
-      "target_ref": "eac50137-1463-4f79-b63d-c42fb9577597",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.434394Z",
+      "prev_hash": "7b2ea88796bfe98f537b94c97a45aa3442bff4eee41635e2605d012e8e4fc423",
+      "target_ref": "6b3c9814-620f-40e7-9c67-8db4ad7bb137",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "certification.campaign.started",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "83f13ad52f6c395841fc59ddc77be1d8df5686cd55d7464a78f162cf56710722",
+      "chain_hash": "cc42aeeb1f8f7b7fe4bdc0daf35c7460dce462c7a0b3532e3f5fe6e3885943c6",
       "chain_seq": 34,
-      "id": "e3f1819d-b5bc-42fc-ba16-6dae02cf014a",
+      "id": "fe7bf9d0-6be0-41af-ad97-0d7ac94b31d4",
       "kind": "certification_started",
       "metadata": {
         "framework": "ISO 27001",
         "item_count": 1,
         "name": "Q2 2026 PDPD Decree 13 certification",
         "scope": {
-          "connector_id": "acf87f18-b588-48f4-87ff-f1549095b970"
+          "connector_id": "0008e12a-533f-43d1-aeea-43ce802adbc4"
         }
       },
-      "occurred_at": "2026-06-18T14:17:02.122126Z",
-      "prev_hash": "d8b0421b0f264409b95d7cabd6ac99b2a979783a5c5bbe7e9d19ac577a2b0eec",
-      "target_ref": "35f5992e-e61f-4c6a-8ca7-e86869a167a4",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.452559Z",
+      "prev_hash": "377ae4e929b03bcb5399b358be013deba66fd9d2a7d0f21f6f0eb157911846e5",
+      "target_ref": "41d967d2-ad05-47b5-8dba-78c73f1086f0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "189b12ce0c7ef0edcfbbf78f367df1332efe1d6c79a28e6b4354870a9e507a23",
+      "chain_hash": "5e0f2aa5655d725fd79b4bc3bf4000df8de71ceb6b4bc36b06cba0d49dbb208b",
       "chain_seq": 35,
-      "id": "2b036ff8-9482-466c-b09b-50fb76e2baf6",
+      "id": "1d874545-ea0e-4599-8931-a192d1606ca8",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "35f5992e-e61f-4c6a-8ca7-e86869a167a4",
-        "grant_id": "e34f4fc1-65dd-4cb5-9b5a-601cfb9cb996",
+        "campaign_id": "41d967d2-ad05-47b5-8dba-78c73f1086f0",
+        "grant_id": "61c7dcc8-624a-4358-b208-cbc57a206293",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-18T14:17:02.132485Z",
-      "prev_hash": "83f13ad52f6c395841fc59ddc77be1d8df5686cd55d7464a78f162cf56710722",
-      "target_ref": "bef04fef-3f37-4585-a572-cfc3a3b98ae4",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.478896Z",
+      "prev_hash": "cc42aeeb1f8f7b7fe4bdc0daf35c7460dce462c7a0b3532e3f5fe6e3885943c6",
+      "target_ref": "eb217ab0-09c0-42a4-be34-07ccd3da1180",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "ccbd9c9625e5f09870e1579436ad580bf6bb2968034a4b04ceb354d59c026c80",
+      "chain_hash": "21e8c821647cb8c05c8067e88c556165a1ccc49bda313749d9dae49e1cfcf0cd",
       "chain_seq": 36,
-      "id": "87cb5739-00c3-4df8-a296-88910a8f617f",
+      "id": "0e96b670-1f93-443f-ad24-bb9a4756f2f7",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-18T14:17:02.138224Z",
-      "prev_hash": "189b12ce0c7ef0edcfbbf78f367df1332efe1d6c79a28e6b4354870a9e507a23",
-      "target_ref": "35f5992e-e61f-4c6a-8ca7-e86869a167a4",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.495307Z",
+      "prev_hash": "5e0f2aa5655d725fd79b4bc3bf4000df8de71ceb6b4bc36b06cba0d49dbb208b",
+      "target_ref": "41d967d2-ad05-47b5-8dba-78c73f1086f0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "40dfa474dc0e13a78886cb2dabd900185f0f192281ba565f99cd2c1e506b4432",
+      "chain_hash": "4b1f47072e9599dc4b4005602c2c37bbcb412143a7c9e85156da08cba16dcb99",
       "chain_seq": 37,
-      "id": "9a2a3b7e-ee65-40ae-96bc-619763d23ee1",
+      "id": "60134dfd-4a51-4118-a935-1fa6a5c09c40",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.147114Z",
-      "prev_hash": "ccbd9c9625e5f09870e1579436ad580bf6bb2968034a4b04ceb354d59c026c80",
-      "target_ref": "12902fb2-4eee-4ee9-b76d-c2d5442e8353",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.515293Z",
+      "prev_hash": "21e8c821647cb8c05c8067e88c556165a1ccc49bda313749d9dae49e1cfcf0cd",
+      "target_ref": "8f6423c7-f7c2-435e-8437-484b652db8b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "25949dff6deafea8f01e3c25044494ea3a774bdd871fd09ebf93efa4ea40c3b8",
+      "chain_hash": "a57cb142cf9e0a87682601554cd738d49dda8e8f221d2be06eec89407aa31955",
       "chain_seq": 38,
-      "id": "b397f267-5a4e-457f-8f3f-c424b072b89a",
+      "id": "98dfcc64-09ac-48e2-9fd3-438a9cbd4311",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:17:02.145276Z",
-      "prev_hash": "40dfa474dc0e13a78886cb2dabd900185f0f192281ba565f99cd2c1e506b4432",
-      "target_ref": "e34f4fc1-65dd-4cb5-9b5a-601cfb9cb996",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.51178Z",
+      "prev_hash": "4b1f47072e9599dc4b4005602c2c37bbcb412143a7c9e85156da08cba16dcb99",
+      "target_ref": "61c7dcc8-624a-4358-b208-cbc57a206293",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "582d31e730fcc68b13091dff8f97e3646f1ab77455a7a9fb75a8764152d02676",
+      "chain_hash": "df0483c1709c045365183551304408286a4c566a6a8d7a5113ab5b62ff1002f9",
       "chain_seq": 39,
-      "id": "be6a0f41-c27e-4e5a-b97d-4b4005f561a9",
+      "id": "c6162f95-dd32-4f64-ae93-6349175d0ff1",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:17:02.160546Z",
-      "prev_hash": "25949dff6deafea8f01e3c25044494ea3a774bdd871fd09ebf93efa4ea40c3b8",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.552495Z",
+      "prev_hash": "a57cb142cf9e0a87682601554cd738d49dda8e8f221d2be06eec89407aa31955",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "1f830a41e40116de26dfe8634bb9515feb54a651ec8ca7c23aece4543443dccc",
+      "chain_hash": "9261d92d2c4c4dba0d0f94a77aef2d498e399a2999d6f2f16d639cd7c23f6420",
       "chain_seq": 40,
-      "id": "59afa5ff-fe4c-4f2a-b997-7d7727a248c3",
+      "id": "16053bd0-b3c8-4f65-9db7-fc86fce93ec1",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.165186Z",
-      "prev_hash": "582d31e730fcc68b13091dff8f97e3646f1ab77455a7a9fb75a8764152d02676",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.562746Z",
+      "prev_hash": "df0483c1709c045365183551304408286a4c566a6a8d7a5113ab5b62ff1002f9",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "4de8b558f27a79565bad596cafcaa9b19445f468bb7b7ea576838485a64e55e6",
+      "chain_hash": "661bb2fe0f940f243abab2a3dfdbd381d969c6f2fe375e48a09aa3bddad5c19a",
       "chain_seq": 41,
-      "id": "8f52cbe8-65c5-4a1e-8dd3-50e6e872a3de",
+      "id": "eeba7e63-46f3-4805-b0d2-294bb35e9504",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.169496Z",
-      "prev_hash": "1f830a41e40116de26dfe8634bb9515feb54a651ec8ca7c23aece4543443dccc",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.572144Z",
+      "prev_hash": "9261d92d2c4c4dba0d0f94a77aef2d498e399a2999d6f2f16d639cd7c23f6420",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "85a5ec2268193725f039aa2073c333f2399e166f04dd79acdcf71c4076423e6a",
+      "chain_hash": "dd35f37a9a6f006c2df61493e1facfe242a2f1033c489ee0bd6016f1fb77da52",
       "chain_seq": 42,
-      "id": "3173027e-5b65-4909-98f7-06779f003ea0",
+      "id": "ffe48539-bd4c-466b-8aa8-fef9f74f68c5",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.174589Z",
-      "prev_hash": "4de8b558f27a79565bad596cafcaa9b19445f468bb7b7ea576838485a64e55e6",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.582939Z",
+      "prev_hash": "661bb2fe0f940f243abab2a3dfdbd381d969c6f2fe375e48a09aa3bddad5c19a",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "990fc4ecd92d10d80da11aa9348c25fa622f100c0df1d18d3462cc5d55eb60ba",
+      "chain_hash": "7785059db95ce605f193b129a5e15863ad11ef0a2ef4128704335fae19436d4e",
       "chain_seq": 43,
-      "id": "39d22841-1a5e-4386-840a-a6ef0d8264d7",
+      "id": "788b691b-6456-4968-a009-2cc1ce87d498",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.177739Z",
-      "prev_hash": "85a5ec2268193725f039aa2073c333f2399e166f04dd79acdcf71c4076423e6a",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.587831Z",
+      "prev_hash": "dd35f37a9a6f006c2df61493e1facfe242a2f1033c489ee0bd6016f1fb77da52",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "27f8247a9a52a2fb994e0bf9f646a5f8803716c28e21d33611078b5bb36aded7",
+      "chain_hash": "98c6f58378966524bf801fbbe77803a3fd383dd0df65a08042ca963e5a707366",
       "chain_seq": 44,
-      "id": "a6e98fa8-f511-4b33-8eae-d5925cb099e0",
+      "id": "34fd496c-bda9-44b9-9892-ca7c2b3313d9",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.173092Z",
-      "prev_hash": "990fc4ecd92d10d80da11aa9348c25fa622f100c0df1d18d3462cc5d55eb60ba",
-      "target_ref": "7ab10254-ca64-45a2-8a94-b1e120782fd0",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.58038Z",
+      "prev_hash": "7785059db95ce605f193b129a5e15863ad11ef0a2ef4128704335fae19436d4e",
+      "target_ref": "53086998-9602-4449-b9cd-8c0799971716",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "dc1f95df831bf5010104f78fe0f6a829050e47722d70245a54fd3b41afe8b68d",
+      "chain_hash": "4c50915298f68b441edc4260fc1ced943c2f767aed604da5862847a3e5d8bf9a",
       "chain_seq": 45,
-      "id": "40c48e4e-2e9b-4ca7-81fc-ea554da9744a",
+      "id": "aea0401c-6abb-4b84-b48e-d0ad592902d3",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-18T14:17:02.182942Z",
-      "prev_hash": "27f8247a9a52a2fb994e0bf9f646a5f8803716c28e21d33611078b5bb36aded7",
+      "occurred_at": "2026-06-23T15:57:02.605073Z",
+      "prev_hash": "98c6f58378966524bf801fbbe77803a3fd383dd0df65a08042ca963e5a707366",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "1a68670ca99e69c61dbbd7e33c061065fba1750fd51fd012da699edbf7b74bfc",
+      "chain_hash": "f92c4f6f05edb342cd3432248f19ce8d193ec02372b6d1eea54bcaf4b4362701",
       "chain_seq": 46,
-      "id": "d0fa40cb-2a56-4582-93ce-647bd8befd20",
+      "id": "b921c9a8-b2d0-4410-aa2a-a61b3ffcc63c",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:17:02.190461Z",
-      "prev_hash": "dc1f95df831bf5010104f78fe0f6a829050e47722d70245a54fd3b41afe8b68d",
-      "target_ref": "cd7f28b8-76e3-44d8-addc-fe7362aeff9f",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.625114Z",
+      "prev_hash": "4c50915298f68b441edc4260fc1ced943c2f767aed604da5862847a3e5d8bf9a",
+      "target_ref": "88129c62-107e-44c4-a1b6-5b16bfea84a2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "07be9ce12d0b311fede8a0a2bae4f5082b59e1d0c6939877c25f29c3acc6f0f2",
+      "chain_hash": "e9992568db787a8ecd276b8d18bda8a984b7ac84463217249c3f1c70d3b0dcbc",
       "chain_seq": 47,
-      "id": "dc71dee0-4c3d-4196-83fd-79cfe25930fb",
+      "id": "51f97c10-1644-45af-961d-5de2f454b045",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:17:02.188767Z",
-      "prev_hash": "1a68670ca99e69c61dbbd7e33c061065fba1750fd51fd012da699edbf7b74bfc",
-      "target_ref": "7ab10254-ca64-45a2-8a94-b1e120782fd0",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:02.621533Z",
+      "prev_hash": "f92c4f6f05edb342cd3432248f19ce8d193ec02372b6d1eea54bcaf4b4362701",
+      "target_ref": "53086998-9602-4449-b9cd-8c0799971716",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "f130174461946ec10bb86dac90ae4ba468ab219d6a4df92784b71cebdf55229c",
+      "chain_hash": "fd440a295442b5bf58c5e8c12011754e148cdb93c5bfc579dffc3a80061a2852",
       "chain_seq": 48,
-      "id": "b2afb12b-5e91-4cff-aa4a-17d507aa3986",
+      "id": "d5942a2f-fe3b-439d-91d1-88195ec129d9",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.194494Z",
-      "prev_hash": "07be9ce12d0b311fede8a0a2bae4f5082b59e1d0c6939877c25f29c3acc6f0f2",
+      "occurred_at": "2026-06-23T15:57:02.633685Z",
+      "prev_hash": "e9992568db787a8ecd276b8d18bda8a984b7ac84463217249c3f1c70d3b0dcbc",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "a134829335f82e95dbc21597107ae5808dbdeffc0030fafbb2b3d496eb445d33",
+      "chain_hash": "7751337e16f9e22fc1a99b0ca82f4563b01704205d77448c874a82516cf5bcba",
       "chain_seq": 49,
-      "id": "2a50d3f7-51e2-4bdd-92b0-a30e32554698",
+      "id": "d0ccf031-fad1-41eb-aadb-abf64681d0ea",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.199144Z",
-      "prev_hash": "f130174461946ec10bb86dac90ae4ba468ab219d6a4df92784b71cebdf55229c",
+      "occurred_at": "2026-06-23T15:57:02.646523Z",
+      "prev_hash": "fd440a295442b5bf58c5e8c12011754e148cdb93c5bfc579dffc3a80061a2852",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "9e5ca2186584c06e07dce79d605d6b40422769f077c0c2e0a888a80eeedce273",
+      "chain_hash": "aa214c2ccce35517898522ecc6634fe3ccf563481406f904ad6a32f8372a7ffd",
       "chain_seq": 50,
-      "id": "f66f20c6-5288-4f62-81e6-9f939adfbf69",
+      "id": "d2e0cbdd-96e9-4031-9a43-6bab1df41f7f",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.201369Z",
-      "prev_hash": "a134829335f82e95dbc21597107ae5808dbdeffc0030fafbb2b3d496eb445d33",
+      "occurred_at": "2026-06-23T15:57:02.653597Z",
+      "prev_hash": "7751337e16f9e22fc1a99b0ca82f4563b01704205d77448c874a82516cf5bcba",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "890c6120e57eb4824cbd71ab38120be5bfcce6caf283aecf77a07cb777bc1fc1",
+      "chain_hash": "f6271fb2cdd27389dff72623af26eac78e0761a039687438345ae1a332f696ba",
       "chain_seq": 51,
-      "id": "60b3adea-f38b-4802-b9a9-32852c796540",
+      "id": "81904fc3-badf-45ce-a559-bc8fbaad2590",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.588565Z",
-      "prev_hash": "9e5ca2186584c06e07dce79d605d6b40422769f077c0c2e0a888a80eeedce273",
+      "occurred_at": "2026-06-23T15:57:03.925781Z",
+      "prev_hash": "aa214c2ccce35517898522ecc6634fe3ccf563481406f904ad6a32f8372a7ffd",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "173b87d23735f60c1544cc42c94c5db62d1f66a6726de3c3ff65520b94fa9b4c",
+      "chain_hash": "cdefb588cbcb25de15bec3a87e660c7659c14530a80f64f55360f10f6ab71f84",
       "chain_seq": 52,
-      "id": "49feb21c-b474-424c-95d7-99191d991b05",
+      "id": "85d257c5-464b-42c1-8831-ff610e3bea9e",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.592163Z",
-      "prev_hash": "890c6120e57eb4824cbd71ab38120be5bfcce6caf283aecf77a07cb777bc1fc1",
+      "occurred_at": "2026-06-23T15:57:03.938389Z",
+      "prev_hash": "f6271fb2cdd27389dff72623af26eac78e0761a039687438345ae1a332f696ba",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "161e329f8b84c7b8fcc4abe79baa7dd0fff97717e2b7db17baf9a661cf85d078",
+      "chain_hash": "c492a4c8fa2fb59c78910aeb60dd2665947be8b0675dfa169e5907bf17e0335f",
       "chain_seq": 53,
-      "id": "a7327480-8895-4b1c-881c-6b2db478eed2",
+      "id": "146a3a2f-cfda-44d1-8a12-f0b4baf9b22c",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:17:02.597784Z",
-      "prev_hash": "173b87d23735f60c1544cc42c94c5db62d1f66a6726de3c3ff65520b94fa9b4c",
+      "occurred_at": "2026-06-23T15:57:03.960063Z",
+      "prev_hash": "cdefb588cbcb25de15bec3a87e660c7659c14530a80f64f55360f10f6ab71f84",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "sod.rule.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "86fe9ded7789c7fa4a15a7a594dd209f3ec3917ed42ebc3ca8db14695e6fc312",
+      "chain_hash": "ca0172b9cb0e09c01066a0231fb5ca46c693ca34a392dc2915bdccb9b9c7d867",
       "chain_seq": 54,
-      "id": "90a8bcb8-efe1-4621-b9c4-248c306e9b6a",
+      "id": "ce115fd7-07d9-4b90-a658-a7c432340753",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -717,419 +717,419 @@
         },
         "severity": "medium"
       },
-      "occurred_at": "2026-06-18T14:17:02.602025Z",
-      "prev_hash": "161e329f8b84c7b8fcc4abe79baa7dd0fff97717e2b7db17baf9a661cf85d078",
-      "target_ref": "43b7bc5d-daf0-4acd-a186-ecc77039db56",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:03.981951Z",
+      "prev_hash": "c492a4c8fa2fb59c78910aeb60dd2665947be8b0675dfa169e5907bf17e0335f",
+      "target_ref": "33341b3f-8ab5-4537-b0c0-a6d9ff4d085e",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "370473d423da94d3a9731254f03f4a262816f8e31a52cb7ad8908595b288599a",
+      "chain_hash": "d3a00b00f1d9257665e23e8eff9b263b7f458f3ed26a3bc541b80c1a9a065ec8",
       "chain_seq": 55,
-      "id": "899288cc-2e2f-48ae-82cf-a491a77f017e",
+      "id": "d7d75c9a-6242-495a-ace7-472d1cd7b9c8",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-3pl-partner@logistics.example",
-        "expires_at": "2026-08-02T14:17:02Z",
+        "expires_at": "2026-08-07T15:57:04Z",
         "resource_ref": "wms:dispatcher",
         "role": "operator",
         "sponsor_id": "vn-admin"
       },
-      "occurred_at": "2026-06-18T14:17:02.611275Z",
-      "prev_hash": "86fe9ded7789c7fa4a15a7a594dd209f3ec3917ed42ebc3ca8db14695e6fc312",
-      "target_ref": "77127f19-99df-40a0-a839-51bdcd184bae",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.025967Z",
+      "prev_hash": "ca0172b9cb0e09c01066a0231fb5ca46c693ca34a392dc2915bdccb9b9c7d867",
+      "target_ref": "98fc4641-8000-4129-991c-91605d43d87f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "77c53930c9a6101b63bd906bdfa161b6476a62fc5c660ea02f06399dc17d7319",
+      "chain_hash": "79ca3296da9dcb653f669ed1d0d8ddd5f2a9116ece1a2ca939a9d7e4f36efd3d",
       "chain_seq": 56,
-      "id": "4acd56f4-cc93-4536-8e67-ba785ca6311a",
+      "id": "68882ddf-8608-45a4-9ea8-b9a67139bfe6",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.618049Z",
-      "prev_hash": "370473d423da94d3a9731254f03f4a262816f8e31a52cb7ad8908595b288599a",
-      "target_ref": "b4908ea4-ba30-4094-b6b9-50fc8330ddbd",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.054573Z",
+      "prev_hash": "d3a00b00f1d9257665e23e8eff9b263b7f458f3ed26a3bc541b80c1a9a065ec8",
+      "target_ref": "270c148f-b380-49ff-b40e-fd55fcb4c09f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "279e60c5f362f15e073448ddd3744dc36bf5cfc9664c442b170378432f5cb16b",
+      "chain_hash": "805772855858a3395234abe9a51ac72e6da92792fd2017bc748b267c17aa34ac",
       "chain_seq": 57,
-      "id": "7d31e2d9-9faf-4261-9ea5-14b77a5143ba",
+      "id": "a1f93598-6ce2-436b-a221-e4ab9f278cfc",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-3pl-partner@logistics.example",
-        "expires_at": "2026-08-02T14:17:02Z",
-        "grant_id": "b4908ea4-ba30-4094-b6b9-50fc8330ddbd"
+        "expires_at": "2026-08-07T15:57:04Z",
+        "grant_id": "270c148f-b380-49ff-b40e-fd55fcb4c09f"
       },
-      "occurred_at": "2026-06-18T14:17:02.618049Z",
-      "prev_hash": "77c53930c9a6101b63bd906bdfa161b6476a62fc5c660ea02f06399dc17d7319",
-      "target_ref": "77127f19-99df-40a0-a839-51bdcd184bae",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.054573Z",
+      "prev_hash": "79ca3296da9dcb653f669ed1d0d8ddd5f2a9116ece1a2ca939a9d7e4f36efd3d",
+      "target_ref": "98fc4641-8000-4129-991c-91605d43d87f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "24ed57c4004c8807d223d1ee50375ef289b34021a9c89b06c3f2a26f5da2de24",
+      "chain_hash": "29702c76c516966283689d6a1856ed172306e10e6dc5c7ad2b9c6f516051c7ac",
       "chain_seq": 58,
-      "id": "18f7fa09-98ff-4ff7-91f0-b076da4358c1",
+      "id": "5531483c-6888-43a5-ae39-d66c9f4ff348",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:17:02.628919Z",
-      "prev_hash": "279e60c5f362f15e073448ddd3744dc36bf5cfc9664c442b170378432f5cb16b",
-      "target_ref": "b4908ea4-ba30-4094-b6b9-50fc8330ddbd",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.091433Z",
+      "prev_hash": "805772855858a3395234abe9a51ac72e6da92792fd2017bc748b267c17aa34ac",
+      "target_ref": "270c148f-b380-49ff-b40e-fd55fcb4c09f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.revoked",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "7098760f2bfe8024394035258de125d524f705746031b967fdd738d5150c1c94",
+      "chain_hash": "98d4305ff8c3e5f352b479d4f39738f5539b856abe040db41982107b681cdbdd",
       "chain_seq": 59,
-      "id": "b8243c44-b26c-4569-ad29-cf5f6d21b056",
+      "id": "87b5dcbc-da17-49d4-9a8c-e03429389803",
       "kind": "other",
       "metadata": {
         "reason": "Engagement ended early; external access withdrawn."
       },
-      "occurred_at": "2026-06-18T14:17:02.631519Z",
-      "prev_hash": "24ed57c4004c8807d223d1ee50375ef289b34021a9c89b06c3f2a26f5da2de24",
-      "target_ref": "77127f19-99df-40a0-a839-51bdcd184bae",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.102562Z",
+      "prev_hash": "29702c76c516966283689d6a1856ed172306e10e6dc5c7ad2b9c6f516051c7ac",
+      "target_ref": "98fc4641-8000-4129-991c-91605d43d87f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.target.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "da593a434cf5afc34af961270b36db4ac5ed4e99fea9671ff8c335f49a1a46e8",
+      "chain_hash": "856a053ce45757a32a57b6d10adb36160e63390bf2c5c99fae43f2fb970b7939",
       "chain_seq": 60,
-      "id": "533182b1-822a-4af2-a37d-7194d8d0f570",
+      "id": "7f926450-f77f-4824-b455-d86e74ab49af",
       "kind": "other",
       "metadata": {
         "address": "wms-1.umbrella.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:17:02.639672Z",
-      "prev_hash": "7098760f2bfe8024394035258de125d524f705746031b967fdd738d5150c1c94",
-      "target_ref": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.126673Z",
+      "prev_hash": "98d4305ff8c3e5f352b479d4f39738f5539b856abe040db41982107b681cdbdd",
+      "target_ref": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.lease.requested",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "6f52a318be180576b37a4d3ae33e3dc55eec5e27c536234c1d72feeb1aae5f4b",
+      "chain_hash": "60b113e5531e660b6379b40fe7f613320c74c574d04837163360590903b6d8d2",
       "chain_seq": 61,
-      "id": "cb1444e2-dd2a-4662-9576-97670def7208",
+      "id": "16c4725b-15f3-4d08-a360-9a2341fe9bb3",
       "kind": "other",
       "metadata": {
-        "risk_degraded": false,
-        "risk_level": "low",
+        "risk_degraded": true,
+        "risk_level": "medium",
         "subject": "vn-umbrella-logistics-owner",
-        "target_id": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
+        "target_id": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-18T14:17:02.645328Z",
-      "prev_hash": "da593a434cf5afc34af961270b36db4ac5ed4e99fea9671ff8c335f49a1a46e8",
-      "target_ref": "879082ee-d13a-4d93-9411-58601cdeda7d",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.142863Z",
+      "prev_hash": "856a053ce45757a32a57b6d10adb36160e63390bf2c5c99fae43f2fb970b7939",
+      "target_ref": "6efe24a4-9c2d-49b0-ae45-8a207e0f0fd6",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.lease.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "f83b203c73502e0d9a806fd8769dd3bcd8c6a0cda17161a1e24f5cba1b8495be",
+      "chain_hash": "34d31d87b7cde02ee91ff43e6493bae60f0eaf2cbf592c0ffbe31d70a4a097bc",
       "chain_seq": 62,
-      "id": "293418f3-524a-4315-a0a4-f02a8ec112a5",
+      "id": "4c515002-0872-4185-8054-d7c5ea65b4bb",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:47:02Z",
+        "expires_at": "2026-06-23T16:27:04Z",
         "subject": "vn-umbrella-logistics-owner",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-18T14:17:02.651782Z",
-      "prev_hash": "6f52a318be180576b37a4d3ae33e3dc55eec5e27c536234c1d72feeb1aae5f4b",
-      "target_ref": "879082ee-d13a-4d93-9411-58601cdeda7d",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.167928Z",
+      "prev_hash": "60b113e5531e660b6379b40fe7f613320c74c574d04837163360590903b6d8d2",
+      "target_ref": "6efe24a4-9c2d-49b0-ae45-8a207e0f0fd6",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "230ca039b1a7e89139947dcacb39edfc77551490e91fa5038be1d6f1468f5f22",
+      "chain_hash": "82ce1249f6610b5b6a69d41eab941216112facbddec0555396750f19f7f04a6b",
       "chain_seq": 63,
-      "id": "70d458bf-673f-4c2f-a8e2-f648413b2a2c",
+      "id": "f9553dfa-de9e-4786-969e-bac475c94920",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:47:02Z",
+        "expires_at": "2026-06-23T16:27:04Z",
         "subject": "vn-umbrella-logistics-owner"
       },
-      "occurred_at": "2026-06-18T14:17:02.660946Z",
-      "prev_hash": "f83b203c73502e0d9a806fd8769dd3bcd8c6a0cda17161a1e24f5cba1b8495be",
-      "target_ref": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.200972Z",
+      "prev_hash": "34d31d87b7cde02ee91ff43e6493bae60f0eaf2cbf592c0ffbe31d70a4a097bc",
+      "target_ref": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.target.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "fed886b667c79480020e42c6d189949786c9ed09b7240bbe692445e686a3f27b",
+      "chain_hash": "485dbe8f45b3f3f50d9a5f186d5dc8858fa05f3554dab9be6adfffb9676827d7",
       "chain_seq": 64,
-      "id": "2bac8a04-2419-4aec-a5af-73cd47a713e5",
+      "id": "85d5f8d5-ab7b-488a-bedc-eaba29649ea6",
       "kind": "other",
       "metadata": {
         "address": "wms-bastion.umbrella.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:17:02.668325Z",
-      "prev_hash": "230ca039b1a7e89139947dcacb39edfc77551490e91fa5038be1d6f1468f5f22",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.238913Z",
+      "prev_hash": "82ce1249f6610b5b6a69d41eab941216112facbddec0555396750f19f7f04a6b",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "27f8acedaf0e180f8ef318d7c15bbb2fed7a9b7cf982b8886f9349e9c3c4f5f8",
+      "chain_hash": "1595730a537de1c83ee33f643592e9fea268adc1cbe647afa53c213b74e708b0",
       "chain_seq": 65,
-      "id": "fc3ce167-8f4b-407d-8b9a-a0de8be1779c",
+      "id": "5978eda5-3ac0-4c0a-9f15-ca3cf668478c",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:47:02Z",
+        "expires_at": "2026-06-23T16:27:04Z",
         "subject": "vn-umbrella-logistics-owner"
       },
-      "occurred_at": "2026-06-18T14:17:02.672228Z",
-      "prev_hash": "fed886b667c79480020e42c6d189949786c9ed09b7240bbe692445e686a3f27b",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.268641Z",
+      "prev_hash": "485dbe8f45b3f3f50d9a5f186d5dc8858fa05f3554dab9be6adfffb9676827d7",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.session.opened",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "a561ec59fd6876abccf3381dda9b5f11caa3e6bc0c700e499c05ed39e60ba6ed",
+      "chain_hash": "f4f5de891beb29c3b322692127bb56d64d0c5433a9706100d0f8a268d2ff71eb",
       "chain_seq": 66,
-      "id": "2735ba52-ea58-4f77-ab77-ec16f00d7a6d",
+      "id": "3616190c-db31-4b6a-9a7c-e5dcdc0f3b1f",
       "kind": "privileged_session",
       "metadata": {
         "client_addr": "blog-seed",
         "protocol": "ssh",
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513"
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919"
       },
-      "occurred_at": "2026-06-18T14:17:02.676689Z",
-      "prev_hash": "27f8acedaf0e180f8ef318d7c15bbb2fed7a9b7cf982b8886f9349e9c3c4f5f8",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.299924Z",
+      "prev_hash": "1595730a537de1c83ee33f643592e9fea268adc1cbe647afa53c213b74e708b0",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.command",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "bd93027ea1ebbdc0b1b200de7610e3c66f5c7c70b27e0ded53dfe7ae475a0ab2",
+      "chain_hash": "3231cab7b5c26d620e6bc34352d8eac7630a42fb65efe06aa36d1655665a45cb",
       "chain_seq": 67,
-      "id": "9f7df4ea-48e9-4e41-92b4-22f125c0cf34",
+      "id": "28f258aa-cd25-4519-9c58-9a782c718ea8",
       "kind": "privileged_command",
       "metadata": {
         "command": "whoami",
         "decision": "allow",
         "reason": "",
         "seq": 1,
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513"
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919"
       },
-      "occurred_at": "2026-06-18T14:17:02.679467Z",
-      "prev_hash": "a561ec59fd6876abccf3381dda9b5f11caa3e6bc0c700e499c05ed39e60ba6ed",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.33498Z",
+      "prev_hash": "f4f5de891beb29c3b322692127bb56d64d0c5433a9706100d0f8a268d2ff71eb",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.command",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "b6121bcc9dcad108d14eb0bf2ea73e97e9e924aaa2d6f98fe82ec4d4647e0893",
+      "chain_hash": "7341b0dec7b1c0539c90a3f99c8f10534582953c6aeae34033e68773f8d626d8",
       "chain_seq": 68,
-      "id": "16b076b9-5bbf-46c2-8036-3797bc18d3be",
+      "id": "e448d643-acd7-4adf-9ebd-27f17fe4876d",
       "kind": "privileged_command",
       "metadata": {
         "command": "sudo systemctl status wms-core",
         "decision": "allow",
         "reason": "",
         "seq": 2,
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513"
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919"
       },
-      "occurred_at": "2026-06-18T14:17:02.68256Z",
-      "prev_hash": "bd93027ea1ebbdc0b1b200de7610e3c66f5c7c70b27e0ded53dfe7ae475a0ab2",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.364882Z",
+      "prev_hash": "3231cab7b5c26d620e6bc34352d8eac7630a42fb65efe06aa36d1655665a45cb",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.command",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "61e0170987095e8d9eaa8c704447082198daecb9bf41e7b7efffbe73e78ef88c",
+      "chain_hash": "25d29f4f8b3abda39753f015718487575e8624694300e4bfc1d1fc0f77f8cbae",
       "chain_seq": 69,
-      "id": "1f04f09d-78e4-4a83-bf6d-674d31f64b68",
+      "id": "19dbcc19-0063-491a-b52f-8cb0f0104fe5",
       "kind": "privileged_command",
       "metadata": {
         "command": "tail -n 1 /var/log/wms/dispatch.log",
         "decision": "allow",
         "reason": "",
         "seq": 3,
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513"
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919"
       },
-      "occurred_at": "2026-06-18T14:17:02.685662Z",
-      "prev_hash": "b6121bcc9dcad108d14eb0bf2ea73e97e9e924aaa2d6f98fe82ec4d4647e0893",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.391328Z",
+      "prev_hash": "7341b0dec7b1c0539c90a3f99c8f10534582953c6aeae34033e68773f8d626d8",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.command",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "e95c2d44a1fce0a0bf8d95309a278833e5660c30f1c35c36004e417afeb21723",
+      "chain_hash": "8217362bd31f7615b4592b10effd9789860a829041427b24d2f3cbcc1ed19fd5",
       "chain_seq": 70,
-      "id": "94877a5a-c889-4823-bfbf-4bd059918e8d",
+      "id": "447be798-414f-44a0-94d7-d70d461f466e",
       "kind": "privileged_command",
       "metadata": {
         "command": "exit",
         "decision": "allow",
         "reason": "",
         "seq": 4,
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513"
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919"
       },
-      "occurred_at": "2026-06-18T14:17:02.688909Z",
-      "prev_hash": "61e0170987095e8d9eaa8c704447082198daecb9bf41e7b7efffbe73e78ef88c",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.424614Z",
+      "prev_hash": "25d29f4f8b3abda39753f015718487575e8624694300e4bfc1d1fc0f77f8cbae",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.session.recording",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "8cd084b2bb8247ba5d7ea12834be81c3e42a56108ad231c3979998f392979d9b",
+      "chain_hash": "d9525e4247e366d56b8117350546531c328062a0192f9fe9c0a86b98ed9099f2",
       "chain_seq": 71,
-      "id": "25271b1f-c57f-478f-ae0d-a0699b69f903",
+      "id": "36b51ced-beda-461b-a740-9637b8021cd3",
       "kind": "privileged_recording",
       "metadata": {
         "bytes": 350,
-        "replay_key": "sessions/08dba283-66db-485c-9ce0-cc7f809e1513/replay.bin",
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513",
-        "sha256": "2966c832298b8062f2e75d7534016d34b97c7a7f3943600c558c582833ff0915",
+        "replay_key": "sessions/0219f4fa-0d6c-43bc-b59e-50016007a919/replay.bin",
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919",
+        "sha256": "2f32c29bedbb4de2a9d8675ffcddd3d40d57f6d149597038ddaa99d99282eb43",
         "truncated": false
       },
-      "occurred_at": "2026-06-18T14:17:02.692485Z",
-      "prev_hash": "e95c2d44a1fce0a0bf8d95309a278833e5660c30f1c35c36004e417afeb21723",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.472466Z",
+      "prev_hash": "8217362bd31f7615b4592b10effd9789860a829041427b24d2f3cbcc1ed19fd5",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.session.closed",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "362c0e4ef5764d33382f1a1319f5d9c669a41f367f860e049e438b4e4d8cf9e1",
+      "chain_hash": "25316e321d64b840764966e3ee1d266a312b9831ca11f3f1b64faecf86c70c86",
       "chain_seq": 72,
-      "id": "811cb634-1692-4426-bf0b-370564aa68e6",
+      "id": "98a807b5-a756-4e70-97f4-47cbdb0c43cd",
       "kind": "privileged_session",
       "metadata": {
-        "session_id": "08dba283-66db-485c-9ce0-cc7f809e1513",
+        "session_id": "0219f4fa-0d6c-43bc-b59e-50016007a919",
         "state": "closed"
       },
-      "occurred_at": "2026-06-18T14:17:02.694891Z",
-      "prev_hash": "8cd084b2bb8247ba5d7ea12834be81c3e42a56108ad231c3979998f392979d9b",
-      "target_ref": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.501775Z",
+      "prev_hash": "d9525e4247e366d56b8117350546531c328062a0192f9fe9c0a86b98ed9099f2",
+      "target_ref": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "fc6af10d9650267de2afab3bba73068a3467db0a349c7a7d16fb582d1202b73b",
+      "chain_hash": "dcfe116976aae47b53389aa43b72c1615ad69a735b4497502ea97f79ada7620e",
       "chain_seq": 73,
-      "id": "66f447c4-8395-4cc1-9e44-3289dfb8454c",
+      "id": "c0f19d72-544e-4e47-a57d-9041584d8367",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
-        "expires_at": "2026-07-18T14:17:02Z",
+        "expires_at": "2026-07-23T15:57:04Z",
         "resource_ref": "wms:dispatcher",
         "role": "operator",
         "sponsor_id": "vn-admin"
       },
-      "occurred_at": "2026-06-18T14:17:02.705779Z",
-      "prev_hash": "362c0e4ef5764d33382f1a1319f5d9c669a41f367f860e049e438b4e4d8cf9e1",
-      "target_ref": "4df0dad0-5da3-47a0-bc2b-fc791cbf68dd",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.581314Z",
+      "prev_hash": "25316e321d64b840764966e3ee1d266a312b9831ca11f3f1b64faecf86c70c86",
+      "target_ref": "1772cdd1-22fd-4219-8d16-7f434019ddf1",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "1fd167abc3b8597fab8f531ace390cc6af656982832f86c9a88d2fb2f2420e97",
+      "chain_hash": "9f092d392fb7d1782933e61ea566c0d39c6e53ddce595cf2572aaf094cb3213e",
       "chain_seq": 74,
-      "id": "ac6b1c5a-f61b-42d9-95b5-ca6a73a89366",
+      "id": "8f7db4ba-c3ff-4909-a4ae-7623ee449596",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.711693Z",
-      "prev_hash": "fc6af10d9650267de2afab3bba73068a3467db0a349c7a7d16fb582d1202b73b",
-      "target_ref": "d9295979-7443-4d9d-a31e-01ebd083712b",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.601481Z",
+      "prev_hash": "dcfe116976aae47b53389aa43b72c1615ad69a735b4497502ea97f79ada7620e",
+      "target_ref": "d23d9f0f-332b-4a10-8138-574ba65c2521",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "d20bebfcd9cadbc72267ca7a18465bb037e7d40b2d5301a3fdec8485295e2980",
+      "chain_hash": "09c01976b1ceb68b45bd787805b0362ac888a637ef4e1dffaabf9c0d49259230",
       "chain_seq": 75,
-      "id": "8545ae99-7372-4880-8309-87d9785ef695",
+      "id": "48c9f3b1-1a56-4e7f-9f3f-df29ddf0e764",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
-        "expires_at": "2026-07-18T14:17:02Z",
-        "grant_id": "d9295979-7443-4d9d-a31e-01ebd083712b"
+        "expires_at": "2026-07-23T15:57:04Z",
+        "grant_id": "d23d9f0f-332b-4a10-8138-574ba65c2521"
       },
-      "occurred_at": "2026-06-18T14:17:02.711693Z",
-      "prev_hash": "1fd167abc3b8597fab8f531ace390cc6af656982832f86c9a88d2fb2f2420e97",
-      "target_ref": "4df0dad0-5da3-47a0-bc2b-fc791cbf68dd",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.601481Z",
+      "prev_hash": "9f092d392fb7d1782933e61ea566c0d39c6e53ddce595cf2572aaf094cb3213e",
+      "target_ref": "1772cdd1-22fd-4219-8d16-7f434019ddf1",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "a032254dea568cab004cd9723bce1cc3da50ac2bf8b7aab4face0fa05b70d4ca",
+      "chain_hash": "97a2c89fe3cac7326eab201ce2cc435aa7a095a8e3385167886e4198c4920151",
       "chain_seq": 76,
-      "id": "33c0dc50-c7f3-4ded-8091-82fb29e83f79",
+      "id": "f0993b83-a2f7-472c-aded-2937d01afebd",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
-        "expires_at": "2026-07-18T14:17:02Z",
+        "expires_at": "2026-07-23T15:57:04Z",
         "resource_ref": "wms:inventory",
         "role": "operator",
         "sponsor_id": "vn-admin"
       },
-      "occurred_at": "2026-06-18T14:17:02.719932Z",
-      "prev_hash": "d20bebfcd9cadbc72267ca7a18465bb037e7d40b2d5301a3fdec8485295e2980",
-      "target_ref": "979824aa-a2b6-4d74-9a79-fd54abbf6e07",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.628146Z",
+      "prev_hash": "09c01976b1ceb68b45bd787805b0362ac888a637ef4e1dffaabf9c0d49259230",
+      "target_ref": "b7f4aa25-43d7-47e1-aeec-8df205db9fcc",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "access_grant.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "ba4b0e5279601277cc1cd4431d5990625b5dc1574cb81e0c3286eff89ccfbb33",
+      "chain_hash": "adfc497ee8f48e0d00c06079d5364502a788085f337f25225dc1a1a559816e97",
       "chain_seq": 77,
-      "id": "4e27e923-b096-4d96-af56-11457104677b",
+      "id": "57c2e718-6c0e-46ed-a737-3236c6e75038",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:17:02.725309Z",
-      "prev_hash": "a032254dea568cab004cd9723bce1cc3da50ac2bf8b7aab4face0fa05b70d4ca",
-      "target_ref": "becad34a-50b6-4861-8046-b03696a1e20a",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.647231Z",
+      "prev_hash": "97a2c89fe3cac7326eab201ce2cc435aa7a095a8e3385167886e4198c4920151",
+      "target_ref": "04205a4c-33c1-4d02-8dc0-79e391a529b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "801e21d5f4e2aa47362d87e311d7cca88f79972c7dcaceceac1d12010c874c81",
+      "chain_hash": "ed0c1d5906e1e64cbfdc1e17987196fb6e06e8a3f3eed281e4f3300ffcc80285",
       "chain_seq": 78,
-      "id": "ff6b7179-0527-4998-a56b-3421c722a098",
+      "id": "71716f79-912b-4acf-80cf-0400afce5aab",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
-        "expires_at": "2026-07-18T14:17:02Z",
-        "grant_id": "becad34a-50b6-4861-8046-b03696a1e20a"
+        "expires_at": "2026-07-23T15:57:04Z",
+        "grant_id": "04205a4c-33c1-4d02-8dc0-79e391a529b7"
       },
-      "occurred_at": "2026-06-18T14:17:02.725309Z",
-      "prev_hash": "ba4b0e5279601277cc1cd4431d5990625b5dc1574cb81e0c3286eff89ccfbb33",
-      "target_ref": "979824aa-a2b6-4d74-9a79-fd54abbf6e07",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.647231Z",
+      "prev_hash": "adfc497ee8f48e0d00c06079d5364502a788085f337f25225dc1a1a559816e97",
+      "target_ref": "b7f4aa25-43d7-47e1-aeec-8df205db9fcc",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "orphan.detected",
       "actor": "system:anomaly-detector",
-      "chain_hash": "f081ee66113dc7eadf06d803c379c6ce2ee78c4897ba14fe8aff3f8cc36a482d",
+      "chain_hash": "c7396798595420078fb20519358913ad340b0870b33420e790260e7d5cc093a0",
       "chain_seq": 79,
-      "id": "58dfa272-d31d-434d-bba6-25f85ffcb994",
+      "id": "8830e311-c52f-4c94-a815-0161e9f4d053",
       "kind": "orphan_detected",
       "metadata": {
-        "anomaly_id": "fcc88fe5-0ebc-44f9-b5ae-6f7bf3aec636",
+        "anomaly_id": "3690592f-52de-4d3d-9995-78a2c6f64670",
         "anomaly_kind": "sod_violation",
         "conflicting": {
           "resource": "wms:inventory",
@@ -1139,110 +1139,110 @@
           "resource": "wms:dispatcher",
           "role": "operator"
         },
-        "rule_id": "43b7bc5d-daf0-4acd-a186-ecc77039db56",
+        "rule_id": "33341b3f-8ab5-4537-b0c0-a6d9ff4d085e",
         "rule_name": "Dispatcher must not also adjust inventory",
         "severity": "medium",
         "subject": "ext-dual-role@vn-umbrella-logistics.example"
       },
-      "occurred_at": "2026-06-18T14:17:02.734985Z",
-      "prev_hash": "801e21d5f4e2aa47362d87e311d7cca88f79972c7dcaceceac1d12010c874c81",
-      "target_ref": "fcc88fe5-0ebc-44f9-b5ae-6f7bf3aec636",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.705504Z",
+      "prev_hash": "ed0c1d5906e1e64cbfdc1e17987196fb6e06e8a3f3eed281e4f3300ffcc80285",
+      "target_ref": "3690592f-52de-4d3d-9995-78a2c6f64670",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "orphan.disposition.flagged",
       "actor": "system:anomaly-detector",
-      "chain_hash": "056c8df44039dfa44653d632246f0d411857d529f62d251a0d636b205ee68bbf",
+      "chain_hash": "6cb0efb9c15f55fdef7d9e97c641fe9b7790eb0771ac9d318fee5f9e0bdaf1ee",
       "chain_seq": 80,
-      "id": "e06996f1-84fd-427d-928b-89d3b65c6a2a",
+      "id": "ad5e58b4-79c2-400a-beaf-325126b3afd4",
       "kind": "orphan_disposition",
       "metadata": {
-        "anomaly_id": "fcc88fe5-0ebc-44f9-b5ae-6f7bf3aec636",
+        "anomaly_id": "3690592f-52de-4d3d-9995-78a2c6f64670",
         "anomaly_kind": "sod_violation",
         "automated": true,
         "disposition": "flagged",
         "severity": "medium",
         "subject": "ext-dual-role@vn-umbrella-logistics.example"
       },
-      "occurred_at": "2026-06-18T14:17:02.734985Z",
-      "prev_hash": "f081ee66113dc7eadf06d803c379c6ce2ee78c4897ba14fe8aff3f8cc36a482d",
-      "target_ref": "fcc88fe5-0ebc-44f9-b5ae-6f7bf3aec636",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:04.705504Z",
+      "prev_hash": "c7396798595420078fb20519358913ad340b0870b33420e790260e7d5cc093a0",
+      "target_ref": "3690592f-52de-4d3d-9995-78a2c6f64670",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "compliance.export",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "771673d7b2ce5bbf63f3d2591cd07688a97e29abbfeac86767a86470e7181e0d",
+      "chain_hash": "92fb87c91672a4e5129513db103df0b415665338e45a72a6b06f1a5ef63f22f4",
       "chain_seq": 81,
-      "id": "0f399324-6aae-4f88-abdc-867101a7a4e9",
+      "id": "6fa095e5-c631-42ed-ace6-333922864a52",
       "kind": "evidence_exported",
       "metadata": {
         "chain_status": "valid",
-        "content_sha256": "794edd5ad7cec784627faf962d96e7b67a745a1fb9edbca16930984678c9ea9b",
+        "content_sha256": "bf19cd4ca57600b412119fd04c3ccfba078c560e808daa3c4f20a7fde554c98b",
         "evidence_total": 80,
         "framework": "SOC 2",
         "mfa_satisfied": true
       },
-      "occurred_at": "2026-06-18T14:17:31.810747Z",
-      "prev_hash": "056c8df44039dfa44653d632246f0d411857d529f62d251a0d636b205ee68bbf",
+      "occurred_at": "2026-06-23T15:57:32.19176Z",
+      "prev_hash": "6cb0efb9c15f55fdef7d9e97c641fe9b7790eb0771ac9d318fee5f9e0bdaf1ee",
       "target_ref": "SOC 2",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "discovery.agent_reachable_import",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "121b699911aed7ef1a4aa309e0a64ca6b672c26949240b9b267a62f391baeb2e",
+      "chain_hash": "2e31e65a02af50bb262b621798ceb16a971d3339ece40a7dc9f1e0d4d80048cf",
       "chain_seq": 82,
-      "id": "7f341239-3269-43f4-a8b2-24dfa5e8678b",
+      "id": "9090d9e6-5977-4f41-8dad-03ab4a42523a",
       "kind": "other",
       "metadata": {
         "assets_new": 5,
         "reported": 5,
-        "scan_id": "40da9572-c5f3-456e-95bf-176f8a2c51a0"
+        "scan_id": "5f015543-f1a0-491f-9400-e36efb38de9a"
       },
-      "occurred_at": "2026-06-18T14:17:31.844847Z",
-      "prev_hash": "771673d7b2ce5bbf63f3d2591cd07688a97e29abbfeac86767a86470e7181e0d",
-      "target_ref": "a2c2199a-6d3c-458b-9fdf-296f75b77fb9",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:32.662699Z",
+      "prev_hash": "92fb87c91672a4e5129513db103df0b415665338e45a72a6b06f1a5ef63f22f4",
+      "target_ref": "f0adc414-340b-4c4c-9386-b3ad85ea001d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.target.created",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "e1d64f2109fe2170a85fc1889c7f61313ba46f497bfc76b77c9690cb2f84e97d",
+      "chain_hash": "ac131e5d6876ca77d4f73f6f96ec6ab34161409619346e6508e206811abc56af",
       "chain_seq": 83,
-      "id": "af19d189-fecd-4ecb-a4ea-09b64413e440",
+      "id": "07b061b6-ba4b-4be5-a766-b630d2716530",
       "kind": "other",
       "metadata": {
         "address": "bastion.corp.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:17:31.853022Z",
-      "prev_hash": "121b699911aed7ef1a4aa309e0a64ca6b672c26949240b9b267a62f391baeb2e",
-      "target_ref": "31a86b68-df2b-49f2-856f-6614abcbf933",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:32.735498Z",
+      "prev_hash": "2e31e65a02af50bb262b621798ceb16a971d3339ece40a7dc9f1e0d4d80048cf",
+      "target_ref": "aba85d18-efa4-40f2-80bd-7e199feceb3f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "discovery.onboard",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "4008c7be78e58fece091c47c41f13521652f282ec2000f7644359f5aee8c73ea",
+      "chain_hash": "1b2ea68359111ed39da3789e5befa3890656508d3d4596265fbfd8a1816c49ac",
       "chain_seq": 84,
-      "id": "2154ae99-47c5-4eee-ba70-fd2c74bfc157",
+      "id": "258173d3-a1b5-4938-ad6b-143f0a8fa8f5",
       "kind": "other",
       "metadata": {
-        "asset_id": "dac0ca75-b509-4dba-bbf4-a9d999626295",
+        "asset_id": "4ccc70da-0c1c-4739-b815-4fbdcfc08ff5",
         "trigger": "manual"
       },
-      "occurred_at": "2026-06-18T14:17:31.856612Z",
-      "prev_hash": "e1d64f2109fe2170a85fc1889c7f61313ba46f497bfc76b77c9690cb2f84e97d",
-      "target_ref": "31a86b68-df2b-49f2-856f-6614abcbf933",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:32.912384Z",
+      "prev_hash": "ac131e5d6876ca77d4f73f6f96ec6ab34161409619346e6508e206811abc56af",
+      "target_ref": "aba85d18-efa4-40f2-80bd-7e199feceb3f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "discovery.policy_update",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "0eb2e886a1b28cdff1b5e3d5defbe95fdb65013d5184639b1f347417a1e30796",
+      "chain_hash": "724a6ee9c08eb9fabaab1eb3c0189e3848acd6d882adeab0a5e41e247c2a48a5",
       "chain_seq": 85,
-      "id": "90a57447-2188-45dd-9045-ca007fa32301",
+      "id": "f3473263-3676-447a-8c35-ba5ddb9d6585",
       "kind": "other",
       "metadata": {
         "active_sweep": false,
@@ -1251,17 +1251,17 @@
         "has_credential": false,
         "rules": 1
       },
-      "occurred_at": "2026-06-18T14:17:31.860691Z",
-      "prev_hash": "4008c7be78e58fece091c47c41f13521652f282ec2000f7644359f5aee8c73ea",
-      "target_ref": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:32.991291Z",
+      "prev_hash": "1b2ea68359111ed39da3789e5befa3890656508d3d4596265fbfd8a1816c49ac",
+      "target_ref": "4a50e3a5-3e55-4415-8291-33a8284661bf",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "vn-umbrella-logistics-owner",
-      "chain_hash": "7aea2840b0edfe582005a0e8eec723fadb1995097070e6c87e6d25ffd5ddbb01",
+      "chain_hash": "db0a23d4cdcf0cf2a27a7ff3ca69705b5c80d69c1f7af35804b30f2238a453af",
       "chain_seq": 86,
-      "id": "95c5e7c2-5b68-49bc-869b-cb783e535406",
+      "id": "2f9bf5a0-9757-46dc-be89-cd8f636f281d",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": false,
@@ -1270,10 +1270,1039 @@
         "mode": "disabled",
         "rotate_on_checkin": true
       },
-      "occurred_at": "2026-06-18T14:17:31.868763Z",
-      "prev_hash": "0eb2e886a1b28cdff1b5e3d5defbe95fdb65013d5184639b1f347417a1e30796",
-      "target_ref": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "occurred_at": "2026-06-23T15:57:33.210659Z",
+      "prev_hash": "724a6ee9c08eb9fabaab1eb3c0189e3848acd6d882adeab0a5e41e247c2a48a5",
+      "target_ref": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f91a2a88e876062cca6989f6d4075dadcf735b59367a62b23ae201ef35b36a7e",
+      "chain_seq": 87,
+      "id": "fd62dfa6-2e6e-4c4b-a04e-8f32a81b1b92",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:08.330017Z",
+      "prev_hash": "db0a23d4cdcf0cf2a27a7ff3ca69705b5c80d69c1f7af35804b30f2238a453af",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "e0b165878ea341cbb0470d945338984d5e1a9f16f47944b506f7630426b23aee",
+      "chain_seq": 88,
+      "id": "8b2fd117-b7a0-42ad-a4d8-16e3912a4628",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:08.346687Z",
+      "prev_hash": "f91a2a88e876062cca6989f6d4075dadcf735b59367a62b23ae201ef35b36a7e",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "8289688a5e570bca249a747d5d6e063ac08dea25096303848c03cf12f1e40405",
+      "chain_seq": 89,
+      "id": "30bf8b74-0878-4527-9f2c-1e59cc05db68",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.355554Z",
+      "prev_hash": "e0b165878ea341cbb0470d945338984d5e1a9f16f47944b506f7630426b23aee",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "a8f8fc79d7080d22d04e4a61c513aeadb3b1deb47f59986b5ae720e1d5b6897d",
+      "chain_seq": 90,
+      "id": "81a87363-b137-4a33-8110-be9620d68445",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.37609Z",
+      "prev_hash": "8289688a5e570bca249a747d5d6e063ac08dea25096303848c03cf12f1e40405",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "df7eeb1f845f3c62dbf967a1d92337091e402d49afb0f915d5753f449b3e28ba",
+      "chain_seq": 91,
+      "id": "367ad1fb-a102-4c4e-8494-c9007e15e25f",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.396874Z",
+      "prev_hash": "a8f8fc79d7080d22d04e4a61c513aeadb3b1deb47f59986b5ae720e1d5b6897d",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "29341c206f20c79d5294d44c15fdd19d9ed3cbeb10a66fd55d4bb3ffddfd7330",
+      "chain_seq": 92,
+      "id": "598b11ce-9aa2-4e42-84cb-8191dc3c54eb",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.414165Z",
+      "prev_hash": "df7eeb1f845f3c62dbf967a1d92337091e402d49afb0f915d5753f449b3e28ba",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "3640fbe72be8b8da6cea9686577c01d428a378f77d84ba5a4cc4031f7859760f",
+      "chain_seq": 93,
+      "id": "1fb4e886-1d6a-42b4-a6da-a4689fe1add7",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.421564Z",
+      "prev_hash": "29341c206f20c79d5294d44c15fdd19d9ed3cbeb10a66fd55d4bb3ffddfd7330",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "23dbb01f25492504fbc1cc72e05df2dc3ff4e4781259e3023dd150f8d544e31d",
+      "chain_seq": 94,
+      "id": "e4fb856a-fd10-4ea5-8f09-c1166bfc2254",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:08.408446Z",
+      "prev_hash": "3640fbe72be8b8da6cea9686577c01d428a378f77d84ba5a4cc4031f7859760f",
+      "target_ref": "5826abfa-da77-4bff-9982-c5cf7d65f99f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "4945869b7e1b3c644baf5777bb96a209cce2adc7dcd541990573d6d20dd449ee",
+      "chain_seq": 95,
+      "id": "bc6cbfbc-7276-403c-95b8-60d5238de20d",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:08.439168Z",
+      "prev_hash": "23dbb01f25492504fbc1cc72e05df2dc3ff4e4781259e3023dd150f8d544e31d",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f6e95ff0b22878db6edf96b872b52a61f0f5817e718c6b78d45dc65144d17591",
+      "chain_seq": 96,
+      "id": "13fb8e81-de44-437e-85f8-14e34a9faf9d",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:08.451742Z",
+      "prev_hash": "4945869b7e1b3c644baf5777bb96a209cce2adc7dcd541990573d6d20dd449ee",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "d9ebd36e308402f7736e3adbef4a6a049b3df0ffa5d4b00c6b2d34660bd7438e",
+      "chain_seq": 97,
+      "id": "d9a44310-270d-4c10-9fe4-42f3e06724e0",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.458439Z",
+      "prev_hash": "f6e95ff0b22878db6edf96b872b52a61f0f5817e718c6b78d45dc65144d17591",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "9a220adfe806b677c9aee732585e8f7e61276f699bc1510b58092599fb5b8732",
+      "chain_seq": 98,
+      "id": "23514374-065f-4a0d-b423-e04aa45d0798",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.476996Z",
+      "prev_hash": "d9ebd36e308402f7736e3adbef4a6a049b3df0ffa5d4b00c6b2d34660bd7438e",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "7d52bbe34026dd3939640c98ca3f4541a0b5690d0b0f7a572561b79502f58bca",
+      "chain_seq": 99,
+      "id": "6ddcf02a-c076-4ab4-9218-5bd3fdf2dd9f",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.494469Z",
+      "prev_hash": "9a220adfe806b677c9aee732585e8f7e61276f699bc1510b58092599fb5b8732",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "cbe3048cb81784c688bcb533a1f775dbf6e272c9e524b4c9e075e78de8c2b6a1",
+      "chain_seq": 100,
+      "id": "304c7595-9dad-4ae0-8aa5-50e0b0ad8de7",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.507454Z",
+      "prev_hash": "7d52bbe34026dd3939640c98ca3f4541a0b5690d0b0f7a572561b79502f58bca",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "e4c01e06de1293265614ab8e64a758fa431989e58bf1ade89af789fb9d960b94",
+      "chain_seq": 101,
+      "id": "9b2a221c-54e4-42e0-a724-0d1fa0e8e348",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.513436Z",
+      "prev_hash": "cbe3048cb81784c688bcb533a1f775dbf6e272c9e524b4c9e075e78de8c2b6a1",
+      "target_ref": "e2e5bbb8-2650-4b17-9f9a-e70d09f4ef9c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "9557919c4b9188c094db764bae190a03c5199e9783aab2fc85d409f89fefca70",
+      "chain_seq": 102,
+      "id": "dfce7041-c6a6-493e-889d-a3e98b4f81c5",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:08.50401Z",
+      "prev_hash": "e4c01e06de1293265614ab8e64a758fa431989e58bf1ade89af789fb9d960b94",
+      "target_ref": "b8e7e515-3cee-4529-ac7c-eaeea932769b",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f59b27ae5129608532e495c97c8de3c767fd3f64e0aa21fa59754b1883c8b6b4",
+      "chain_seq": 103,
+      "id": "cb1a95a6-2126-44f3-8ddf-f29f54e10e83",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:08.527936Z",
+      "prev_hash": "9557919c4b9188c094db764bae190a03c5199e9783aab2fc85d409f89fefca70",
+      "target_ref": "07177e89-1a66-4eab-b6ac-3617b0323e30",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "b34c766a5e945cb45484becb9a2700f16b50dc09d8b26a757e1e519322028c28",
+      "chain_seq": 104,
+      "id": "9bcdca96-36f9-4ca4-b4a5-1d41175d224b",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:08.54031Z",
+      "prev_hash": "f59b27ae5129608532e495c97c8de3c767fd3f64e0aa21fa59754b1883c8b6b4",
+      "target_ref": "07177e89-1a66-4eab-b6ac-3617b0323e30",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f04c0e00981401f3284af9ab129e6e343ea65eef97b2de9c7c855c4a4d57e9fa",
+      "chain_seq": 105,
+      "id": "f73da559-9d1f-4943-b8ec-3d25fe426a5a",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.548627Z",
+      "prev_hash": "b34c766a5e945cb45484becb9a2700f16b50dc09d8b26a757e1e519322028c28",
+      "target_ref": "07177e89-1a66-4eab-b6ac-3617b0323e30",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "584fcc37e7b16237311e4000eaa1d26207fa29f546dee09e79fe4b49434dbe9b",
+      "chain_seq": 106,
+      "id": "fd68b29a-3182-4914-97c2-688f417ce816",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.566089Z",
+      "prev_hash": "f04c0e00981401f3284af9ab129e6e343ea65eef97b2de9c7c855c4a4d57e9fa",
+      "target_ref": "07177e89-1a66-4eab-b6ac-3617b0323e30",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_review.started",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "fe3a17be89232e6f6c6ee9f437d70010ed94947d4968043d0874d1acf26d2eb7",
+      "chain_seq": 107,
+      "id": "f3324ae5-6ff7-475c-9095-3d56201e46e2",
+      "kind": "review_started",
+      "occurred_at": "2026-06-23T16:04:08.585058Z",
+      "prev_hash": "584fcc37e7b16237311e4000eaa1d26207fa29f546dee09e79fe4b49434dbe9b",
+      "target_ref": "19f6c8e5-ad11-446b-9cea-6935646107a7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_review.decision.revoke",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "a3f3c58891e4aa76c8e3ad9b673eb10e3f8eeb637515e1ac2b3e676324c65e47",
+      "chain_seq": 108,
+      "id": "d0261a74-bc14-474e-a227-b84538d23961",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:08.618492Z",
+      "prev_hash": "fe3a17be89232e6f6c6ee9f437d70010ed94947d4968043d0874d1acf26d2eb7",
+      "target_ref": "2c0b9f1d-7964-4a51-8db5-27833e0a13df",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "6f2dd702145160e0461e9988c36dc8380e62530c8906795c0cf49b5ba058097e",
+      "chain_seq": 109,
+      "id": "5285da44-80d5-4f87-9456-656e80eabbd2",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:08.633702Z",
+      "prev_hash": "a3f3c58891e4aa76c8e3ad9b673eb10e3f8eeb637515e1ac2b3e676324c65e47",
+      "target_ref": "04205a4c-33c1-4d02-8dc0-79e391a529b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "185762e6fadab6d8a942555b66771f55a4341f0c111f91dc3da34adb9f684476",
+      "chain_seq": 110,
+      "id": "e7789651-7e5c-4115-9f5e-5c3d4e70d7c6",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:08.647039Z",
+      "prev_hash": "6f2dd702145160e0461e9988c36dc8380e62530c8906795c0cf49b5ba058097e",
+      "target_ref": "50feedce-2359-4672-b29a-267728591dc8",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "aa9ef02d0fe1c8c7f7f9122f3c56f612cdd53bdf0b28561c908a63b2fbf28aa3",
+      "chain_seq": 111,
+      "id": "542d77c7-72be-4b34-8ca8-106e78934ed1",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:08.66422Z",
+      "prev_hash": "185762e6fadab6d8a942555b66771f55a4341f0c111f91dc3da34adb9f684476",
+      "target_ref": "93d07d2f-1772-4b91-844f-c47a30565e10",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "c046efb697295c3f59cbd15b227e979452066e873e7b449717e8aa04fbbc0a5c",
+      "chain_seq": 112,
+      "id": "99cac71d-2550-4aed-a8a3-618d212757dc",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:08.687422Z",
+      "prev_hash": "aa9ef02d0fe1c8c7f7f9122f3c56f612cdd53bdf0b28561c908a63b2fbf28aa3",
+      "target_ref": "e4fbe2b8-7f9f-406b-94e6-11dcf913ee51",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "certification.campaign.started",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "adaf5b5a3ed666225ec90e9ce59d7df59083b2cf72a55175c2c731b83f879baf",
+      "chain_seq": 113,
+      "id": "974a121c-b493-40f8-b0eb-4673e8c47a17",
+      "kind": "certification_started",
+      "metadata": {
+        "framework": "ISO 27001",
+        "item_count": 3,
+        "name": "Q2 2026 PDPD Decree 13 certification",
+        "scope": {
+          "connector_id": "0008e12a-533f-43d1-aeea-43ce802adbc4"
+        }
+      },
+      "occurred_at": "2026-06-23T16:04:08.706991Z",
+      "prev_hash": "c046efb697295c3f59cbd15b227e979452066e873e7b449717e8aa04fbbc0a5c",
+      "target_ref": "04f6daaa-b511-4245-9a3a-71d49c8194f8",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "certification.item.decision.revoke",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "85ab28f50c83154c7daa153aa31b1ddae8b914e065fc71c563e7d8790da2cca9",
+      "chain_seq": 114,
+      "id": "bd959fea-b38b-4f16-94df-d0fd42165909",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "04f6daaa-b511-4245-9a3a-71d49c8194f8",
+        "grant_id": "5826abfa-da77-4bff-9982-c5cf7d65f99f",
+        "reason": "Seed: entitlement revoked at certification."
+      },
+      "occurred_at": "2026-06-23T16:04:08.748162Z",
+      "prev_hash": "adaf5b5a3ed666225ec90e9ce59d7df59083b2cf72a55175c2c731b83f879baf",
+      "target_ref": "271a4cd8-f030-45d6-b843-28c41f81f655",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "certification.item.decision.certify",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "439ea62b25c7cdd6784c56b9e1b7f853bec97fdf36b664c289515e72351076ee",
+      "chain_seq": 115,
+      "id": "ad4b2dc3-9df1-4564-b8fb-75ab9bfbebe0",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "04f6daaa-b511-4245-9a3a-71d49c8194f8",
+        "grant_id": "b8e7e515-3cee-4529-ac7c-eaeea932769b",
+        "reason": "Seed: entitlement certified."
+      },
+      "occurred_at": "2026-06-23T16:04:08.778713Z",
+      "prev_hash": "85ab28f50c83154c7daa153aa31b1ddae8b914e065fc71c563e7d8790da2cca9",
+      "target_ref": "579a056b-5258-4e5a-ad72-600971cf4f7b",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "certification.item.decision.certify",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "58d006b7e2739c83da65257ae51fabf86ce236c67161968d896b2f8f5e30637f",
+      "chain_seq": 116,
+      "id": "a062c84b-4c72-4b51-a16a-3feb96a9d3bb",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "04f6daaa-b511-4245-9a3a-71d49c8194f8",
+        "grant_id": "d23d9f0f-332b-4a10-8138-574ba65c2521",
+        "reason": "Seed: entitlement certified."
+      },
+      "occurred_at": "2026-06-23T16:04:08.796015Z",
+      "prev_hash": "439ea62b25c7cdd6784c56b9e1b7f853bec97fdf36b664c289515e72351076ee",
+      "target_ref": "6201ba7c-2a81-4a9d-aa77-a027e617adf0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "certification.campaign.closed",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "8734ed19f70fe8964bd25f5e8561a8438574ca970ca6c96dc0e8cf6052fc37d4",
+      "chain_seq": 117,
+      "id": "58027b35-873f-4730-a8a3-cde4d79e8d84",
+      "kind": "certification_closed",
+      "metadata": {
+        "staged_revocations": 1
+      },
+      "occurred_at": "2026-06-23T16:04:08.81126Z",
+      "prev_hash": "58d006b7e2739c83da65257ae51fabf86ce236c67161968d896b2f8f5e30637f",
+      "target_ref": "04f6daaa-b511-4245-9a3a-71d49c8194f8",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.revoked",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "e93d2fe5f53ac4ef4b180e2f080298281e0bbe9677cb31bd61aaeb8038f91999",
+      "chain_seq": 118,
+      "id": "7348accf-13d0-4990-aaaa-abd2ab7dc009",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.838904Z",
+      "prev_hash": "8734ed19f70fe8964bd25f5e8561a8438574ca970ca6c96dc0e8cf6052fc37d4",
+      "target_ref": "d1522e22-d911-448d-92b5-5619d35ac2ee",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "9801df7036786f8d0cc20d8bbf8bf71955a8445004b0aae9678adcd7a6950e0b",
+      "chain_seq": 119,
+      "id": "fdc64194-1605-408a-835d-d11537cc9078",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:08.829908Z",
+      "prev_hash": "e93d2fe5f53ac4ef4b180e2f080298281e0bbe9677cb31bd61aaeb8038f91999",
+      "target_ref": "5826abfa-da77-4bff-9982-c5cf7d65f99f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "scim",
+      "chain_hash": "5dd1ed28bd2e48f76fd3206db2b82f46d0d21d1a70fec18687286f97d4a00ea6",
+      "chain_seq": 120,
+      "id": "43a3b7de-d30d-40e7-a890-f5d1f49c1e00",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:08.879903Z",
+      "prev_hash": "9801df7036786f8d0cc20d8bbf8bf71955a8445004b0aae9678adcd7a6950e0b",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "scim",
+      "chain_hash": "adea2ef05efcb50d6f111cdc46123cd53f62b3d039a866890279bf9b8cb15832",
+      "chain_seq": 121,
+      "id": "f6d59430-194b-4e6d-bd59-c75ab90cc404",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.892109Z",
+      "prev_hash": "5dd1ed28bd2e48f76fd3206db2b82f46d0d21d1a70fec18687286f97d4a00ea6",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "scim",
+      "chain_hash": "e45deee3356c9df3435e2590c0450b154d7d61e287973b0fa7c54c62bc28024f",
+      "chain_seq": 122,
+      "id": "6dcc8a00-4f7f-4d43-b5c4-0282e556aa1b",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.906879Z",
+      "prev_hash": "adea2ef05efcb50d6f111cdc46123cd53f62b3d039a866890279bf9b8cb15832",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "scim",
+      "chain_hash": "f7b09175fe42f90c8c1e2eaed76481b31050b13b694b76fb8fdde8bff3b83bf4",
+      "chain_seq": 123,
+      "id": "345360b3-7909-4d67-be4d-7629ea2a065a",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.920789Z",
+      "prev_hash": "e45deee3356c9df3435e2590c0450b154d7d61e287973b0fa7c54c62bc28024f",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "scim",
+      "chain_hash": "fa6152a254993c295ae0ec85f80a879b170166acce30edd5701f99a74cd2ee8e",
+      "chain_seq": 124,
+      "id": "eefa3dd9-56a8-47a4-afa2-7c6b6e94fd6c",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.926846Z",
+      "prev_hash": "f7b09175fe42f90c8c1e2eaed76481b31050b13b694b76fb8fdde8bff3b83bf4",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "scim",
+      "chain_hash": "dd790aacb4f94867fdc5bbb73598d3081cc71ec8f29e205c4ee393ae69caf31c",
+      "chain_seq": 125,
+      "id": "952c431e-0fe5-4bbd-a261-3f5076e4bb8c",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:08.917321Z",
+      "prev_hash": "fa6152a254993c295ae0ec85f80a879b170166acce30edd5701f99a74cd2ee8e",
+      "target_ref": "4db1469f-5439-4ff6-bcca-7ba50cd680a4",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.joiner.recorded",
+      "actor": "scim",
+      "chain_hash": "6923824b6bb9e19cf28008d8c423afd43409654d876e70db87e8d365860b8740",
+      "chain_seq": 126,
+      "id": "9dbe582e-6e15-4ec2-b81a-e0a24bbc63b5",
+      "kind": "joiner_provisioned",
+      "occurred_at": "2026-06-23T16:04:08.942956Z",
+      "prev_hash": "dd790aacb4f94867fdc5bbb73598d3081cc71ec8f29e205c4ee393ae69caf31c",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_request.revoked",
+      "actor": "scim",
+      "chain_hash": "c012164deeda5d8041d2bc850bf1a68589cac4e755ba7809d7fcc9ec3ba8f4ee",
+      "chain_seq": 127,
+      "id": "42aa0b90-b948-4e6d-8c2b-baf3a237f75a",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:08.963353Z",
+      "prev_hash": "6923824b6bb9e19cf28008d8c423afd43409654d876e70db87e8d365860b8740",
+      "target_ref": "a182bb4d-d639-4e8e-b684-56062c1bdeac",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "scim",
+      "chain_hash": "45be572fe0f5cf37126b347b7dda592786f9ec6123782ee0542b6b227203457e",
+      "chain_seq": 128,
+      "id": "f565b6d3-38da-433f-aaf3-9196b9ffdb62",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:08.960343Z",
+      "prev_hash": "c012164deeda5d8041d2bc850bf1a68589cac4e755ba7809d7fcc9ec3ba8f4ee",
+      "target_ref": "4db1469f-5439-4ff6-bcca-7ba50cd680a4",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.grant_revoke.done",
+      "actor": "scim",
+      "chain_hash": "c7a34d70b6e845505af6ca50bd966d5fa1bfe90ae933350a143fc9f48a99d2e8",
+      "chain_seq": 129,
+      "id": "03494c08-26ab-432d-b9da-139910784056",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:08.975881Z",
+      "prev_hash": "45be572fe0f5cf37126b347b7dda592786f9ec6123782ee0542b6b227203457e",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.team_remove.done",
+      "actor": "scim",
+      "chain_hash": "2dea85f342469e741c8ca7e047f285679c53d07655a7bc08e450deb8af7245fa",
+      "chain_seq": 130,
+      "id": "96fc543b-9b60-4356-b794-ac79fc047c50",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:08.986037Z",
+      "prev_hash": "c7a34d70b6e845505af6ca50bd966d5fa1bfe90ae933350a143fc9f48a99d2e8",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.iam_core_disable.skipped",
+      "actor": "scim",
+      "chain_hash": "52cf3b3d73641581c8ff2873d5b2beb509c168ece0ba20883cdf40aeac9f4b3a",
+      "chain_seq": 131,
+      "id": "866758dc-123d-4df9-a0ad-17b6d1ef58d6",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:08.993542Z",
+      "prev_hash": "2dea85f342469e741c8ca7e047f285679c53d07655a7bc08e450deb8af7245fa",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.session_revoke.failed",
+      "actor": "scim",
+      "chain_hash": "be9e1fee0539f2b4362a78b55c12532893cbed8f9bce9b9f20a254f03c95322a",
+      "chain_seq": 132,
+      "id": "1768c995-602a-4139-8299-375a6921e9bd",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:09.962155Z",
+      "prev_hash": "52cf3b3d73641581c8ff2873d5b2beb509c168ece0ba20883cdf40aeac9f4b3a",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.scim_deprovision.failed",
+      "actor": "scim",
+      "chain_hash": "78326d5230cda58e55e3cd6b280926ab21c5561ed403ac858fbc09327e43d630",
+      "chain_seq": 133,
+      "id": "7c212a72-c8ee-4ddb-b3e9-2a239b900056",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:09.972381Z",
+      "prev_hash": "be9e1fee0539f2b4362a78b55c12532893cbed8f9bce9b9f20a254f03c95322a",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "jml.leaver.identity_disable.done",
+      "actor": "scim",
+      "chain_hash": "d336dd131ecb3c01b5356ea3db175e538db047c848be1ce3a47850a57537f049",
+      "chain_seq": 134,
+      "id": "ea897ac2-4d5d-447d-a32c-5f3b4e2513c9",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:09.981444Z",
+      "prev_hash": "78326d5230cda58e55e3cd6b280926ab21c5561ed403ac858fbc09327e43d630",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "sod.rule.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "a2f2bdd7623812733b5fe15490d443679627f6864da60277771e343bd6561ffd",
+      "chain_seq": 135,
+      "id": "08ebfbca-44d1-42ee-b4a6-e52e84050560",
+      "kind": "other",
+      "metadata": {
+        "selector_a": {
+          "resource": "wms:dispatcher",
+          "role": "operator"
+        },
+        "selector_b": {
+          "resource": "wms:inventory",
+          "role": "operator"
+        },
+        "severity": "medium"
+      },
+      "occurred_at": "2026-06-23T16:04:09.99308Z",
+      "prev_hash": "d336dd131ecb3c01b5356ea3db175e538db047c848be1ce3a47850a57537f049",
+      "target_ref": "ccd01025-2fb0-4d9a-8fcf-86a464d94a1f",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "21ae72277db74ebc18cb515dc6768a8fcf935906a7d55e56a958f950098406e8",
+      "chain_seq": 136,
+      "id": "c1a61916-77e0-43ce-ae6a-8c8600056b41",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-3pl-partner@logistics.example",
+        "expires_at": "2026-08-07T16:04:10Z",
+        "resource_ref": "wms:dispatcher",
+        "role": "operator",
+        "sponsor_id": "vn-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:10.017831Z",
+      "prev_hash": "a2f2bdd7623812733b5fe15490d443679627f6864da60277771e343bd6561ffd",
+      "target_ref": "8eaf4732-c3d8-4c15-9fd3-aaa7b3554057",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "5b457ca8fa469d2db3028a1b0c5c2b1a50204a81381ea942928a74ce58daaa95",
+      "chain_seq": 137,
+      "id": "dbc79714-920e-4174-b08e-0aceeb68716a",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:10.03708Z",
+      "prev_hash": "21ae72277db74ebc18cb515dc6768a8fcf935906a7d55e56a958f950098406e8",
+      "target_ref": "d0533210-8d53-45a2-8c8f-11952aa1a43c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "3cf0ce5f6cd3a650bb6a082bb3b8eead0771d935b709afb5576e4178435f2e8c",
+      "chain_seq": 138,
+      "id": "9c19107a-8c37-41cd-8be0-bda0c1d7b573",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-3pl-partner@logistics.example",
+        "expires_at": "2026-08-07T16:04:10Z",
+        "grant_id": "d0533210-8d53-45a2-8c8f-11952aa1a43c"
+      },
+      "occurred_at": "2026-06-23T16:04:10.03708Z",
+      "prev_hash": "5b457ca8fa469d2db3028a1b0c5c2b1a50204a81381ea942928a74ce58daaa95",
+      "target_ref": "8eaf4732-c3d8-4c15-9fd3-aaa7b3554057",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f996ce57d03732e35a5822f28c21612a56950d542a7df1a1448888725d557a11",
+      "chain_seq": 139,
+      "id": "dee75185-d0bf-4b7c-bd4c-d64f67fdbe0d",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:10.067362Z",
+      "prev_hash": "3cf0ce5f6cd3a650bb6a082bb3b8eead0771d935b709afb5576e4178435f2e8c",
+      "target_ref": "d0533210-8d53-45a2-8c8f-11952aa1a43c",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.revoked",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "6b645738f78356cba2e6ce9d1d7e5a24e7e8d4833b1e0f1b2649b997a0e172da",
+      "chain_seq": 140,
+      "id": "dfdffd87-a51f-4500-b00e-4c9652f2907c",
+      "kind": "other",
+      "metadata": {
+        "reason": "Engagement ended early; external access withdrawn."
+      },
+      "occurred_at": "2026-06-23T16:04:10.076482Z",
+      "prev_hash": "f996ce57d03732e35a5822f28c21612a56950d542a7df1a1448888725d557a11",
+      "target_ref": "8eaf4732-c3d8-4c15-9fd3-aaa7b3554057",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "pam.lease.requested",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "987c317e3e00b9cb44ca793161d0ed90620308ef1ec18db8b0871e58e74ef64b",
+      "chain_seq": 141,
+      "id": "eb7c61fc-c6bc-4804-a960-6c42f99bad31",
+      "kind": "other",
+      "metadata": {
+        "risk_degraded": true,
+        "risk_level": "medium",
+        "subject": "vn-umbrella-logistics-owner",
+        "target_id": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+        "ttl_seconds": 1800
+      },
+      "occurred_at": "2026-06-23T16:04:10.098051Z",
+      "prev_hash": "6b645738f78356cba2e6ce9d1d7e5a24e7e8d4833b1e0f1b2649b997a0e172da",
+      "target_ref": "08668c4c-a1e5-4c05-baa6-aeb0939ef8cc",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "pam.lease.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "5b1d55848e7e9ee844cb63ea3f6a051836ad4646f4e79cef6e2579748c5304b7",
+      "chain_seq": 142,
+      "id": "fdfae20f-9d72-4d9c-9367-d5bde1f4f424",
+      "kind": "other",
+      "metadata": {
+        "expires_at": "2026-06-23T16:34:10Z",
+        "subject": "vn-umbrella-logistics-owner",
+        "ttl_seconds": 1800
+      },
+      "occurred_at": "2026-06-23T16:04:10.115762Z",
+      "prev_hash": "987c317e3e00b9cb44ca793161d0ed90620308ef1ec18db8b0871e58e74ef64b",
+      "target_ref": "08668c4c-a1e5-4c05-baa6-aeb0939ef8cc",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "pam.connect_token.minted",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "9a736d219fbe935bd42ec3eae10284e54edf24cd74f0f02e9f532e5421230a7b",
+      "chain_seq": 143,
+      "id": "ce51ca3d-dcce-4e62-a15d-b1e7cbe69ad7",
+      "kind": "other",
+      "metadata": {
+        "expires_at": "2026-06-23T16:34:10Z",
+        "subject": "vn-umbrella-logistics-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:10.144254Z",
+      "prev_hash": "5b1d55848e7e9ee844cb63ea3f6a051836ad4646f4e79cef6e2579748c5304b7",
+      "target_ref": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "a1eb7d58151fc58e844b41e3a40706f09248af10a4ecb3c4acaaf00a5019d71f",
+      "chain_seq": 144,
+      "id": "357673d2-3bfe-43ec-9a9c-155236fd4b8c",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
+        "expires_at": "2026-07-23T16:04:10Z",
+        "resource_ref": "wms:dispatcher",
+        "role": "operator",
+        "sponsor_id": "vn-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:10.340389Z",
+      "prev_hash": "9a736d219fbe935bd42ec3eae10284e54edf24cd74f0f02e9f532e5421230a7b",
+      "target_ref": "196e06ed-18ab-4e01-bb25-77bd9e2ca3b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "9251806a03096f2ff23d04e0434bf9667a64daa50e437d59890f717c180533ac",
+      "chain_seq": 145,
+      "id": "f978de2f-87ea-409a-ab56-144cd2b4b532",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:10.358904Z",
+      "prev_hash": "a1eb7d58151fc58e844b41e3a40706f09248af10a4ecb3c4acaaf00a5019d71f",
+      "target_ref": "63802d92-40e7-4496-b519-7512bd1977b2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "f19c5e0e30d10e8ffdc002b7c2d71cbaecddb98aa203ff76a2a9bf06b28df462",
+      "chain_seq": 146,
+      "id": "e4e5d2e0-dbf4-42ec-962f-b1cc49a313c3",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
+        "expires_at": "2026-07-23T16:04:10Z",
+        "grant_id": "63802d92-40e7-4496-b519-7512bd1977b2"
+      },
+      "occurred_at": "2026-06-23T16:04:10.358904Z",
+      "prev_hash": "9251806a03096f2ff23d04e0434bf9667a64daa50e437d59890f717c180533ac",
+      "target_ref": "196e06ed-18ab-4e01-bb25-77bd9e2ca3b7",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "d49ef227a585f164a8e1e10210c4a140921e4be95972fdecfd5ae69113094394",
+      "chain_seq": 147,
+      "id": "95145aff-48b9-41e4-96af-80ec8cd2b66e",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
+        "expires_at": "2026-07-23T16:04:10Z",
+        "resource_ref": "wms:inventory",
+        "role": "operator",
+        "sponsor_id": "vn-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:10.413735Z",
+      "prev_hash": "f19c5e0e30d10e8ffdc002b7c2d71cbaecddb98aa203ff76a2a9bf06b28df462",
+      "target_ref": "daf45792-4b94-494b-9cde-1cacc77e4abe",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "86d72530c3eed22051269bd0fcb97986066dd114ca666dedcd2f03b8410f2590",
+      "chain_seq": 148,
+      "id": "85e35e04-62a5-4320-b22e-bda3409171dc",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:10.426998Z",
+      "prev_hash": "d49ef227a585f164a8e1e10210c4a140921e4be95972fdecfd5ae69113094394",
+      "target_ref": "b860cb57-26e5-43a4-99ef-3c9d80caf0e9",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "def583b096d7ade0357f837d2e60f04b70a7578f5a7bbae564486e27ebecdc38",
+      "chain_seq": 149,
+      "id": "487093b8-aba7-4b32-8cca-501a962f4bbd",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@vn-umbrella-logistics.example",
+        "expires_at": "2026-07-23T16:04:10Z",
+        "grant_id": "b860cb57-26e5-43a4-99ef-3c9d80caf0e9"
+      },
+      "occurred_at": "2026-06-23T16:04:10.426998Z",
+      "prev_hash": "86d72530c3eed22051269bd0fcb97986066dd114ca666dedcd2f03b8410f2590",
+      "target_ref": "daf45792-4b94-494b-9cde-1cacc77e4abe",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "orphan.detected",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "85bb9e18d1cd0345e28cafaf4981e431eb190ae532028962e932568044489e15",
+      "chain_seq": 150,
+      "id": "c4840cd1-c4ee-4dd3-878a-cd8a825dc387",
+      "kind": "orphan_detected",
+      "metadata": {
+        "anomaly_id": "523be670-f41b-4c96-b3e8-91ffdea9a2d0",
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "wms:inventory",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "wms:dispatcher",
+          "role": "operator"
+        },
+        "rule_id": "ccd01025-2fb0-4d9a-8fcf-86a464d94a1f",
+        "rule_name": "Dispatcher must not also adjust inventory",
+        "severity": "medium",
+        "subject": "ext-dual-role@vn-umbrella-logistics.example"
+      },
+      "occurred_at": "2026-06-23T16:04:10.4513Z",
+      "prev_hash": "def583b096d7ade0357f837d2e60f04b70a7578f5a7bbae564486e27ebecdc38",
+      "target_ref": "523be670-f41b-4c96-b3e8-91ffdea9a2d0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "orphan.disposition.flagged",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "fe40c4a5ffadd1f1b77a37be19a8a12e4541809605e1968776fd65ed17632c08",
+      "chain_seq": 151,
+      "id": "37e86697-3e12-42f0-94d3-7d0d85972438",
+      "kind": "orphan_disposition",
+      "metadata": {
+        "anomaly_id": "523be670-f41b-4c96-b3e8-91ffdea9a2d0",
+        "anomaly_kind": "sod_violation",
+        "automated": true,
+        "disposition": "flagged",
+        "severity": "medium",
+        "subject": "ext-dual-role@vn-umbrella-logistics.example"
+      },
+      "occurred_at": "2026-06-23T16:04:10.4513Z",
+      "prev_hash": "85bb9e18d1cd0345e28cafaf4981e431eb190ae532028962e932568044489e15",
+      "target_ref": "523be670-f41b-4c96-b3e8-91ffdea9a2d0",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "compliance.export",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "b8eb411acfa10fe677c566fe9e61e51e3b9ad35ae59f75757eb6fae0ce53d79e",
+      "chain_seq": 152,
+      "id": "d8c48e2d-fccc-40ba-a10b-0a0aaf354adb",
+      "kind": "evidence_exported",
+      "metadata": {
+        "chain_status": "valid",
+        "content_sha256": "f335d08900d042bd2f23f291a90e3f71bbe255dd64917dc0fc70feea94e6005c",
+        "evidence_total": 151,
+        "framework": "SOC 2",
+        "mfa_satisfied": true
+      },
+      "occurred_at": "2026-06-23T16:04:10.502812Z",
+      "prev_hash": "fe40c4a5ffadd1f1b77a37be19a8a12e4541809605e1968776fd65ed17632c08",
+      "target_ref": "SOC 2",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "discovery.agent_reachable_import",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "29ad66bfd3f5f6442d7261b79d976041e909d99107d34ea818a0a8849ab9897e",
+      "chain_seq": 153,
+      "id": "6d27f8d9-3f6a-4675-b6ba-f26fe7374e7b",
+      "kind": "other",
+      "metadata": {
+        "assets_new": 0,
+        "reported": 5,
+        "scan_id": "4f226d42-7f49-4aaf-931f-0e0327c93272"
+      },
+      "occurred_at": "2026-06-23T16:04:10.587817Z",
+      "prev_hash": "b8eb411acfa10fe677c566fe9e61e51e3b9ad35ae59f75757eb6fae0ce53d79e",
+      "target_ref": "f0adc414-340b-4c4c-9386-b3ad85ea001d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "pam.target.created",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "69f3ce281a28858ad41e016a0d6c7200a8a498c17bec210ec346edb2c9dbe058",
+      "chain_seq": 154,
+      "id": "f01df5a9-0541-424d-bbcc-06c8d159ee1e",
+      "kind": "other",
+      "metadata": {
+        "address": "build-01.corp.internal:22",
+        "protocol": "ssh"
+      },
+      "occurred_at": "2026-06-23T16:04:10.623897Z",
+      "prev_hash": "29ad66bfd3f5f6442d7261b79d976041e909d99107d34ea818a0a8849ab9897e",
+      "target_ref": "973969b4-2136-4f93-9fb2-8a17c8a3163d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "discovery.onboard",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "45100faad032b4ad0d9e11bd24da4a296c44ae00daca73e30393ab634d07587d",
+      "chain_seq": 155,
+      "id": "edfc83b5-aa3e-4cf7-9f5d-de7642fabc21",
+      "kind": "other",
+      "metadata": {
+        "asset_id": "53cdc37e-f4ec-453e-aded-198bba63b7de",
+        "trigger": "manual"
+      },
+      "occurred_at": "2026-06-23T16:04:10.642189Z",
+      "prev_hash": "69f3ce281a28858ad41e016a0d6c7200a8a498c17bec210ec346edb2c9dbe058",
+      "target_ref": "973969b4-2136-4f93-9fb2-8a17c8a3163d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "discovery.policy_update",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "d827421459a9d9ba42a066b6ad9dc7cb539a9f4f395b12ba820216cd0a0311d7",
+      "chain_seq": 156,
+      "id": "e7c27e4a-fdfc-40e3-aa4e-18cf2bedca00",
+      "kind": "other",
+      "metadata": {
+        "active_sweep": false,
+        "create_targets": false,
+        "enabled": true,
+        "has_credential": false,
+        "rules": 1
+      },
+      "occurred_at": "2026-06-23T16:04:10.660766Z",
+      "prev_hash": "45100faad032b4ad0d9e11bd24da4a296c44ae00daca73e30393ab634d07587d",
+      "target_ref": "4a50e3a5-3e55-4415-8291-33a8284661bf",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "action": "pam.rotation_policy.updated",
+      "actor": "vn-umbrella-logistics-owner",
+      "chain_hash": "6553538473abb3a94e23a9b2fc3874ff4db08d5b1a5461762db69cddd76972d9",
+      "chain_seq": 157,
+      "id": "fb89a836-00c3-45b9-8327-452e210d0a8d",
+      "kind": "other",
+      "metadata": {
+        "dynamic_enabled": false,
+        "enabled": true,
+        "interval_seconds": 0,
+        "mode": "disabled",
+        "rotate_on_checkin": true
+      },
+      "occurred_at": "2026-06-23T16:04:10.689031Z",
+      "prev_hash": "d827421459a9d9ba42a066b6ad9dc7cb539a9f4f395b12ba820216cd0a0311d7",
+      "target_ref": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     }
   ]
 }

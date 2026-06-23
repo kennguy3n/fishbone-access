@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-18T14:20:01.210676Z",
+      "created_at": "2026-06-23T16:04:14.807313Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,50 @@
           "resource": "t24:privileged-admin",
           "role": "operator"
         },
-        "rule_id": "c8f99d2e-4bc9-4bff-8535-8a12970d395f",
+        "rule_id": "25949643-4324-40d5-b55f-581f0a5d4869",
         "rule_name": "Core-banking admin must not run treasury settlement",
         "severity": "critical",
         "subject": "ext-dual-role@ae-northwind-finance.example"
       },
-      "detected_at": "2026-06-18T14:20:01.210676Z",
+      "detected_at": "2026-06-23T16:04:14.807313Z",
       "disposition": "flagged",
-      "fingerprint": "fea226a8b44ff4f5bf98c7015118b111aeafd3633a43bbf4171fae8fb8f808b9",
-      "id": "e55bc158-cb0b-4fb5-b7b5-3db730f8b227",
+      "fingerprint": "4340a193e921fda4efcd7975e6c93e24ab841ba6954516805c7f4383f78cf714",
+      "id": "32fcf573-98ed-42a2-a38f-cc23cedfc5ff",
       "kind": "sod_violation",
-      "rule_id": "c8f99d2e-4bc9-4bff-8535-8a12970d395f",
+      "rule_id": "25949643-4324-40d5-b55f-581f0a5d4869",
       "severity": "critical",
       "subject": "ext-dual-role@ae-northwind-finance.example",
-      "updated_at": "2026-06-18T14:20:01.210676Z",
-      "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
+      "updated_at": "2026-06-23T16:04:14.807313Z",
+      "workspace_id": "f7c487c2-d1c6-493a-ac6e-bcb00a673f05"
+    },
+    {
+      "created_at": "2026-06-23T16:00:01.717186Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "t24:treasury",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "t24:privileged-admin",
+          "role": "operator"
+        },
+        "rule_id": "35398e7a-f2f9-4bf6-867a-79bd8d792e76",
+        "rule_name": "Core-banking admin must not run treasury settlement",
+        "severity": "critical",
+        "subject": "ext-dual-role@ae-northwind-finance.example"
+      },
+      "detected_at": "2026-06-23T16:00:01.717186Z",
+      "disposition": "flagged",
+      "fingerprint": "c2cd76075d95b4df8fb1bae0cb996475587476c8ce0afcc278e8aa7bcf01cf6a",
+      "id": "7042b41b-ecd6-48a9-9f35-6c7b17e25776",
+      "kind": "sod_violation",
+      "rule_id": "35398e7a-f2f9-4bf6-867a-79bd8d792e76",
+      "severity": "critical",
+      "subject": "ext-dual-role@ae-northwind-finance.example",
+      "updated_at": "2026-06-23T16:00:01.717186Z",
+      "workspace_id": "f7c487c2-d1c6-493a-ac6e-bcb00a673f05"
     }
   ]
 }

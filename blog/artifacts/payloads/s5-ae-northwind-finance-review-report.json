@@ -1,12 +1,12 @@
 {
   "report": {
-    "certified": 1,
+    "certified": 4,
     "escalated": 0,
     "name": "Q2 2026 DESC privileged-access review",
     "pending": 0,
-    "review_id": "4e28c273-c398-417f-97cd-921adf2d938c",
+    "review_id": "887179f6-0c79-4669-9f12-09651eb2e5bd",
     "revoked": 1,
     "state": "active",
-    "total": 2
+    "total": 5
   }
 }

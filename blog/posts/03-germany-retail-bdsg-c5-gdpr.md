@@ -27,7 +27,7 @@ producing the largest active policy set of any workspace: **8 active policies, 0
 drafts**, over a fabric of **GitHub** (e-commerce), **Datadog** (observability),
 **Azure** (cloud infra), and a **manual SAP retail-POS** target.
 
-![Initech Retail dashboard — 8 active policies across BDSG, C5, GDPR, PCI-DSS](../artifacts/screenshots/s3-de-dashboard.png)
+![Initech Retail dashboard — 8 active policies across BDSG, C5, GDPR, PCI-DSS, with the security-health scorecard](../artifacts/screenshots/s3-de-dashboard.png)
 
 The connector catalogue is faceted so Dmitri can find providers by category —
 the live facets include `Cloud Infra`, `DevOps`, `Observability`, `ERP`,

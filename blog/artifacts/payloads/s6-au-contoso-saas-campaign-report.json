@@ -1,7 +1,7 @@
 {
   "all_decided": true,
-  "campaign_id": "5be7b302-e111-4112-8656-b5da768c5bb1",
-  "certified": 0,
+  "campaign_id": "c6a9aed8-616c-4c85-a0fd-17a8e6f509f3",
+  "certified": 3,
   "escalated": 0,
   "framework": "SOC 2",
   "name": "Q2 2026 SOC 2 logical-access certification",
@@ -9,5 +9,5 @@
   "pending": 0,
   "revoked": 1,
   "state": "closed",
-  "total": 1
+  "total": 4
 }

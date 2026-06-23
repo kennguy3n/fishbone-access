@@ -29,7 +29,7 @@ Globex seeds to **5 active policies, 0 drafts**, built from the
 clinical-role target — because the EHR has no self-service provisioning API, the
 manual connector fulfils it locally and still records the lifecycle.
 
-![Globex Health dashboard — 5 active HIPAA/CCPA policies](../artifacts/screenshots/s2-us-dashboard.png)
+![Globex Health dashboard — 5 active HIPAA/CCPA policies, plus the security-health scorecard and resources card](../artifacts/screenshots/s2-us-dashboard.png)
 
 ## Access requests carry risk
 

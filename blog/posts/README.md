@@ -84,9 +84,11 @@ Scenario definitions and the evidence map live in
   after seeding, including the multi-locale set (en, zh-Hans, de, ar, vi) over
   the same seeded data, produced by the Playwright harness
   [`../harness/screenshots`](../harness/screenshots/shoot.mjs) (`make blog-screenshots`).
-  Identities come from `minttokens` and the deep-link IDs are read from the
-  committed capture payloads, so the set regenerates against whatever was last
-  seeded — no hand-navigation, no hard-coded UUIDs.
+  The set includes the new dashboard security-health scorecard, the global help
+  drawer, the "What's New" resources card, and the PAM overview page. Identities
+  come from `minttokens` and the deep-link IDs are read from the committed capture
+  payloads, so the set regenerates against whatever was last seeded — no
+  hand-navigation, no hard-coded UUIDs.
 
 ## Reproducing the artifacts
 

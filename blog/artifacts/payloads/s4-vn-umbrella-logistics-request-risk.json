@@ -1,30 +1,34 @@
 {
+  "available_transitions": [
+    "cancelled",
+    "provisioning"
+  ],
   "request": {
-    "connector_id": "acf87f18-b588-48f4-87ff-f1549095b970",
-    "created_at": "2026-06-18T14:17:02.073418Z",
+    "connector_id": "0008e12a-533f-43d1-aeea-43ce802adbc4",
+    "created_at": "2026-06-23T16:04:08.527936Z",
     "deleted_at": null,
-    "id": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
+    "id": "07177e89-1a66-4eab-b6ac-3617b0323e30",
     "justification": "PDPD personal-data processing register review.",
     "requester_id": "vn-umbrella-logistics-owner",
     "resource_ref": "pii:decree13-register",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "vn-umbrella-logistics-owner",
-    "updated_at": "2026-06-18T14:17:02.086912Z",
-    "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+    "updated_at": "2026-06-23T16:04:08.566089Z",
+    "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
   },
   "risk": {
-    "created_at": "2026-06-18T14:17:02.078938Z",
-    "degraded": false,
+    "created_at": "2026-06-23T16:04:08.54031Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "cac46042-c261-4fb0-a9e8-6b0fad56d7f3",
+    "id": "42ecf359-9df3-4c9b-a138-577ce0999dea",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +37,13 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "3a45587d-d2ef-415d-8387-5d7a6fa2d04e",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-18T14:17:02.078938Z",
-    "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
-  }
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "07177e89-1a66-4eab-b6ac-3617b0323e30",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-23T16:04:08.54031Z",
+    "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+  },
+  "terminal": false
 }

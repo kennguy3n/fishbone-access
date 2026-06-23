@@ -26,7 +26,7 @@ policies** over **GitHub** (product eng), **GCP** (production), **Slack**
 Essential-Eight story directly — *Restrict administrative privileges*,
 *Privileged prod access — admins only*, *Deny-all to production by default*.
 
-![Contoso SaaS dashboard — 6 SaaS policies, Essential Eight admin-restriction theme](../artifacts/screenshots/s6-au-dashboard.png)
+![Contoso SaaS dashboard — 6 SaaS policies, Essential Eight admin-restriction theme, with the security-health scorecard](../artifacts/screenshots/s6-au-dashboard.png)
 
 Contoso then runs the lifecycle: RevOps and time-boxed deploy grants, a SOC 2
 evidence-sampling auditor request, a SOC 2 Type II recertification review, and a

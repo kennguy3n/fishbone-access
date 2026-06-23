@@ -1,12 +1,12 @@
 {
   "report": {
-    "certified": 1,
+    "certified": 4,
     "escalated": 0,
     "name": "Q2 2026 BSI C5 + GDPR access review",
     "pending": 0,
-    "review_id": "09a9deac-9aa5-4f32-9b8d-abd3829d43c5",
+    "review_id": "954152bd-3012-428b-b60e-a962237beb8c",
     "revoked": 1,
     "state": "active",
-    "total": 2
+    "total": 5
   }
 }

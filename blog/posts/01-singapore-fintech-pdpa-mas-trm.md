@@ -71,9 +71,11 @@ re-deriving it.
 
 After simulate-and-promote, the workspace has **6 active policies, 0 drafts**.
 The dashboard is deliberately blunt: "Who can reach what — and what still needs
-testing before rollout."
+testing before rollout." The new security-health scorecard gives Priya an
+at-a-glance posture check, and the resources card surfaces ShieldNet 360 guidance
+without leaving the page.
 
-![Acme Payments dashboard — 6 active policies, 0 drafts, 1 open access request](../artifacts/screenshots/s1-sg-dashboard.png)
+![Acme Payments dashboard — 6 active policies, 0 drafts, 1 open access request, security-health scorecard, and resources card](../artifacts/screenshots/s1-sg-dashboard.png)
 
 The policy list shows the mix the two packs produced — grants for the
 service-team and platform-admin paths, and **default-deny** rows that are the
@@ -483,7 +485,7 @@ files and match the manifest offline — no trust in Acme's word required.
 The same seeded data re-renders in 12 locales. Here is Acme's dashboard in
 Simplified Chinese — the *same* 6 policies, same counts, fully translated chrome:
 
-![Acme's dashboard in Simplified Chinese — same data, translated UI](../artifacts/screenshots/s1-sg-dashboard-zh-Hans.png)
+![Acme's dashboard in Simplified Chinese — same data, translated UI, with the security-health scorecard and resources card](../artifacts/screenshots/s1-sg-dashboard-zh-Hans.png)
 
 For a Singapore SME with a multilingual workforce, that is the difference between
 a control an operator actually understands and one they click through blindly.

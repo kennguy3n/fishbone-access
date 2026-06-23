@@ -1,30 +1,34 @@
 {
+  "available_transitions": [
+    "cancelled",
+    "provisioning"
+  ],
   "request": {
-    "connector_id": "509ee3e7-1dbe-48f8-8659-8332a28ac9cc",
-    "created_at": "2026-06-18T14:12:31.376902Z",
+    "connector_id": "66bf1a96-7ac7-4e2f-b511-8e0ad8ac1317",
+    "created_at": "2026-06-23T16:04:00.332711Z",
     "deleted_at": null,
-    "id": "8923761e-feb2-415a-b6f0-4c6949ffc182",
+    "id": "e2e2c82f-7194-4567-bb9b-0166fbdc6f8d",
     "justification": "CCPA/CPRA consumer data-subject access request fulfilment.",
     "requester_id": "us-globex-health-owner",
     "resource_ref": "phi:export",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "us-globex-health-owner",
-    "updated_at": "2026-06-18T14:12:31.389922Z",
-    "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+    "updated_at": "2026-06-23T16:04:00.368048Z",
+    "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
   },
   "risk": {
-    "created_at": "2026-06-18T14:12:31.382079Z",
-    "degraded": false,
+    "created_at": "2026-06-23T16:04:00.3452Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "72e6075b-d62a-4cde-92b0-4271cc3e2c7a",
+    "id": "b2a54df7-5962-4b5d-9ba2-e35d04d3feff",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +37,13 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "8923761e-feb2-415a-b6f0-4c6949ffc182",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-18T14:12:31.382079Z",
-    "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
-  }
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "e2e2c82f-7194-4567-bb9b-0166fbdc6f8d",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-23T16:04:00.3452Z",
+    "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
+  },
+  "terminal": false
 }

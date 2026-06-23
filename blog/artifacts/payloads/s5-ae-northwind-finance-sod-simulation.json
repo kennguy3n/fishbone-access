@@ -15,9 +15,9 @@
       "catastrophic_reasons": [
         "introduces high/critical separation-of-duties toxic combination(s)"
       ],
-      "new_grant_pairs": 2,
+      "new_grant_pairs": 1,
       "pair_count": 2,
-      "redundant_pairs": 0,
+      "redundant_pairs": 1,
       "resource_count": 2,
       "sod_violations": [
         {
@@ -30,7 +30,22 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "c8f99d2e-4bc9-4bff-8535-8a12970d395f",
+          "rule_id": "25949643-4324-40d5-b55f-581f0a5d4869",
+          "rule_name": "Core-banking admin must not run treasury settlement",
+          "severity": "critical",
+          "subject": "ae-northwind-finance-owner"
+        },
+        {
+          "conflicting": {
+            "resource": "t24:treasury",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "t24:privileged-admin",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "35398e7a-f2f9-4bf6-867a-79bd8d792e76",
           "rule_name": "Core-banking admin must not run treasury settlement",
           "severity": "critical",
           "subject": "ae-northwind-finance-owner"

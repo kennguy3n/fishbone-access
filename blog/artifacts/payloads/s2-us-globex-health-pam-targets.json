@@ -1,56 +1,69 @@
 {
   "targets": [
     {
-      "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-18T14:13:31.588174Z",
+      "address": "build-01.corp.internal:22",
+      "created_at": "2026-06-23T16:04:03.168023Z",
       "deleted_at": null,
-      "id": "a88efb66-4bef-4332-8ce0-4c6e98a07b65",
+      "id": "72a39db1-bda4-4ec0-b342-8fb1fa92e6cf",
+      "lease_ttl_seconds": 0,
+      "name": "build-01.corp.internal",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-23T16:04:03.168023Z",
+      "username": "svc_access",
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
+    },
+    {
+      "address": "bastion.corp.internal:22",
+      "created_at": "2026-06-23T15:53:31.742465Z",
+      "deleted_at": null,
+      "id": "b3010c93-a593-4608-a44b-57fd06cdfa54",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:13:31.588174Z",
+      "updated_at": "2026-06-23T15:53:31.742465Z",
       "username": "svc_access",
-      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
     },
     {
       "address": "ehr-bastion.globex.internal:22",
-      "created_at": "2026-06-18T14:13:01.359838Z",
+      "created_at": "2026-06-23T15:53:25.411766Z",
       "deleted_at": null,
-      "id": "037a5d83-18b4-4958-81dc-4ac26a2d5627",
+      "id": "0cbd0606-a259-4ad0-b523-44f717ccf9dd",
       "lease_ttl_seconds": 1800,
       "name": "EHR bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-18T14:13:01.359838Z",
+      "updated_at": "2026-06-23T15:53:25.411766Z",
       "username": "ehr-ops",
-      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
     },
     {
       "address": "ehr-db-1.globex.internal:5432",
-      "created_at": "2026-06-18T14:13:01.352358Z",
+      "created_at": "2026-06-23T15:52:28.009672Z",
       "deleted_at": null,
-      "id": "6863a44f-b4cd-4315-9fd9-dc59f491adde",
+      "id": "5513018b-568f-4b36-b05a-06839a6bd74f",
       "lease_ttl_seconds": 900,
       "name": "ePHI datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:13:01.352358Z",
+      "updated_at": "2026-06-23T15:52:28.009672Z",
       "username": "phi_reader",
-      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
     },
     {
       "address": "clinical-app-1.globex.internal:22",
-      "created_at": "2026-06-18T14:12:32.240733Z",
+      "created_at": "2026-06-23T15:52:27.987962Z",
       "deleted_at": null,
-      "id": "634979bb-d2da-40fc-9b81-b5a953c7d13e",
+      "id": "4c5630ad-0231-4199-9af8-e77b27ae887a",
       "lease_ttl_seconds": 900,
       "name": "EHR app server (clinical-app-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:12:32.240733Z",
+      "updated_at": "2026-06-23T15:52:27.987962Z",
       "username": "ehr-ops",
-      "workspace_id": "5f47ab4e-a66e-480d-9539-e5ba1e3dce45"
+      "workspace_id": "c3b2e2f1-334d-43aa-a31a-bb2520fe42be"
     }
   ]
 }

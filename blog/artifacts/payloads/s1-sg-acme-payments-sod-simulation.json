@@ -15,9 +15,9 @@
       "catastrophic_reasons": [
         "introduces high/critical separation-of-duties toxic combination(s)"
       ],
-      "new_grant_pairs": 2,
+      "new_grant_pairs": 1,
       "pair_count": 2,
-      "redundant_pairs": 0,
+      "redundant_pairs": 1,
       "resource_count": 2,
       "sod_violations": [
         {
@@ -30,7 +30,22 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "3449778e-e24b-4b44-80e3-a21eaa63ac54",
+          "rule_id": "4ccdb9f1-6cca-490b-98e4-e00390248f5f",
+          "rule_name": "Ledger admin must not also approve reconciliation",
+          "severity": "critical",
+          "subject": "sg-acme-payments-owner"
+        },
+        {
+          "conflicting": {
+            "resource": "ledger:reconcile",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "ledger:admin",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "efbee508-0d32-463b-9b04-42b317a90c92",
           "rule_name": "Ledger admin must not also approve reconciliation",
           "severity": "critical",
           "subject": "sg-acme-payments-owner"

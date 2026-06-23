@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-18T14:17:02.734985Z",
+      "created_at": "2026-06-23T16:04:10.4513Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,50 @@
           "resource": "wms:dispatcher",
           "role": "operator"
         },
-        "rule_id": "43b7bc5d-daf0-4acd-a186-ecc77039db56",
+        "rule_id": "ccd01025-2fb0-4d9a-8fcf-86a464d94a1f",
         "rule_name": "Dispatcher must not also adjust inventory",
         "severity": "medium",
         "subject": "ext-dual-role@vn-umbrella-logistics.example"
       },
-      "detected_at": "2026-06-18T14:17:02.734985Z",
+      "detected_at": "2026-06-23T16:04:10.4513Z",
       "disposition": "flagged",
-      "fingerprint": "34709d50b09c500d6bb823e9366c672413e432270e57dbb70580308011f758a1",
-      "id": "fcc88fe5-0ebc-44f9-b5ae-6f7bf3aec636",
+      "fingerprint": "a751826c7ee8290b474258672011b6d6c355623f5a5706304e779f913062eda6",
+      "id": "523be670-f41b-4c96-b3e8-91ffdea9a2d0",
       "kind": "sod_violation",
-      "rule_id": "43b7bc5d-daf0-4acd-a186-ecc77039db56",
+      "rule_id": "ccd01025-2fb0-4d9a-8fcf-86a464d94a1f",
       "severity": "medium",
       "subject": "ext-dual-role@vn-umbrella-logistics.example",
-      "updated_at": "2026-06-18T14:17:02.734985Z",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "updated_at": "2026-06-23T16:04:10.4513Z",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "created_at": "2026-06-23T15:57:04.705504Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "wms:inventory",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "wms:dispatcher",
+          "role": "operator"
+        },
+        "rule_id": "33341b3f-8ab5-4537-b0c0-a6d9ff4d085e",
+        "rule_name": "Dispatcher must not also adjust inventory",
+        "severity": "medium",
+        "subject": "ext-dual-role@vn-umbrella-logistics.example"
+      },
+      "detected_at": "2026-06-23T15:57:04.705504Z",
+      "disposition": "flagged",
+      "fingerprint": "af0559964bc5d458542efc523b02392a327a3f9ca17ff1d7f5eda757f0df978e",
+      "id": "3690592f-52de-4d3d-9995-78a2c6f64670",
+      "kind": "sod_violation",
+      "rule_id": "33341b3f-8ab5-4537-b0c0-a6d9ff4d085e",
+      "severity": "medium",
+      "subject": "ext-dual-role@vn-umbrella-logistics.example",
+      "updated_at": "2026-06-23T15:57:04.705504Z",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     }
   ]
 }

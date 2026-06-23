@@ -36,7 +36,7 @@ PACK ae-pdpl-desc — "UAE — PDPL + DESC"
   • deny   "Default-deny personal data"          control: UAE PDPL Art. 9 — Access restriction
 ```
 
-![Northwind Finance dashboard — 6 PDPL/DESC/ISO policies, privileged-access theme](../artifacts/screenshots/s5-ae-dashboard.png)
+![Northwind Finance dashboard — 6 PDPL/DESC/ISO policies, privileged-access theme, with the security-health scorecard](../artifacts/screenshots/s5-ae-dashboard.png)
 
 ## Right-to-left, natively
 
@@ -45,10 +45,24 @@ because Arabic is **right-to-left**. The entire layout mirrors: the navigation
 rail moves to the right, the content flows RTL, the chrome is fully translated.
 This is the same six policies and the same counts, re-rendered:
 
-![Northwind's dashboard in Arabic — full RTL mirroring, sidebar on the right](../artifacts/screenshots/s5-ae-dashboard-ar.png)
+![Northwind's dashboard in Arabic — full RTL mirroring, sidebar on the right, with the security-health scorecard](../artifacts/screenshots/s5-ae-dashboard-ar.png)
 
 For a Dubai firm, RTL that *actually mirrors* (rather than just translating
 left-to-right strings) is the difference between a usable console and a broken
+one.
+
+## PAM, explained before it is used
+
+Sofia is the security engineer, but Northwind's day-to-day approvers may be
+compliance officers who do not live inside PAM terminology. The `/pam` overview
+page explains the lifecycle in plain language — what a privileged target is, why
+leases are just-in-time, and how session recording fits into the audit chain —
+before the operator touches the target registry or the lease queue:
+
+![Northwind's PAM overview page — privileged access explained in plain language before the operator registers a target](../artifacts/screenshots/s5-ae-pam-overview.png)
+
+This page is the first stop in the PAM section, so an approver can understand
+*why* a 15-minute lease and step-up MFA matter before they are asked to approve
 one.
 
 ## The privileged-access review is real

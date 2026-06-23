@@ -2,25 +2,47 @@
   "leases": [
     {
       "approved_by": "vn-umbrella-logistics-owner",
-      "created_at": "2026-06-18T14:17:02.646113Z",
+      "created_at": "2026-06-23T16:04:10.099118Z",
       "deleted_at": null,
-      "expires_at": "2026-06-18T14:47:02.651782Z",
-      "granted_at": "2026-06-18T14:17:02.651782Z",
-      "id": "879082ee-d13a-4d93-9411-58601cdeda7d",
+      "expires_at": "2026-06-23T16:34:10.115762Z",
+      "granted_at": "2026-06-23T16:04:10.115762Z",
+      "id": "08668c4c-a1e5-4c05-baa6-aeb0939ef8cc",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "vn-umbrella-logistics-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": false,
+      "risk_degraded": true,
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
-      "risk_reason": "rule-based risk=low from 1 factor(s)",
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "vn-umbrella-logistics-owner",
-      "target_id": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
-      "updated_at": "2026-06-18T14:17:02.651782Z",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "target_id": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "updated_at": "2026-06-23T16:04:10.115762Z",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "approved_by": "vn-umbrella-logistics-owner",
+      "created_at": "2026-06-23T15:57:04.144441Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-23T16:27:04.167928Z",
+      "granted_at": "2026-06-23T15:57:04.167928Z",
+      "id": "6efe24a4-9c2d-49b0-ae45-8a207e0f0fd6",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "vn-umbrella-logistics-owner",
+      "requested_ttl_seconds": 1800,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "vn-umbrella-logistics-owner",
+      "target_id": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
+      "updated_at": "2026-06-23T15:57:04.167928Z",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     }
   ]
 }

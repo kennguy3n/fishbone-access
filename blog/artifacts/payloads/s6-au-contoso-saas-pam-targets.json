@@ -1,56 +1,69 @@
 {
   "targets": [
     {
-      "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-18T14:23:31.666425Z",
+      "address": "build-01.corp.internal:22",
+      "created_at": "2026-06-23T16:04:17.256067Z",
       "deleted_at": null,
-      "id": "861339ce-4a89-495b-aaa0-73ffe17a5355",
+      "id": "5872acec-c98c-4482-abd7-b1abdc976092",
+      "lease_ttl_seconds": 0,
+      "name": "build-01.corp.internal",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-23T16:04:17.256067Z",
+      "username": "svc_access",
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
+    },
+    {
+      "address": "bastion.corp.internal:22",
+      "created_at": "2026-06-23T16:03:32.05666Z",
+      "deleted_at": null,
+      "id": "1cb1d1c2-21fa-4447-8ed3-949d17fc8380",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:23:31.666425Z",
+      "updated_at": "2026-06-23T16:03:32.05666Z",
       "username": "svc_access",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     },
     {
       "address": "prod-bastion.contoso.internal:22",
-      "created_at": "2026-06-18T14:23:01.451475Z",
+      "created_at": "2026-06-23T16:03:01.603229Z",
       "deleted_at": null,
-      "id": "10ce6db8-7620-4d62-aaf9-4bb63576ee71",
+      "id": "c00ef309-1747-4cc4-b726-80374cb721e8",
       "lease_ttl_seconds": 1800,
       "name": "Prod bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-18T14:23:01.451475Z",
+      "updated_at": "2026-06-23T16:03:01.603229Z",
       "username": "sre",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     },
     {
       "address": "prod-db-1.contoso-saas.internal:5432",
-      "created_at": "2026-06-18T14:22:31.360594Z",
+      "created_at": "2026-06-23T16:02:31.519739Z",
       "deleted_at": null,
-      "id": "ebf80297-165a-4e4a-8dcb-c3b1657eeb68",
+      "id": "f6fbda6a-0fe6-48b1-92f7-6f6b98a4dc9e",
       "lease_ttl_seconds": 1800,
       "name": "Production datastore (PostgreSQL)",
       "protocol": "postgres",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:22:31.360594Z",
+      "updated_at": "2026-06-23T16:02:31.519739Z",
       "username": "app_ro",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     },
     {
       "address": "prod-au-1.contoso-saas.internal:22",
-      "created_at": "2026-06-18T14:22:02.252964Z",
+      "created_at": "2026-06-23T16:02:03.331215Z",
       "deleted_at": null,
-      "id": "1b8d2a0b-a8dc-452b-91ab-3fc199301d98",
+      "id": "d131b129-082f-4ea2-8241-660a18b3b1f5",
       "lease_ttl_seconds": 1800,
       "name": "GCP production VM (prod-au-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:22:02.252964Z",
+      "updated_at": "2026-06-23T16:02:03.331215Z",
       "username": "sre",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     }
   ]
 }

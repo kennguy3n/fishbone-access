@@ -1,7 +1,7 @@
 {
   "all_decided": true,
-  "campaign_id": "601e2003-b86f-4363-9ed8-6d23f1db4568",
-  "certified": 0,
+  "campaign_id": "e34bee37-dd7f-4fea-bcff-2c0d084c9453",
+  "certified": 3,
   "escalated": 0,
   "framework": "PCI-DSS",
   "name": "Q2 2026 PCI-DSS v4 cardholder-data certification",
@@ -9,5 +9,5 @@
   "pending": 0,
   "revoked": 1,
   "state": "closed",
-  "total": 1
+  "total": 4
 }

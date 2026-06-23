@@ -1,12 +1,12 @@
 {
   "report": {
-    "certified": 1,
+    "certified": 3,
     "escalated": 0,
     "name": "Q2 2026 PDPD Decree 13 access review",
     "pending": 0,
-    "review_id": "ac6a0484-f382-40e6-806c-6b921370823c",
+    "review_id": "19f6c8e5-ad11-446b-9cea-6935646107a7",
     "revoked": 1,
     "state": "active",
-    "total": 2
+    "total": 4
   }
 }

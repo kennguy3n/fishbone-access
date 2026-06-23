@@ -1,854 +1,854 @@
 {
-  "count": 98,
+  "count": 173,
   "records": [
     {
       "action": "rbac.member.added",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "0b415cee6554e3bd4c6d8481e8cf5853b5d25c2a7ba565028a337f8d03977a3d",
+      "chain_hash": "cf4fca1401d753a2f7574e34ae7e800d7eb15edbeb252d22a17309eb8379efe0",
       "chain_seq": 1,
-      "id": "a267d84b-a8fd-4a75-8290-e3bf98303e4f",
+      "id": "1cf23e3c-2ce7-4da0-bbb8-ae6ceab96866",
       "kind": "other",
       "metadata": {
         "new_role": "admin",
         "old_role": "",
         "target_user_id": "de-initech-retail-admin"
       },
-      "occurred_at": "2026-06-18T14:13:31.645797Z",
+      "occurred_at": "2026-06-23T15:53:32.000397Z",
       "target_ref": "de-initech-retail-admin",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "rbac.member.added",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "7964807565722592c54cd6511cc0a862cb5e9f2012079b0d87ae8a87c7b1cfdf",
+      "chain_hash": "5357333f353fae69e20a15cc1895c4918afac983ddb936533f5dc1141c2d818d",
       "chain_seq": 2,
-      "id": "15ffd324-6a40-4e25-b567-9af7f8e7d54e",
+      "id": "4f7fdaac-a30d-4e56-b1e9-c95b2cd9ab78",
       "kind": "other",
       "metadata": {
         "new_role": "security_admin",
         "old_role": "",
         "target_user_id": "de-initech-retail-security_admin"
       },
-      "occurred_at": "2026-06-18T14:13:31.651015Z",
-      "prev_hash": "0b415cee6554e3bd4c6d8481e8cf5853b5d25c2a7ba565028a337f8d03977a3d",
+      "occurred_at": "2026-06-23T15:53:32.018822Z",
+      "prev_hash": "cf4fca1401d753a2f7574e34ae7e800d7eb15edbeb252d22a17309eb8379efe0",
       "target_ref": "de-initech-retail-security_admin",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "rbac.member.added",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "0767ee2cddc8b554e71b1f0c6ebe1a7997b451eba2c1665fd63581b1387b63e4",
+      "chain_hash": "0198f0d1b37aa1c053b889b1e2d3265e013b5160452c005c8a6b60f95f78774f",
       "chain_seq": 3,
-      "id": "9c4b67a5-f269-427e-9d66-0076ec7d6c7d",
+      "id": "753a71e2-e4d4-4954-bf3d-89c2a209e082",
       "kind": "other",
       "metadata": {
         "new_role": "operator",
         "old_role": "",
         "target_user_id": "de-initech-retail-operator"
       },
-      "occurred_at": "2026-06-18T14:13:31.657201Z",
-      "prev_hash": "7964807565722592c54cd6511cc0a862cb5e9f2012079b0d87ae8a87c7b1cfdf",
+      "occurred_at": "2026-06-23T15:53:32.03475Z",
+      "prev_hash": "5357333f353fae69e20a15cc1895c4918afac983ddb936533f5dc1141c2d818d",
       "target_ref": "de-initech-retail-operator",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "rbac.member.added",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "77e683dcb1b7ce78d3b2dcdc5dd0d371b6cab38c1e4b917c5eb83e5d87e0b192",
+      "chain_hash": "41ef87cf7283eed5393026c9fe7cf602c6a3d91ad8f5a0745efd8bb17e71558b",
       "chain_seq": 4,
-      "id": "2f8b0089-6f59-45ff-b08f-f076a761a730",
+      "id": "fce2ef4b-2792-4e2f-803e-253a680b2733",
       "kind": "other",
       "metadata": {
         "new_role": "auditor",
         "old_role": "",
         "target_user_id": "de-initech-retail-auditor"
       },
-      "occurred_at": "2026-06-18T14:13:31.662049Z",
-      "prev_hash": "0767ee2cddc8b554e71b1f0c6ebe1a7997b451eba2c1665fd63581b1387b63e4",
+      "occurred_at": "2026-06-23T15:53:32.048461Z",
+      "prev_hash": "0198f0d1b37aa1c053b889b1e2d3265e013b5160452c005c8a6b60f95f78774f",
       "target_ref": "de-initech-retail-auditor",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "61520173cac6810650327940376548fd8154fa2b11e385b4004f60ecbe39bd7e",
+      "chain_hash": "98a45a4555b94e5744c3ba519116bbbc2978b51108117b8841553147fed86311",
       "chain_seq": 5,
-      "id": "18ccd6d9-4daa-4206-aabc-6a8064dcd4fb",
+      "id": "9f8eeb8a-b2b1-49d5-92e3-4f6fc3f1839d",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.682115Z",
-      "prev_hash": "77e683dcb1b7ce78d3b2dcdc5dd0d371b6cab38c1e4b917c5eb83e5d87e0b192",
-      "target_ref": "80315adf-1940-4cd7-8603-07a7f478a1e2",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.143506Z",
+      "prev_hash": "41ef87cf7283eed5393026c9fe7cf602c6a3d91ad8f5a0745efd8bb17e71558b",
+      "target_ref": "4bf8aaaa-384b-4cae-ba6e-3c207304f49d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "f18eac76907cfe3aca4715ca4449da4d370b5407ce87c42bfef64fecf6ffab67",
+      "chain_hash": "8be82e216728620698a37f1e2f17be9c795a0d471a2a9e2c7cb7770cc14b941c",
       "chain_seq": 6,
-      "id": "9f982057-a998-4509-8349-ae49bc44dd91",
+      "id": "dcb7b7b9-591d-4dc8-b4ec-6f4396d2fec1",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.683703Z",
-      "prev_hash": "61520173cac6810650327940376548fd8154fa2b11e385b4004f60ecbe39bd7e",
-      "target_ref": "98cfce75-cef0-4e39-84e4-0c162fd1a074",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.147252Z",
+      "prev_hash": "98a45a4555b94e5744c3ba519116bbbc2978b51108117b8841553147fed86311",
+      "target_ref": "3798b2b9-69cb-464b-a399-9c5ce5dddd8d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "b223c43e4f856eae09c807bca9bf5c9d87ca15a03f397060bd82b0a33a367d5c",
+      "chain_hash": "450a75f1b932e208635433e67cb612622d801f62b4a880123531469ac69227b5",
       "chain_seq": 7,
-      "id": "9044c6ac-57c2-4c18-b0d9-aac6ed759050",
+      "id": "adb71961-4d20-47d9-8cb2-a6c337e2699a",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.68521Z",
-      "prev_hash": "f18eac76907cfe3aca4715ca4449da4d370b5407ce87c42bfef64fecf6ffab67",
-      "target_ref": "633c84e5-7c43-4075-8d7d-742f2c65535f",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.149934Z",
+      "prev_hash": "8be82e216728620698a37f1e2f17be9c795a0d471a2a9e2c7cb7770cc14b941c",
+      "target_ref": "ec8002bb-27e7-4deb-afca-b0540fdf2023",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "2309b759bddc5c7bba5dceb002f955e758c36222aff95cbe0e611bb32b75fd86",
+      "chain_hash": "ab26cb84f7f595e4b1e8da5ae3f6ff2baa8fddc205328ba8b3b93ddd636932b5",
       "chain_seq": 8,
-      "id": "4bbad59c-10b5-4cd2-9855-effccc1faaf9",
+      "id": "9411584c-93e6-4e47-9abb-aefda0264093",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.689427Z",
-      "prev_hash": "b223c43e4f856eae09c807bca9bf5c9d87ca15a03f397060bd82b0a33a367d5c",
-      "target_ref": "85594c49-2e63-4cbf-b87f-9c6d91e13fec",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.162876Z",
+      "prev_hash": "450a75f1b932e208635433e67cb612622d801f62b4a880123531469ac69227b5",
+      "target_ref": "c86139f5-7e8b-4559-b930-ded437bd7fc1",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "8c5903c6489587d5b872897e274561136ce1e7a0319e7ca18ddf0c04de0e5e8c",
+      "chain_hash": "6d21854eeb24fec88b615e71552c0c047730ed7cef1881cabd6e633f43c21b17",
       "chain_seq": 9,
-      "id": "5160a678-78b8-4e43-99ba-8ccf2826c437",
+      "id": "c39a9830-5d90-4b01-a20b-b2b7d3ebd8ac",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.690804Z",
-      "prev_hash": "2309b759bddc5c7bba5dceb002f955e758c36222aff95cbe0e611bb32b75fd86",
-      "target_ref": "760fdda6-631e-4f01-9b59-8040138bd4c1",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.165919Z",
+      "prev_hash": "ab26cb84f7f595e4b1e8da5ae3f6ff2baa8fddc205328ba8b3b93ddd636932b5",
+      "target_ref": "77a1b7c3-d1d8-434b-9bfe-93e845e52e91",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "db6a7a46c49fa65904075b71b589e0d00aa5cbfad92e52e58f4722d927501f3f",
+      "chain_hash": "7799c2c02076f7cc596c032027cd54ec72ac797cb23da913f1fdfc07818104f7",
       "chain_seq": 10,
-      "id": "c2f68030-61d2-4efe-84e7-0c745b78d0ed",
+      "id": "efa131f1-f57a-41f3-bd4f-b965c7611e49",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.694866Z",
-      "prev_hash": "8c5903c6489587d5b872897e274561136ce1e7a0319e7ca18ddf0c04de0e5e8c",
-      "target_ref": "7deb07b1-69fe-41fd-b688-84ff42cbd753",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.181803Z",
+      "prev_hash": "6d21854eeb24fec88b615e71552c0c047730ed7cef1881cabd6e633f43c21b17",
+      "target_ref": "54f713c2-3098-4735-a849-160f4d4b7891",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "24b9bddc8e659e7d2b961313f5518ef36a585efc09b934fe65e958c8cce252da",
+      "chain_hash": "d15b5959e1f3d0a983672b4e5c275fe9cc964d62842ca420e0d46e836d1683c2",
       "chain_seq": 11,
-      "id": "3d6b9160-7380-4091-9a77-799e33c8f4c6",
+      "id": "b440ec73-682d-4ef5-8a90-80c35fa64392",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.69635Z",
-      "prev_hash": "db6a7a46c49fa65904075b71b589e0d00aa5cbfad92e52e58f4722d927501f3f",
-      "target_ref": "e4c74618-0ebf-4c67-939e-f05e57826552",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.185672Z",
+      "prev_hash": "7799c2c02076f7cc596c032027cd54ec72ac797cb23da913f1fdfc07818104f7",
+      "target_ref": "32c4acac-3e73-423c-9039-e6d767e4a3f6",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "198fc0f7246b3dc7e008b4a697272b62fa19edbbc17a7db24b0920e5128b34d8",
+      "chain_hash": "d0a6e054c0a8c028cd24761715af253fff501918e7819ceab24cb9ffb25f1a7e",
       "chain_seq": 12,
-      "id": "c52b6d35-60a1-474d-89e7-5c37b327089d",
+      "id": "29173ce8-9726-4157-97aa-8dc8e3f6ff3e",
       "kind": "policy_created",
-      "occurred_at": "2026-06-18T14:13:31.697851Z",
-      "prev_hash": "24b9bddc8e659e7d2b961313f5518ef36a585efc09b934fe65e958c8cce252da",
-      "target_ref": "f9254797-2120-4342-acee-85100c344ddd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.189026Z",
+      "prev_hash": "d15b5959e1f3d0a983672b4e5c275fe9cc964d62842ca420e0d46e836d1683c2",
+      "target_ref": "3feeabf9-deef-4e63-8809-ca2c85fd4986",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "cc5c00d88b5b74136504fee208d6d55d7e052ab0ca298cf4b71beb4a01f388a4",
+      "chain_hash": "ab58b8f67772178bbe22e3d128f5bf113f4cf85f145d544c62373dda276cf812",
       "chain_seq": 13,
-      "id": "dbeed665-5226-4d15-8691-36af51f9bd9c",
+      "id": "44d7b4f2-e738-412b-bca9-8f99a15c7361",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:13:31.751109Z",
-      "prev_hash": "198fc0f7246b3dc7e008b4a697272b62fa19edbbc17a7db24b0920e5128b34d8",
-      "target_ref": "f9254797-2120-4342-acee-85100c344ddd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.383278Z",
+      "prev_hash": "d0a6e054c0a8c028cd24761715af253fff501918e7819ceab24cb9ffb25f1a7e",
+      "target_ref": "3feeabf9-deef-4e63-8809-ca2c85fd4986",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "6784c872c4a895ba7b0f76c2c16d18278205186e56110f63f7c48d0562db8eef",
+      "chain_hash": "85ce5952808500e60e39177ce7e4e0233ab8d3e626292d2a3f47fd77b5c61c68",
       "chain_seq": 14,
-      "id": "05152851-fd2f-4b90-bc01-a6af3208594f",
+      "id": "9ca5aec9-1824-4366-8a77-c3699e844dc4",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:13:31.759248Z",
-      "prev_hash": "cc5c00d88b5b74136504fee208d6d55d7e052ab0ca298cf4b71beb4a01f388a4",
-      "target_ref": "e4c74618-0ebf-4c67-939e-f05e57826552",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.416433Z",
+      "prev_hash": "ab58b8f67772178bbe22e3d128f5bf113f4cf85f145d544c62373dda276cf812",
+      "target_ref": "32c4acac-3e73-423c-9039-e6d767e4a3f6",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "364af0fa74d301baa8307513726600348a8625d092f9221a0332d47340e848a6",
+      "chain_hash": "491920bfcd414486f59453ef9a5f113c60b409b3ed0d481df6c3ec69429d6ea5",
       "chain_seq": 15,
-      "id": "4c742b3d-757c-446d-83de-293c5ca96737",
+      "id": "a8d02b8f-5e52-4254-9c4e-08aff0e02404",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:13:31.767168Z",
-      "prev_hash": "6784c872c4a895ba7b0f76c2c16d18278205186e56110f63f7c48d0562db8eef",
-      "target_ref": "7deb07b1-69fe-41fd-b688-84ff42cbd753",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:53:32.449545Z",
+      "prev_hash": "85ce5952808500e60e39177ce7e4e0233ab8d3e626292d2a3f47fd77b5c61c68",
+      "target_ref": "54f713c2-3098-4735-a849-160f4d4b7891",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "102e1a880dfbcf7fd454be25e9e8bbd16fc34a123f549a3fa51957c41133c781",
+      "chain_hash": "388e943706819332b5909c6611c8fad0dff5ee6399505e43e67571351ca9e825",
       "chain_seq": 16,
-      "id": "857b55b0-a3d8-423e-9d3b-ee64a35d9609",
+      "id": "2ec6497b-0a0e-4eef-9a78-6f5dd144c63d",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:14:01.797636Z",
-      "prev_hash": "364af0fa74d301baa8307513726600348a8625d092f9221a0332d47340e848a6",
-      "target_ref": "760fdda6-631e-4f01-9b59-8040138bd4c1",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:54:01.514958Z",
+      "prev_hash": "491920bfcd414486f59453ef9a5f113c60b409b3ed0d481df6c3ec69429d6ea5",
+      "target_ref": "77a1b7c3-d1d8-434b-9bfe-93e845e52e91",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "df0ad809afd366e74e3d1b450e24f9890c6390d2bc60053ccb6a566a4492e2cb",
+      "chain_hash": "84c0d2cf1b0b3d752e3d66067f84339dfbcc448093f07c02794a27428bc49647",
       "chain_seq": 17,
-      "id": "d56f3a70-8f73-450e-9035-498d4dc5ae3e",
+      "id": "a74d98ca-965a-4e5a-82eb-cb19d9592014",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:14:31.879604Z",
-      "prev_hash": "102e1a880dfbcf7fd454be25e9e8bbd16fc34a123f549a3fa51957c41133c781",
-      "target_ref": "85594c49-2e63-4cbf-b87f-9c6d91e13fec",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:54:31.576188Z",
+      "prev_hash": "388e943706819332b5909c6611c8fad0dff5ee6399505e43e67571351ca9e825",
+      "target_ref": "c86139f5-7e8b-4559-b930-ded437bd7fc1",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "4e7cce7a09488f09e24ce3d1cd35fd176f3a6bab568e8bf362156928fd4ad918",
+      "chain_hash": "cfc77fa5090dc25d43fe9a596dae8506570f3c0e2030ebbc9d58f181a180c922",
       "chain_seq": 18,
-      "id": "15210d23-18b6-4a85-ac4f-4e0c997cbb0d",
+      "id": "1b06d3c0-dff2-40e1-868e-c1f23ffce69b",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:15:01.899717Z",
-      "prev_hash": "df0ad809afd366e74e3d1b450e24f9890c6390d2bc60053ccb6a566a4492e2cb",
-      "target_ref": "633c84e5-7c43-4075-8d7d-742f2c65535f",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:55:01.664958Z",
+      "prev_hash": "84c0d2cf1b0b3d752e3d66067f84339dfbcc448093f07c02794a27428bc49647",
+      "target_ref": "ec8002bb-27e7-4deb-afca-b0540fdf2023",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "af4909d1033dd3035965abaf7a682cac8f710d2d3a95c8ed56d8591724c4c3c4",
+      "chain_hash": "d4e9d572f963a9e84a4247057d11e796934a953bdc1a1f6256f820098a251306",
       "chain_seq": 19,
-      "id": "ddf5d03a-e1a7-46b7-81ef-2a33d9234354",
+      "id": "0812f4c1-c545-4855-bc5d-a881dc2211ec",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:15:31.914089Z",
-      "prev_hash": "4e7cce7a09488f09e24ce3d1cd35fd176f3a6bab568e8bf362156928fd4ad918",
-      "target_ref": "98cfce75-cef0-4e39-84e4-0c162fd1a074",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:55:31.699428Z",
+      "prev_hash": "cfc77fa5090dc25d43fe9a596dae8506570f3c0e2030ebbc9d58f181a180c922",
+      "target_ref": "3798b2b9-69cb-464b-a399-9c5ce5dddd8d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "policy.promoted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "64ca7c4ef4e94a50e544ec7455704351cd38c5dddd52e7622b183982a09f99e3",
+      "chain_hash": "b01a8843d164ea6a539f02d52cc1be812ce6986651d4bbef527ff37d474d1ebc",
       "chain_seq": 20,
-      "id": "46df9f10-1607-436d-947e-276ea53f8205",
+      "id": "83100c02-991e-4361-88ef-0c81876560f7",
       "kind": "policy_promoted",
-      "occurred_at": "2026-06-18T14:16:01.976084Z",
-      "prev_hash": "af4909d1033dd3035965abaf7a682cac8f710d2d3a95c8ed56d8591724c4c3c4",
-      "target_ref": "80315adf-1940-4cd7-8603-07a7f478a1e2",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.721749Z",
+      "prev_hash": "d4e9d572f963a9e84a4247057d11e796934a953bdc1a1f6256f820098a251306",
+      "target_ref": "4bf8aaaa-384b-4cae-ba6e-3c207304f49d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "acdc506c6d489e7d2db0af6ba79e83329ab1e79cfac6406b69d46997c7292e7c",
+      "chain_hash": "24b6bf652aada9206f9804307481dd83ed4b2147afe3a6186404f4079418d54b",
       "chain_seq": 21,
-      "id": "3ed06a0c-ade8-4768-854c-19254219a908",
+      "id": "da4a5c70-b903-42fa-acb4-1478ebf6aa3b",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:16:01.982888Z",
-      "prev_hash": "64ca7c4ef4e94a50e544ec7455704351cd38c5dddd52e7622b183982a09f99e3",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.735639Z",
+      "prev_hash": "b01a8843d164ea6a539f02d52cc1be812ce6986651d4bbef527ff37d474d1ebc",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "573e65f73e25dfdd14e043198c5f87e6acd27ec331f2267cc1fa44d75e80077d",
+      "chain_hash": "29ee4e7838bce8894c3271bd0e10bcb690527c6dc0dbc75ee430f30f4b5fc243",
       "chain_seq": 22,
-      "id": "6d9189b9-1b07-473d-848b-f136f7a69746",
+      "id": "e45a4de4-d422-426e-9360-a3c81f193043",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "long_duration_hours:2160"
+          "ai_unavailable"
         ],
         "recommendation": "needs_review",
         "score": "medium",
-        "source": "ai_agent"
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:16:01.991463Z",
-      "prev_hash": "acdc506c6d489e7d2db0af6ba79e83329ab1e79cfac6406b69d46997c7292e7c",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.746285Z",
+      "prev_hash": "24b6bf652aada9206f9804307481dd83ed4b2147afe3a6186404f4079418d54b",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "c20434d05ef24d4bd089a761e60017bebb99fe913d09d2d0df37afa826f12568",
+      "chain_hash": "f898038cff01660558da7b28b474ddc96341e280408d81590795a02cc1139eb5",
       "chain_seq": 23,
-      "id": "6fdda1ae-2cfa-4dee-bcbc-ab15862d04f4",
+      "id": "20fa4cf1-745e-47a6-8f7a-0036409dcbc8",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:01.995094Z",
-      "prev_hash": "573e65f73e25dfdd14e043198c5f87e6acd27ec331f2267cc1fa44d75e80077d",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.754179Z",
+      "prev_hash": "29ee4e7838bce8894c3271bd0e10bcb690527c6dc0dbc75ee430f30f4b5fc243",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "580f08e81356b25cb0ddf6bd1426440ffd0a99d08ae9540bed4b84578aa03c56",
+      "chain_hash": "e70d21211cd263d3d8c13c97eee1e1c303e8d0082bc27b6fd4a1dd90ad3ac586",
       "chain_seq": 24,
-      "id": "9fa9a027-55c5-4dbd-bb34-86865a45bbab",
+      "id": "31aab56e-a8d9-43cf-a961-ed639bdaaea3",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.001589Z",
-      "prev_hash": "c20434d05ef24d4bd089a761e60017bebb99fe913d09d2d0df37afa826f12568",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.766994Z",
+      "prev_hash": "f898038cff01660558da7b28b474ddc96341e280408d81590795a02cc1139eb5",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioning",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "1d15436933e3f9738d5a6d80ddeeb4ca7b4bf48ffa9c3e6f8f9870b1db50cc92",
+      "chain_hash": "da6152ec10756da354be96fe49767be3c5731082df0849c5a7bcb6b854b9d087",
       "chain_seq": 25,
-      "id": "ecc2ecc0-040e-4a6f-b92b-f79972deede0",
+      "id": "5784c493-a585-4c7c-98ae-93ffb81ac333",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.008045Z",
-      "prev_hash": "580f08e81356b25cb0ddf6bd1426440ffd0a99d08ae9540bed4b84578aa03c56",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.77858Z",
+      "prev_hash": "e70d21211cd263d3d8c13c97eee1e1c303e8d0082bc27b6fd4a1dd90ad3ac586",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioned",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "095efc80e4934f8e6d515f07104c9f9a028ca6d93c549d50673a3bcb4d6609f0",
+      "chain_hash": "7e3decb3286d09a7d1fcccbe22c0bcda3073323769fe7b22a8a7a88db0feb218",
       "chain_seq": 26,
-      "id": "a5a5b4d6-0f65-4176-a05e-2e31e6fccf08",
+      "id": "9e0b336d-128a-43cc-9f2a-b5db5b701a92",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.013087Z",
-      "prev_hash": "1d15436933e3f9738d5a6d80ddeeb4ca7b4bf48ffa9c3e6f8f9870b1db50cc92",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.793448Z",
+      "prev_hash": "da6152ec10756da354be96fe49767be3c5731082df0849c5a7bcb6b854b9d087",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.active",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "fc9c05211672c3a503688b296d4cb896eebbcb1b49c6f375b649d5217dc5026c",
+      "chain_hash": "9c3671af534ae13a38a9b7ada79e18f0432d0288ec4889349c6d157bd589be3d",
       "chain_seq": 27,
-      "id": "b19b7218-5c40-46f8-bcff-bca02533b372",
+      "id": "4b156ed6-b452-4707-b938-11537484ac6e",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.016223Z",
-      "prev_hash": "095efc80e4934f8e6d515f07104c9f9a028ca6d93c549d50673a3bcb4d6609f0",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.801768Z",
+      "prev_hash": "7e3decb3286d09a7d1fcccbe22c0bcda3073323769fe7b22a8a7a88db0feb218",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "c5a45837923516adddc3e388cf9da34c44f11de5bda351a4f84092075c36fe4e",
+      "chain_hash": "dff18176b567b09a4947b2f95f584b6c35fe97727c57dd32b15d9686eaa33504",
       "chain_seq": 28,
-      "id": "dadda5d6-1859-4b38-81e2-e9ecfaca6fef",
+      "id": "5568e8a5-f0bf-4f13-9aee-e4721299aa69",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:02.011639Z",
-      "prev_hash": "fc9c05211672c3a503688b296d4cb896eebbcb1b49c6f375b649d5217dc5026c",
-      "target_ref": "e395e533-2302-4ac0-8622-6f3c468c22d0",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.791036Z",
+      "prev_hash": "9c3671af534ae13a38a9b7ada79e18f0432d0288ec4889349c6d157bd589be3d",
+      "target_ref": "6ae7d933-1170-4273-8016-587531a8d34b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "ca1581fc0dac6cb55b67f36ab749dd3e5d1484243bd434b6faac0360cb4560e3",
+      "chain_hash": "9fc2f2825fb53b73b6ea2e707963f9fdd029f397dcc5ae9c3a8d2f408cf796a8",
       "chain_seq": 29,
-      "id": "d47d84f7-8072-43bf-bf1e-cb3fc0547895",
+      "id": "756116b6-e9e8-436a-8adf-83fbe83a894f",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:16:02.021321Z",
-      "prev_hash": "c5a45837923516adddc3e388cf9da34c44f11de5bda351a4f84092075c36fe4e",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.815977Z",
+      "prev_hash": "dff18176b567b09a4947b2f95f584b6c35fe97727c57dd32b15d9686eaa33504",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "c767cbb2ab670e67f3c72d872c2f984e879cc14a839bf96e24d07c6d06543025",
+      "chain_hash": "62b144159d7288fe87d4ab9833aa9af82b0147a7ba6df310c6afa6550d41e8b4",
       "chain_seq": 30,
-      "id": "73363f02-3ea0-4ba3-adcf-a0fbbc1d6859",
+      "id": "81449586-187e-4d79-99ec-c18536045501",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:16:02.026497Z",
-      "prev_hash": "ca1581fc0dac6cb55b67f36ab749dd3e5d1484243bd434b6faac0360cb4560e3",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.824003Z",
+      "prev_hash": "9fc2f2825fb53b73b6ea2e707963f9fdd029f397dcc5ae9c3a8d2f408cf796a8",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "1ccb81aa0f21dc606d23b90dee271c3883ab1d860335297a713608bffbe04bf4",
+      "chain_hash": "8107cec57be2e06f681ea473cb05f4026ebf15056793f165af9458ba495f5d9a",
       "chain_seq": 31,
-      "id": "cafde1a6-7f3c-4036-bd99-8a3ae69711ac",
+      "id": "f12330ea-a548-4099-bee0-a6b6210c0f11",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.029683Z",
-      "prev_hash": "c767cbb2ab670e67f3c72d872c2f984e879cc14a839bf96e24d07c6d06543025",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.828439Z",
+      "prev_hash": "62b144159d7288fe87d4ab9833aa9af82b0147a7ba6df310c6afa6550d41e8b4",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "47b5150e5240dcfeaab5cfe2ce2bc980fa8e25bb468dc9283d7bef833db0045d",
+      "chain_hash": "5e8206c5844999129db5f0e4bbcc8969e0082731341a909a5fcdde40950ceb76",
       "chain_seq": 32,
-      "id": "bf2acbe3-fe51-4891-b0a8-1d177ebf81e0",
+      "id": "52f6493b-895f-400c-ac66-38e5ed41af7e",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.033552Z",
-      "prev_hash": "1ccb81aa0f21dc606d23b90dee271c3883ab1d860335297a713608bffbe04bf4",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.843531Z",
+      "prev_hash": "8107cec57be2e06f681ea473cb05f4026ebf15056793f165af9458ba495f5d9a",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioning",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "b0e7f20273022a4a0a762d924db9b0857ae0cea50af9fdfe5dfe8f8b306dee64",
+      "chain_hash": "7fd2a0e67712ea0542550ad91dd5906d924328341e7cd259293e6b879eea9933",
       "chain_seq": 33,
-      "id": "50a91ec4-5135-4efa-8129-949437873c2d",
+      "id": "034f9d48-34ca-43b9-981a-f4d35d8f381a",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.043072Z",
-      "prev_hash": "47b5150e5240dcfeaab5cfe2ce2bc980fa8e25bb468dc9283d7bef833db0045d",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.857084Z",
+      "prev_hash": "5e8206c5844999129db5f0e4bbcc8969e0082731341a909a5fcdde40950ceb76",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioned",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "9f782e2a6a0d6bec6793b8a7e3a3cac41166e63b59bea4d4f910712c2331a6ef",
+      "chain_hash": "8d40d07c847d9880290c050b92461ad4193d56665b517b757f335b3440f492ea",
       "chain_seq": 34,
-      "id": "646b09df-3291-4959-aad0-eb65ff17e111",
+      "id": "790a866d-905f-4214-b992-4cf01c6be636",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.048358Z",
-      "prev_hash": "b0e7f20273022a4a0a762d924db9b0857ae0cea50af9fdfe5dfe8f8b306dee64",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.865891Z",
+      "prev_hash": "7fd2a0e67712ea0542550ad91dd5906d924328341e7cd259293e6b879eea9933",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.active",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "48966040f032087e3723f0172047c1eaa895bd7e759f30bda709c395a2af97d9",
+      "chain_hash": "c8c3340027ef1d6c17555764fd0b1543b022474f387acea5cb98f034e0636539",
       "chain_seq": 35,
-      "id": "670e5e6f-0746-4420-8427-eaf60eaf41dc",
+      "id": "faa5f309-1c4d-4147-9b8f-fc83ec367add",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.051495Z",
-      "prev_hash": "9f782e2a6a0d6bec6793b8a7e3a3cac41166e63b59bea4d4f910712c2331a6ef",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.872136Z",
+      "prev_hash": "8d40d07c847d9880290c050b92461ad4193d56665b517b757f335b3440f492ea",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "9eba2a30e9205f4f7f35e31dacd424325e958075060904b9e5d01116e3fde80c",
+      "chain_hash": "cde0eeb3802d301631721e0073e3665d034106c19bd9a95d62614be2e0480702",
       "chain_seq": 36,
-      "id": "a541652b-c531-42e6-bcfa-35c8ccc638d3",
+      "id": "4291b03e-80ea-4d38-959e-e8f65f61562e",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:02.046647Z",
-      "prev_hash": "48966040f032087e3723f0172047c1eaa895bd7e759f30bda709c395a2af97d9",
-      "target_ref": "c0bbb9a3-c436-4ebb-baa4-53e194b832d3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.86377Z",
+      "prev_hash": "c8c3340027ef1d6c17555764fd0b1543b022474f387acea5cb98f034e0636539",
+      "target_ref": "5f0a289c-7c5a-4e0e-b91f-71d3ded4fd18",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "66997baa70de33e2c2af5a43a26512ced765d0daa2acfad95a6fab1decc93556",
+      "chain_hash": "b727ede777a7ec8f9eff27ac997fcb9445aba79fb203294ffc885e68ae74278e",
       "chain_seq": 37,
-      "id": "ae518ba2-cace-4eb4-a02b-fbc219e0c4c3",
+      "id": "b50f8520-712d-4d06-ae00-c5e46009b4e8",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:16:02.056587Z",
-      "prev_hash": "9eba2a30e9205f4f7f35e31dacd424325e958075060904b9e5d01116e3fde80c",
-      "target_ref": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.887588Z",
+      "prev_hash": "cde0eeb3802d301631721e0073e3665d034106c19bd9a95d62614be2e0480702",
+      "target_ref": "caad8399-7454-40b2-b23e-ad7004a654db",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.risk_assessed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "97d4bba327df419e982fdb304c1272b1dcc5c29b1efc9c689070682361e0e107",
+      "chain_hash": "e16ac01cb4cdea3f192e034e95a12ab19a2d536ccc5d4c0da36e08f2d5c9051f",
       "chain_seq": 38,
-      "id": "0c1738fc-9a60-4f7b-8b8f-b339a85a8200",
+      "id": "a0e8a8bf-aeda-4e06-97b2-39cac708d520",
       "kind": "other",
       "metadata": {
-        "degraded": false,
+        "degraded": true,
         "factors": [
-          "baseline_low_risk"
+          "ai_unavailable"
         ],
-        "recommendation": "auto_approve_eligible",
-        "score": "low",
-        "source": "ai_agent"
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
       },
-      "occurred_at": "2026-06-18T14:16:02.061162Z",
-      "prev_hash": "66997baa70de33e2c2af5a43a26512ced765d0daa2acfad95a6fab1decc93556",
-      "target_ref": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.893761Z",
+      "prev_hash": "b727ede777a7ec8f9eff27ac997fcb9445aba79fb203294ffc885e68ae74278e",
+      "target_ref": "caad8399-7454-40b2-b23e-ad7004a654db",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.ai_reviewed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "bffd2aa371c720953ee45712972eebe6cac52a4f77f20dd7943efbeca07c16d4",
+      "chain_hash": "0f51dbc719a92e78c872a72716c306d0b39881c96324be8e5168b525caaaaee3",
       "chain_seq": 39,
-      "id": "e7330af7-4a64-4fff-ae0c-ad77461a80af",
+      "id": "cbe0780e-9bc7-4652-8837-088871d0e071",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.064207Z",
-      "prev_hash": "97d4bba327df419e982fdb304c1272b1dcc5c29b1efc9c689070682361e0e107",
-      "target_ref": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.901034Z",
+      "prev_hash": "e16ac01cb4cdea3f192e034e95a12ab19a2d536ccc5d4c0da36e08f2d5c9051f",
+      "target_ref": "caad8399-7454-40b2-b23e-ad7004a654db",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "031218bce4373fb3405a82def22d5d77f8549c51f752fe1c37b471dd7787b4ea",
+      "chain_hash": "2c7bace288b3de72e09d98354c2d4c63767b06122cbcd4df88134e94471c0000",
       "chain_seq": 40,
-      "id": "2b6cd763-52e5-4cc4-941d-36f4ba1245f3",
+      "id": "5e6fce73-ce9f-460f-a4fe-568548b99bdf",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.068021Z",
-      "prev_hash": "bffd2aa371c720953ee45712972eebe6cac52a4f77f20dd7943efbeca07c16d4",
-      "target_ref": "a1715f78-2832-4ac0-8a85-5c5c5a79ccdd",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:01.912986Z",
+      "prev_hash": "0f51dbc719a92e78c872a72716c306d0b39881c96324be8e5168b525caaaaee3",
+      "target_ref": "caad8399-7454-40b2-b23e-ad7004a654db",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_review.started",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "95507517c56038974a2975c8551e9518b7c0e00af20fec38c47b2e9619d25d77",
+      "chain_hash": "7d947ca2bf2dab58f75f1a5aba1b27e47e2433d57d255bda07c4ba5bdb7ab8cc",
       "chain_seq": 41,
-      "id": "61fe22a6-a6bd-4843-868e-6a82c4446abe",
+      "id": "f6cd219d-7ba0-4405-abca-3bad67ce6d7d",
       "kind": "review_started",
-      "occurred_at": "2026-06-18T14:16:02.075856Z",
-      "prev_hash": "031218bce4373fb3405a82def22d5d77f8549c51f752fe1c37b471dd7787b4ea",
-      "target_ref": "09a9deac-9aa5-4f32-9b8d-abd3829d43c5",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.070608Z",
+      "prev_hash": "2c7bace288b3de72e09d98354c2d4c63767b06122cbcd4df88134e94471c0000",
+      "target_ref": "3de87169-d9ef-481c-8c67-545e9efcb07d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_review.decision.revoke",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "91583d62b3f52749cee8e9803b7af0c1e0e47283940b030f434935fdf417ecfd",
+      "chain_hash": "4b9a61cef966a3e69c30d833366d94e2b5132dc708737e8b26c0a783b791c7d0",
       "chain_seq": 42,
-      "id": "90e78a26-18b8-4a74-aa5a-b42cf08dd507",
+      "id": "f77b4203-35c8-485f-bc41-71005cf9f060",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T14:16:02.084188Z",
-      "prev_hash": "95507517c56038974a2975c8551e9518b7c0e00af20fec38c47b2e9619d25d77",
-      "target_ref": "59ffb167-2457-4747-ad33-9aaac56ba555",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.127271Z",
+      "prev_hash": "7d947ca2bf2dab58f75f1a5aba1b27e47e2433d57d255bda07c4ba5bdb7ab8cc",
+      "target_ref": "565bf822-2ebc-4ed7-bef4-885335ba2cd8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.revoked",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "92e15876b5e4ed7061567fa77e55baa53a52e0a719204365c243a8d649caf68b",
+      "chain_hash": "291065d0758f22b6b49ca00ec61bee79d40eb5ef8f147dbf9d0f1a7c110d784f",
       "chain_seq": 43,
-      "id": "1651ddeb-7f5a-4241-9fbd-8c60f316c989",
+      "id": "a4e287fb-2b95-4c00-8c5a-83bdb82478dd",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.091399Z",
-      "prev_hash": "91583d62b3f52749cee8e9803b7af0c1e0e47283940b030f434935fdf417ecfd",
-      "target_ref": "96294b70-c6c5-41bd-a5cb-90a1dacd0e59",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.138986Z",
+      "prev_hash": "4b9a61cef966a3e69c30d833366d94e2b5132dc708737e8b26c0a783b791c7d0",
+      "target_ref": "0c71ed64-107f-4bf1-a510-1e3befe18c98",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.revoked",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "039bfaa7a79210892a17c413a9165461c56256c8434399d7e593fa4518873c37",
+      "chain_hash": "481f5b1ef94aa51699043aaf0c74e671e687f3ce3f98581bc94b9e0e2fd4e9b2",
       "chain_seq": 44,
-      "id": "c4b52588-9a1e-464d-8fff-94f949592b58",
+      "id": "2813ee46-422b-45f5-9595-e61ca91fbf76",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:16:02.089478Z",
-      "prev_hash": "92e15876b5e4ed7061567fa77e55baa53a52e0a719204365c243a8d649caf68b",
-      "target_ref": "c0bbb9a3-c436-4ebb-baa4-53e194b832d3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.136832Z",
+      "prev_hash": "291065d0758f22b6b49ca00ec61bee79d40eb5ef8f147dbf9d0f1a7c110d784f",
+      "target_ref": "5f0a289c-7c5a-4e0e-b91f-71d3ded4fd18",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_review.decision.certify",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "7a0748cbf68667aaeb8328435f296fab9021e360aa671bb4b8a5076d71a8f1de",
+      "chain_hash": "153a95a16c2130a2871abf880b6cfe4cde39677548c0e16afd101418ccbfda02",
       "chain_seq": 45,
-      "id": "31a5ba52-7a1b-4d3f-8581-87270787e1c0",
+      "id": "1aecf172-dd0f-4aea-bc46-6ab69bdd6a26",
       "kind": "review_decision",
-      "occurred_at": "2026-06-18T14:16:02.096685Z",
-      "prev_hash": "039bfaa7a79210892a17c413a9165461c56256c8434399d7e593fa4518873c37",
-      "target_ref": "7a1fa082-cc01-4125-9957-36999c2b070b",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.147558Z",
+      "prev_hash": "481f5b1ef94aa51699043aaf0c74e671e687f3ce3f98581bc94b9e0e2fd4e9b2",
+      "target_ref": "c0c9bce1-6174-485e-8f5d-1969ac41f2fe",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "certification.campaign.started",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "ff47b3ef6c542bae99f2fd757d76497c1839d9745d5f23eaed8ddfd760ee8c25",
+      "chain_hash": "fe8e1f871bf782309ee45e6faaeb9b75eca91ec18b6a36fd80aa3edbd3a92be5",
       "chain_seq": 46,
-      "id": "410f6c9f-bc93-429c-9339-3be0a1eda7a4",
+      "id": "9dea3fba-53b0-4abd-ba6f-76f0cf5dd669",
       "kind": "certification_started",
       "metadata": {
         "framework": "ISO 27001",
         "item_count": 1,
         "name": "Q2 2026 BSI C5 logical-access certification",
         "scope": {
-          "connector_id": "2fd1b263-43a7-4fe4-a6e1-7114a994dcab"
+          "connector_id": "d4bdb1f2-8afa-42ba-9bcf-3c1610437c95"
         }
       },
-      "occurred_at": "2026-06-18T14:16:02.102076Z",
-      "prev_hash": "7a0748cbf68667aaeb8328435f296fab9021e360aa671bb4b8a5076d71a8f1de",
-      "target_ref": "3ea4ac0d-3a30-4ad8-aa33-5cae26372a20",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.156404Z",
+      "prev_hash": "153a95a16c2130a2871abf880b6cfe4cde39677548c0e16afd101418ccbfda02",
+      "target_ref": "986e52a2-99cc-41bf-957e-c1e589dbaa73",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "certification.item.decision.revoke",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "aa64cdcd95f4980dd205d79fa099b18c6e1d29a5b98586f444d0060e17fb2a25",
+      "chain_hash": "92eb3445ecabe438042449c1d5896713d7c55593696fcc35e0d7854d41fa8cf6",
       "chain_seq": 47,
-      "id": "5331faaa-5d82-41ee-b493-96852ff77521",
+      "id": "b8e11111-11c3-4772-818a-3f165d2c4e91",
       "kind": "certification_decision",
       "metadata": {
-        "campaign_id": "3ea4ac0d-3a30-4ad8-aa33-5cae26372a20",
-        "grant_id": "e395e533-2302-4ac0-8622-6f3c468c22d0",
+        "campaign_id": "986e52a2-99cc-41bf-957e-c1e589dbaa73",
+        "grant_id": "6ae7d933-1170-4273-8016-587531a8d34b",
         "reason": "Seed: entitlement revoked at certification."
       },
-      "occurred_at": "2026-06-18T14:16:02.110978Z",
-      "prev_hash": "ff47b3ef6c542bae99f2fd757d76497c1839d9745d5f23eaed8ddfd760ee8c25",
-      "target_ref": "20765660-72aa-4259-9022-800d4a00b4f5",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.171983Z",
+      "prev_hash": "fe8e1f871bf782309ee45e6faaeb9b75eca91ec18b6a36fd80aa3edbd3a92be5",
+      "target_ref": "e04c7bc8-7326-4c8c-8c23-d6a514a6f862",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "certification.campaign.closed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "dfd74350d7062f6bfe4810abb3f9b7c9b3b388931b938cf89ffe89caf85cfce0",
+      "chain_hash": "b29f8bb852a67da0f86911821766c2a7f9cb019d0ec6797e55916a9322183872",
       "chain_seq": 48,
-      "id": "de13c2af-bf7b-4b63-a9b2-88d9c45bdb04",
+      "id": "67e8affd-4c60-4e19-9cdc-6bcb04d3b6b5",
       "kind": "certification_closed",
       "metadata": {
         "staged_revocations": 1
       },
-      "occurred_at": "2026-06-18T14:16:02.11629Z",
-      "prev_hash": "aa64cdcd95f4980dd205d79fa099b18c6e1d29a5b98586f444d0060e17fb2a25",
-      "target_ref": "3ea4ac0d-3a30-4ad8-aa33-5cae26372a20",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.182229Z",
+      "prev_hash": "92eb3445ecabe438042449c1d5896713d7c55593696fcc35e0d7854d41fa8cf6",
+      "target_ref": "986e52a2-99cc-41bf-957e-c1e589dbaa73",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.revoked",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "6d5f58bc5fcf0216d2c175ad2887868c61c01be040018b2505029a6d73cc08ae",
+      "chain_hash": "e3a090a6027a38db90da209bc3532a575dc94ce2136460249e29a59826a5057c",
       "chain_seq": 49,
-      "id": "f1b3eeea-096a-4fff-9195-f4943de27f5d",
+      "id": "8de78b80-a08b-463d-aec0-8c25795ce649",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.124604Z",
-      "prev_hash": "dfd74350d7062f6bfe4810abb3f9b7c9b3b388931b938cf89ffe89caf85cfce0",
-      "target_ref": "4e4cd238-bb6d-460b-830d-0473663a10ae",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.193812Z",
+      "prev_hash": "b29f8bb852a67da0f86911821766c2a7f9cb019d0ec6797e55916a9322183872",
+      "target_ref": "0c915c75-43d2-4440-8153-cef2527097d0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.revoked",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "3baaa5e6e136f3320bc5d32f1b2d0c575e08d61756b94b6be51e90be0a53ab0f",
+      "chain_hash": "40bc6f17fe424f01de5feeb40fe86dd0fe0b56d5889bad7439eee7553df6a807",
       "chain_seq": 50,
-      "id": "3c08795c-cf22-4fa1-bb5f-feddf2d7f9be",
+      "id": "577cd0da-1059-47b3-acc3-c0b76a5cb528",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:16:02.122631Z",
-      "prev_hash": "6d5f58bc5fcf0216d2c175ad2887868c61c01be040018b2505029a6d73cc08ae",
-      "target_ref": "e395e533-2302-4ac0-8622-6f3c468c22d0",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.191722Z",
+      "prev_hash": "e3a090a6027a38db90da209bc3532a575dc94ce2136460249e29a59826a5057c",
+      "target_ref": "6ae7d933-1170-4273-8016-587531a8d34b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.created",
       "actor": "scim",
-      "chain_hash": "f738382f60fd02e8eba0616fa051bbc201343262871bc5f8d2065c60e6baacae",
+      "chain_hash": "f1728fd45403aaea87b85b2d7506cd21fcce3ab28b533013720ef0bbc1111432",
       "chain_seq": 51,
-      "id": "4fca069f-b642-40c5-84c9-f7f78402fbe9",
+      "id": "955c52b1-b269-46df-8d06-3cb8d90baea9",
       "kind": "access_requested",
-      "occurred_at": "2026-06-18T14:16:02.136897Z",
-      "prev_hash": "3baaa5e6e136f3320bc5d32f1b2d0c575e08d61756b94b6be51e90be0a53ab0f",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.220206Z",
+      "prev_hash": "40bc6f17fe424f01de5feeb40fe86dd0fe0b56d5889bad7439eee7553df6a807",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.approved",
       "actor": "scim",
-      "chain_hash": "1ffa055122d726ef0261a9419e206575f383e5dc6c2eac5166feb81dce1d762e",
+      "chain_hash": "e655596cafa78139c7821223ab7a1a77f9d6848c589566d852aa9697e6e7cf8d",
       "chain_seq": 52,
-      "id": "84c41fde-b629-492b-8768-addef86341f7",
+      "id": "aecd0167-a79d-4491-aa94-75aa5b90face",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.141656Z",
-      "prev_hash": "f738382f60fd02e8eba0616fa051bbc201343262871bc5f8d2065c60e6baacae",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.2278Z",
+      "prev_hash": "f1728fd45403aaea87b85b2d7506cd21fcce3ab28b533013720ef0bbc1111432",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioning",
       "actor": "scim",
-      "chain_hash": "0e7845aa5fa63cccf5407292bf3c12be9b2af76cdf1b3a3bde63de504eda3492",
+      "chain_hash": "276d1d4373afd1500427382cd0f6c5d282aa761ae0240f09cae159354517a226",
       "chain_seq": 53,
-      "id": "445aa4c5-418d-416e-b37a-153f53423a4f",
+      "id": "f5bde6c9-9de5-418c-8011-2a9161935051",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.146183Z",
-      "prev_hash": "1ffa055122d726ef0261a9419e206575f383e5dc6c2eac5166feb81dce1d762e",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.238686Z",
+      "prev_hash": "e655596cafa78139c7821223ab7a1a77f9d6848c589566d852aa9697e6e7cf8d",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.provisioned",
       "actor": "scim",
-      "chain_hash": "fa82bc0951fd704f1a99a215499127a80f1cc7cc548c471c7659a15802e488a9",
+      "chain_hash": "010adffcdfc0881c82bc515139c14c67fbbb7dc57a248afb6bbc88654331cd5d",
       "chain_seq": 54,
-      "id": "254af229-cf59-4374-8efc-44b9a0b4abd1",
+      "id": "5fd1df6c-bbf4-42ac-8d30-279b6eb945e1",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.151339Z",
-      "prev_hash": "0e7845aa5fa63cccf5407292bf3c12be9b2af76cdf1b3a3bde63de504eda3492",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.248137Z",
+      "prev_hash": "276d1d4373afd1500427382cd0f6c5d282aa761ae0240f09cae159354517a226",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.active",
       "actor": "scim",
-      "chain_hash": "ab3e40024338d3ca5d9c6b005e7be5c6c167e2ae82980f4b56d1928ea57c0b12",
+      "chain_hash": "114bc7667066918f5cd47688dfb1ec283f14d3b8ac46bb446926cae6f8cfa39f",
       "chain_seq": 55,
-      "id": "562e1af9-88ca-4ade-b3e3-a4d16ec1f406",
+      "id": "675433ef-9b7f-4479-a1fe-e41e9b693642",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.154312Z",
-      "prev_hash": "fa82bc0951fd704f1a99a215499127a80f1cc7cc548c471c7659a15802e488a9",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.25218Z",
+      "prev_hash": "010adffcdfc0881c82bc515139c14c67fbbb7dc57a248afb6bbc88654331cd5d",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "scim",
-      "chain_hash": "1dafc3edff490ac482dde8472107fbf18c1df819248c67dc9e82517c28b3f478",
+      "chain_hash": "6c182ede47f1d90898dfcecad1179171fe1ffeed8c40b26bf3c3be18eae54116",
       "chain_seq": 56,
-      "id": "09ee5302-12f5-42fc-b95a-40238aa095f9",
+      "id": "498e6c1f-7302-4385-ad91-8e71b93b218f",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:02.149729Z",
-      "prev_hash": "ab3e40024338d3ca5d9c6b005e7be5c6c167e2ae82980f4b56d1928ea57c0b12",
-      "target_ref": "2d340b6b-25c6-429e-8ccb-b97d612003e9",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.245856Z",
+      "prev_hash": "114bc7667066918f5cd47688dfb1ec283f14d3b8ac46bb446926cae6f8cfa39f",
+      "target_ref": "dbda4530-fe65-404d-9c25-4bf851287113",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.joiner.recorded",
       "actor": "scim",
-      "chain_hash": "357bd81f00e0c08474320118cf86b4343fb31431bfc86a96ef992d86bc730c0b",
+      "chain_hash": "d90e43e145f6569917872a8feb378d6a9496ab31fc44ad42180682273840d95d",
       "chain_seq": 57,
-      "id": "cf96af98-82c1-458d-8459-bf604ee4b302",
+      "id": "3816365a-3a23-4961-a76e-1ae2581288ca",
       "kind": "joiner_provisioned",
-      "occurred_at": "2026-06-18T14:16:02.160016Z",
-      "prev_hash": "1dafc3edff490ac482dde8472107fbf18c1df819248c67dc9e82517c28b3f478",
+      "occurred_at": "2026-06-23T15:56:02.263351Z",
+      "prev_hash": "6c182ede47f1d90898dfcecad1179171fe1ffeed8c40b26bf3c3be18eae54116",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_request.revoked",
       "actor": "scim",
-      "chain_hash": "111e2714e7e6e24f8fba6d9638da994010281e5311568ee6dacc2c9690beb2c6",
+      "chain_hash": "af1382cf6dd6d34e7582a707561854cd70d8a5eda898f9446d087d4d3fcd678b",
       "chain_seq": 58,
-      "id": "974c4c85-713a-4047-82bf-740898aef8e4",
+      "id": "e0dc723c-ee1e-4629-9b87-3d8b48e21c65",
       "kind": "other",
-      "occurred_at": "2026-06-18T14:16:02.168847Z",
-      "prev_hash": "357bd81f00e0c08474320118cf86b4343fb31431bfc86a96ef992d86bc730c0b",
-      "target_ref": "2d526854-b685-4695-926b-380c91fdd2ed",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.276288Z",
+      "prev_hash": "d90e43e145f6569917872a8feb378d6a9496ab31fc44ad42180682273840d95d",
+      "target_ref": "15c95d36-bca7-4764-aa97-6c74bb90dfec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.revoked",
       "actor": "scim",
-      "chain_hash": "d4177f4f98bbf253ffce30019e3ae40080278712ad6305e69b277f487bba3b41",
+      "chain_hash": "9ba65a8ffa5ed3dfc7219758758e53333fac81d8f9084e2a3a4ff45653fc1776",
       "chain_seq": 59,
-      "id": "98d42440-5439-4f7b-acb5-7be74b29e299",
+      "id": "47b0563c-a86a-4c2d-abb7-2fe132b21601",
       "kind": "access_revoked",
-      "occurred_at": "2026-06-18T14:16:02.167056Z",
-      "prev_hash": "111e2714e7e6e24f8fba6d9638da994010281e5311568ee6dacc2c9690beb2c6",
-      "target_ref": "2d340b6b-25c6-429e-8ccb-b97d612003e9",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:02.274219Z",
+      "prev_hash": "af1382cf6dd6d34e7582a707561854cd70d8a5eda898f9446d087d4d3fcd678b",
+      "target_ref": "dbda4530-fe65-404d-9c25-4bf851287113",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.grant_revoke.done",
       "actor": "scim",
-      "chain_hash": "6ca61657628ffa8a4a19d5638463292cfa82b23834015072b5d395346ed8e015",
+      "chain_hash": "28ca52dc9facdedbe4e8ef4c4e1d833cec1f208cf1ebca8fb3e29b2383950b62",
       "chain_seq": 60,
-      "id": "19d51dda-ea82-4627-8e08-0a0d7e1d18e2",
+      "id": "7891969d-d1c0-4371-b0a0-799a775a81a4",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:02.172619Z",
-      "prev_hash": "d4177f4f98bbf253ffce30019e3ae40080278712ad6305e69b277f487bba3b41",
+      "occurred_at": "2026-06-23T15:56:02.283777Z",
+      "prev_hash": "9ba65a8ffa5ed3dfc7219758758e53333fac81d8f9084e2a3a4ff45653fc1776",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.team_remove.done",
       "actor": "scim",
-      "chain_hash": "90f0a827da71e0009ed261bfe89e08abd2cb1239f417bf63e6f625a5e2b83853",
+      "chain_hash": "301abf1336bf38d6f19aa76b4bfb39778123ead09dd0a5ca701fb80b0c8e3605",
       "chain_seq": 61,
-      "id": "e816308e-97ec-422a-aeb9-ee328efd3dd4",
+      "id": "4f58e2cd-2990-4412-a328-4e8f77afd445",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:02.175977Z",
-      "prev_hash": "6ca61657628ffa8a4a19d5638463292cfa82b23834015072b5d395346ed8e015",
+      "occurred_at": "2026-06-23T15:56:02.290469Z",
+      "prev_hash": "28ca52dc9facdedbe4e8ef4c4e1d833cec1f208cf1ebca8fb3e29b2383950b62",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.iam_core_disable.skipped",
       "actor": "scim",
-      "chain_hash": "d9a66e92a69f74ddebb3c2dcf4c4bbe59af3fb15dcafff13cb0ddf52d0caeb41",
+      "chain_hash": "ab8bcc196aa58e2f57deeb71f0b52382d21513f84a49bb1334f0f703d25083f7",
       "chain_seq": 62,
-      "id": "658c8ca8-5608-4871-a3f2-5d087f80798b",
+      "id": "114f3863-a9ee-4a66-83c9-4bc7e7ff499b",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:02.178315Z",
-      "prev_hash": "90f0a827da71e0009ed261bfe89e08abd2cb1239f417bf63e6f625a5e2b83853",
+      "occurred_at": "2026-06-23T15:56:02.298343Z",
+      "prev_hash": "301abf1336bf38d6f19aa76b4bfb39778123ead09dd0a5ca701fb80b0c8e3605",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.session_revoke.failed",
       "actor": "scim",
-      "chain_hash": "d1a16b2d79eae9e239c7ad7eefe1501dd3a6863427b119138335e441952e577b",
+      "chain_hash": "783aed18cf55612f0ca9aa6d3becc72c32c1359b973ee8ca700b6e1653aed4f3",
       "chain_seq": 63,
-      "id": "dd6e50bf-b8a1-49bf-9c42-6f3f055f70d2",
+      "id": "e1e6f8b5-c190-4929-8869-ab0c6d307445",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:03.530215Z",
-      "prev_hash": "d9a66e92a69f74ddebb3c2dcf4c4bbe59af3fb15dcafff13cb0ddf52d0caeb41",
+      "occurred_at": "2026-06-23T15:56:05.649764Z",
+      "prev_hash": "ab8bcc196aa58e2f57deeb71f0b52382d21513f84a49bb1334f0f703d25083f7",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.scim_deprovision.failed",
       "actor": "scim",
-      "chain_hash": "da4dcce3719804a6fae0cff7144bc788730241c6a38c1edf657d420f73ddc8b0",
+      "chain_hash": "97eb61d23a27e1e15fd2891e005b49a1f740a95c91151932865340c3abb0f42a",
       "chain_seq": 64,
-      "id": "34dbf817-db8e-4379-bba7-e0902a4ea1d9",
+      "id": "f8d1e036-b505-4203-b302-bbd1714aed73",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:03.533589Z",
-      "prev_hash": "d1a16b2d79eae9e239c7ad7eefe1501dd3a6863427b119138335e441952e577b",
+      "occurred_at": "2026-06-23T15:56:05.67616Z",
+      "prev_hash": "783aed18cf55612f0ca9aa6d3becc72c32c1359b973ee8ca700b6e1653aed4f3",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "jml.leaver.identity_disable.done",
       "actor": "scim",
-      "chain_hash": "1ea467398b20bba049ec10cc0dc923e08b89cdb696495ac4f9f7778e61e92b73",
+      "chain_hash": "cde5373262216cef0dc8c41d7a98531f5fb77e367d97e558e72dcd96e5b18c08",
       "chain_seq": 65,
-      "id": "fe19d567-b7fa-4ed9-9060-8fabb6c49794",
+      "id": "cdddc38f-d666-4af3-9bc6-c9ec5feee4f3",
       "kind": "kill_switch_fired",
-      "occurred_at": "2026-06-18T14:16:03.538575Z",
-      "prev_hash": "da4dcce3719804a6fae0cff7144bc788730241c6a38c1edf657d420f73ddc8b0",
+      "occurred_at": "2026-06-23T15:56:05.687977Z",
+      "prev_hash": "97eb61d23a27e1e15fd2891e005b49a1f740a95c91151932865340c3abb0f42a",
       "target_ref": "jml-joiner@demo.test",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "sod.rule.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "e65b070b08776fa22d99180efe6061ed893e2638968515711e3331814bb4ff65",
+      "chain_hash": "062c8dcb05ff628486236cd5efabe8cefce28edb3c132729afa8585794adb278",
       "chain_seq": 66,
-      "id": "47493639-7a08-4573-96ff-031fa6d6540e",
+      "id": "70a006fb-6031-4800-a602-c70ea872fd91",
       "kind": "other",
       "metadata": {
         "selector_a": {
@@ -861,425 +861,425 @@
         },
         "severity": "critical"
       },
-      "occurred_at": "2026-06-18T14:16:03.54272Z",
-      "prev_hash": "1ea467398b20bba049ec10cc0dc923e08b89cdb696495ac4f9f7778e61e92b73",
-      "target_ref": "464cc561-673c-46c1-8a8e-d3513201b56e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.707292Z",
+      "prev_hash": "cde5373262216cef0dc8c41d7a98531f5fb77e367d97e558e72dcd96e5b18c08",
+      "target_ref": "bd3f9fb2-87d7-4b66-972b-c224559507db",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "dbfea4201f176ba71cde5668360212afeb09b6321bb6af26e6156cfc14a1ebec",
+      "chain_hash": "c15077081a38ca5cf59694c92e020564e346919c20e6e29fb882d3f6884551ba",
       "chain_seq": 67,
-      "id": "a7198e75-0e09-4f05-a5a2-10b063042570",
+      "id": "2a1c6f55-2840-4383-b609-0a707ebe8145",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-pos-integrator@vendor.example",
-        "expires_at": "2026-08-17T14:16:03Z",
+        "expires_at": "2026-08-22T15:56:05Z",
         "resource_ref": "pos:store-manager",
         "role": "operator",
         "sponsor_id": "de-admin"
       },
-      "occurred_at": "2026-06-18T14:16:03.551367Z",
-      "prev_hash": "e65b070b08776fa22d99180efe6061ed893e2638968515711e3331814bb4ff65",
-      "target_ref": "9bebc0ef-9634-43a5-a17d-38383ed2568e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.7557Z",
+      "prev_hash": "062c8dcb05ff628486236cd5efabe8cefce28edb3c132729afa8585794adb278",
+      "target_ref": "d8a594d0-83a4-4af3-83c8-458e46ac2926",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "18b6be2c826ec234f09bd75d3bb92461c1b9a82bb791272cb5ae84f2f442eb56",
+      "chain_hash": "a083c0ae843ecca7365a79c26a70caaa5140df236cd3c4df4de463bfee349c85",
       "chain_seq": 68,
-      "id": "004fa3e3-bc6f-4a4b-b0e9-e8d4cb0e7531",
+      "id": "7894727b-cb1c-4a6c-9da9-adb2983dbf1b",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:03.556749Z",
-      "prev_hash": "dbfea4201f176ba71cde5668360212afeb09b6321bb6af26e6156cfc14a1ebec",
-      "target_ref": "fb5d36e1-07b2-4745-822a-f98007cab9e4",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.783034Z",
+      "prev_hash": "c15077081a38ca5cf59694c92e020564e346919c20e6e29fb882d3f6884551ba",
+      "target_ref": "e64070d3-ec10-479c-9028-2f51410405d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "557812631fd8ef1a4a72ed546d1391d25fd8fa558ce5c2ae3602f28d893a67f7",
+      "chain_hash": "36f38b5696710f32c27fa313efa786765f59fd65d799c8318990efe225d175ca",
       "chain_seq": 69,
-      "id": "8b76400f-44f3-4859-a990-904afec897e1",
+      "id": "044864bd-1409-4d87-aed7-586881db0c8c",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-pos-integrator@vendor.example",
-        "expires_at": "2026-08-17T14:16:03Z",
-        "grant_id": "fb5d36e1-07b2-4745-822a-f98007cab9e4"
+        "expires_at": "2026-08-22T15:56:05Z",
+        "grant_id": "e64070d3-ec10-479c-9028-2f51410405d8"
       },
-      "occurred_at": "2026-06-18T14:16:03.556749Z",
-      "prev_hash": "18b6be2c826ec234f09bd75d3bb92461c1b9a82bb791272cb5ae84f2f442eb56",
-      "target_ref": "9bebc0ef-9634-43a5-a17d-38383ed2568e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.783034Z",
+      "prev_hash": "a083c0ae843ecca7365a79c26a70caaa5140df236cd3c4df4de463bfee349c85",
+      "target_ref": "d8a594d0-83a4-4af3-83c8-458e46ac2926",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.extended",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "001680031d10efa1865cddff65b2ddaa3032014ca7e6b4e3260d4dc3f4b02409",
+      "chain_hash": "e11d4f7e8c7557ed5dc240b319ebc701566823802d745896937b2c29a6dd93cd",
       "chain_seq": 70,
-      "id": "b834e566-ccee-4897-a7c7-d3a0504adf9d",
+      "id": "cba1b3da-0923-45c1-9856-e7f5a6c05a2c",
       "kind": "other",
       "metadata": {
-        "new_expires_at": "2026-10-16T14:16:03Z",
-        "previous_expires_at": "2026-08-17T14:16:03Z",
+        "new_expires_at": "2026-10-21T15:56:05Z",
+        "previous_expires_at": "2026-08-22T15:56:05Z",
         "reason": "Sponsor-approved extension: engagement prolonged."
       },
-      "occurred_at": "2026-06-18T14:16:03.565527Z",
-      "prev_hash": "557812631fd8ef1a4a72ed546d1391d25fd8fa558ce5c2ae3602f28d893a67f7",
-      "target_ref": "9bebc0ef-9634-43a5-a17d-38383ed2568e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.822256Z",
+      "prev_hash": "36f38b5696710f32c27fa313efa786765f59fd65d799c8318990efe225d175ca",
+      "target_ref": "d8a594d0-83a4-4af3-83c8-458e46ac2926",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.target.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "140ade1c583823ebfedea998b4405c613df34a4c8a36e69b0ec1313fa4318c88",
+      "chain_hash": "da98d5361ae8cbb13cd870adec2c14677d45823b1c2bbfb9a61d3f37c8825e1d",
       "chain_seq": 71,
-      "id": "625a8a17-b596-46ce-9e89-0eaf2601ac64",
+      "id": "beadb001-8012-4583-9725-2ad991ac0386",
       "kind": "other",
       "metadata": {
         "address": "pos-jump-1.initech.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:16:03.573997Z",
-      "prev_hash": "001680031d10efa1865cddff65b2ddaa3032014ca7e6b4e3260d4dc3f4b02409",
-      "target_ref": "212de029-9abd-4e46-8ab8-8227e4b02ce8",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.84978Z",
+      "prev_hash": "e11d4f7e8c7557ed5dc240b319ebc701566823802d745896937b2c29a6dd93cd",
+      "target_ref": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.lease.requested",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "4cf8aefc63a8260858ab4f420fc723f861eef40182a21feb81465505b956a2c1",
+      "chain_hash": "a411810a7f03191407772ca021f632ef3ad72029ed90d3dbd556642589c4695c",
       "chain_seq": 72,
-      "id": "c7cdf6a5-36c2-442c-bea7-b5132343f768",
+      "id": "77e83364-36f5-44eb-965a-74764f3a1f43",
       "kind": "other",
       "metadata": {
-        "risk_degraded": false,
-        "risk_level": "low",
+        "risk_degraded": true,
+        "risk_level": "medium",
         "subject": "de-initech-retail-owner",
-        "target_id": "212de029-9abd-4e46-8ab8-8227e4b02ce8",
+        "target_id": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-18T14:16:03.579407Z",
-      "prev_hash": "140ade1c583823ebfedea998b4405c613df34a4c8a36e69b0ec1313fa4318c88",
-      "target_ref": "49a6ae14-f507-4793-bdd5-24ee2414d48e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:05.862988Z",
+      "prev_hash": "da98d5361ae8cbb13cd870adec2c14677d45823b1c2bbfb9a61d3f37c8825e1d",
+      "target_ref": "43b0e42b-0b90-4632-bebe-17f82b0c9165",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.lease.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "63a6b7f4d38cfd9031b0fadfa5013310ad1a54d0a970612e4ef9df6e8260d1a2",
+      "chain_hash": "32ce49c168370bd6ffaf7f94d8a98c19c66020e97069e2a22d35206186a2b6aa",
       "chain_seq": 73,
-      "id": "783bc5c2-c1c6-48ae-a2d0-9036c0cabe85",
+      "id": "411a64c4-096c-41fe-8e80-1e2f82396e2c",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:46:31Z",
+        "expires_at": "2026-06-23T16:26:31Z",
         "subject": "de-initech-retail-owner",
         "ttl_seconds": 1800
       },
-      "occurred_at": "2026-06-18T14:16:31.679826Z",
-      "prev_hash": "4cf8aefc63a8260858ab4f420fc723f861eef40182a21feb81465505b956a2c1",
-      "target_ref": "49a6ae14-f507-4793-bdd5-24ee2414d48e",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.882225Z",
+      "prev_hash": "a411810a7f03191407772ca021f632ef3ad72029ed90d3dbd556642589c4695c",
+      "target_ref": "43b0e42b-0b90-4632-bebe-17f82b0c9165",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "9b1b0f11701818fc35f7371f0a6f172373c0087769dde9b8ac5d989298d08a9a",
+      "chain_hash": "f1164c124a752c7cfa8299a8864196070eab6308f9c379c40627c7303c3eff5b",
       "chain_seq": 74,
-      "id": "09438af0-e0eb-4915-92e8-91a4ce5a054b",
+      "id": "b266386f-3045-46c0-9c7e-5933ab656a55",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:46:31Z",
+        "expires_at": "2026-06-23T16:26:31Z",
         "subject": "de-initech-retail-owner"
       },
-      "occurred_at": "2026-06-18T14:16:31.686983Z",
-      "prev_hash": "63a6b7f4d38cfd9031b0fadfa5013310ad1a54d0a970612e4ef9df6e8260d1a2",
-      "target_ref": "212de029-9abd-4e46-8ab8-8227e4b02ce8",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.906667Z",
+      "prev_hash": "32ce49c168370bd6ffaf7f94d8a98c19c66020e97069e2a22d35206186a2b6aa",
+      "target_ref": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.target.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "11a84033e9d5a671d1799c987740737427c1a80335eb53fa5a26dfec29255a6d",
+      "chain_hash": "76bcd59760ed3cb5efd8d9a59a72da3e1dc65fd7dd06daf5e962052b7989ec6c",
       "chain_seq": 75,
-      "id": "aa8be3fd-df81-403d-abdf-328b46a00527",
+      "id": "1d7af06f-6987-4667-a865-c46e1847ed36",
       "kind": "other",
       "metadata": {
         "address": "sap-pos-db-1.initech.internal:3306",
         "protocol": "mysql"
       },
-      "occurred_at": "2026-06-18T14:16:31.692007Z",
-      "prev_hash": "9b1b0f11701818fc35f7371f0a6f172373c0087769dde9b8ac5d989298d08a9a",
-      "target_ref": "e5564bf4-86b6-4913-91b1-13cc9c09a9b9",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.91702Z",
+      "prev_hash": "f1164c124a752c7cfa8299a8864196070eab6308f9c379c40627c7303c3eff5b",
+      "target_ref": "c59addeb-4dc4-43f7-90cd-51262d6a9dec",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.target.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "ee5803719190c13ff1b5a13301f3d8021a939cd2a99c68800cfdcf1bff19c26e",
+      "chain_hash": "9e4e962324e0b2a65985d772332bef4bec2986ae61131a7a593d470f1249c696",
       "chain_seq": 76,
-      "id": "66a2c33d-2bc3-423f-86f4-dc2e3e81ab07",
+      "id": "1cab6fb4-9c50-4592-a68e-228d01cd4fcf",
       "kind": "other",
       "metadata": {
         "address": "pos-bastion.initech.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:16:31.699163Z",
-      "prev_hash": "11a84033e9d5a671d1799c987740737427c1a80335eb53fa5a26dfec29255a6d",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.944513Z",
+      "prev_hash": "76bcd59760ed3cb5efd8d9a59a72da3e1dc65fd7dd06daf5e962052b7989ec6c",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.connect_token.minted",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "78c3af5f0fb60396d13642f6086dfa75183b40c9bc43396a4ca0ee24dd572a75",
+      "chain_hash": "dfc357e0b8cfdf7c0b57bbe5c9b68a5c168ebe77cb805ab0a360bb5e383e9c61",
       "chain_seq": 77,
-      "id": "1fd6b3ab-ca25-47c0-b05f-a50c6af6d93c",
+      "id": "f04b982d-066a-4307-9809-c9425df50e71",
       "kind": "other",
       "metadata": {
-        "expires_at": "2026-06-18T14:46:31Z",
+        "expires_at": "2026-06-23T16:26:31Z",
         "subject": "de-initech-retail-owner"
       },
-      "occurred_at": "2026-06-18T14:16:31.703111Z",
-      "prev_hash": "ee5803719190c13ff1b5a13301f3d8021a939cd2a99c68800cfdcf1bff19c26e",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.965299Z",
+      "prev_hash": "9e4e962324e0b2a65985d772332bef4bec2986ae61131a7a593d470f1249c696",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.session.opened",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "c31aee9b6e7a1a55318812980c053d9a3168fcb3631f451c88592375736baa74",
+      "chain_hash": "cff932dcf67b779bef7d5926d0afcb3c2fb601d2554aeed5b9e619e74178c28d",
       "chain_seq": 78,
-      "id": "49382d49-aca7-432c-9d9c-5ed36b39bc6b",
+      "id": "434b5141-b2f2-4904-9df5-fff9474d85a0",
       "kind": "privileged_session",
       "metadata": {
         "client_addr": "blog-seed",
         "protocol": "ssh",
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf"
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7"
       },
-      "occurred_at": "2026-06-18T14:16:31.707632Z",
-      "prev_hash": "78c3af5f0fb60396d13642f6086dfa75183b40c9bc43396a4ca0ee24dd572a75",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.980355Z",
+      "prev_hash": "dfc357e0b8cfdf7c0b57bbe5c9b68a5c168ebe77cb805ab0a360bb5e383e9c61",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.command",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "a0b0053c1ef723aede7a97ff1844b623efc4aaf707b33bc2f2d7284fc78cbb90",
+      "chain_hash": "f9ea9dcbbf4c1ba801da56f2dc377122f6cd3d498fe6c499cc40cc07d1674513",
       "chain_seq": 79,
-      "id": "34f77c1a-6bf9-4af6-be20-292f8a68b61a",
+      "id": "2d52e600-9f35-44a7-9ef8-fe802e86877a",
       "kind": "privileged_command",
       "metadata": {
         "command": "whoami",
         "decision": "allow",
         "reason": "",
         "seq": 1,
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf"
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7"
       },
-      "occurred_at": "2026-06-18T14:16:31.711052Z",
-      "prev_hash": "c31aee9b6e7a1a55318812980c053d9a3168fcb3631f451c88592375736baa74",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:31.993908Z",
+      "prev_hash": "cff932dcf67b779bef7d5926d0afcb3c2fb601d2554aeed5b9e619e74178c28d",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.command",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "9711ce4447c85e306d47ce239c76c27e7c122fee42c1d6c6a7f6a3a56731a32b",
+      "chain_hash": "13599a0215e07dacdb162480b13086f68815002d0560eb449819380398ae1902",
       "chain_seq": 80,
-      "id": "e2464b4b-27e3-4b2f-8805-5b42cd58f488",
+      "id": "75664545-b329-4b79-b779-de1615f90d90",
       "kind": "privileged_command",
       "metadata": {
         "command": "sudo systemctl status sap-pos",
         "decision": "allow",
         "reason": "",
         "seq": 2,
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf"
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7"
       },
-      "occurred_at": "2026-06-18T14:16:31.714783Z",
-      "prev_hash": "a0b0053c1ef723aede7a97ff1844b623efc4aaf707b33bc2f2d7284fc78cbb90",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.019626Z",
+      "prev_hash": "f9ea9dcbbf4c1ba801da56f2dc377122f6cd3d498fe6c499cc40cc07d1674513",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.command",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "9cefde409978693278a34a4ace7db7e08163a0fe8519229a5b41793a115bc8d2",
+      "chain_hash": "07a3dc9a97d0f933f93d76d3ed403e8c259e86c7c8efbceb0abd0971b61febb2",
       "chain_seq": 81,
-      "id": "1281db12-9b08-45c9-bad5-d0aff18a89ad",
+      "id": "53d45c1a-4275-423e-be8b-70e1e291d8b1",
       "kind": "privileged_command",
       "metadata": {
         "command": "mysql -N -e \"select count(*) from pos.terminals where status='online'\"",
         "decision": "allow",
         "reason": "",
         "seq": 3,
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf"
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7"
       },
-      "occurred_at": "2026-06-18T14:16:31.718411Z",
-      "prev_hash": "9711ce4447c85e306d47ce239c76c27e7c122fee42c1d6c6a7f6a3a56731a32b",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.034616Z",
+      "prev_hash": "13599a0215e07dacdb162480b13086f68815002d0560eb449819380398ae1902",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.command",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "063d66e6c59e2ee6ceb444ddc4a80cd990194d4e8021c8345067da78b4f3a042",
+      "chain_hash": "2f7e7c9b8297d44b5d8a32d9b15f1ca025eb6fc7637a7ae563d68b676919a8a4",
       "chain_seq": 82,
-      "id": "a81ea43d-741d-435a-84da-a8458b9e7e45",
+      "id": "ad296047-5b24-47c7-a11e-fad004dfabea",
       "kind": "privileged_command",
       "metadata": {
         "command": "exit",
         "decision": "allow",
         "reason": "",
         "seq": 4,
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf"
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7"
       },
-      "occurred_at": "2026-06-18T14:16:31.721933Z",
-      "prev_hash": "9cefde409978693278a34a4ace7db7e08163a0fe8519229a5b41793a115bc8d2",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.048574Z",
+      "prev_hash": "07a3dc9a97d0f933f93d76d3ed403e8c259e86c7c8efbceb0abd0971b61febb2",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.session.recording",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "0553d6ae4aeabfb0167bb1c38fe8301479a668daa465d8cc12d94b98f0a0b18a",
+      "chain_hash": "dc87c1cfbb40ac44364a200b42e76a1c2927a066bc8d925fff763d4112a46a20",
       "chain_seq": 83,
-      "id": "f7d7a819-2123-4ae3-bf5a-a56c34e541bc",
+      "id": "38f29494-a4e2-4ee0-9e08-302de23f2975",
       "kind": "privileged_recording",
       "metadata": {
         "bytes": 363,
-        "replay_key": "sessions/7e311f2c-9a20-49f7-943b-7b8bbb890bcf/replay.bin",
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf",
-        "sha256": "6a8d7870392830c0a88d22420c4b3aca65af12837cd112f884cce66f1f1f81aa",
+        "replay_key": "sessions/1c7f4e01-f8c9-4be3-8e16-44645a82fdf7/replay.bin",
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7",
+        "sha256": "3167e45ac2725333bc20c216439d59709e46173ce4de47ff470a5025958004b9",
         "truncated": false
       },
-      "occurred_at": "2026-06-18T14:16:31.725411Z",
-      "prev_hash": "063d66e6c59e2ee6ceb444ddc4a80cd990194d4e8021c8345067da78b4f3a042",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.091409Z",
+      "prev_hash": "2f7e7c9b8297d44b5d8a32d9b15f1ca025eb6fc7637a7ae563d68b676919a8a4",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.session.closed",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "33e092344bf928e2253c0133236a7cdfd0246bbdb2f31731e5342baa4391d5cf",
+      "chain_hash": "cabbfa186784bf63d11353bcab0f50e91220fcad2e562e6131d41c10a379e083",
       "chain_seq": 84,
-      "id": "d5b53967-58f1-465f-8a94-f01c15c72d16",
+      "id": "69dcf82d-12f5-4556-9644-8065f8e4a409",
       "kind": "privileged_session",
       "metadata": {
-        "session_id": "7e311f2c-9a20-49f7-943b-7b8bbb890bcf",
+        "session_id": "1c7f4e01-f8c9-4be3-8e16-44645a82fdf7",
         "state": "closed"
       },
-      "occurred_at": "2026-06-18T14:16:31.72786Z",
-      "prev_hash": "0553d6ae4aeabfb0167bb1c38fe8301479a668daa465d8cc12d94b98f0a0b18a",
-      "target_ref": "0efcf53e-9088-40a6-a7ec-0f5e80ce24e3",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.106432Z",
+      "prev_hash": "dc87c1cfbb40ac44364a200b42e76a1c2927a066bc8d925fff763d4112a46a20",
+      "target_ref": "1f7a1f68-5483-4b56-bafa-1791ae223f8f",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "612be68d5c7d59304a7fba5e263a929ff78c1c25babde0af83239bacdd5e7aea",
+      "chain_hash": "00812871f33f07cb8253fb59935553a0fc267c7c279bb7fc9dd4326dc94005e4",
       "chain_seq": 85,
-      "id": "5110c1a3-452a-4531-affc-22fa3e237291",
+      "id": "391d01f5-9df1-420e-95ea-c27a3cb387bc",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@de-initech-retail.example",
-        "expires_at": "2026-07-18T14:16:31Z",
+        "expires_at": "2026-07-23T15:56:32Z",
         "resource_ref": "pos:store-manager",
         "role": "operator",
         "sponsor_id": "de-admin"
       },
-      "occurred_at": "2026-06-18T14:16:31.738605Z",
-      "prev_hash": "33e092344bf928e2253c0133236a7cdfd0246bbdb2f31731e5342baa4391d5cf",
-      "target_ref": "5140b549-da37-41b2-ac51-ec21603d77dc",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.161949Z",
+      "prev_hash": "cabbfa186784bf63d11353bcab0f50e91220fcad2e562e6131d41c10a379e083",
+      "target_ref": "1663f0ec-6a4f-4662-95d6-3ac334b82e50",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "cc139a62df5142f2d0adb1a998455eb8ffe2ecc6b7deacaf305a74864d457565",
+      "chain_hash": "ee36e1582e6db55e07c5beb6a247f7b4fa504471c2b6bd33d85387168660645c",
       "chain_seq": 86,
-      "id": "286b9624-3c28-4f78-9969-487a404a93e4",
+      "id": "8ef53126-8743-41df-9c08-a13139569483",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:31.744445Z",
-      "prev_hash": "612be68d5c7d59304a7fba5e263a929ff78c1c25babde0af83239bacdd5e7aea",
-      "target_ref": "6d0212d5-02e4-4d35-8153-912b8a19f59a",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.176164Z",
+      "prev_hash": "00812871f33f07cb8253fb59935553a0fc267c7c279bb7fc9dd4326dc94005e4",
+      "target_ref": "5cec2318-343a-4f51-b966-db54ebcffeac",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "6564c50270571a3c60b64291024b3fd2445faef2359ed11320cc855380494cbf",
+      "chain_hash": "02d68a730894eb6dac601a748ebf5ce578cf69f3f2c8986957ddeb9625d5e75e",
       "chain_seq": 87,
-      "id": "c73636de-274d-4bc6-8c47-8ba774255499",
+      "id": "1733c3f7-0c76-4156-acb5-f2166f83b0c8",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@de-initech-retail.example",
-        "expires_at": "2026-07-18T14:16:31Z",
-        "grant_id": "6d0212d5-02e4-4d35-8153-912b8a19f59a"
+        "expires_at": "2026-07-23T15:56:32Z",
+        "grant_id": "5cec2318-343a-4f51-b966-db54ebcffeac"
       },
-      "occurred_at": "2026-06-18T14:16:31.744445Z",
-      "prev_hash": "cc139a62df5142f2d0adb1a998455eb8ffe2ecc6b7deacaf305a74864d457565",
-      "target_ref": "5140b549-da37-41b2-ac51-ec21603d77dc",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.176164Z",
+      "prev_hash": "ee36e1582e6db55e07c5beb6a247f7b4fa504471c2b6bd33d85387168660645c",
+      "target_ref": "1663f0ec-6a4f-4662-95d6-3ac334b82e50",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.requested",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "290aa56e5b8b69149caa8c9b56bfc7645dc820c7af8fae65c40a707d6e40198e",
+      "chain_hash": "76edb1a3e647568eb3830248672e9a62ca866e8f5801f446d04d69d41a5bf297",
       "chain_seq": 88,
-      "id": "18cdf8b7-a515-4814-b888-9c88cde4e6cd",
+      "id": "4586ba1d-169c-4c40-a8a7-55e50d2b0120",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@de-initech-retail.example",
-        "expires_at": "2026-07-18T14:16:31Z",
+        "expires_at": "2026-07-23T15:56:32Z",
         "resource_ref": "pos:cardholder-data",
         "role": "operator",
         "sponsor_id": "de-admin"
       },
-      "occurred_at": "2026-06-18T14:16:31.752363Z",
-      "prev_hash": "6564c50270571a3c60b64291024b3fd2445faef2359ed11320cc855380494cbf",
-      "target_ref": "0e35f4c4-41af-43ea-9d25-2653b7ce9e2c",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.194065Z",
+      "prev_hash": "02d68a730894eb6dac601a748ebf5ce578cf69f3f2c8986957ddeb9625d5e75e",
+      "target_ref": "680cfb24-a855-4cf2-9245-b3a869a3ffc1",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "access_grant.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "303dbe9606ba3fa281cbf5dfa0729c19af2ad8214cb9ffaa9f195a8eea0b7aa6",
+      "chain_hash": "222467ce04229c529844df3cdce7f6af2f2247130cf0b5f397872cde16ee805f",
       "chain_seq": 89,
-      "id": "d7a003e9-4df2-4319-adf6-c51a7f97f439",
+      "id": "8e1ded19-448f-4558-9d48-5398e4a94e75",
       "kind": "access_granted",
-      "occurred_at": "2026-06-18T14:16:31.758095Z",
-      "prev_hash": "290aa56e5b8b69149caa8c9b56bfc7645dc820c7af8fae65c40a707d6e40198e",
-      "target_ref": "b2048c14-3a99-4c80-b533-43d01ac76fb2",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.211735Z",
+      "prev_hash": "76edb1a3e647568eb3830248672e9a62ca866e8f5801f446d04d69d41a5bf297",
+      "target_ref": "6f3688fa-19e1-4df4-8aa9-8e2ba71788a7",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "contractor.grant.approved",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "5e6647bba85c2bd48668043cd002b2de397d349cdf1a3288033da854d6ff7147",
+      "chain_hash": "5c99f0982d61d8c942c1f90b3b5b3299f59a0678eee917172cea525a44b46cb2",
       "chain_seq": 90,
-      "id": "5bbc4b9f-5538-41b6-9ae9-e6b9a0ac4b2e",
+      "id": "f42248a4-b0f8-441e-a0d4-c116ad765aa8",
       "kind": "other",
       "metadata": {
         "contractor_user_id": "ext-dual-role@de-initech-retail.example",
-        "expires_at": "2026-07-18T14:16:31Z",
-        "grant_id": "b2048c14-3a99-4c80-b533-43d01ac76fb2"
+        "expires_at": "2026-07-23T15:56:32Z",
+        "grant_id": "6f3688fa-19e1-4df4-8aa9-8e2ba71788a7"
       },
-      "occurred_at": "2026-06-18T14:16:31.758095Z",
-      "prev_hash": "303dbe9606ba3fa281cbf5dfa0729c19af2ad8214cb9ffaa9f195a8eea0b7aa6",
-      "target_ref": "0e35f4c4-41af-43ea-9d25-2653b7ce9e2c",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.211735Z",
+      "prev_hash": "222467ce04229c529844df3cdce7f6af2f2247130cf0b5f397872cde16ee805f",
+      "target_ref": "680cfb24-a855-4cf2-9245-b3a869a3ffc1",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "orphan.detected",
       "actor": "system:anomaly-detector",
-      "chain_hash": "bb2124e0d07452a0264a3f7c60e875e489cf932b68985c8e7f65c7463e31e87f",
+      "chain_hash": "12a40e95a9a25fa3acd4988ed71d3629e01150c44f6f7bd2c3ce02cc4b235354",
       "chain_seq": 91,
-      "id": "238ebb28-fb5e-4679-8bdb-f21e171c8f54",
+      "id": "e39adadf-9627-4217-9642-0a04a6c5448e",
       "kind": "orphan_detected",
       "metadata": {
-        "anomaly_id": "190a143d-5540-4b6f-bbe5-6d77e45a5977",
+        "anomaly_id": "2dbdbb0b-1eba-415b-bd72-ad3b6940b650",
         "anomaly_kind": "sod_violation",
         "conflicting": {
           "resource": "pos:cardholder-data",
@@ -1289,110 +1289,110 @@
           "resource": "pos:store-manager",
           "role": "operator"
         },
-        "rule_id": "464cc561-673c-46c1-8a8e-d3513201b56e",
+        "rule_id": "bd3f9fb2-87d7-4b66-972b-c224559507db",
         "rule_name": "Store-manager must not hold cardholder-data access",
         "severity": "critical",
         "subject": "ext-dual-role@de-initech-retail.example"
       },
-      "occurred_at": "2026-06-18T14:16:31.767903Z",
-      "prev_hash": "5e6647bba85c2bd48668043cd002b2de397d349cdf1a3288033da854d6ff7147",
-      "target_ref": "190a143d-5540-4b6f-bbe5-6d77e45a5977",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.243559Z",
+      "prev_hash": "5c99f0982d61d8c942c1f90b3b5b3299f59a0678eee917172cea525a44b46cb2",
+      "target_ref": "2dbdbb0b-1eba-415b-bd72-ad3b6940b650",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "orphan.disposition.flagged",
       "actor": "system:anomaly-detector",
-      "chain_hash": "d4255c10dad0bd4e11a8c1490eb6840dea9c3c88f5c58f3438ff2f3156b16f70",
+      "chain_hash": "2b3a591467997c631da0a09d061753d8a5007d11b63c5cdb4e7badf169f52228",
       "chain_seq": 92,
-      "id": "7b38a813-6616-45b8-b58e-2da4e410ea37",
+      "id": "83a4c38a-cc8d-43a2-9c0b-8eba81f01d0a",
       "kind": "orphan_disposition",
       "metadata": {
-        "anomaly_id": "190a143d-5540-4b6f-bbe5-6d77e45a5977",
+        "anomaly_id": "2dbdbb0b-1eba-415b-bd72-ad3b6940b650",
         "anomaly_kind": "sod_violation",
         "automated": true,
         "disposition": "flagged",
         "severity": "critical",
         "subject": "ext-dual-role@de-initech-retail.example"
       },
-      "occurred_at": "2026-06-18T14:16:31.767903Z",
-      "prev_hash": "bb2124e0d07452a0264a3f7c60e875e489cf932b68985c8e7f65c7463e31e87f",
-      "target_ref": "190a143d-5540-4b6f-bbe5-6d77e45a5977",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:56:32.243559Z",
+      "prev_hash": "12a40e95a9a25fa3acd4988ed71d3629e01150c44f6f7bd2c3ce02cc4b235354",
+      "target_ref": "2dbdbb0b-1eba-415b-bd72-ad3b6940b650",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "compliance.export",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "a9ef8a3e83f71cd19b5f312734c0c07432bbba2c4fad9dff9971e49e056f0c0d",
+      "chain_hash": "40543cb5bd19d63dfd6845b1cfde8223aebd35c9d61ca020f9d8ef5247b19340",
       "chain_seq": 93,
-      "id": "5fe28818-b345-47dc-a403-13c41998fc1a",
+      "id": "aa9c451e-8eaf-49b1-abb9-2d29b658e898",
       "kind": "evidence_exported",
       "metadata": {
         "chain_status": "valid",
-        "content_sha256": "257d73cbf3a36dfc874ee14844b0e35200e388a51a7f56e3885a68f92e285653",
+        "content_sha256": "601fa97f7036a4c8b63e380068d1e8e5b9537e7e0ea8a2dc9f0239ed72a53428",
         "evidence_total": 92,
         "framework": "SOC 2",
         "mfa_satisfied": true
       },
-      "occurred_at": "2026-06-18T14:17:01.808247Z",
-      "prev_hash": "d4255c10dad0bd4e11a8c1490eb6840dea9c3c88f5c58f3438ff2f3156b16f70",
+      "occurred_at": "2026-06-23T15:57:01.345299Z",
+      "prev_hash": "2b3a591467997c631da0a09d061753d8a5007d11b63c5cdb4e7badf169f52228",
       "target_ref": "SOC 2",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "discovery.agent_reachable_import",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "430646263ee6e65e25c95191325733760f8f18fe354b4ccc02d8a19876d667c4",
+      "chain_hash": "8718246d32320e720a897af5d591c5f912689a1fbe80e3a9ec132d34fe8e2eef",
       "chain_seq": 94,
-      "id": "d4031068-2d25-43e5-b089-f86143c62c54",
+      "id": "67830ae7-ef52-46db-83eb-ee8ebdd1de9b",
       "kind": "other",
       "metadata": {
         "assets_new": 5,
         "reported": 5,
-        "scan_id": "0ed3cf7c-4a04-474b-aad0-6b286d9cc56e"
+        "scan_id": "96febd95-f7e8-4ea8-b64c-5d5851f7016c"
       },
-      "occurred_at": "2026-06-18T14:17:01.839118Z",
-      "prev_hash": "a9ef8a3e83f71cd19b5f312734c0c07432bbba2c4fad9dff9971e49e056f0c0d",
-      "target_ref": "c4ffc325-11c9-40d0-99f4-688981a404d7",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:57:01.570812Z",
+      "prev_hash": "40543cb5bd19d63dfd6845b1cfde8223aebd35c9d61ca020f9d8ef5247b19340",
+      "target_ref": "f9d5e313-e50f-497e-9864-33b219f8c608",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.target.created",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "240169a1c0668a1b8c3fe63ae0545af5f924aece708ac3bd7cdfcbb2eae68c20",
+      "chain_hash": "850a45deb0ece2c117def21f4e9b43a392e71c3646fbf286ef6fb2be8aa4a752",
       "chain_seq": 95,
-      "id": "07743018-099c-42cc-bb09-8af98134ab25",
+      "id": "e628b068-a4eb-43ef-9962-fb3982dfcc5e",
       "kind": "other",
       "metadata": {
         "address": "bastion.corp.internal:22",
         "protocol": "ssh"
       },
-      "occurred_at": "2026-06-18T14:17:01.848274Z",
-      "prev_hash": "430646263ee6e65e25c95191325733760f8f18fe354b4ccc02d8a19876d667c4",
-      "target_ref": "7e82a8e0-5597-4e1e-b9f0-21660afac077",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:57:01.669522Z",
+      "prev_hash": "8718246d32320e720a897af5d591c5f912689a1fbe80e3a9ec132d34fe8e2eef",
+      "target_ref": "afa81ea1-3cab-4390-b2fa-4aca7115b883",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "discovery.onboard",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "d39bfe4b62bd5913b9e293befe7bde2f917a7ce386411a7f652656070450b465",
+      "chain_hash": "d0be622d913d3a4eeda39c7b8c2e97cc5372e1821794dfc0af5b11b42c8a6a99",
       "chain_seq": 96,
-      "id": "0d913fe5-b375-4ce0-931e-2da587eee112",
+      "id": "d5ea9f13-382f-4e4d-8776-9e8a6f538df7",
       "kind": "other",
       "metadata": {
-        "asset_id": "4e66c5db-a0bb-4758-9596-a2addbef54df",
+        "asset_id": "35950676-fab2-472b-914c-2e10b2a02a30",
         "trigger": "manual"
       },
-      "occurred_at": "2026-06-18T14:17:01.852059Z",
-      "prev_hash": "240169a1c0668a1b8c3fe63ae0545af5f924aece708ac3bd7cdfcbb2eae68c20",
-      "target_ref": "7e82a8e0-5597-4e1e-b9f0-21660afac077",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:57:01.732217Z",
+      "prev_hash": "850a45deb0ece2c117def21f4e9b43a392e71c3646fbf286ef6fb2be8aa4a752",
+      "target_ref": "afa81ea1-3cab-4390-b2fa-4aca7115b883",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "discovery.policy_update",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "e711195f7c2cd31619b29587d4d52c5d3ad54616ab735426490fec5acafda404",
+      "chain_hash": "9cf4a01b0c7bc899e7fb787a63accc7c5e50e1f2ce20c28e2e58dc2e1e336f8e",
       "chain_seq": 97,
-      "id": "c86652e6-30e1-4c96-9932-ad81047618dd",
+      "id": "98c4dabc-cfee-4bce-90a0-9b20cacb2535",
       "kind": "other",
       "metadata": {
         "active_sweep": false,
@@ -1401,17 +1401,17 @@
         "has_credential": false,
         "rules": 1
       },
-      "occurred_at": "2026-06-18T14:17:01.855778Z",
-      "prev_hash": "d39bfe4b62bd5913b9e293befe7bde2f917a7ce386411a7f652656070450b465",
-      "target_ref": "6b2f6687-af18-498c-ba48-1bd40fd93d13",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:57:01.749512Z",
+      "prev_hash": "d0be622d913d3a4eeda39c7b8c2e97cc5372e1821794dfc0af5b11b42c8a6a99",
+      "target_ref": "2d0af02c-001f-4a74-8daf-29e9fc294d61",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     },
     {
       "action": "pam.rotation_policy.updated",
       "actor": "de-initech-retail-owner",
-      "chain_hash": "358e0f308669cd4c1582441763c4f2753f8e3cd0f55dbd377b8696f7fff80129",
+      "chain_hash": "c9dffdfc3b0193476247245601e5f15374725e11d4374c409e10fad5be6fa41a",
       "chain_seq": 98,
-      "id": "2f6ebf68-0a1c-41a7-9668-6a49e367d372",
+      "id": "a5c4f9fb-4462-47ea-a829-23e7ddf2bd35",
       "kind": "other",
       "metadata": {
         "dynamic_enabled": false,
@@ -1420,10 +1420,1142 @@
         "mode": "disabled",
         "rotate_on_checkin": true
       },
-      "occurred_at": "2026-06-18T14:17:01.862906Z",
-      "prev_hash": "e711195f7c2cd31619b29587d4d52c5d3ad54616ab735426490fec5acafda404",
-      "target_ref": "212de029-9abd-4e46-8ab8-8227e4b02ce8",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "occurred_at": "2026-06-23T15:57:01.789179Z",
+      "prev_hash": "9cf4a01b0c7bc899e7fb787a63accc7c5e50e1f2ce20c28e2e58dc2e1e336f8e",
+      "target_ref": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "5e1669480b1bfdcfb646b36a282e80c9fbacc431c352eeb69d80c01c10ecd58c",
+      "chain_seq": 99,
+      "id": "c7a72dcb-b18d-41da-b698-73d7aa47df8b",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:03.420209Z",
+      "prev_hash": "c9dffdfc3b0193476247245601e5f15374725e11d4374c409e10fad5be6fa41a",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "eac8e870864bc285fcce1ef7a5aac733e05b50c4ad207f494dbeffb12881a4c2",
+      "chain_seq": 100,
+      "id": "9727c460-2172-4fdf-9fea-87f9574af25e",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:03.427241Z",
+      "prev_hash": "5e1669480b1bfdcfb646b36a282e80c9fbacc431c352eeb69d80c01c10ecd58c",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "56e39c50a149696224150517e16f1cf09c964f429ee34db78c70e739d1727dd8",
+      "chain_seq": 101,
+      "id": "1d29e6dd-4917-4e5a-bf5a-9b439e56e925",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.43096Z",
+      "prev_hash": "eac8e870864bc285fcce1ef7a5aac733e05b50c4ad207f494dbeffb12881a4c2",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "6c863e2430fa5dce01fbb67466c701646d32a758bbed4b7567c8a7a5729a086a",
+      "chain_seq": 102,
+      "id": "c41e4610-c68a-4af8-a9ae-6d484ebd0902",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.442652Z",
+      "prev_hash": "56e39c50a149696224150517e16f1cf09c964f429ee34db78c70e739d1727dd8",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "65ce1aa05f6574e24918ef3d1a9231e49864b275a6e0b7b35c2177230f67ea3f",
+      "chain_seq": 103,
+      "id": "de29a2c5-f87b-432f-b775-ad6bf586bcad",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.454878Z",
+      "prev_hash": "6c863e2430fa5dce01fbb67466c701646d32a758bbed4b7567c8a7a5729a086a",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "088ce72a60d4842bd56c6c0f56094d1d630bc828ab2f27c0e7304a90e6357733",
+      "chain_seq": 104,
+      "id": "b6f54097-1ebb-4c43-a06d-83b8a04eb9ac",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.462786Z",
+      "prev_hash": "65ce1aa05f6574e24918ef3d1a9231e49864b275a6e0b7b35c2177230f67ea3f",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "fc71377ad471e7194c38015e01f8a858d5aa365331a3c92e695af778050e53cc",
+      "chain_seq": 105,
+      "id": "95bcd41a-4c55-42b9-9724-29b596c14f4a",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.466335Z",
+      "prev_hash": "088ce72a60d4842bd56c6c0f56094d1d630bc828ab2f27c0e7304a90e6357733",
+      "target_ref": "44528fb1-b8ee-4fca-a78d-2de97cc70865",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "7808619dc8721df94161fd3b5b92398a6ef357cd3687d512158852b62112fdea",
+      "chain_seq": 106,
+      "id": "6d2c4a34-39ff-47fe-b8de-407b2e471a9b",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:03.461127Z",
+      "prev_hash": "fc71377ad471e7194c38015e01f8a858d5aa365331a3c92e695af778050e53cc",
+      "target_ref": "5773c84a-110f-4cee-ba4d-73faff996cb2",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "f7cce57608c441ec83354248e79689b710601dc986366efc8ac8b3141f49f819",
+      "chain_seq": 107,
+      "id": "e438bb34-0af5-473b-9790-ed97de5c719f",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:03.478779Z",
+      "prev_hash": "7808619dc8721df94161fd3b5b92398a6ef357cd3687d512158852b62112fdea",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "31ed1cc99b96c1f5523125a26a7df2b821c56ef9b21febd00c7de04c07b2b4be",
+      "chain_seq": 108,
+      "id": "a673826b-90fc-4433-80a7-6ce8430ab132",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:03.487875Z",
+      "prev_hash": "f7cce57608c441ec83354248e79689b710601dc986366efc8ac8b3141f49f819",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "91ac5ea4bd3ffde0fb382cf1eadbcd526c5b499ed3fc4864066c3fd7b9253deb",
+      "chain_seq": 109,
+      "id": "311aa2e6-2ee1-4dfb-b17e-0f042af29e65",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.495173Z",
+      "prev_hash": "31ed1cc99b96c1f5523125a26a7df2b821c56ef9b21febd00c7de04c07b2b4be",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c648156babc6c591403e23422d5c0144f942d27dcb80a3fc9e6d35827cffccaa",
+      "chain_seq": 110,
+      "id": "301b4246-da96-4de3-bbeb-7dd79ebbea25",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.512513Z",
+      "prev_hash": "91ac5ea4bd3ffde0fb382cf1eadbcd526c5b499ed3fc4864066c3fd7b9253deb",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "47fe7062031badc6e5a20c0784f0251cb9ea2501a56a1a4fc32ab7f95c3597b3",
+      "chain_seq": 111,
+      "id": "e8863ba9-bf6f-4c46-b011-577b198bbb5a",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.528254Z",
+      "prev_hash": "c648156babc6c591403e23422d5c0144f942d27dcb80a3fc9e6d35827cffccaa",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "149798b664fed0fe9dca87e04ec6fd7fde8e5ea2f82b7ce9ed3e7b5ac468a2a0",
+      "chain_seq": 112,
+      "id": "a241f03c-a7bb-4a14-8654-869c89308335",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.541174Z",
+      "prev_hash": "47fe7062031badc6e5a20c0784f0251cb9ea2501a56a1a4fc32ab7f95c3597b3",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "f510ef812199570075d6239d641a394ccd5145ce9cc2ef0101c72842e5d1ccbf",
+      "chain_seq": 113,
+      "id": "75361f89-b9d4-4b12-8291-d8b525ed97f2",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.551324Z",
+      "prev_hash": "149798b664fed0fe9dca87e04ec6fd7fde8e5ea2f82b7ce9ed3e7b5ac468a2a0",
+      "target_ref": "c9cac357-13df-49ce-88d6-380268d159d8",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "a1f973293d09374f0ddbb46e9501655a419702080408787244c83d7321e2e054",
+      "chain_seq": 114,
+      "id": "21b81a6f-8232-4557-ac2a-5cea06a31aa2",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:03.536991Z",
+      "prev_hash": "f510ef812199570075d6239d641a394ccd5145ce9cc2ef0101c72842e5d1ccbf",
+      "target_ref": "f6e315af-76b3-43af-b7ac-b2a0782757fb",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "2963b8bf89b67dd33f2b1665275e9188fbcabe322669c1e5eefd3c48cfe2a58a",
+      "chain_seq": 115,
+      "id": "1946e72f-db39-43c5-b779-f59f28b4f05b",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:03.578313Z",
+      "prev_hash": "a1f973293d09374f0ddbb46e9501655a419702080408787244c83d7321e2e054",
+      "target_ref": "5b1f5f1f-b4fb-4bb2-bbea-33cd7cee488b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.risk_assessed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c15ee988a3743e4036dbe1ca9a0b1232916274052c83de22849f8480c244988f",
+      "chain_seq": 116,
+      "id": "be15a31f-67dc-4d7a-9400-b485bb0c8bed",
+      "kind": "other",
+      "metadata": {
+        "degraded": true,
+        "factors": [
+          "ai_unavailable"
+        ],
+        "recommendation": "needs_review",
+        "score": "medium",
+        "source": "fallback"
+      },
+      "occurred_at": "2026-06-23T16:04:03.591349Z",
+      "prev_hash": "2963b8bf89b67dd33f2b1665275e9188fbcabe322669c1e5eefd3c48cfe2a58a",
+      "target_ref": "5b1f5f1f-b4fb-4bb2-bbea-33cd7cee488b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.ai_reviewed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "62b5acde4971df89607c1744a1ad045107c02f355aa3dce34b230b1d937ba334",
+      "chain_seq": 117,
+      "id": "6046f5b9-fea3-4e24-8e82-119d04ecb163",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.599869Z",
+      "prev_hash": "c15ee988a3743e4036dbe1ca9a0b1232916274052c83de22849f8480c244988f",
+      "target_ref": "5b1f5f1f-b4fb-4bb2-bbea-33cd7cee488b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "b941cbb59af0de54200006b5cd31c6709eba7f0443eb6f275be2c43f104153a1",
+      "chain_seq": 118,
+      "id": "735f8842-8734-42b6-bd0d-d5f1cfb9dd19",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.643846Z",
+      "prev_hash": "62b5acde4971df89607c1744a1ad045107c02f355aa3dce34b230b1d937ba334",
+      "target_ref": "5b1f5f1f-b4fb-4bb2-bbea-33cd7cee488b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.started",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "2648df43eedaac97f10db06f0c1524e3638a00db8b0a3fdc57388e32523e168e",
+      "chain_seq": 119,
+      "id": "f4be1474-0ebe-4c72-be47-abd4c7c4c651",
+      "kind": "review_started",
+      "occurred_at": "2026-06-23T16:04:03.674134Z",
+      "prev_hash": "b941cbb59af0de54200006b5cd31c6709eba7f0443eb6f275be2c43f104153a1",
+      "target_ref": "954152bd-3012-428b-b60e-a962237beb8c",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.decision.revoke",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "8d1423fedd3dde35eb407ab84b06e53a8c626b3be3ff6886ed8e3bcec481570d",
+      "chain_seq": 120,
+      "id": "5fa968b1-7e47-47f7-a842-1c68020a12e3",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:03.704088Z",
+      "prev_hash": "2648df43eedaac97f10db06f0c1524e3638a00db8b0a3fdc57388e32523e168e",
+      "target_ref": "5e9b99fe-4aab-4f62-974b-68d21a4b8e5d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "68a9ba6eb655b18ba5be0cd4d0a0e19746c666752fd3ec5ac5af02301861816d",
+      "chain_seq": 121,
+      "id": "65371bc2-8cf1-488a-869e-afb24b05bebf",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:03.718164Z",
+      "prev_hash": "8d1423fedd3dde35eb407ab84b06e53a8c626b3be3ff6886ed8e3bcec481570d",
+      "target_ref": "6f3688fa-19e1-4df4-8aa9-8e2ba71788a7",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "8a96159577739d1e0b276df26a759d19895a60b766077bedb81ebeed693c5ab6",
+      "chain_seq": 122,
+      "id": "be8aafee-97f2-42ab-8f0b-093f35b898ec",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:03.729197Z",
+      "prev_hash": "68a9ba6eb655b18ba5be0cd4d0a0e19746c666752fd3ec5ac5af02301861816d",
+      "target_ref": "632ba96a-4f99-483a-bdb1-66ea53a2cfd3",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "f8c997247d40fdb02985936981234906bca55d3ad89425cae542c4f32b684e74",
+      "chain_seq": 123,
+      "id": "ae00b6da-0c17-4c18-8a7a-d9e5fce7e9ab",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:03.744516Z",
+      "prev_hash": "8a96159577739d1e0b276df26a759d19895a60b766077bedb81ebeed693c5ab6",
+      "target_ref": "9db77b5f-984c-4de4-ae88-1849daf1f675",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c67e3ee73c8ba40067f11cec810b562f8c67c4b914e3f1242fdf42441369a62f",
+      "chain_seq": 124,
+      "id": "cbcf3b0e-7d99-4695-9b77-0b9203149251",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:03.758819Z",
+      "prev_hash": "f8c997247d40fdb02985936981234906bca55d3ad89425cae542c4f32b684e74",
+      "target_ref": "b46b5b0d-9b71-4b78-96fb-e08ecf5b2b24",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_review.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "58b622b7831897a6cf3888f8071dd9e2f81e49ab4aeaca4a55e3875c3613ddd2",
+      "chain_seq": 125,
+      "id": "87bc2dc1-2b44-482a-8f85-811cbb5cbd12",
+      "kind": "review_decision",
+      "occurred_at": "2026-06-23T16:04:03.771012Z",
+      "prev_hash": "c67e3ee73c8ba40067f11cec810b562f8c67c4b914e3f1242fdf42441369a62f",
+      "target_ref": "cd54ecae-be6a-4af4-8639-f6c31cdc5337",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.campaign.started",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c105bc6a5676d22018bfb5ab5b3332ccd3242129d5271322f52453ed0a648232",
+      "chain_seq": 126,
+      "id": "0428c2bc-ba6a-46b4-a7c2-7d918bb37213",
+      "kind": "certification_started",
+      "metadata": {
+        "framework": "ISO 27001",
+        "item_count": 4,
+        "name": "Q2 2026 BSI C5 logical-access certification",
+        "scope": {
+          "connector_id": "d4bdb1f2-8afa-42ba-9bcf-3c1610437c95"
+        }
+      },
+      "occurred_at": "2026-06-23T16:04:03.780658Z",
+      "prev_hash": "58b622b7831897a6cf3888f8071dd9e2f81e49ab4aeaca4a55e3875c3613ddd2",
+      "target_ref": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.item.decision.revoke",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c7eb8b48277480799cafd2070000d48dcbd06f05f7e8fd4e2531d858a0257266",
+      "chain_seq": 127,
+      "id": "a4908987-c357-4088-b740-8a29d9378af5",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+        "grant_id": "5cec2318-343a-4f51-b966-db54ebcffeac",
+        "reason": "Seed: entitlement revoked at certification."
+      },
+      "occurred_at": "2026-06-23T16:04:03.80084Z",
+      "prev_hash": "c105bc6a5676d22018bfb5ab5b3332ccd3242129d5271322f52453ed0a648232",
+      "target_ref": "09297845-179b-45bd-b087-d4799f6c7e3d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.item.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "4822cf7b6d688e3cf560bcd525bbaf7ce652d36c422d57a6fe16b2db0b02a715",
+      "chain_seq": 128,
+      "id": "21e210a8-6972-46b2-bf09-00f7ea1c7ef4",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+        "grant_id": "e64070d3-ec10-479c-9028-2f51410405d8",
+        "reason": "Seed: entitlement certified."
+      },
+      "occurred_at": "2026-06-23T16:04:03.816757Z",
+      "prev_hash": "c7eb8b48277480799cafd2070000d48dcbd06f05f7e8fd4e2531d858a0257266",
+      "target_ref": "22d946f0-643a-4773-8426-60a057f53050",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.item.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "87bcdc891933a006da9b99638498013a8ee76da891ecdd7f8f05a5d47d5a84a5",
+      "chain_seq": 129,
+      "id": "63502aa1-4f0e-4ebc-8042-ae90944dd0ab",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+        "grant_id": "5773c84a-110f-4cee-ba4d-73faff996cb2",
+        "reason": "Seed: entitlement certified."
+      },
+      "occurred_at": "2026-06-23T16:04:03.834204Z",
+      "prev_hash": "4822cf7b6d688e3cf560bcd525bbaf7ce652d36c422d57a6fe16b2db0b02a715",
+      "target_ref": "6c548224-0131-427d-87d0-94bd794b2521",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.item.decision.certify",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "281feff18c3282fe9b4f270387b1ce4ecee58f87b1e48d74dfe37d32b45a0655",
+      "chain_seq": 130,
+      "id": "74f5c95e-cd9b-4838-b3b8-12e7ef883683",
+      "kind": "certification_decision",
+      "metadata": {
+        "campaign_id": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+        "grant_id": "f6e315af-76b3-43af-b7ac-b2a0782757fb",
+        "reason": "Seed: entitlement certified."
+      },
+      "occurred_at": "2026-06-23T16:04:03.847821Z",
+      "prev_hash": "87bcdc891933a006da9b99638498013a8ee76da891ecdd7f8f05a5d47d5a84a5",
+      "target_ref": "db9a5aba-8b02-46d9-961d-bc093c755d99",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "certification.campaign.closed",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "eabbf33078784922155d528d82dc785eb5aa5a46758e16c9800061b5ab5d98af",
+      "chain_seq": 131,
+      "id": "d94b913f-5c63-43c9-a047-834cb1c2bbab",
+      "kind": "certification_closed",
+      "metadata": {
+        "staged_revocations": 1
+      },
+      "occurred_at": "2026-06-23T16:04:03.867003Z",
+      "prev_hash": "281feff18c3282fe9b4f270387b1ce4ecee58f87b1e48d74dfe37d32b45a0655",
+      "target_ref": "3d3e5c6a-a62c-40ae-9202-95e532620ab3",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "eb4f245a41d06ca1058a4a921bf41baf53532e40f2b026e6a03ecd80cc6f4d91",
+      "chain_seq": 132,
+      "id": "514401b1-bb88-4574-9b3d-cdca86e2e1bf",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:03.883779Z",
+      "prev_hash": "eabbf33078784922155d528d82dc785eb5aa5a46758e16c9800061b5ab5d98af",
+      "target_ref": "5cec2318-343a-4f51-b966-db54ebcffeac",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.created",
+      "actor": "scim",
+      "chain_hash": "a732cf5bd8b5202563f2ba1965693db63eb4d0c0d17e1df722aa4a0764a9178b",
+      "chain_seq": 133,
+      "id": "009eb997-097c-4a91-89d4-fa55f9f85472",
+      "kind": "access_requested",
+      "occurred_at": "2026-06-23T16:04:03.942355Z",
+      "prev_hash": "eb4f245a41d06ca1058a4a921bf41baf53532e40f2b026e6a03ecd80cc6f4d91",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.approved",
+      "actor": "scim",
+      "chain_hash": "3732b3b1dd5a4847ef51ae0b47bdf7326206e51e9a8dc2ed6563862d390a760b",
+      "chain_seq": 134,
+      "id": "c3ef8129-3c11-48de-87f8-203ce0b7b2dc",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.954874Z",
+      "prev_hash": "a732cf5bd8b5202563f2ba1965693db63eb4d0c0d17e1df722aa4a0764a9178b",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioning",
+      "actor": "scim",
+      "chain_hash": "25d1dffebd9270d51782ddb079d684c3bd2720c2da4b71728f9c022fe3f5224a",
+      "chain_seq": 135,
+      "id": "8961d550-b701-40f8-a123-9c16b84da344",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.967535Z",
+      "prev_hash": "3732b3b1dd5a4847ef51ae0b47bdf7326206e51e9a8dc2ed6563862d390a760b",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.provisioned",
+      "actor": "scim",
+      "chain_hash": "ea82e22d6708de65a8e759cbcce59e9c7c1869017579dba5ff6d1b657a89c354",
+      "chain_seq": 136,
+      "id": "8b9841db-4fe1-46e7-b24b-8c4dbb4c810b",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.980469Z",
+      "prev_hash": "25d1dffebd9270d51782ddb079d684c3bd2720c2da4b71728f9c022fe3f5224a",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.active",
+      "actor": "scim",
+      "chain_hash": "2a8b3a8adddebddd55497d0e69821522a9aaa35676474732fd0c851c37b030c5",
+      "chain_seq": 137,
+      "id": "f14b7313-c802-49e3-8177-ff584ef6320b",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:03.98634Z",
+      "prev_hash": "ea82e22d6708de65a8e759cbcce59e9c7c1869017579dba5ff6d1b657a89c354",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "scim",
+      "chain_hash": "10421b986f44567f2052000ffe2f633c9a36d0df202ba1cf78ee542554a8137b",
+      "chain_seq": 138,
+      "id": "a48586a6-0c21-46a1-86b4-2d04ea17ee93",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:03.977164Z",
+      "prev_hash": "2a8b3a8adddebddd55497d0e69821522a9aaa35676474732fd0c851c37b030c5",
+      "target_ref": "3e49e9ee-9a4d-40c7-ae3f-ba15c202d5c2",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.joiner.recorded",
+      "actor": "scim",
+      "chain_hash": "05d1843997f71165cc8fb0d149cfd7ad64c36abe7acf8970b4ec05902eb65043",
+      "chain_seq": 139,
+      "id": "5ea6414c-13fa-4721-9a6c-50b7f9001c75",
+      "kind": "joiner_provisioned",
+      "occurred_at": "2026-06-23T16:04:04.000015Z",
+      "prev_hash": "10421b986f44567f2052000ffe2f633c9a36d0df202ba1cf78ee542554a8137b",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_request.revoked",
+      "actor": "scim",
+      "chain_hash": "2bb86ed4d96705f2e7cfbd640c3a21f42c9dd8f7b0f8f44a69f3f35c367d1dbe",
+      "chain_seq": 140,
+      "id": "ae8202c3-5194-49a4-9e0c-75e8e98b323d",
+      "kind": "other",
+      "occurred_at": "2026-06-23T16:04:04.01832Z",
+      "prev_hash": "05d1843997f71165cc8fb0d149cfd7ad64c36abe7acf8970b4ec05902eb65043",
+      "target_ref": "007f53d6-5e05-4fe8-a407-d11cdd7ad74b",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.revoked",
+      "actor": "scim",
+      "chain_hash": "f4535c32d196f021f334b5127ef86080be2bf40c706e4f603e5a99af06b7e0b7",
+      "chain_seq": 141,
+      "id": "b64c7f21-c02b-42de-af35-c61fc75ecb66",
+      "kind": "access_revoked",
+      "occurred_at": "2026-06-23T16:04:04.014772Z",
+      "prev_hash": "2bb86ed4d96705f2e7cfbd640c3a21f42c9dd8f7b0f8f44a69f3f35c367d1dbe",
+      "target_ref": "3e49e9ee-9a4d-40c7-ae3f-ba15c202d5c2",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.grant_revoke.done",
+      "actor": "scim",
+      "chain_hash": "9c42219de8c76a25b9a69cc84a92c82ac6240c7c31b0067a641ce18b5539d44b",
+      "chain_seq": 142,
+      "id": "d71ccd28-3e96-4af2-afde-3d9a38ee84fa",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:04.028517Z",
+      "prev_hash": "f4535c32d196f021f334b5127ef86080be2bf40c706e4f603e5a99af06b7e0b7",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.team_remove.done",
+      "actor": "scim",
+      "chain_hash": "d686587b689c88c687da152f42b90ed480bcdb352c96260850da851e52042fe0",
+      "chain_seq": 143,
+      "id": "ef463e7f-e385-4416-bb91-27d4037f178b",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:04.038581Z",
+      "prev_hash": "9c42219de8c76a25b9a69cc84a92c82ac6240c7c31b0067a641ce18b5539d44b",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.iam_core_disable.skipped",
+      "actor": "scim",
+      "chain_hash": "58c65402482d4ae7b0cbcfffb87926f8660bef7269b9875d4a4f6537295c6402",
+      "chain_seq": 144,
+      "id": "167228b4-952d-4325-a2cb-4b4f8a107347",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:04.04624Z",
+      "prev_hash": "d686587b689c88c687da152f42b90ed480bcdb352c96260850da851e52042fe0",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.session_revoke.failed",
+      "actor": "scim",
+      "chain_hash": "7e24931843fe69b0a33bbbf5a08d8423cae3c7fc81a57429d1b81300317b339a",
+      "chain_seq": 145,
+      "id": "9db7941e-2267-4c82-bd55-ce6ed5776980",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:07.026198Z",
+      "prev_hash": "58c65402482d4ae7b0cbcfffb87926f8660bef7269b9875d4a4f6537295c6402",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.scim_deprovision.failed",
+      "actor": "scim",
+      "chain_hash": "51779db418cb168e4e8a7149a1aeaf0d92556dfbbe6cb8e79a85edef1616dfd6",
+      "chain_seq": 146,
+      "id": "86877838-2d55-4ca7-b08d-0790d4b17c2b",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:07.038351Z",
+      "prev_hash": "7e24931843fe69b0a33bbbf5a08d8423cae3c7fc81a57429d1b81300317b339a",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "jml.leaver.identity_disable.done",
+      "actor": "scim",
+      "chain_hash": "7b226b8a98a36473aaf54ab008b0a66e53498fd9433a4f004c8f1f98741d54c8",
+      "chain_seq": 147,
+      "id": "62e7178f-b6de-4fd0-a8f6-5acfaa3f9611",
+      "kind": "kill_switch_fired",
+      "occurred_at": "2026-06-23T16:04:07.056421Z",
+      "prev_hash": "51779db418cb168e4e8a7149a1aeaf0d92556dfbbe6cb8e79a85edef1616dfd6",
+      "target_ref": "jml-joiner@demo.test",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "sod.rule.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "0d8231fab5b08c2e232cd257f47aa93b6dfd751ee21512443da91aa535ac6971",
+      "chain_seq": 148,
+      "id": "d121a459-a9eb-4192-a46d-4fa944e8a076",
+      "kind": "other",
+      "metadata": {
+        "selector_a": {
+          "resource": "pos:store-manager",
+          "role": "operator"
+        },
+        "selector_b": {
+          "resource": "pos:cardholder-data",
+          "role": "operator"
+        },
+        "severity": "critical"
+      },
+      "occurred_at": "2026-06-23T16:04:07.074983Z",
+      "prev_hash": "7b226b8a98a36473aaf54ab008b0a66e53498fd9433a4f004c8f1f98741d54c8",
+      "target_ref": "ef65478f-c673-4fee-b5e2-efd0842f76e2",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "71abd8b28e723331daa177118d0423a71f8bcc37e2fcdd04d55f8939a7965f8a",
+      "chain_seq": 149,
+      "id": "22c6c862-8821-410c-b333-5cfbd5f8c5aa",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-pos-integrator@vendor.example",
+        "expires_at": "2026-08-22T16:04:07Z",
+        "resource_ref": "pos:store-manager",
+        "role": "operator",
+        "sponsor_id": "de-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:07.10864Z",
+      "prev_hash": "0d8231fab5b08c2e232cd257f47aa93b6dfd751ee21512443da91aa535ac6971",
+      "target_ref": "066a36ca-a63a-46ab-9127-6de98e68c7ae",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "52b938c5e7d7a160634ee715de3cedb6dc83c70a25649dc8461c3d982b611c92",
+      "chain_seq": 150,
+      "id": "f7e78e58-e69a-4ae4-a071-d62f5dd8b3bc",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:07.132261Z",
+      "prev_hash": "71abd8b28e723331daa177118d0423a71f8bcc37e2fcdd04d55f8939a7965f8a",
+      "target_ref": "cfb8be01-ffda-4560-ac23-eaed9389cdd5",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "00d182687a804e15fa00a34c4ed918bd7caac7b4154274ee3731a4c1fafb8497",
+      "chain_seq": 151,
+      "id": "80980e53-2b4f-4915-8ec5-ab8b0e6e0587",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-pos-integrator@vendor.example",
+        "expires_at": "2026-08-22T16:04:07Z",
+        "grant_id": "cfb8be01-ffda-4560-ac23-eaed9389cdd5"
+      },
+      "occurred_at": "2026-06-23T16:04:07.132261Z",
+      "prev_hash": "52b938c5e7d7a160634ee715de3cedb6dc83c70a25649dc8461c3d982b611c92",
+      "target_ref": "066a36ca-a63a-46ab-9127-6de98e68c7ae",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.extended",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "da29373c43c08f4c38bfe35355b9335f66ad9c3c215630892a00012ef5cf0dd0",
+      "chain_seq": 152,
+      "id": "9422c3b7-8e34-4176-b1fb-3c76d009af3c",
+      "kind": "other",
+      "metadata": {
+        "new_expires_at": "2026-10-21T16:04:07Z",
+        "previous_expires_at": "2026-08-22T16:04:07Z",
+        "reason": "Sponsor-approved extension: engagement prolonged."
+      },
+      "occurred_at": "2026-06-23T16:04:07.165034Z",
+      "prev_hash": "00d182687a804e15fa00a34c4ed918bd7caac7b4154274ee3731a4c1fafb8497",
+      "target_ref": "066a36ca-a63a-46ab-9127-6de98e68c7ae",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "pam.lease.requested",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c48d27e2b8ba474e65dc662996c9ea5469eba1c0bb2d8edca0d62147cafa7e73",
+      "chain_seq": 153,
+      "id": "4027328e-db0d-4a5e-86cf-47f298c3ff64",
+      "kind": "other",
+      "metadata": {
+        "risk_degraded": true,
+        "risk_level": "medium",
+        "subject": "de-initech-retail-owner",
+        "target_id": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+        "ttl_seconds": 1800
+      },
+      "occurred_at": "2026-06-23T16:04:07.203436Z",
+      "prev_hash": "da29373c43c08f4c38bfe35355b9335f66ad9c3c215630892a00012ef5cf0dd0",
+      "target_ref": "7b0003ea-0878-43ac-a4c1-1dde957c1eac",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "pam.lease.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "b7c43cee9322a32d16fef57cebde70162db386a0d0d8c9dd0011d96a79d9df3e",
+      "chain_seq": 154,
+      "id": "12fe5b56-bf6f-4475-b51f-2f15f2e3480a",
+      "kind": "other",
+      "metadata": {
+        "expires_at": "2026-06-23T16:34:07Z",
+        "subject": "de-initech-retail-owner",
+        "ttl_seconds": 1800
+      },
+      "occurred_at": "2026-06-23T16:04:07.226086Z",
+      "prev_hash": "c48d27e2b8ba474e65dc662996c9ea5469eba1c0bb2d8edca0d62147cafa7e73",
+      "target_ref": "7b0003ea-0878-43ac-a4c1-1dde957c1eac",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "pam.connect_token.minted",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "7238279a8a11d5b424f4a9146ce10d5a8fc8e6058f6736bfef6ff57b2409d078",
+      "chain_seq": 155,
+      "id": "f3e34482-82ab-47de-ae1b-8da376542fce",
+      "kind": "other",
+      "metadata": {
+        "expires_at": "2026-06-23T16:34:07Z",
+        "subject": "de-initech-retail-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:07.252099Z",
+      "prev_hash": "b7c43cee9322a32d16fef57cebde70162db386a0d0d8c9dd0011d96a79d9df3e",
+      "target_ref": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "935cddbee15e714632aa46622c4d96e550ab540a08070eff95afa445f989cab0",
+      "chain_seq": 156,
+      "id": "3505a0a3-2f94-4969-98ac-bf52dd4d050c",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@de-initech-retail.example",
+        "expires_at": "2026-07-23T16:04:07Z",
+        "resource_ref": "pos:store-manager",
+        "role": "operator",
+        "sponsor_id": "de-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:07.297917Z",
+      "prev_hash": "7238279a8a11d5b424f4a9146ce10d5a8fc8e6058f6736bfef6ff57b2409d078",
+      "target_ref": "d6e9d43e-0da5-4df1-aacb-7d14e818c4e4",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "93094b1f66a9dce307f1f10db6c8ddf1de3616fadb74ea4e1cb6358b0c23b7b7",
+      "chain_seq": 157,
+      "id": "45a18ff5-7f99-43dd-9805-27efd22052d6",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:07.32141Z",
+      "prev_hash": "935cddbee15e714632aa46622c4d96e550ab540a08070eff95afa445f989cab0",
+      "target_ref": "fceface4-88f3-4169-bea7-2e367be6f1c5",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "670a4cbdee797d3d086d30e90de251e23bbb2d832d1d00fe01f67cb6b2e40e85",
+      "chain_seq": 158,
+      "id": "cf58fd28-48f6-4f1f-b700-0945067b3b64",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@de-initech-retail.example",
+        "expires_at": "2026-07-23T16:04:07Z",
+        "grant_id": "fceface4-88f3-4169-bea7-2e367be6f1c5"
+      },
+      "occurred_at": "2026-06-23T16:04:07.32141Z",
+      "prev_hash": "93094b1f66a9dce307f1f10db6c8ddf1de3616fadb74ea4e1cb6358b0c23b7b7",
+      "target_ref": "d6e9d43e-0da5-4df1-aacb-7d14e818c4e4",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.requested",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "71b564bc74feb4ca72811b9ff739c1af0c6aa001032622f92c9b301e56459e12",
+      "chain_seq": 159,
+      "id": "f00d48ae-eddb-4f21-9e8d-12a5f5ca912e",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@de-initech-retail.example",
+        "expires_at": "2026-07-23T16:04:07Z",
+        "resource_ref": "pos:cardholder-data",
+        "role": "operator",
+        "sponsor_id": "de-admin"
+      },
+      "occurred_at": "2026-06-23T16:04:07.403121Z",
+      "prev_hash": "670a4cbdee797d3d086d30e90de251e23bbb2d832d1d00fe01f67cb6b2e40e85",
+      "target_ref": "e9cca6fc-996c-4ee2-94a6-9b45a47efdd0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "access_grant.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "86930e7b18e54454b0c0885505796250aef8606e38cf9cdcd767ae17d7b37871",
+      "chain_seq": 160,
+      "id": "82540e3a-757a-4bc9-9337-9f5c6e5f7ac3",
+      "kind": "access_granted",
+      "occurred_at": "2026-06-23T16:04:07.422628Z",
+      "prev_hash": "71b564bc74feb4ca72811b9ff739c1af0c6aa001032622f92c9b301e56459e12",
+      "target_ref": "151af875-3bbd-4026-87d2-0b7226d8140d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "contractor.grant.approved",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "3228011143e2cc138a279cc504fa6ee1eb8b80944252061fd06e493e609211ad",
+      "chain_seq": 161,
+      "id": "3c5fc1d3-6588-4c3c-bce2-a0c19364bd1a",
+      "kind": "other",
+      "metadata": {
+        "contractor_user_id": "ext-dual-role@de-initech-retail.example",
+        "expires_at": "2026-07-23T16:04:07Z",
+        "grant_id": "151af875-3bbd-4026-87d2-0b7226d8140d"
+      },
+      "occurred_at": "2026-06-23T16:04:07.422628Z",
+      "prev_hash": "86930e7b18e54454b0c0885505796250aef8606e38cf9cdcd767ae17d7b37871",
+      "target_ref": "e9cca6fc-996c-4ee2-94a6-9b45a47efdd0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.detected",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "aec1a891c102f9d69de654142607393c1edde4bd1b6920847620a07fd386334a",
+      "chain_seq": 162,
+      "id": "142c86ed-c518-4e1c-bca4-9ad6d42afdda",
+      "kind": "orphan_detected",
+      "metadata": {
+        "anomaly_id": "0ca575de-e332-437c-bfa8-fa59c2f39601",
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "pos:cardholder-data",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "pos:store-manager",
+          "role": "operator"
+        },
+        "rule_id": "bd3f9fb2-87d7-4b66-972b-c224559507db",
+        "rule_name": "Store-manager must not hold cardholder-data access",
+        "severity": "critical",
+        "subject": "de-initech-retail-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:07.462921Z",
+      "prev_hash": "3228011143e2cc138a279cc504fa6ee1eb8b80944252061fd06e493e609211ad",
+      "target_ref": "0ca575de-e332-437c-bfa8-fa59c2f39601",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.disposition.flagged",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "fa819d58131efefb6ccba30876834686e88736096ece690848365804edbf85e8",
+      "chain_seq": 163,
+      "id": "cda5f324-3b3b-43d3-8ad5-740ac920f40b",
+      "kind": "orphan_disposition",
+      "metadata": {
+        "anomaly_id": "0ca575de-e332-437c-bfa8-fa59c2f39601",
+        "anomaly_kind": "sod_violation",
+        "automated": true,
+        "disposition": "flagged",
+        "severity": "critical",
+        "subject": "de-initech-retail-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:07.462921Z",
+      "prev_hash": "aec1a891c102f9d69de654142607393c1edde4bd1b6920847620a07fd386334a",
+      "target_ref": "0ca575de-e332-437c-bfa8-fa59c2f39601",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.detected",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "dfa77f25eb6cf29ef747d7f38bd6e267addfe9ae3e5c21de5e811a37cc9f6eab",
+      "chain_seq": 164,
+      "id": "6745f2ba-ab5e-4b30-939d-9192c3b1f940",
+      "kind": "orphan_detected",
+      "metadata": {
+        "anomaly_id": "53175216-9b7f-48c1-89eb-55254ca864f4",
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "pos:cardholder-data",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "pos:store-manager",
+          "role": "operator"
+        },
+        "rule_id": "ef65478f-c673-4fee-b5e2-efd0842f76e2",
+        "rule_name": "Store-manager must not hold cardholder-data access",
+        "severity": "critical",
+        "subject": "de-initech-retail-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:07.482936Z",
+      "prev_hash": "fa819d58131efefb6ccba30876834686e88736096ece690848365804edbf85e8",
+      "target_ref": "53175216-9b7f-48c1-89eb-55254ca864f4",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.disposition.flagged",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "775780e0c82835abfc54980b43800abba3cdbf66b09fd7f34d60ab6264be4e38",
+      "chain_seq": 165,
+      "id": "286a58e3-dc9e-43df-9907-0681c0a96450",
+      "kind": "orphan_disposition",
+      "metadata": {
+        "anomaly_id": "53175216-9b7f-48c1-89eb-55254ca864f4",
+        "anomaly_kind": "sod_violation",
+        "automated": true,
+        "disposition": "flagged",
+        "severity": "critical",
+        "subject": "de-initech-retail-owner"
+      },
+      "occurred_at": "2026-06-23T16:04:07.482936Z",
+      "prev_hash": "dfa77f25eb6cf29ef747d7f38bd6e267addfe9ae3e5c21de5e811a37cc9f6eab",
+      "target_ref": "53175216-9b7f-48c1-89eb-55254ca864f4",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.detected",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "b6123ce74fe8f9d81d6590d2b49afb0af0073ceb84ed5a8b4f777f45d6d8a5f2",
+      "chain_seq": 166,
+      "id": "351ae86e-c63c-462e-9f0d-95b1fd95fc31",
+      "kind": "orphan_detected",
+      "metadata": {
+        "anomaly_id": "7579c28a-3c1f-4ea2-bc21-a128a6365f24",
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "pos:cardholder-data",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "pos:store-manager",
+          "role": "operator"
+        },
+        "rule_id": "ef65478f-c673-4fee-b5e2-efd0842f76e2",
+        "rule_name": "Store-manager must not hold cardholder-data access",
+        "severity": "critical",
+        "subject": "ext-dual-role@de-initech-retail.example"
+      },
+      "occurred_at": "2026-06-23T16:04:07.501597Z",
+      "prev_hash": "775780e0c82835abfc54980b43800abba3cdbf66b09fd7f34d60ab6264be4e38",
+      "target_ref": "7579c28a-3c1f-4ea2-bc21-a128a6365f24",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "orphan.disposition.flagged",
+      "actor": "system:anomaly-detector",
+      "chain_hash": "43e91e89c8e08670bbaac24ae1dc63ebb38474b9680812d36de504b1b1284195",
+      "chain_seq": 167,
+      "id": "29231759-9b2b-4589-86d5-7b4e428d81b7",
+      "kind": "orphan_disposition",
+      "metadata": {
+        "anomaly_id": "7579c28a-3c1f-4ea2-bc21-a128a6365f24",
+        "anomaly_kind": "sod_violation",
+        "automated": true,
+        "disposition": "flagged",
+        "severity": "critical",
+        "subject": "ext-dual-role@de-initech-retail.example"
+      },
+      "occurred_at": "2026-06-23T16:04:07.501597Z",
+      "prev_hash": "b6123ce74fe8f9d81d6590d2b49afb0af0073ceb84ed5a8b4f777f45d6d8a5f2",
+      "target_ref": "7579c28a-3c1f-4ea2-bc21-a128a6365f24",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "compliance.export",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "365e2b30a7a7785e7e71676732a9fd148c2bcc68af02da02da2f560b28ad2d9e",
+      "chain_seq": 168,
+      "id": "a83125a7-7e3e-4062-a8fc-14da2de913b4",
+      "kind": "evidence_exported",
+      "metadata": {
+        "chain_status": "valid",
+        "content_sha256": "aca0898f1c74afcd435b2c5d69e4d22b3e469f62910f5be9e2edcf0e62e109d7",
+        "evidence_total": 167,
+        "framework": "SOC 2",
+        "mfa_satisfied": true
+      },
+      "occurred_at": "2026-06-23T16:04:07.623768Z",
+      "prev_hash": "43e91e89c8e08670bbaac24ae1dc63ebb38474b9680812d36de504b1b1284195",
+      "target_ref": "SOC 2",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "discovery.agent_reachable_import",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "c2564bc4e89c8f9577f79897871d62922544ec80c1974da34d50d4da3939eed4",
+      "chain_seq": 169,
+      "id": "74d2cf67-9045-45e8-8ea3-48724d0b0ad7",
+      "kind": "other",
+      "metadata": {
+        "assets_new": 0,
+        "reported": 5,
+        "scan_id": "f7fe3533-ecf1-475e-99ee-29c555ebedaa"
+      },
+      "occurred_at": "2026-06-23T16:04:07.919705Z",
+      "prev_hash": "365e2b30a7a7785e7e71676732a9fd148c2bcc68af02da02da2f560b28ad2d9e",
+      "target_ref": "f9d5e313-e50f-497e-9864-33b219f8c608",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "pam.target.created",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "2df1628ebd6bf88b4e2a4c246d34609e2e7c511d753277b43bdde24cc1492532",
+      "chain_seq": 170,
+      "id": "8e6e1a77-8b40-41d6-940e-683be35ded5b",
+      "kind": "other",
+      "metadata": {
+        "address": "build-01.corp.internal:22",
+        "protocol": "ssh"
+      },
+      "occurred_at": "2026-06-23T16:04:07.980684Z",
+      "prev_hash": "c2564bc4e89c8f9577f79897871d62922544ec80c1974da34d50d4da3939eed4",
+      "target_ref": "6386cf58-3f14-4f98-833a-187c6bc56be0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "discovery.onboard",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "7f055296ca27a0ecf8a4cec2afa3c93484585a8caf19a5602e7fcf3f04b26e33",
+      "chain_seq": 171,
+      "id": "c4b4f2f7-d937-47f8-87cd-dbef0aad8031",
+      "kind": "other",
+      "metadata": {
+        "asset_id": "403bcb75-e5e7-4fd8-a111-4bc1f1c21a59",
+        "trigger": "manual"
+      },
+      "occurred_at": "2026-06-23T16:04:08.010156Z",
+      "prev_hash": "2df1628ebd6bf88b4e2a4c246d34609e2e7c511d753277b43bdde24cc1492532",
+      "target_ref": "6386cf58-3f14-4f98-833a-187c6bc56be0",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "discovery.policy_update",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "53456515e9d51c186eebc564f6ba148c3e4cbac2b74ca20857c0c68598d1b632",
+      "chain_seq": 172,
+      "id": "699e5408-36e9-464e-8cf4-ee5be95b9cab",
+      "kind": "other",
+      "metadata": {
+        "active_sweep": false,
+        "create_targets": false,
+        "enabled": true,
+        "has_credential": false,
+        "rules": 1
+      },
+      "occurred_at": "2026-06-23T16:04:08.038394Z",
+      "prev_hash": "7f055296ca27a0ecf8a4cec2afa3c93484585a8caf19a5602e7fcf3f04b26e33",
+      "target_ref": "2d0af02c-001f-4a74-8daf-29e9fc294d61",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "action": "pam.rotation_policy.updated",
+      "actor": "de-initech-retail-owner",
+      "chain_hash": "299281a9b39d27619f44e7fe4f3d95a02b18c90ac77aa885da571bea10bdd7ac",
+      "chain_seq": 173,
+      "id": "ddf6860b-59ea-440d-8fc7-b191ec05f251",
+      "kind": "other",
+      "metadata": {
+        "dynamic_enabled": false,
+        "enabled": true,
+        "interval_seconds": 0,
+        "mode": "disabled",
+        "rotate_on_checkin": true
+      },
+      "occurred_at": "2026-06-23T16:04:08.083903Z",
+      "prev_hash": "53456515e9d51c186eebc564f6ba148c3e4cbac2b74ca20857c0c68598d1b632",
+      "target_ref": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     }
   ]
 }

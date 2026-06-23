@@ -1,30 +1,34 @@
 {
+  "available_transitions": [
+    "cancelled",
+    "provisioning"
+  ],
   "request": {
-    "connector_id": "e356f4b6-0360-48a7-a159-35bb02388dc4",
-    "created_at": "2026-06-18T14:10:31.224606Z",
+    "connector_id": "541953de-94fe-45a0-8c0c-122a41773bd9",
+    "created_at": "2026-06-23T16:03:57.269561Z",
     "deleted_at": null,
-    "id": "84cd1aa6-eb14-472a-8ef1-11577f1ceb80",
+    "id": "0449137b-b0b3-4918-b0c1-b547733a43dc",
     "justification": "Quarterly PCI-DSS audit requires read access to the CDE for evidence sampling.",
     "requester_id": "sg-acme-payments-owner",
     "resource_ref": "cde:pci-scope",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "sg-acme-payments-owner",
-    "updated_at": "2026-06-18T14:10:31.237165Z",
-    "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
+    "updated_at": "2026-06-23T16:03:57.306666Z",
+    "workspace_id": "1ba97af7-1023-466a-bab4-4a61b21359ab"
   },
   "risk": {
-    "created_at": "2026-06-18T14:10:31.23026Z",
-    "degraded": false,
+    "created_at": "2026-06-23T16:03:57.281194Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "92572cf7-055a-422e-bc03-1814410b944c",
+    "id": "dc7e0052-232c-471a-8add-7fcde1b4e89e",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 48,
@@ -33,12 +37,13 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "84cd1aa6-eb14-472a-8ef1-11577f1ceb80",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-18T14:10:31.23026Z",
-    "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
-  }
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "0449137b-b0b3-4918-b0c1-b547733a43dc",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-23T16:03:57.281194Z",
+    "workspace_id": "1ba97af7-1023-466a-bab4-4a61b21359ab"
+  },
+  "terminal": false
 }

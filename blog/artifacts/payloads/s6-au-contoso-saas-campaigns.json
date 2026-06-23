@@ -1,17 +1,30 @@
 {
   "campaigns": [
     {
-      "closed_at": "2026-06-18T14:22:01.768007Z",
-      "created_at": "2026-06-18T14:22:01.752248Z",
+      "closed_at": "2026-06-23T16:04:15.685087Z",
+      "created_at": "2026-06-23T16:04:15.623473Z",
       "deleted_at": null,
       "framework": "SOC 2",
-      "id": "5be7b302-e111-4112-8656-b5da768c5bb1",
+      "id": "c6a9aed8-616c-4c85-a0fd-17a8e6f509f3",
       "name": "Q2 2026 SOC 2 logical-access certification",
-      "scope_connector_id": "2e8f3600-31df-435c-83fc-7c79d7cc71cd",
-      "started_at": "2026-06-18T14:22:01.752248Z",
+      "scope_connector_id": "a131a9c9-453f-4054-95fd-96d53d594dc0",
+      "started_at": "2026-06-23T16:04:15.623473Z",
       "state": "closed",
-      "updated_at": "2026-06-18T14:22:01.768007Z",
-      "workspace_id": "3ae6bda2-b5fd-46d5-a652-ceca16241cff"
+      "updated_at": "2026-06-23T16:04:15.685087Z",
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
+    },
+    {
+      "closed_at": "2026-06-23T16:02:01.893309Z",
+      "created_at": "2026-06-23T16:02:01.85822Z",
+      "deleted_at": null,
+      "framework": "SOC 2",
+      "id": "b894ad04-54f4-4769-b979-e7fc4792a071",
+      "name": "Q2 2026 SOC 2 logical-access certification",
+      "scope_connector_id": "a131a9c9-453f-4054-95fd-96d53d594dc0",
+      "started_at": "2026-06-23T16:02:01.85822Z",
+      "state": "closed",
+      "updated_at": "2026-06-23T16:02:01.893309Z",
+      "workspace_id": "6a4d780d-1918-4227-864d-54e75c629e75"
     }
   ]
 }

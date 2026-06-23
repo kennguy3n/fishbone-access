@@ -17,11 +17,11 @@
     },
     {
       "by_kind": {
-        "joiner_provisioned": 1,
-        "kill_switch_fired": 6
+        "joiner_provisioned": 2,
+        "kill_switch_fired": 12
       },
       "covered": true,
-      "evidence_count": 7,
+      "evidence_count": 14,
       "id": "A.5.16",
       "kinds": [
         "joiner_provisioned",
@@ -32,15 +32,15 @@
     },
     {
       "by_kind": {
-        "access_granted": 7,
-        "access_requested": 4,
-        "access_revoked": 4,
-        "certification_closed": 1,
-        "certification_decision": 1,
-        "review_decision": 2
+        "access_granted": 14,
+        "access_requested": 8,
+        "access_revoked": 8,
+        "certification_closed": 2,
+        "certification_decision": 5,
+        "review_decision": 7
       },
       "covered": true,
-      "evidence_count": 19,
+      "evidence_count": 44,
       "id": "A.5.18",
       "kinds": [
         "access_requested",
@@ -72,10 +72,10 @@
     },
     {
       "by_kind": {
-        "evidence_exported": 1
+        "evidence_exported": 2
       },
       "covered": true,
-      "evidence_count": 1,
+      "evidence_count": 2,
       "id": "A.8.15",
       "kinds": [
         "evidence_exported"
@@ -85,6 +85,6 @@
   ],
   "controls_covered": 5,
   "controls_total": 5,
-  "evidence_total": 50,
+  "evidence_total": 87,
   "framework": "ISO 27001"
 }

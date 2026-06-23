@@ -1,30 +1,34 @@
 {
+  "available_transitions": [
+    "cancelled",
+    "provisioning"
+  ],
   "request": {
-    "connector_id": "e08f95da-be24-4070-a2da-c2bd738108f3",
-    "created_at": "2026-06-18T14:19:01.170194Z",
+    "connector_id": "44eef677-23cf-4aac-b2ff-82cf211cc24c",
+    "created_at": "2026-06-23T16:04:11.104658Z",
     "deleted_at": null,
-    "id": "98a99d93-5f0e-4f5c-9ecf-475736d87bf6",
+    "id": "814d0d8c-ca19-428b-b012-52e4c6306a00",
     "justification": "UAE PDPL data-subject request fulfilment.",
     "requester_id": "ae-northwind-finance-owner",
     "resource_ref": "pdpl:dsr",
     "risk_factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "risk_level": "low",
+    "risk_level": "medium",
     "role": "auditor",
     "state": "approved",
     "target_user_id": "ae-northwind-finance-owner",
-    "updated_at": "2026-06-18T14:19:01.182054Z",
-    "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
+    "updated_at": "2026-06-23T16:04:11.144061Z",
+    "workspace_id": "f7c487c2-d1c6-493a-ac6e-bcb00a673f05"
   },
   "risk": {
-    "created_at": "2026-06-18T14:19:01.175229Z",
-    "degraded": false,
+    "created_at": "2026-06-23T16:04:11.117548Z",
+    "degraded": true,
     "deleted_at": null,
     "factors": [
-      "baseline_low_risk"
+      "ai_unavailable"
     ],
-    "id": "1b8df7cc-7e27-4715-a9ce-f497f9e0a95f",
+    "id": "3fb932f2-c680-4298-a3d2-156363eab3e0",
     "inputs": {
       "ai_tier": "deterministic",
       "duration_hours": 24,
@@ -33,12 +37,13 @@
       "resource_tags": null,
       "role": "auditor"
     },
-    "rationale": "rule-based risk=low from 1 factor(s)",
-    "recommendation": "auto_approve_eligible",
-    "request_id": "98a99d93-5f0e-4f5c-9ecf-475736d87bf6",
-    "score": "low",
-    "source": "ai_agent",
-    "updated_at": "2026-06-18T14:19:01.175229Z",
-    "workspace_id": "48ccb69f-7b1e-4a79-9a09-d6b5392919cd"
-  }
+    "rationale": "ai agent unavailable; applied fail-safe default",
+    "recommendation": "needs_review",
+    "request_id": "814d0d8c-ca19-428b-b012-52e4c6306a00",
+    "score": "medium",
+    "source": "fallback",
+    "updated_at": "2026-06-23T16:04:11.117548Z",
+    "workspace_id": "f7c487c2-d1c6-493a-ac6e-bcb00a673f05"
+  },
+  "terminal": false
 }

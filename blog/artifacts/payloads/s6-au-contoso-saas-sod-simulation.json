@@ -15,9 +15,9 @@
       "catastrophic_reasons": [
         "introduces high/critical separation-of-duties toxic combination(s)"
       ],
-      "new_grant_pairs": 2,
+      "new_grant_pairs": 1,
       "pair_count": 2,
-      "redundant_pairs": 0,
+      "redundant_pairs": 1,
       "resource_count": 2,
       "sod_violations": [
         {
@@ -30,7 +30,22 @@
             "role": "operator"
           },
           "introduced": true,
-          "rule_id": "46a2ba2b-9089-4df3-a841-16bbf15c247f",
+          "rule_id": "23bae309-379d-485f-8f34-25e767f1cbba",
+          "rule_name": "Production deploy must not also hold billing admin",
+          "severity": "high",
+          "subject": "au-contoso-saas-owner"
+        },
+        {
+          "conflicting": {
+            "resource": "billing:admin",
+            "role": "operator"
+          },
+          "held": {
+            "resource": "prod:deploy",
+            "role": "operator"
+          },
+          "introduced": true,
+          "rule_id": "6f4d9b4b-d7ff-4234-9efb-acc030cc81f7",
           "rule_name": "Production deploy must not also hold billing admin",
           "severity": "high",
           "subject": "au-contoso-saas-owner"

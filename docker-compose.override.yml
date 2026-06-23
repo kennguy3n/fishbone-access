@@ -1,0 +1,12 @@
+# Local override for the dev-only blog evidence pipeline.
+# Set AUTH_JWT_SECRET in your shell environment; the override wires the name
+# into the container so no credential value is committed. ACCESS_CREDENTIAL_DEK
+# is already honoured by docker-compose.yml, so it is not duplicated here.
+
+services:
+  ztna-api:
+    environment:
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+    # Pull in the dev-auth secret so authenticated endpoints can serve seeded
+    # workspaces for the blog pipeline. When unset, the value is empty and the
+    # dev HMAC path is simply disabled, matching the base compose behaviour.

@@ -1,43 +1,56 @@
 {
   "targets": [
     {
-      "address": "bastion.corp.internal:22",
-      "created_at": "2026-06-18T14:17:31.852564Z",
+      "address": "build-01.corp.internal:22",
+      "created_at": "2026-06-23T16:04:10.621698Z",
       "deleted_at": null,
-      "id": "31a86b68-df2b-49f2-856f-6614abcbf933",
+      "id": "973969b4-2136-4f93-9fb2-8a17c8a3163d",
+      "lease_ttl_seconds": 0,
+      "name": "build-01.corp.internal",
+      "protocol": "ssh",
+      "require_mfa": true,
+      "updated_at": "2026-06-23T16:04:10.621698Z",
+      "username": "svc_access",
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
+    },
+    {
+      "address": "bastion.corp.internal:22",
+      "created_at": "2026-06-23T15:57:32.730438Z",
+      "deleted_at": null,
+      "id": "aba85d18-efa4-40f2-80bd-7e199feceb3f",
       "lease_ttl_seconds": 0,
       "name": "bastion.corp.internal",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:17:31.852564Z",
+      "updated_at": "2026-06-23T15:57:32.730438Z",
       "username": "svc_access",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "address": "wms-bastion.umbrella.internal:22",
-      "created_at": "2026-06-18T14:17:02.667856Z",
+      "created_at": "2026-06-23T15:57:04.233976Z",
       "deleted_at": null,
-      "id": "84202d0e-66f3-4c61-a209-6f3f6930ac54",
+      "id": "c9d46dc3-8699-4ad1-82ec-28d17ea6bbe3",
       "lease_ttl_seconds": 1800,
       "name": "WMS bastion (recorded session)",
       "protocol": "ssh",
       "require_mfa": false,
-      "updated_at": "2026-06-18T14:17:02.667856Z",
+      "updated_at": "2026-06-23T15:57:04.233976Z",
       "username": "wms-ops",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     },
     {
       "address": "wms-1.umbrella.internal:22",
-      "created_at": "2026-06-18T14:17:02.638415Z",
+      "created_at": "2026-06-23T15:57:04.123137Z",
       "deleted_at": null,
-      "id": "ba9f69b3-7173-4912-ad60-be874bbd77b9",
+      "id": "891aee85-0ab7-4aa7-8fca-e6e69815856d",
       "lease_ttl_seconds": 1800,
       "name": "WMS application server (wms-1)",
       "protocol": "ssh",
       "require_mfa": true,
-      "updated_at": "2026-06-18T14:17:02.638415Z",
+      "updated_at": "2026-06-23T15:57:04.123137Z",
       "username": "wms-ops",
-      "workspace_id": "84b5d3f7-c892-4c89-a9bc-a4494dbf157d"
+      "workspace_id": "4a50e3a5-3e55-4415-8291-33a8284661bf"
     }
   ]
 }

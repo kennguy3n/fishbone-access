@@ -2,25 +2,47 @@
   "leases": [
     {
       "approved_by": "de-initech-retail-owner",
-      "created_at": "2026-06-18T14:16:03.580179Z",
+      "created_at": "2026-06-23T16:04:07.205179Z",
       "deleted_at": null,
-      "expires_at": "2026-06-18T14:46:31.679826Z",
-      "granted_at": "2026-06-18T14:16:31.679826Z",
-      "id": "49a6ae14-f507-4793-bdd5-24ee2414d48e",
+      "expires_at": "2026-06-23T16:34:07.226086Z",
+      "granted_at": "2026-06-23T16:04:07.226086Z",
+      "id": "7b0003ea-0878-43ac-a4c1-1dde957c1eac",
       "reason": "JIT privileged access for a scoped operational task.",
       "requested_by": "de-initech-retail-owner",
       "requested_ttl_seconds": 1800,
-      "risk_degraded": false,
+      "risk_degraded": true,
       "risk_factors": [
-        "baseline_low_risk"
+        "ai_unavailable"
       ],
-      "risk_level": "low",
-      "risk_reason": "rule-based risk=low from 1 factor(s)",
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
       "state": "approved",
       "subject": "de-initech-retail-owner",
-      "target_id": "212de029-9abd-4e46-8ab8-8227e4b02ce8",
-      "updated_at": "2026-06-18T14:16:31.679826Z",
-      "workspace_id": "6b2f6687-af18-498c-ba48-1bd40fd93d13"
+      "target_id": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "updated_at": "2026-06-23T16:04:07.226086Z",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
+    },
+    {
+      "approved_by": "de-initech-retail-owner",
+      "created_at": "2026-06-23T15:56:05.864329Z",
+      "deleted_at": null,
+      "expires_at": "2026-06-23T16:26:31.882225Z",
+      "granted_at": "2026-06-23T15:56:31.882225Z",
+      "id": "43b0e42b-0b90-4632-bebe-17f82b0c9165",
+      "reason": "JIT privileged access for a scoped operational task.",
+      "requested_by": "de-initech-retail-owner",
+      "requested_ttl_seconds": 1800,
+      "risk_degraded": true,
+      "risk_factors": [
+        "ai_unavailable"
+      ],
+      "risk_level": "medium",
+      "risk_reason": "ai agent unavailable; applied fail-safe default",
+      "state": "approved",
+      "subject": "de-initech-retail-owner",
+      "target_id": "33e0c2a8-e659-4d16-9024-c15c40fb686d",
+      "updated_at": "2026-06-23T15:56:31.882225Z",
+      "workspace_id": "2d0af02c-001f-4a74-8daf-29e9fc294d61"
     }
   ]
 }

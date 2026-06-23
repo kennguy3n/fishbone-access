@@ -1,7 +1,7 @@
 {
   "anomalies": [
     {
-      "created_at": "2026-06-18T14:11:01.843268Z",
+      "created_at": "2026-06-23T16:03:59.059111Z",
       "deleted_at": null,
       "detail": {
         "anomaly_kind": "sod_violation",
@@ -13,21 +13,50 @@
           "resource": "ledger:admin",
           "role": "operator"
         },
-        "rule_id": "3449778e-e24b-4b44-80e3-a21eaa63ac54",
+        "rule_id": "efbee508-0d32-463b-9b04-42b317a90c92",
         "rule_name": "Ledger admin must not also approve reconciliation",
         "severity": "critical",
         "subject": "ext-dual-role@sg-acme-payments.example"
       },
-      "detected_at": "2026-06-18T14:11:01.843268Z",
+      "detected_at": "2026-06-23T16:03:59.059111Z",
       "disposition": "flagged",
-      "fingerprint": "e9d9bfd6ab4d1efd77dcb3b8bd4116136ef66220f3ed16a1b6bf7c6837b24e9c",
-      "id": "c65e4eae-119a-4cb5-9244-5f30af9bc2e8",
+      "fingerprint": "2726aa5328f601c2e618388de1a6b00c51755df5a5430d2c32e7945c749dd6ea",
+      "id": "d9558cc0-8ef3-48ee-b80b-dca6297f0f3a",
       "kind": "sod_violation",
-      "rule_id": "3449778e-e24b-4b44-80e3-a21eaa63ac54",
+      "rule_id": "efbee508-0d32-463b-9b04-42b317a90c92",
       "severity": "critical",
       "subject": "ext-dual-role@sg-acme-payments.example",
-      "updated_at": "2026-06-18T14:11:01.843268Z",
-      "workspace_id": "9a5e81e3-f9b2-4851-aaba-38834da07926"
+      "updated_at": "2026-06-23T16:03:59.059111Z",
+      "workspace_id": "1ba97af7-1023-466a-bab4-4a61b21359ab"
+    },
+    {
+      "created_at": "2026-06-23T15:51:01.760566Z",
+      "deleted_at": null,
+      "detail": {
+        "anomaly_kind": "sod_violation",
+        "conflicting": {
+          "resource": "ledger:reconcile",
+          "role": "operator"
+        },
+        "held": {
+          "resource": "ledger:admin",
+          "role": "operator"
+        },
+        "rule_id": "4ccdb9f1-6cca-490b-98e4-e00390248f5f",
+        "rule_name": "Ledger admin must not also approve reconciliation",
+        "severity": "critical",
+        "subject": "ext-dual-role@sg-acme-payments.example"
+      },
+      "detected_at": "2026-06-23T15:51:01.760566Z",
+      "disposition": "flagged",
+      "fingerprint": "b54e03a6604045402b329efa295cf49074ed9e504d03508c10566481650f66ac",
+      "id": "b0604cd4-c08d-41fe-bfef-75a509a6b85f",
+      "kind": "sod_violation",
+      "rule_id": "4ccdb9f1-6cca-490b-98e4-e00390248f5f",
+      "severity": "critical",
+      "subject": "ext-dual-role@sg-acme-payments.example",
+      "updated_at": "2026-06-23T15:51:01.760566Z",
+      "workspace_id": "1ba97af7-1023-466a-bab4-4a61b21359ab"
     }
   ]
 }

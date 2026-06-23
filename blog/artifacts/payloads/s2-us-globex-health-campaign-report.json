@@ -1,7 +1,7 @@
 {
   "all_decided": true,
-  "campaign_id": "37c0771a-afd1-4361-bf54-4a7654ce8f86",
-  "certified": 0,
+  "campaign_id": "8619e14a-a867-4be2-b6db-38dd0dd74e62",
+  "certified": 3,
   "escalated": 0,
   "framework": "SOC 2",
   "name": "Q2 2026 HIPAA Security Rule certification",
@@ -9,5 +9,5 @@
   "pending": 0,
   "revoked": 1,
   "state": "closed",
-  "total": 1
+  "total": 4
 }
