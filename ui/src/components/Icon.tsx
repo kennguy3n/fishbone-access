@@ -43,7 +43,14 @@ export type IconName =
   | "search"
   | "plus"
   | "chevron-down"
-  | "settings";
+  | "settings"
+  | "help"
+  | "close"
+  | "chat"
+  | "email"
+  | "globe"
+  | "updates"
+  | "send";
 
 // Each value is the inner markup of a 24x24 viewBox icon. Kept as small,
 // recognizable line shapes so they read well at 16-18px in the nav rail.
@@ -267,6 +274,50 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
   plus: <path d="M12 5v14M5 12h14" />,
   "chevron-down": <path d="M6 9l6 6 6-6" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 3.5" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="M18 6 6 18" />
+      <path d="M6 6l12 12" />
+    </>
+  ),
+  chat: (
+    <>
+      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+    </>
+  ),
+  email: (
+    <>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+    </>
+  ),
+  updates: (
+    <>
+      <path d="M11 5.1a7.1 7.1 0 0 1 7.1 7.1v.5" />
+      <path d="M19.1 5.1H12V12" />
+      <circle cx="12" cy="12" r="9" />
+    </>
+  ),
+  send: (
+    <>
+      <path d="M14.5 2.2a.4.4 0 0 1 .5.5l-4.6 16.9a.4.4 0 0 1-.7.2L2.6 10.6a.4.4 0 0 1 .2-.7L17.4 2.2Z" />
+      <path d="M16.5 2.2 22 5l-5.5 1.8" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />

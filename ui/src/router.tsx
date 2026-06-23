@@ -75,6 +75,9 @@ const RequestDetail = lazyPage(() =>
 const Directory = lazyPage(() =>
   import("@/routes/Directory").then((m) => ({ default: m.Directory })),
 );
+const PamOverview = lazyPage(() =>
+  import("@/routes/PamOverview").then((m) => ({ default: m.PamOverview })),
+);
 const PamTargets = lazyPage(() =>
   import("@/routes/PamTargets").then((m) => ({ default: m.PamTargets })),
 );
@@ -187,6 +190,7 @@ const appRoutes = [
   page("/jml-runs", JmlRuns),
   page("/directory", Directory),
   page("/discovery", Discovery),
+  page("/pam", PamOverview),
   page("/pam/targets", PamTargets),
   page("/pam/agents", Agents),
   page("/pam/leases", PamLeases),

@@ -56,6 +56,7 @@ export const NAV: NavGroup[] = [
   {
     labelId: "nav.group.pam",
     items: [
+      { labelId: "pam.overview.title", to: "/pam", icon: "key" },
       { labelId: "nav.discovery", to: "/discovery", icon: "search" },
       { labelId: "nav.pam.targets", to: "/pam/targets", icon: "key" },
       { labelId: "nav.pam.agents", to: "/pam/agents", icon: "integrations" },

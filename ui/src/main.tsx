@@ -9,6 +9,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { AuthProvider } from "@/auth/auth-context";
 import { LocaleProvider } from "@/lib/i18n/locale-context";
 import { ToastProvider } from "@/components/Toast";
+import { HelpDrawerProvider } from "@/components/HelpDrawerContext";
 import { router } from "@/router";
 import { initTheme } from "@/lib/theme";
 import "@/styles.css";
@@ -46,9 +47,11 @@ createRoot(rootEl).render(
     <LocaleProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
+          <HelpDrawerProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </HelpDrawerProvider>
         </AuthProvider>
       </QueryClientProvider>
     </LocaleProvider>

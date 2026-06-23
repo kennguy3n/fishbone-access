@@ -9,6 +9,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { NAV } from "./nav";
 import { Icon } from "./Icon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { HelpButton, HelpDrawer } from "./HelpDrawer";
 import { useAuth } from "@/auth/auth-context";
 import { useMe } from "@/api/access";
 import { useIsWorkspaceAdmin } from "@/lib/permissions";
@@ -127,6 +128,7 @@ function Topbar({ onToggleNav }: { onToggleNav: () => void }) {
       </button>
       <TenantBadge />
       <div className="topbar__spacer" />
+      <HelpButton />
       <LanguageSwitcher />
       <div className="topbar__user">
         <span className="avatar" aria-hidden>
@@ -183,6 +185,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </div>
+      <HelpDrawer />
     </div>
   );
 }
