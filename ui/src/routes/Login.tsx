@@ -68,13 +68,14 @@ export function Login() {
     <div className="login lane-a1">
       <div className="login__card">
         <div className="login__brand">
-          <span
-            className="sidebar__logo"
-            style={{ width: 36, height: 36 }}
+          <img
+            src="/shieldnet360-logo.svg"
+            alt="ShieldNet 360"
+            height={36}
+            width={175}
+            style={{ height: 36, width: "auto" }}
             aria-hidden
-          >
-            S
-          </span>
+          />
           <div>
             <div style={{ fontWeight: 700, fontSize: 18 }}>ShieldNet Access</div>
             <div className="muted" style={{ fontSize: 12 }}>
