@@ -157,6 +157,8 @@ export type MessageKey =
   | "help.chat.answer.connector"
   | "help.chat.answer.request"
   | "help.chat.answer.score"
+  | "help.chat.answer.jit"
+  | "help.chat.answer.greeting"
   | "help.chat.answer.fallback"
   // Self-service FAQ (now surfaced in the global help drawer too)
   | "selfservice.help.jit.q"
@@ -319,6 +321,8 @@ const en: Catalog = {
   "selfservice.help.expired.a": "That's normal for time-limited access. Just request it again using the form above; if you use it often, mention that in your reason.",
   "dashboard.attention.clear.desc": "Nothing needs a decision right now. Policies are active, accounts are clean, and no requests are waiting on you.",
   "pam.overview.policyCta": "Go to policies",
+  "help.chat.answer.jit": "Just-in-time access means you request privilege only when you need it, for a limited time. It's safer than standing admin access.",
+  "help.chat.answer.greeting": "Hello! Ask me about policies, connectors, requests, the health score, or just-in-time access.",
 };
 
 const zhHans: Partial<Catalog> = {
@@ -456,6 +460,8 @@ const zhHans: Partial<Catalog> = {
   "selfservice.help.expired.a": "对于限时访问来说这很正常。只需使用上方表单再次申请；如果您经常使用，请在理由中说明。",
   "dashboard.attention.clear.desc": "目前没有需要决定的事项。策略已激活，账户已清理，没有待处理请求。",
   "pam.overview.policyCta": "前往策略",
+  "help.chat.answer.jit": "即时访问意味着您仅在需要时请求权限，并在限定时间内使用。这比长期拥有管理员权限更安全。",
+  "help.chat.answer.greeting": "您好！您可以询问策略、连接器、请求、健康评分或即时访问。",
 };
 
 const zhHant: Partial<Catalog> = {
@@ -593,6 +599,8 @@ const zhHant: Partial<Catalog> = {
   "selfservice.help.expired.a": "對於限時存取來說這很正常。只需使用上方表單再次申請；如果您經常使用，請在理由中說明。",
   "dashboard.attention.clear.desc": "目前沒有需要決定的事項。原則已啟用，帳戶已清理，沒有待處理請求。",
   "pam.overview.policyCta": "前往原則",
+  "help.chat.answer.jit": "即時存取代表您只在需要時申請權限，並在限定期間內使用。這比長期擁有管理員權限更安全。",
+  "help.chat.answer.greeting": "您好！您可以詢問原則、連接器、請求、健康評分或即時存取。",
 };
 
 const ms: Partial<Catalog> = {
@@ -730,6 +738,8 @@ const ms: Partial<Catalog> = {
   "selfservice.help.expired.a": "Itu normal untuk akses berhad masa. Mohon semula menggunakan borang di atas; jika anda menggunakannya kerap, sebutkan perkara itu dalam sebab anda.",
   "dashboard.attention.clear.desc": "Tiada keputusan diperlukan sekarang. Dasar aktif, akaun bersih, dan tiada permintaan yang menunggu.",
   "pam.overview.policyCta": "Pergi ke dasar",
+  "help.chat.answer.jit": "Akses just-in-time bermaksud anda memohon keistimewaan hanya apabila diperlukan, untuk tempoh terhad. Ia lebih selamat daripada akses admin berterusan.",
+  "help.chat.answer.greeting": "Hai! Tanya saya tentang dasar, penyambung, permintaan, skor kesihatan, atau akses just-in-time.",
 };
 
 const id: Partial<Catalog> = {
@@ -867,6 +877,8 @@ const id: Partial<Catalog> = {
   "selfservice.help.expired.a": "Itu normal untuk akses berbatas waktu. Minta lagi menggunakan formulir di atas; jika Anda sering menggunakannya, sebutkan dalam alasan Anda.",
   "dashboard.attention.clear.desc": "Tidak ada keputusan yang diperlukan saat ini. Kebijakan aktif, akun bersih, dan tidak ada permintaan yang menunggu.",
   "pam.overview.policyCta": "Buka kebijakan",
+  "help.chat.answer.jit": "Akses just-in-time berarti Anda meminta hak akses hanya saat dibutuhkan, dalam waktu terbatas. Ini lebih aman daripada akses admin permanen.",
+  "help.chat.answer.greeting": "Halo! Tanya saya tentang kebijakan, konektor, permintaan, skor kesehatan, atau akses just-in-time.",
 };
 
 const th: Partial<Catalog> = {
@@ -1004,6 +1016,8 @@ const th: Partial<Catalog> = {
   "selfservice.help.expired.a": "เป็นเรื่องปกติสำหรับการเข้าถึงที่มีเวลาจำกัด เพียงขออีกครั้งโดยใช้แบบฟอร์มด้านบน หากคุณใช้บ่อย ให้ระบุไว้ในเหตุผล",
   "dashboard.attention.clear.desc": "ไม่มีสิ่งใดต้องตัดสินใจในขณะนี้ นโยบายใช้งานอยู่ บัญชีสะอาด และไม่มีคำขอที่รอดำเนินการ",
   "pam.overview.policyCta": "ไปที่นโยบาย",
+  "help.chat.answer.jit": "การเข้าถึงแบบ just-in-time หมายถึงคุณขอสิทธิ์เมื่อต้องการใช้งานเท่านั้น โดยมีเวลาจำกัด ปลอดภัยกว่าการมีสิทธิ์ผู้ดูแลระบบตลอดเวลา",
+  "help.chat.answer.greeting": "สวัสดี! ถามฉันเกี่ยวกับนโยบาย ตัวเชื่อมต่อ คำขอ คะแนนสุขภาพ หรือการเข้าถึงแบบ just-in-time",
 };
 
 const vi: Partial<Catalog> = {
@@ -1141,6 +1155,8 @@ const vi: Partial<Catalog> = {
   "selfservice.help.expired.a": "Điều đó bình thường đối với quyền truy cập có thời hạn. Chỉ cần yêu cầu lại bằng biểu mẫu bên trên; nếu bạn thường xuyên sử dụng, hãy đề cập điều đó trong lý do.",
   "dashboard.attention.clear.desc": "Hiện không có quyết định nào cần đưa ra. Chính sách đang hoạt động, tài khoản sạch và không có yêu cầu đang chờ.",
   "pam.overview.policyCta": "Đến chính sách",
+  "help.chat.answer.jit": "Truy cập just-in-time có nghĩa là bạn chỉ yêu cầu đặc quyền khi cần, trong một khoảng thời gian giới hạn. Điều này an toàn hơn so với quyền quản trị viên cố định.",
+  "help.chat.answer.greeting": "Xin chào! Hãy hỏi tôi về chính sách, trình kết nối, yêu cầu, điểm sức khỏe, hoặc truy cập just-in-time.",
 };
 
 const ja: Partial<Catalog> = {
@@ -1278,6 +1294,8 @@ const ja: Partial<Catalog> = {
   "selfservice.help.expired.a": "時間限定アクセスではよくあることです。上のフォームからもう一度リクエストしてください。頻繁に使用する場合は、その旨を理由に記載してください。",
   "dashboard.attention.clear.desc": "現在、決定が必要なものはありません。ポリシーは有効、アカウントはクリーンで、未処理のリクエストはありません。",
   "pam.overview.policyCta": "ポリシーへ移動",
+  "help.chat.answer.jit": "ジャストインタイムアクセスとは、必要な時だけ限られた時間だけ権限をリクエストすることです。常時の管理者権限より安全です。",
+  "help.chat.answer.greeting": "こんにちは！ポリシー、コネクタ、リクエスト、ヘルススコア、ジャストインタイムアクセスについて質問してください。",
 };
 
 const ko: Partial<Catalog> = {
@@ -1415,6 +1433,8 @@ const ko: Partial<Catalog> = {
   "selfservice.help.expired.a": "시간 제한 접근에서는 정상입니다. 위의 양식을 사용하여 다시 요청하세요. 자주 사용하는 경우 사유에 그 점을 언급하세요.",
   "dashboard.attention.clear.desc": "현재 결정이 필요한 사항이 없습니다. 정책이 활성화되어 있고, 계정이 정리되었으며, 대기 중인 요청이 없습니다.",
   "pam.overview.policyCta": "정책으로 이동",
+  "help.chat.answer.jit": "Just-in-time 접근은 필요할 때만 제한된 시간 동안 권한을 요청하는 것입니다. 상시 관리자 권한보다 안전합니다.",
+  "help.chat.answer.greeting": "안녕하세요! 정책, 커넥터, 요청, 건강 점수, 또는 just-in-time 접근에 대해 물어보세요.",
 };
 
 const ar: Partial<Catalog> = {
@@ -1552,6 +1572,8 @@ const ar: Partial<Catalog> = {
   "selfservice.help.expired.a": "هذا أمر طبيعي للوصول المحدود بوقت. فقط اطلبه مرة أخرى باستخدام النموذج أعلاه؛ إذا كنت تستخدمه كثيراً، أشر إلى ذلك في سببك.",
   "dashboard.attention.clear.desc": "لا يوجد شيء يحتاج إلى قرار الآن. السياسات نشطة، والحسابات نظيفة، ولا توجد طلبات قيد الانتظار.",
   "pam.overview.policyCta": "انتقل إلى السياسات",
+  "help.chat.answer.jit": "الوصول “just-in-time” يعني أنك تطلب الامتياز فقط عند الحاجة، ولمدة محدودة. إنه أكثر أماناً من امتلاك وصول إداري دائم.",
+  "help.chat.answer.greeting": "مرحباً! اسألني عن السياسات، أو الموصلات، أو الطلبات، أو درجة الصحة، أو الوصول “just-in-time”.",
 };
 
 const de: Partial<Catalog> = {
@@ -1689,6 +1711,8 @@ const de: Partial<Catalog> = {
   "selfservice.help.expired.a": "Das ist bei zeitlich begrenztem Zugriff normal. Beantragen Sie ihn einfach erneut über das Formular oben; wenn Sie ihn häufig nutzen, erwähnen Sie dies in Ihrem Grund.",
   "dashboard.attention.clear.desc": "Im Moment ist keine Entscheidung erforderlich. Richtlinien sind aktiv, Konten sind bereinigt und es warten keine Anfragen.",
   "pam.overview.policyCta": "Zu den Richtlinien",
+  "help.chat.answer.jit": "Just-in-Time-Zugriff bedeutet, dass Sie Berechtigungen nur anfordern, wenn Sie sie brauchen, und zwar für einen begrenzten Zeitraum. Das ist sicherer als dauerhafter Admin-Zugriff.",
+  "help.chat.answer.greeting": "Hallo! Fragen Sie mich nach Richtlinien, Connectoren, Anfragen, der Gesundheitspunktzahl oder Just-in-Time-Zugriff.",
 };
 
 const fr: Partial<Catalog> = {
@@ -1826,6 +1850,8 @@ const fr: Partial<Catalog> = {
   "selfservice.help.expired.a": "C'est normal pour un accès limité dans le temps. Demandez-le simplement à nouveau à l'aide du formulaire ci-dessus ; si vous l'utilisez souvent, mentionnez-le dans votre raison.",
   "dashboard.attention.clear.desc": "Aucune décision n'est nécessaire pour le moment. Les politiques sont actives, les comptes sont propres et aucune demande n'attend.",
   "pam.overview.policyCta": "Aller aux politiques",
+  "help.chat.answer.jit": "L'accès just-in-time signifie que vous demandez un privilège uniquement lorsque vous en avez besoin, pour une durée limitée. C'est plus sûr qu'un accès administrateur permanent.",
+  "help.chat.answer.greeting": "Bonjour ! Demandez-moi des informations sur les politiques, les connecteurs, les demandes, le score de santé ou l'accès just-in-time.",
 };
 
 const CATALOGS: Record<Locale, Partial<Catalog>> = {
